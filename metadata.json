@@ -1,0 +1,6 @@
+{
+  "name": "Tí Coolture",
+  "description": "Minimalist startup platform connecting local cultural businesses, featuring curated stores, tourist routes, and shop management dashboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
