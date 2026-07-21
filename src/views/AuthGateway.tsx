@@ -1,18 +1,22 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword 
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail
 } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { query, collection, where, getDocs } from "firebase/firestore";
+import { auth, db } from "../lib/firebase";
 import { useAuth } from "../lib/useAuth";
+import { resetUserPassword } from "../lib/dbService";
 import { Shield, ArrowRight, Sparkles, Store, Compass } from "lucide-react";
 
 type AuthMode = "Select" | "UserForm" | "ShopForm";
-type FormType = "Login" | "Signup";
+type FormType = "Login" | "Signup" | "ForgotPassword" | "ResetPassword";
 
 export default function AuthGateway() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refreshProfile, loginAsMockUser } = useAuth();
   
   const [mode, setMode] = useState<AuthMode>("Select");
@@ -20,12 +24,27 @@ export default function AuthGateway() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const actionMode = searchParams.get("mode");
+    const actionEmail = searchParams.get("email");
+    if (actionMode === "ResetPassword" && actionEmail) {
+      setMode("UserForm");
+      setFormType("ResetPassword");
+      setResetEmail(actionEmail);
+    }
+  }, [searchParams]);
 
   const resetForm = () => {
     setEmail("");
     setPassword("");
+    setConfirmPassword("");
     setError(null);
   };
 
@@ -81,6 +100,63 @@ export default function AuthGateway() {
     setError(null);
     setLoading(true);
 
+    if (formType === "ForgotPassword") {
+      if (!email) {
+        setError("Please enter your email address.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const q = query(collection(db, "users"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+          setError("Account not found. Please sign up");
+          setLoading(false);
+          return;
+        }
+
+        // Send actual reset email via Firebase Auth
+        try {
+          await sendPasswordResetEmail(auth, email);
+        } catch (authErr) {
+          console.warn("Firebase sendPasswordResetEmail failed.", authErr);
+        }
+
+        setResetSent(true);
+        setError(null);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to process forgot password request.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (formType === "ResetPassword") {
+      if (!password || !confirmPassword) {
+        setError("Please enter and confirm your new password.");
+        setLoading(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
+      try {
+        await resetUserPassword(resetEmail, password);
+        setResetSuccess(true);
+        setError(null);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to reset password.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!email || !password) {
       setError("Please fill in all credentials.");
       setLoading(false);
@@ -91,20 +167,35 @@ export default function AuthGateway() {
 
     try {
       if (formType === "Login") {
+        const q = query(collection(db, "users"), where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+          setError("Account not found. Please sign up");
+          setLoading(false);
+          return;
+        }
+
+        const userData = querySnapshot.docs[0].data();
+        if (userData.password && userData.password !== password) {
+          setError("Invalid email or password.");
+          setLoading(false);
+          return;
+        }
+
         try {
           await signInWithEmailAndPassword(auth, email, password);
           await refreshProfile();
         } catch (firebaseErr: any) {
           console.warn("Firebase sign-in failed. Activating mock session fallback.", firebaseErr);
           if (loginAsMockUser) {
-            await loginAsMockUser(mockUid, email);
+            await loginAsMockUser(userData.id || mockUid, email, password);
           } else {
             throw firebaseErr;
           }
         }
         
         // Redirect logic
-        if (mode === "ShopForm") {
+        if (mode === "ShopForm" || userData.role === "Shop") {
           navigate("/shop-dashboard");
         } else {
           navigate("/user-profile");
@@ -120,11 +211,16 @@ export default function AuthGateway() {
 
         try {
           await createUserWithEmailAndPassword(auth, registerEmail, password);
-          await refreshProfile();
+          if (loginAsMockUser) {
+            const tempUid = auth.currentUser?.uid || mockUid;
+            await loginAsMockUser(tempUid, registerEmail, password);
+          } else {
+            await refreshProfile();
+          }
         } catch (firebaseErr: any) {
           console.warn("Firebase sign-up failed. Activating mock session fallback.", firebaseErr);
           if (loginAsMockUser) {
-            await loginAsMockUser(mockUid, registerEmail);
+            await loginAsMockUser(mockUid, registerEmail, password);
           } else {
             throw firebaseErr;
           }
@@ -152,7 +248,7 @@ export default function AuthGateway() {
           const fallbackUid = "mock_" + fallbackEmail.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_");
           if (loginAsMockUser) {
             setTimeout(async () => {
-              await loginAsMockUser(fallbackUid, fallbackEmail);
+              await loginAsMockUser(fallbackUid, fallbackEmail, password);
               if (mode === "ShopForm") {
                 navigate("/shop-dashboard");
               } else {
@@ -279,29 +375,31 @@ export default function AuthGateway() {
                   ← BACK TO GATEWAY
                 </button>
                 <h2 className="font-display font-black text-xl uppercase mt-1">
-                  {mode === "ShopForm" ? "Store Portal" : "Explorer Portal"}
+                  {formType === "ForgotPassword" ? "Reset Request" : formType === "ResetPassword" ? "Update Security" : (mode === "ShopForm" ? "Store Portal" : "Explorer Portal")}
                 </h2>
               </div>
               
               {/* Form type switcher */}
-              <div className="flex border-2 border-black">
-                <button
-                  onClick={() => { setFormType("Login"); setError(null); }}
-                  className={`px-3 py-1 font-mono text-xs font-bold uppercase transition-all ${
-                    formType === "Login" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
-                  }`}
-                >
-                  LOGIN
-                </button>
-                <button
-                  onClick={() => { setFormType("Signup"); setError(null); }}
-                  className={`px-3 py-1 font-mono text-xs font-bold uppercase transition-all ${
-                    formType === "Signup" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
-                  }`}
-                >
-                  SIGN UP
-                </button>
-              </div>
+              {(formType === "Login" || formType === "Signup") && (
+                <div className="flex border-2 border-black">
+                  <button
+                    onClick={() => { setFormType("Login"); setError(null); }}
+                    className={`px-3 py-1 font-mono text-xs font-bold uppercase transition-all ${
+                      formType === "Login" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                    }`}
+                  >
+                    LOGIN
+                  </button>
+                  <button
+                    onClick={() => { setFormType("Signup"); setError(null); }}
+                    className={`px-3 py-1 font-mono text-xs font-bold uppercase transition-all ${
+                      formType === "Signup" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                    }`}
+                  >
+                    SIGN UP
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Error Display */}
@@ -312,55 +410,197 @@ export default function AuthGateway() {
             )}
 
             {/* Form Inputs */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono font-bold uppercase mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={mode === "ShopForm" ? "artisan@shop.vn" : "explorer@email.com"}
-                  className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
-                  required
-                />
-                {mode === "ShopForm" && formType === "Signup" && (
-                  <p className="text-[9px] text-neutral-500 font-mono mt-1">
-                    * Tip: Use an email ending with <code className="bg-neutral-200 px-1 font-bold">@shop.vn</code> for automatic registration status.
-                  </p>
-                )}
-              </div>
+            {formType === "ForgotPassword" ? (
+              resetSent ? (
+                <div className="border-2 border-black bg-emerald-50 text-emerald-900 p-4 font-mono text-xs space-y-3">
+                  <p className="font-bold uppercase tracking-wider text-emerald-800">✓ Reset Request Initialized</p>
+                  <p>A verification request was triggered for <strong>{email}</strong>.</p>
+                  
+                  <div className="bg-amber-50 border-2 border-amber-500 text-amber-950 p-3 space-y-2 mt-2">
+                    <p className="font-bold text-[10px] uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                      📬 Simulated Inbox Notification
+                    </p>
+                    <p className="text-[10px]">
+                      Since email delivery is simulated, we have intercepted the secure link for your convenience. Click the link below to go to the "Set new password" page:
+                    </p>
+                    <button
+                      onClick={() => {
+                        setResetEmail(email);
+                        setFormType("ResetPassword");
+                        setResetSent(false);
+                      }}
+                      className="w-full text-left p-2 border border-amber-700 bg-white hover:bg-amber-50 text-amber-900 font-bold font-mono text-[9px] uppercase tracking-wider transition-all break-all"
+                    >
+                      Reset Link: http://localhost:3000/auth-gateway?mode=ResetPassword&email={encodeURIComponent(email)}
+                    </button>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-mono font-bold uppercase mb-1">
-                  Security Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
-                  required
-                />
-              </div>
+                  <button
+                    onClick={() => { setFormType("Login"); resetForm(); setResetSent(false); }}
+                    className="mt-2 block text-xs underline text-neutral-600 hover:text-black uppercase font-mono"
+                  >
+                    ← Back to Login Portal
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase mb-1">
+                      Registered Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="explorer@email.com"
+                      className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                  >
+                    {loading ? (
+                      <span className="font-mono">INITIALIZING REQUEST...</span>
+                    ) : (
+                      <>
+                        <span>SEND PASSWORD RESET EMAIL</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setFormType("Login"); setError(null); }}
+                    className="block text-xs underline text-neutral-500 hover:text-black uppercase font-mono"
+                  >
+                    ← Back to Login
+                  </button>
+                </form>
+              )
+            ) : formType === "ResetPassword" ? (
+              resetSuccess ? (
+                <div className="border-2 border-black bg-emerald-50 text-emerald-900 p-4 font-mono text-xs space-y-3">
+                  <p className="font-bold uppercase tracking-wider text-emerald-800">✓ Security Saved</p>
+                  <p>Your security credentials for <strong>{resetEmail}</strong> have been successfully updated in our database.</p>
+                  <button
+                    onClick={() => { setFormType("Login"); resetForm(); setResetSuccess(false); }}
+                    className="w-full text-center border-2 border-black bg-black text-white py-2 font-bold font-mono text-[10px] uppercase hover:bg-white hover:text-black transition-all"
+                  >
+                    Log In with New Password
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="bg-neutral-50 p-2 border border-black font-mono text-[10px] text-neutral-500 mb-2">
+                    RE-SETTING PASSWORD FOR: <strong>{resetEmail}</strong>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase mb-1">
+                      New Security Password
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono font-bold uppercase mb-1">
+                      Confirm Security Password
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                  >
+                    {loading ? (
+                      <span className="font-mono">UPDATING CREDENTIALS...</span>
+                    ) : (
+                      <>
+                        <span>SET NEW PASSWORD</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono font-bold uppercase mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={mode === "ShopForm" ? "artisan@shop.vn" : "explorer@email.com"}
+                    className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                    required
+                  />
+                  {mode === "ShopForm" && formType === "Signup" && (
+                    <p className="text-[9px] text-neutral-500 font-mono mt-1">
+                      * Tip: Use an email ending with <code className="bg-neutral-200 px-1 font-bold">@shop.vn</code> for automatic registration status.
+                    </p>
+                  )}
+                </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
-              >
-                {loading ? (
-                  <span className="font-mono">PROCESSSING TRANSACTION...</span>
-                ) : (
-                  <>
-                    <span>SUBMIT ACCESS REQUEST</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-mono font-bold uppercase">
+                      Security Password
+                    </label>
+                    {formType === "Login" && (
+                      <button
+                        type="button"
+                        onClick={() => { setFormType("ForgotPassword"); setError(null); }}
+                        className="text-[10px] font-mono text-neutral-500 hover:text-black underline uppercase"
+                      >
+                        Forgot Password?
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                >
+                  {loading ? (
+                    <span className="font-mono">PROCESSSING TRANSACTION...</span>
+                  ) : (
+                    <>
+                      <span>SUBMIT ACCESS REQUEST</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
 
             <div className="bg-neutral-50 border border-neutral-300 p-3 text-[10px] font-mono text-neutral-500 leading-relaxed">
               <span className="font-bold text-black">// CREDENTIAL SYSTEM OVERVIEW</span>

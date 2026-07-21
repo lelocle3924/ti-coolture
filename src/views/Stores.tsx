@@ -13,7 +13,7 @@ export default function Stores() {
       setLoading(true);
       const allStores = await fetchStores();
       // Filter out stores that are not completed registrations, have no name, or are not approved
-      setStores(allStores.filter(s => s.registered && s.name && s.status === "Approved"));
+      setStores(allStores.filter(s => s.registered && s.name && s.status === "Approved" && !s.hidden));
       setLoading(false);
     }
     loadStores();

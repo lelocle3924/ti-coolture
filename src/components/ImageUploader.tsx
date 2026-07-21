@@ -6,6 +6,8 @@ interface ImageUploaderProps {
   onUploadComplete: (url: string) => void;
   placeholder?: string;
   label?: string;
+  multiple?: boolean;
+  onMultipleUploadsComplete?: (urls: string[]) => void;
 }
 
 // Client-side image compressor to produce compact, fast-loading Base64 strings (typically ~50-150KB)
@@ -60,7 +62,7 @@ const compressImage = (file: File): Promise<string> => {
   });
 };
 
-export function ImageUploader({ id, onUploadComplete, placeholder = "Upload an image file...", label }: ImageUploaderProps) {
+export function ImageUploader({ id, onUploadComplete, placeholder = "Upload an image file...", label, multiple, onMultipleUploadsComplete }: ImageUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -83,14 +85,56 @@ export function ImageUploader({ id, onUploadComplete, placeholder = "Upload an i
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      uploadFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      if (multiple && onMultipleUploadsComplete) {
+        uploadMultipleFiles(Array.from(e.dataTransfer.files));
+      } else if (e.dataTransfer.files[0]) {
+        uploadFile(e.dataTransfer.files[0]);
+      }
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      uploadFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      if (multiple && onMultipleUploadsComplete) {
+        uploadMultipleFiles(Array.from(e.target.files));
+      } else if (e.target.files[0]) {
+        uploadFile(e.target.files[0]);
+      }
+    }
+  };
+
+  const uploadMultipleFiles = async (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith("image/"));
+    if (imageFiles.length === 0) {
+      setError("Please select at least one image file.");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setProgress(10);
+
+    try {
+      const urls: string[] = [];
+      const step = 80 / imageFiles.length;
+      for (let i = 0; i < imageFiles.length; i++) {
+        const compressed = await compressImage(imageFiles[i]);
+        urls.push(compressed);
+        setProgress(Math.min(95, 10 + Math.round((i + 1) * step)));
+      }
+      setProgress(100);
+
+      setTimeout(() => {
+        setUploadedUrl(urls[0]); // Preview the first uploaded image
+        onMultipleUploadsComplete?.(urls);
+        setUploading(false);
+      }, 300);
+
+    } catch (err: any) {
+      console.error("Compression error:", err);
+      setError(`Failed to process images: ${err.message || "Unknown error"}`);
+      setUploading(false);
     }
   };
 
@@ -148,6 +192,7 @@ export function ImageUploader({ id, onUploadComplete, placeholder = "Upload an i
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple={multiple}
           onChange={handleFileChange}
           className="hidden"
         />

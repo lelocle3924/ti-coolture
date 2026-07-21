@@ -4,7 +4,8 @@ import {
   fetchProductById, 
   triggerWebhook, 
   toggleWishlist, 
-  saveWishlistNote 
+  saveWishlistNote,
+  incrementProductView
 } from "../lib/dbService";
 import { useAuth } from "../lib/useAuth";
 import { Product, StoreProfile } from "../types";
@@ -17,7 +18,10 @@ import {
   Instagram,
   Facebook,
   MessageCircle,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2
 } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -33,6 +37,7 @@ export default function ProductDetail() {
 
   // Gallery state
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [isEnlarged, setIsEnlarged] = useState(false);
 
   // Wishlist customizations
   const [isSaved, setIsSaved] = useState(false);
@@ -53,6 +58,9 @@ export default function ProductDetail() {
       const prodData = await fetchProductById(productId);
       if (prodData) {
         setProduct(prodData);
+        // Increment the view count when user lands on product detail page
+        incrementProductView(productId);
+        
         // Fetch store details to get actual socials for ORDER NOW links
         const storeRef = doc(db, "stores", prodData.storeId);
         const storeSnap = await getDoc(storeRef);
@@ -103,6 +111,21 @@ export default function ProductDetail() {
     }
     loadWishlistCount();
   }, [profile, product]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isEnlarged) return;
+      if (e.key === "Escape") {
+        setIsEnlarged(false);
+      } else if (e.key === "ArrowLeft") {
+        traverseGallery("up");
+      } else if (e.key === "ArrowRight") {
+        traverseGallery("down");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isEnlarged, product]);
 
   const handleWishlistToggle = async () => {
     if (!user) {
@@ -260,13 +283,24 @@ export default function ProductDetail() {
           </div>
 
           {/* Main big square image */}
-          <div className="flex-1 aspect-square border-2 border-black bg-neutral-50 relative order-1 md:order-2 overflow-hidden">
+          <div 
+            onClick={() => setIsEnlarged(true)}
+            className="flex-1 aspect-square border-2 border-black bg-neutral-50 relative order-1 md:order-2 overflow-hidden cursor-zoom-in group"
+            title="Click to enlarge image to full screen"
+          >
             <img 
               src={product.images[activeImageIdx]} 
               alt={product.name} 
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
             />
+            {/* Hover overlay with Enlarge button */}
+            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span className="bg-black/80 text-white font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-2 border border-white/20 flex items-center space-x-2 shadow-lg scale-95 group-hover:scale-100 transition-transform duration-200">
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Enlarge Image</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -503,6 +537,67 @@ export default function ProductDetail() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Fullscreen Image Enlarged Lightbox Modal */}
+      {isEnlarged && (
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[9999] transition-opacity duration-300 animate-in fade-in"
+          onClick={() => setIsEnlarged(false)}
+        >
+          {/* Close button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEnlarged(false);
+            }}
+            className="absolute top-6 right-6 p-2 bg-black/50 hover:bg-black text-white border border-neutral-700 hover:border-white transition-all rounded-full z-10"
+            aria-label="Close fullscreen view"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Left Arrow Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              traverseGallery("up");
+            }}
+            className="absolute left-4 md:left-6 p-4 bg-black/50 hover:bg-black text-white border border-neutral-700 hover:border-white transition-all rounded-full flex items-center justify-center shadow-lg z-10"
+            aria-label="Previous image"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          {/* Main Enlarged Image container */}
+          <div 
+            className="max-w-[85vw] max-h-[85vh] flex flex-col items-center justify-center relative select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={product.images[activeImageIdx]} 
+              alt={`${product.name} Enlarged View`}
+              referrerPolicy="no-referrer"
+              className="max-w-full max-h-[75vh] object-contain border-2 border-white shadow-2xl" 
+            />
+            {/* Image counter indicator */}
+            <div className="mt-4 font-mono text-xs uppercase text-neutral-400 bg-neutral-900 px-3 py-1 border border-neutral-800 tracking-wider">
+              Image {activeImageIdx + 1} of {product.images.length}
+            </div>
+          </div>
+
+          {/* Right Arrow Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              traverseGallery("down");
+            }}
+            className="absolute right-4 md:right-6 p-4 bg-black/50 hover:bg-black text-white border border-neutral-700 hover:border-white transition-all rounded-full flex items-center justify-center shadow-lg z-10"
+            aria-label="Next image"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
         </div>
       )}
 

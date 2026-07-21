@@ -12,7 +12,9 @@ import {
   requestDeleteProduct,
   permanentlyDeleteProduct,
   moderateStore,
-  fetchStores
+  fetchStores,
+  logApprovalActivity,
+  fetchApprovalLogs
 } from "../lib/dbService";
 import { StoreProfile, Product, StoreSocials, StoreSocialToggles } from "../types";
 import { 
@@ -165,6 +167,14 @@ export default function ShopDashboard() {
       setActiveTab("Registration");
     }
 
+    // Fetch approval logs
+    try {
+      const logs = await fetchApprovalLogs(profile?.role === "Admin" ? undefined : storeId);
+      setModerationLogs(logs);
+    } catch (logErr) {
+      console.error("Failed to load approval logs:", logErr);
+    }
+
     // If Admin, load all products for review
     if (profile?.role === "Admin") {
       const allProds = await fetchAllProducts();
@@ -248,6 +258,12 @@ export default function ShopDashboard() {
   const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!store || !user) return;
+
+    if (Number(prodPrice) < 0) {
+      alert("Product price cannot be negative.");
+      return;
+    }
+
     setSubmittingProduct(true);
 
     const productPayload = {
@@ -269,8 +285,17 @@ export default function ShopDashboard() {
     };
 
     try {
-      await createProduct(productPayload);
+      const newProductId = await createProduct(productPayload);
       
+      await logApprovalActivity({
+        productId: newProductId,
+        productName: prodName,
+        storeId: store.id,
+        storeName: store.name,
+        activity: "Product Submitted",
+        actor: user.email || store.email || "Shop Owner"
+      });
+
       // Reset upload inputs
       setProdName("");
       setProdPrice(0);
@@ -283,9 +308,12 @@ export default function ShopDashboard() {
       setProductSuccessMsg(true);
       setTimeout(() => setProductSuccessMsg(false), 4000);
 
-      // Refresh product list
+      // Refresh product list and logs
       const pData = await fetchProductsStore(store.id);
       setProducts(pData);
+
+      const logs = await fetchApprovalLogs(store.id);
+      setModerationLogs(logs);
 
       // Trigger webhook
       triggerWebhook("PRODUCT_SUBMITTED_FOR_MODERATION", {
@@ -306,6 +334,12 @@ export default function ShopDashboard() {
   const handleEditProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct || !store) return;
+
+    if (Number(editPrice) < 0) {
+      alert("Product price cannot be negative.");
+      return;
+    }
+
     setSubmittingEdit(true);
     try {
       await updateProduct(editingProduct.id, {
@@ -320,11 +354,24 @@ export default function ShopDashboard() {
         images: editImages.length > 0 ? editImages : editingProduct.images,
         deleteRequested: false // clear deletion request on edit
       });
+
+      await logApprovalActivity({
+        productId: editingProduct.id,
+        productName: editName,
+        storeId: store.id,
+        storeName: store.name,
+        activity: "Product Edited / Resubmitted",
+        actor: user.email || store.email || "Shop Owner"
+      });
+
       setEditingProduct(null);
       
       // Refresh list
       const pData = await fetchProductsStore(store.id);
       setProducts(pData);
+
+      const logs = await fetchApprovalLogs(store.id);
+      setModerationLogs(logs);
       
       triggerWebhook("PRODUCT_EDITED_BY_SHOP", {
         productId: editingProduct.id,
@@ -726,6 +773,47 @@ export default function ShopDashboard() {
                 {submittingReg ? "SUBMITTING CREDENTIALS..." : "SAVE & REGISTER PROFILE"}
               </button>
             </form>
+
+            {store?.registered && (
+              <div className="border-4 border-red-500 bg-red-50 p-6 mt-8 space-y-4">
+                <div>
+                  <h3 className="font-display font-black text-red-700 text-sm uppercase">DANGER ZONE: XOÁ TÀI KHOẢN</h3>
+                  <p className="text-[11px] font-mono text-neutral-500 uppercase mt-0.5">
+                    Hành động này sẽ gửi yêu cầu xoá tài khoản cửa hàng của bạn đến Quản trị viên để duyệt.
+                  </p>
+                </div>
+                
+                {store.accountDeleteRequested ? (
+                  <div className="bg-white border-2 border-red-500 p-4 font-mono text-xs text-red-900 flex items-center space-x-2">
+                    <Clock className="w-5 h-5 text-red-500 shrink-0 animate-pulse" />
+                    <span>YÊU CẦU XOÁ TÀI KHOẢN ĐANG CHỜ QUẢN TRỊ VIÊN DUYỆT. CỬA HÀNG SẼ BỊ XOÁ VĨNH VIỄN SAU KHI ĐƯỢC CHẤP THUẬN.</span>
+                  </div>
+                ) : (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm("Bạn có chắc chắn muốn gửi yêu cầu xoá tài khoản cửa hàng này không? Cửa hàng và toàn bộ sản phẩm của bạn sẽ bị xoá vĩnh viễn.")) {
+                          try {
+                            const { updateDoc, doc } = await import("firebase/firestore");
+                            await updateDoc(doc(db, "stores", store.id), {
+                              accountDeleteRequested: true
+                            });
+                            alert("Yêu cầu xoá tài khoản đã được gửi thành công. Vui lòng chờ Admin phê duyệt.");
+                            await loadStoreData();
+                          } catch (err) {
+                            console.error("Lỗi gửi yêu cầu xoá tài khoản:", err);
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 border-2 border-red-600 bg-red-600 text-white font-mono text-xs font-bold uppercase hover:bg-white hover:text-red-600 transition-all shadow-[2px_2px_0px_0px_#000000]"
+                    >
+                      Yêu Cầu Xoá Tài Khoản (Delete Account)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -791,7 +879,8 @@ export default function ShopDashboard() {
                   <input
                     type="number"
                     value={prodPrice}
-                    onChange={(e) => setProdPrice(Number(e.target.value))}
+                    onChange={(e) => setProdPrice(Math.max(0, Number(e.target.value)))}
+                    min="0"
                     placeholder="e.g. 450000"
                     className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none"
                     required
@@ -863,10 +952,15 @@ export default function ShopDashboard() {
                       <span className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">// METHOD A: UPLOAD FILE</span>
                       <ImageUploader 
                         id="prod-gallery-upload"
+                        multiple={true}
                         onUploadComplete={(url) => {
                           if (prodImages.length < 5) {
                             setProdImages([...prodImages, url]);
                           }
+                        }}
+                        onMultipleUploadsComplete={(urls) => {
+                          const combined = [...prodImages, ...urls].slice(0, 5);
+                          setProdImages(combined);
                         }}
                       />
                     </div>
@@ -1149,11 +1243,21 @@ export default function ShopDashboard() {
                             </button>
                             <button
                               onClick={async () => {
-                                if (window.confirm(`Are you sure you want to request deletion for "${prod.name}"? This request will go to the Admin for approval.`)) {
+                                if (window.confirm(`Bạn có chắc chắn muốn xoá vĩnh viễn sản phẩm "${prod.name}" không?`)) {
                                   try {
-                                    await requestDeleteProduct(prod.id);
+                                    await permanentlyDeleteProduct(prod.id);
+                                    await logApprovalActivity({
+                                      productId: prod.id,
+                                      productName: prod.name,
+                                      storeId: store.id,
+                                      storeName: store.name,
+                                      activity: "Product Deleted",
+                                      actor: user.email || store.email || "Shop Owner"
+                                    });
                                     const pData = await fetchProductsStore(store.id);
                                     setProducts(pData);
+                                    const logs = await fetchApprovalLogs(store.id);
+                                    setModerationLogs(logs);
                                   } catch (err) {
                                     console.error(err);
                                   }
@@ -1191,6 +1295,70 @@ export default function ShopDashboard() {
                 </table>
               </div>
             )}
+
+            {/* Approval & Moderation Logs History Card */}
+            <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_#000000] space-y-4">
+              <div className="border-b-2 border-black pb-3 flex justify-between items-center">
+                <div>
+                  <h3 className="font-display font-black text-sm uppercase text-black">
+                    Approval & Moderation Activity Logs
+                  </h3>
+                  <p className="text-[10px] font-mono text-neutral-500 uppercase mt-0.5">
+                    Chronological audit log of all submission activity and admin decisions
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const logs = await fetchApprovalLogs(store?.id);
+                    setModerationLogs(logs);
+                  }}
+                  className="px-2 py-1 border border-black bg-neutral-100 hover:bg-neutral-200 font-mono text-[9px] font-bold uppercase transition-colors"
+                >
+                  Refresh Logs
+                </button>
+              </div>
+
+              {moderationLogs.length === 0 ? (
+                <p className="text-xs font-mono text-neutral-400 italic py-4 text-center">No activity logged yet.</p>
+              ) : (
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {moderationLogs.map((log: any) => (
+                    <div key={log.id} className="border-2 border-black p-3 bg-neutral-50 font-mono text-[10px] flex justify-between items-start gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-1.5 py-0.5 font-bold uppercase text-[8px] border border-black ${
+                            log.activity.includes("Approved") || log.activity.includes("approved")
+                              ? "bg-emerald-100 text-emerald-800"
+                              : log.activity.includes("Rejected") || log.activity.includes("rejected") || log.activity.includes("Declined") || log.activity.includes("Declined")
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}>
+                            {log.activity}
+                          </span>
+                          {log.productName && (
+                            <span className="font-bold text-black font-sans text-xs">
+                              Product: {log.productName}
+                            </span>
+                          )}
+                        </div>
+                        {log.reason && (
+                          <div className="bg-red-50 text-red-700 p-2 border border-red-200 uppercase mt-1">
+                            <span className="font-bold">Admin Feedback: </span> {log.reason}
+                          </div>
+                        )}
+                        <div className="text-neutral-400 text-[9px] uppercase">
+                          Actor: {log.actor}
+                        </div>
+                      </div>
+                      <div className="text-right whitespace-nowrap text-neutral-500 text-[9px] font-bold font-mono">
+                        {new Date(log.timestamp).toLocaleString("vi-VN")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -1227,7 +1395,8 @@ export default function ShopDashboard() {
                   <input
                     type="number"
                     value={editPrice}
-                    onChange={(e) => setEditPrice(Number(e.target.value))}
+                    onChange={(e) => setEditPrice(Math.max(0, Number(e.target.value)))}
+                    min="0"
                     className="w-full border-2 border-black p-2 focus:outline-none"
                     required
                   />
@@ -1273,6 +1442,113 @@ export default function ShopDashboard() {
                     <option value="Textiles">Textiles / Dệt may thời trang</option>
                     <option value="Accessories">Accessories / Phụ kiện thủ công</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Product Photos Edit Section */}
+              <div className="border-2 border-black p-4 bg-neutral-50 space-y-3">
+                <label className="block text-xs font-mono font-bold uppercase text-black">Product image gallery collection (Max 5)</label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">// METHOD A: UPLOAD FILE</span>
+                    <ImageUploader 
+                      id="edit-gallery-upload"
+                      multiple={true}
+                      onUploadComplete={(url) => {
+                        if (editImages.length < 5) {
+                          setEditImages([...editImages, url]);
+                        }
+                      }}
+                      onMultipleUploadsComplete={(urls) => {
+                        const combined = [...editImages, ...urls].slice(0, 5);
+                        setEditImages(combined);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <span className="block text-[10px] font-mono text-neutral-400 uppercase mb-1">// METHOD B: INSERT URL</span>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        placeholder="Insert high-resolution Image URL..."
+                        value={editImageInput}
+                        onChange={(e) => setEditImageInput(e.target.value)}
+                        className="flex-1 border border-black p-2 font-mono text-xs bg-white h-[44px] focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editImageInput.trim() && editImages.length < 5) {
+                            setEditImages([...editImages, editImageInput.trim()]);
+                            setEditImageInput("");
+                          }
+                        }}
+                        className="px-4 bg-black text-white hover:bg-neutral-800 text-xs font-mono font-bold uppercase border border-black h-[44px] transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] font-mono text-neutral-400 uppercase">* TIP: Drag & drop files on the left to instantly insert them into the gallery. Maximum of 5 photos allowed.</p>
+                  </div>
+                </div>
+
+                {/* Thumbnail slider display with reorder arrows */}
+                <div className="grid grid-cols-5 gap-2 pt-2">
+                  {editImages.map((img, idx) => (
+                    <div key={idx} className="border border-black p-1 bg-white flex flex-col justify-between items-center text-center">
+                      <img src={img} alt={`Preview ${idx + 1}`} className="w-full aspect-square object-cover border border-neutral-200" referrerPolicy="no-referrer" />
+                      <span className="font-mono text-[9px] uppercase font-bold text-neutral-400 mt-1 block">
+                        {idx === 0 ? "Cover" : `Image ${idx + 1}`}
+                      </span>
+                      
+                      {/* Reorder control arrows */}
+                      <div className="flex space-x-1.5 mt-1.5">
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = [...editImages];
+                              const temp = list[idx];
+                              list[idx] = list[idx - 1];
+                              list[idx - 1] = temp;
+                              setEditImages(list);
+                            }}
+                            className="text-[9px] hover:font-bold hover:underline"
+                          >
+                            ←
+                          </button>
+                        )}
+                        {idx < editImages.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = [...editImages];
+                              const temp = list[idx];
+                              list[idx] = list[idx + 1];
+                              list[idx + 1] = temp;
+                              setEditImages(list);
+                            }}
+                            className="text-[9px] hover:font-bold hover:underline"
+                          >
+                            →
+                          </button>
+                        )}
+                      </div>
+
+                      {editImages.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditImages(editImages.filter((_, i) => i !== idx));
+                          }}
+                          className="text-[9px] text-red-600 hover:font-bold mt-1.5"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 

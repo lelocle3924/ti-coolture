@@ -76,6 +76,13 @@ export async function fetchProducts(status: "Pending" | "Approved" | "Rejected" 
     querySnapshot.forEach((doc) => {
       products.push({ id: doc.id, ...doc.data() } as Product);
     });
+
+    if (status === "Approved") {
+      const stores = await fetchStores();
+      const hiddenStoreIds = new Set(stores.filter(s => s.hidden).map(s => s.id));
+      return products.filter(p => !p.hidden && !hiddenStoreIds.has(p.storeId));
+    }
+
     return products;
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -169,12 +176,18 @@ export async function fetchTouristRoutes(): Promise<TouristRoute[]> {
 }
 
 // Create or retrieve a UserProfile
-export async function getOrCreateUserProfile(userId: string, email: string): Promise<UserProfile> {
+export async function getOrCreateUserProfile(userId: string, email: string, password?: string): Promise<UserProfile> {
   try {
     const docRef = doc(db, "users", userId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as UserProfile;
+      const data = docSnap.data();
+      // If profile exists but password is not set yet, update it
+      if (password && !data.password) {
+        await updateDoc(docRef, { password });
+        data.password = password;
+      }
+      return { id: docSnap.id, ...data } as UserProfile;
     } else {
       const isMockAdmin = email === "admin@ticoolture.vn" || email === "locle30092004@gmail.com";
       const newProfile: UserProfile = {
@@ -187,11 +200,33 @@ export async function getOrCreateUserProfile(userId: string, email: string): Pro
         followedShops: [],
         createdAt: new Date().toISOString()
       };
+      if (password) {
+        newProfile.password = password;
+      }
       await setDoc(docRef, newProfile);
       return newProfile;
     }
   } catch (error) {
     console.error(`Error creating user profile for ${userId}:`, error);
+    throw error;
+  }
+}
+
+// Reset user password in Firestore database
+export async function resetUserPassword(email: string, newPassword: string): Promise<void> {
+  try {
+    const q = query(collection(db, "users"), where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, "users", userDoc.id), {
+        password: newPassword
+      });
+    } else {
+      throw new Error("User profile not found.");
+    }
+  } catch (error) {
+    console.error("Error resetting user password:", error);
     throw error;
   }
 }
@@ -284,7 +319,7 @@ export async function upsertStoreProfile(storeId: string, storeData: Partial<Sto
 }
 
 // Submit/Upload a new Product for Moderation
-export async function createProduct(productData: Omit<Product, "id" | "createdAt" | "clicks">): Promise<void> {
+export async function createProduct(productData: Omit<Product, "id" | "createdAt" | "clicks">): Promise<string> {
   try {
     const newProductRef = doc(collection(db, "products"));
     const newProduct: Product = {
@@ -294,6 +329,7 @@ export async function createProduct(productData: Omit<Product, "id" | "createdAt
       createdAt: new Date().toISOString()
     };
     await setDoc(newProductRef, newProduct);
+    return newProductRef.id;
   } catch (error) {
     console.error("Error creating product for moderation:", error);
     throw error;
@@ -432,6 +468,47 @@ export async function moderateStore(storeId: string, status: "Approved" | "Rejec
   } catch (error) {
     console.error(`Error moderating store ${storeId}:`, error);
     throw error;
+  }
+}
+
+// Log a moderation/approval activity to firestore
+export async function logApprovalActivity(logData: {
+  productId?: string;
+  productName?: string;
+  storeId: string;
+  storeName?: string;
+  activity: string;
+  actor: string;
+  reason?: string;
+}): Promise<void> {
+  try {
+    const logRef = doc(collection(db, "approval_logs"));
+    await setDoc(logRef, {
+      id: logRef.id,
+      timestamp: new Date().toISOString(),
+      ...logData
+    });
+  } catch (error) {
+    console.error("Error logging approval activity:", error);
+  }
+}
+
+// Fetch approval logs, optionally filtered by storeId, sorted by timestamp descending
+export async function fetchApprovalLogs(storeId?: string): Promise<any[]> {
+  try {
+    const querySnapshot = await getDocs(collection(db, "approval_logs"));
+    const logs: any[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (!storeId || data.storeId === storeId) {
+        logs.push(data);
+      }
+    });
+    // Order by latest activity time
+    return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } catch (error) {
+    console.error("Error fetching approval logs:", error);
+    return [];
   }
 }
 

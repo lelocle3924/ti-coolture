@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Filter, ChevronRight, RotateCcw, AlertTriangle } from "lucide-react";
-import { fetchProducts } from "../lib/dbService";
+import { fetchProducts, incrementProductClick } from "../lib/dbService";
 import { Product } from "../types";
 import { useAuth } from "../lib/useAuth";
 
@@ -162,6 +162,9 @@ export default function Products() {
                 <Link
                   key={prod.id}
                   to={`/products/${prod.id}`}
+                  onClick={async () => {
+                    await incrementProductClick(prod.id);
+                  }}
                   className="group bg-white border-2 border-black hover:shadow-[4px_4px_0px_0px_#000000] transition-all flex flex-col h-full"
                 >
                   {/* Square main product image, switching to second image on hover */}

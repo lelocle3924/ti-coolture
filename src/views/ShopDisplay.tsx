@@ -40,13 +40,14 @@ export default function ShopDisplay() {
       if (storeData) {
         setStore(storeData);
         const storeProducts = await fetchProductsStore(storeId);
-        // Only show approved products for public view
-        setProducts(storeProducts.filter(p => p.status === "Approved"));
+        // Only show approved and unhidden products for public view
+        const isOwnerOrAdmin = (user && storeData.userId === user.uid) || (profile && profile.role === "Admin");
+        setProducts(storeProducts.filter(p => p.status === "Approved" && (!p.hidden || isOwnerOrAdmin)));
       }
       setLoading(false);
     }
     loadStoreData();
-  }, [storeId]);
+  }, [storeId, user, profile]);
 
   const handleFollowToggle = async () => {
     if (!user) {
@@ -108,7 +109,7 @@ export default function ShopDisplay() {
     .slice(0, 3);
 
   const isFollowing = profile?.followedShops?.includes(store?.id || "") || false;
-  const isAuthorizedToView = !store || store.status === "Approved" || (user && store.userId === user.uid) || profile?.role === "Admin";
+  const isAuthorizedToView = !store || ((store.status === "Approved" && !store.hidden) || (user && store.userId === user.uid) || profile?.role === "Admin");
 
   if (loading) {
     return (

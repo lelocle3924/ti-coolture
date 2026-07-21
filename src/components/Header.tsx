@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { User as UserIcon, Terminal, LogOut, Shield, Search } from "lucide-react";
 import { useAuth } from "../lib/useAuth";
 import WebhookTerminal from "./WebhookTerminal";
+import { fetchProducts } from "../lib/dbService";
 
 export default function Header() {
   const { user, profile, logout } = useAuth();
@@ -15,6 +16,29 @@ export default function Header() {
     const saved = sessionStorage.getItem("t_coolture_searches");
     return saved ? JSON.parse(saved) : [];
   });
+  const [products, setProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const approvedProducts = await fetchProducts("Approved");
+        setProducts(approvedProducts);
+      } catch (err) {
+        console.error("Error loading search products suggestions:", err);
+      }
+    }
+    loadProducts();
+  }, []);
+
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return products.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.category.toLowerCase().includes(query) ||
+      p.storeName.toLowerCase().includes(query)
+    ).slice(0, 5);
+  }, [searchQuery, products]);
 
   const handleLogoClick = (e: React.MouseEvent) => {
     if (location.pathname === "/") {
@@ -78,48 +102,95 @@ export default function Header() {
               <Search className="w-3.5 h-3.5" />
             </button>
 
-            {/* Recent Searches Dropdown under search bar when clicked */}
+            {/* Recent Searches / Auto-matching Suggestions Dropdown under search bar when clicked */}
             {isSearchFocused && (
               <div className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000000] z-50 p-3 space-y-2 min-w-[220px]">
-                <div className="flex items-center justify-between border-b border-neutral-200 pb-1.5">
-                  <span className="font-mono text-[9px] uppercase font-bold text-neutral-400">
-                    RECENT SEARCHES
-                  </span>
-                  {previousSearches.length > 0 && (
-                    <button 
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setPreviousSearches([]);
-                        sessionStorage.removeItem("t_coolture_searches");
-                      }}
-                      className="text-[9px] font-mono text-neutral-400 hover:text-black uppercase font-bold"
-                    >
-                      RESET
-                    </button>
-                  )}
-                </div>
-                {previousSearches.length === 0 ? (
-                  <p className="font-mono text-[10px] text-neutral-400 italic uppercase">
-                    No recent searches
-                  </p>
+                {searchQuery.trim() === "" ? (
+                  <>
+                    <div className="flex items-center justify-between border-b border-neutral-200 pb-1.5">
+                      <span className="font-mono text-[9px] uppercase font-bold text-neutral-400">
+                        RECENT SEARCHES
+                      </span>
+                      {previousSearches.length > 0 && (
+                        <button 
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPreviousSearches([]);
+                            sessionStorage.removeItem("t_coolture_searches");
+                          }}
+                          className="text-[9px] font-mono text-neutral-400 hover:text-black uppercase font-bold"
+                        >
+                          RESET
+                        </button>
+                      )}
+                    </div>
+                    {previousSearches.length === 0 ? (
+                      <p className="font-mono text-[10px] text-neutral-400 italic uppercase">
+                        No recent searches
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-1 text-left">
+                        {previousSearches.map((term, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onMouseDown={() => {
+                              setSearchQuery(term);
+                              navigate(`/products?q=${encodeURIComponent(term)}`);
+                            }}
+                            className="w-full text-left px-2 py-1 bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black text-[10px] font-mono transition-all uppercase truncate"
+                          >
+                            "{term}"
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="flex flex-col gap-1 text-left">
-                    {previousSearches.map((term, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onMouseDown={() => {
-                          setSearchQuery(term);
-                          navigate(`/products?q=${encodeURIComponent(term)}`);
-                        }}
-                        className="w-full text-left px-2 py-1 bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black text-[10px] font-mono transition-all uppercase truncate"
-                      >
-                        "{term}"
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="flex items-center justify-between border-b border-neutral-200 pb-1.5">
+                      <span className="font-mono text-[9px] uppercase font-bold text-neutral-400">
+                        MATCHING SUGGESTIONS
+                      </span>
+                    </div>
+                    {suggestions.length === 0 ? (
+                      <p className="font-mono text-[10px] text-neutral-400 italic uppercase">
+                        No matches found
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-1.5 text-left">
+                        {suggestions.map((prod) => (
+                          <button
+                            key={prod.id}
+                            type="button"
+                            onMouseDown={() => {
+                              if (!previousSearches.includes(prod.name)) {
+                                const updated = [prod.name, ...previousSearches].slice(0, 5);
+                                setPreviousSearches(updated);
+                                sessionStorage.setItem("t_coolture_searches", JSON.stringify(updated));
+                              }
+                              setSearchQuery("");
+                              navigate(`/products/${prod.id}`);
+                            }}
+                            className="w-full text-left p-1.5 bg-neutral-50 hover:bg-black hover:text-white border border-neutral-200 hover:border-black transition-all flex items-center space-x-2"
+                          >
+                            <img
+                              src={prod.images[0]}
+                              alt={prod.name}
+                              referrerPolicy="no-referrer"
+                              className="w-6 h-6 object-cover border border-black shrink-0"
+                            />
+                            <div className="overflow-hidden flex-1">
+                              <p className="font-sans text-[10px] font-bold truncate uppercase text-black group-hover:text-white">{prod.name}</p>
+                              <p className="font-mono text-[8px] text-neutral-400 truncate uppercase">{prod.storeName} • {prod.category}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

@@ -10,9 +10,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (uid: string, email: string) => {
+  const fetchProfile = async (uid: string, email: string, password?: string) => {
     try {
-      const userProfile = await getOrCreateUserProfile(uid, email);
+      const userProfile = await getOrCreateUserProfile(uid, email, password);
       setProfile(userProfile);
     } catch (e) {
       console.error("Error fetching user profile:", e);
@@ -63,12 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const loginAsMockUser = async (uid: string, email: string) => {
+  const loginAsMockUser = async (uid: string, email: string, password?: string) => {
     setLoading(true);
     const mockUser = { uid, email, isMock: true };
     localStorage.setItem("tcoolture_mock_user", JSON.stringify(mockUser));
     setUser(mockUser);
-    await fetchProfile(uid, email);
+    await fetchProfile(uid, email, password);
     setLoading(false);
   };
 

@@ -9,6 +9,7 @@ export interface UserProfile {
   wishlistPriceAlerts?: Record<string, number>; // Product ID -> Target price alert
   followedShops: string[]; // Store/Shop IDs
   createdAt: string;
+  password?: string; // Stored password for verification & reset flow
 }
 
 export interface StoreSocials {
@@ -48,6 +49,9 @@ export interface StoreProfile {
   createdAt: string;
   status?: "Pending" | "Approved" | "Rejected";
   rejectionReason?: string;
+  hidden?: boolean;
+  deleteScheduledAt?: string | null;
+  accountDeleteRequested?: boolean;
 }
 
 export interface Product {
@@ -72,6 +76,7 @@ export interface Product {
   status: "Pending" | "Approved" | "Rejected";
   rejectionReason?: string;
   createdAt: string;
+  hidden?: boolean;
 }
 
 export interface RouteStop {

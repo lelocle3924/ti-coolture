@@ -21,7 +21,7 @@ import {
   Upload,
   Link2
 } from "lucide-react";
-import { fetchProducts, fetchTouristRoutes, triggerWebhook } from "../lib/dbService";
+import { fetchProducts, fetchTouristRoutes, triggerWebhook, incrementProductClick } from "../lib/dbService";
 import { Product, TouristRoute, RouteStop } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../lib/useAuth";
@@ -48,15 +48,23 @@ export default function Homepage() {
   }, [products]);
 
   const visibleProducts = useMemo(() => {
-    return topTenProducts.slice(carouselIndex, carouselIndex + 4);
+    if (topTenProducts.length === 0) return [];
+    const result = [];
+    for (let i = 0; i < 4; i++) {
+      const idx = (carouselIndex + i) % topTenProducts.length;
+      result.push(topTenProducts[idx]);
+    }
+    return result;
   }, [topTenProducts, carouselIndex]);
 
   const handlePrevSlide = () => {
-    setCarouselIndex((prev) => Math.max(0, prev - 1));
+    if (topTenProducts.length === 0) return;
+    setCarouselIndex((prev) => (prev === 0 ? topTenProducts.length - 1 : prev - 1));
   };
 
   const handleNextSlide = () => {
-    setCarouselIndex((prev) => Math.min(Math.max(0, topTenProducts.length - 4), prev + 1));
+    if (topTenProducts.length === 0) return;
+    setCarouselIndex((prev) => (prev + 1) % topTenProducts.length);
   };
 
   // Homepage Banner Customization States
@@ -97,6 +105,7 @@ export default function Homepage() {
   // Random Curated Product Popup State
   const [curatedProduct, setCuratedProduct] = useState<Product | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [isGemOpen, setIsGemOpen] = useState(true);
 
   // Sync route edit states when selectedRoute changes
   const activeRoute = routes.find(r => r.id === selectedRouteId);
@@ -115,6 +124,12 @@ export default function Homepage() {
       setLoading(true);
       const approvedProducts = await fetchProducts("Approved");
       setProducts(approvedProducts);
+
+      if (approvedProducts.length > 0) {
+        const randomIndex = Math.floor(Math.random() * approvedProducts.length);
+        setCuratedProduct(approvedProducts[randomIndex]);
+        setShowPopup(true);
+      }
 
       const touristRoutes = await fetchTouristRoutes();
       setRoutes(touristRoutes);
@@ -148,10 +163,10 @@ export default function Homepage() {
   useEffect(() => {
     if (products.length === 0) return;
 
-    // Trigger random popups every 5 minutes (300,000 ms)
+    // Trigger random popups every 30 seconds (30,000 ms)
     const interval = setInterval(() => {
       triggerRandomPopup();
-    }, 300000);
+    }, 30000);
 
     return () => {
       clearInterval(interval);
@@ -371,8 +386,7 @@ export default function Homepage() {
             {/* Left Scroll Arrow */}
             <button
               onClick={handlePrevSlide}
-              disabled={carouselIndex === 0}
-              className="absolute left-0 z-10 p-3 border-4 border-black bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all font-bold"
+              className="absolute left-0 z-10 p-3 border-4 border-black bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all font-bold"
               aria-label="Previous Products"
             >
               <ChevronLeft className="w-6 h-6" />
@@ -385,6 +399,9 @@ export default function Homepage() {
                   <Link
                     key={prod.id}
                     to={`/products/${prod.id}`}
+                    onClick={async () => {
+                      await incrementProductClick(prod.id);
+                    }}
                     className="group bg-white border-4 border-black hover:shadow-[8px_8px_0px_0px_#000000] transition-all flex flex-col h-full"
                     id={`product-card-${prod.id}`}
                   >
@@ -456,8 +473,7 @@ export default function Homepage() {
             {/* Right Scroll Arrow */}
             <button
               onClick={handleNextSlide}
-              disabled={carouselIndex >= Math.max(0, topTenProducts.length - 4)}
-              className="absolute right-0 z-10 p-3 border-4 border-black bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all font-bold"
+              className="absolute right-0 z-10 p-3 border-4 border-black bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all font-bold"
               aria-label="Next Products"
             >
               <ChevronRight className="w-6 h-6" />
@@ -938,15 +954,15 @@ export default function Homepage() {
         </footer>
       </section>
 
-      {/* 4. RANDOM CURATED PRODUCT POP-UP GEMS */}
+      {/* 4. RANDOM CURATED PRODUCT POP-UP GEMS (Toggle window on the lower third of the right side) */}
       <AnimatePresence>
-        {showPopup && curatedProduct && (
+        {isGemOpen && curatedProduct && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-6 right-6 z-40 w-80 bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000000] p-4 flex flex-col space-y-3 font-sans"
+            className="fixed bottom-1/3 right-6 z-40 w-80 bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000000] p-4 flex flex-col space-y-3 font-sans text-black"
           >
             {/* Popup Header */}
             <div className="flex justify-between items-start border-b border-black pb-2">
@@ -958,10 +974,11 @@ export default function Homepage() {
               </div>
               <button
                 onClick={() => {
-                  setShowPopup(false);
-                  triggerWebhook("CURATED_POPUP_DISMISSED", { productId: curatedProduct.id });
+                  setIsGemOpen(false);
+                  triggerWebhook("CURATED_POPUP_MINIMIZED", { productId: curatedProduct.id });
                 }}
                 className="p-0.5 hover:bg-neutral-200 border border-transparent hover:border-black"
+                title="Minimize gem"
               >
                 <X className="w-3.5 h-3.5 text-black" />
               </button>
@@ -992,7 +1009,6 @@ export default function Homepage() {
             <div className="flex space-x-2 pt-1">
               <button
                 onClick={() => {
-                  setShowPopup(false);
                   triggerWebhook("CURATED_POPUP_CLICKED", {
                     productId: curatedProduct.id,
                     productName: curatedProduct.name,
@@ -1010,6 +1026,17 @@ export default function Homepage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Gem Toggle Trigger when minimized */}
+      {!isGemOpen && curatedProduct && (
+        <button
+          onClick={() => setIsGemOpen(true)}
+          className="fixed bottom-1/3 right-6 z-40 bg-black text-white hover:bg-neutral-800 border-4 border-black shadow-[4px_4px_0px_0px_#000000] px-4 py-2.5 font-mono text-xs font-bold uppercase flex items-center space-x-2 transition-all cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4 text-yellow-400 animate-bounce" />
+          <span>Show Explore Gem 💎</span>
+        </button>
+      )}
 
     </div>
   );

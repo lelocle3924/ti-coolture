@@ -16,7 +16,10 @@ import {
   permanentlyDeleteProduct,
   updateProduct,
   fetchMessageTemplate,
-  updateMessageTemplate
+  updateMessageTemplate,
+  incrementProductClick,
+  logApprovalActivity,
+  fetchApprovalLogs
 } from "../lib/dbService";
 import { Product, StoreProfile } from "../types";
 import { 
@@ -58,13 +61,124 @@ export default function UserProfile() {
   const [loadingStats, setLoadingStats] = useState(false);
   
   // Admin specific states
+  const [activeAdminTab, setActiveAdminTab] = useState<"Registrations" | "Products" | "Analytics" | "AllShops" | "AllProducts" | "DeleteRequests">("Registrations");
   const [allPendingProducts, setAllPendingProducts] = useState<Product[]>([]);
   const [allPendingStores, setAllPendingStores] = useState<StoreProfile[]>([]);
+  const [allStoresList, setAllStoresList] = useState<StoreProfile[]>([]);
+  const [allProductsList, setAllProductsList] = useState<Product[]>([]);
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const [moderationLogs, setModerationLogs] = useState<any[]>([]);
   const [adminTemplate, setAdminTemplate] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [saveTemplateSuccess, setSaveTemplateSuccess] = useState(false);
+
+  // Dynamic ticking countdown state
+  const [timerTick, setTimerTick] = useState(0);
+  useEffect(() => {
+    if (activeAdminTab === "AllShops") {
+      const interval = setInterval(() => {
+        setTimerTick(t => t + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeAdminTab]);
+
+  const getTimerRemaining = (scheduledStr: string) => {
+    const diff = new Date(scheduledStr).getTime() - Date.now();
+    if (diff <= 0) return "Ready for deletion";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${hours}h ${minutes}m ${seconds}s remaining`;
+  };
+
+  const handleToggleHideStore = async (storeId: string, currentHidden: boolean) => {
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      await updateDoc(doc(db, "stores", storeId), {
+        hidden: !currentHidden
+      });
+      await loadProfileMetrics();
+      alert(`Shop has been successfully ${!currentHidden ? "hidden" : "shown"}!`);
+    } catch (err) {
+      console.error(err);
+      alert("Error toggling shop visibility.");
+    }
+  };
+
+  const handleTriggerStoreDeleteTimer = async (storeId: string) => {
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const deleteScheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      await updateDoc(doc(db, "stores", storeId), {
+        deleteScheduledAt
+      });
+      await loadProfileMetrics();
+      alert("Deletion timer initiated. This shop is scheduled to be deleted in 24 hours.");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCancelStoreDelete = async (storeId: string) => {
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const storeRef = doc(db, "stores", storeId);
+      await updateDoc(storeRef, {
+        deleteScheduledAt: null
+      });
+      await loadProfileMetrics();
+      alert("Deletion schedule canceled.");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleImmediateStoreDelete = async (storeId: string) => {
+    if (!window.confirm("Are you sure you want to delete this shop and all of its products immediately? This action is permanent and cannot be undone.")) return;
+    try {
+      const { doc, deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "stores", storeId));
+      
+      const { fetchProductsStore } = await import("../lib/dbService");
+      const prods = await fetchProductsStore(storeId);
+      for (const p of prods) {
+        await deleteDoc(doc(db, "products", p.id));
+      }
+
+      await loadProfileMetrics();
+      alert("Shop and all its products have been deleted successfully.");
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting shop.");
+    }
+  };
+
+  const handleToggleHideProduct = async (productId: string, currentHidden: boolean) => {
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      await updateDoc(doc(db, "products", productId), {
+        hidden: !currentHidden
+      });
+      await loadProfileMetrics();
+      alert(`Product has been successfully ${!currentHidden ? "hidden" : "shown"}!`);
+    } catch (err) {
+      console.error(err);
+      alert("Error toggling product visibility.");
+    }
+  };
+
+  const handleImmediateProductDelete = async (productId: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this product?")) return;
+    try {
+      await permanentlyDeleteProduct(productId);
+      await loadProfileMetrics();
+      alert("Product permanently deleted.");
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting product.");
+    }
+  };
 
   // Custom filter on Wishlist
   const [activeWishlistFilter, setActiveWishlistFilter] = useState<WishlistFilter>("All");
@@ -92,14 +206,20 @@ export default function UserProfile() {
         // 2. Fetch pending products
         const allProds = await fetchAllProducts();
         setAllPendingProducts(allProds.filter(p => p.status === "Pending"));
+        setAllProductsList(allProds);
 
         // 3. Fetch pending stores
         const allStores = await fetchStores();
         setAllPendingStores(allStores.filter(s => s.status === "Pending" && s.registered));
+        setAllStoresList(allStores.filter(s => s.registered));
 
         // 4. Fetch message template
         const t = await fetchMessageTemplate();
         setAdminTemplate(t);
+
+        // 5. Fetch approval activity logs
+        const logs = await fetchApprovalLogs();
+        setModerationLogs(logs);
 
         setLoadingStats(false);
       } else {
@@ -151,14 +271,17 @@ export default function UserProfile() {
         await moderateProduct(productId, status, reason);
       }
 
-      const logMsg = {
+      await logApprovalActivity({
         productId,
-        status: isDeleteRequest && status === "Approved" ? "Deleted" : status,
-        reason,
-        moderatedBy: user?.email,
-        timestamp: new Date().toISOString()
-      };
-      setModerationLogs([logMsg, ...moderationLogs]);
+        productName: targetProduct?.name || "Unknown Product",
+        storeId: targetProduct?.storeId || "",
+        storeName: targetProduct?.storeName || "",
+        activity: isDeleteRequest 
+          ? (status === "Approved" ? "Deletion Request Approved (Permanently Deleted)" : "Deletion Request Rejected")
+          : `Product ${status}`,
+        actor: user?.email || "Admin",
+        reason: reason || undefined
+      });
 
       triggerWebhook("PRODUCT_MODERATION_ACTION", {
         productId,
@@ -173,9 +296,12 @@ export default function UserProfile() {
       delete updatedReasons[productId];
       setRejectionReasons(updatedReasons);
 
-      // Refresh lists and analytics immediately!
+      // Refresh lists, logs, and analytics immediately!
       const allProds = await fetchAllProducts();
       setAllPendingProducts(allProds.filter(p => p.status === "Pending"));
+
+      const logs = await fetchApprovalLogs();
+      setModerationLogs(logs);
 
       const stats = await fetchButtonClickStats();
       setClickStats(stats);
@@ -191,17 +317,20 @@ export default function UserProfile() {
       return;
     }
 
+    const targetStore = allPendingStores.find(s => s.id === storeId);
+
     try {
       await moderateStore(storeId, status, reason);
 
-      const logMsg = {
-        productId: `store:${storeId}`,
-        status: status === "Approved" ? "Store Approved" : "Store Rejected",
-        reason,
-        moderatedBy: user?.email,
-        timestamp: new Date().toISOString()
-      };
-      setModerationLogs([logMsg, ...moderationLogs]);
+      await logApprovalActivity({
+        productId: "",
+        productName: "",
+        storeId: storeId,
+        storeName: targetStore?.name || "Unknown Store",
+        activity: `Store Registration ${status}`,
+        actor: user?.email || "Admin",
+        reason: reason || undefined
+      });
 
       triggerWebhook("STORE_MODERATION_ACTION", {
         storeId,
@@ -216,9 +345,12 @@ export default function UserProfile() {
       delete updatedReasons[storeId];
       setRejectionReasons(updatedReasons);
 
-      // Refresh lists and analytics immediately!
+      // Refresh lists, logs, and analytics immediately!
       const allStores = await fetchStores();
       setAllPendingStores(allStores.filter(s => s.status === "Pending" && s.registered));
+
+      const logs = await fetchApprovalLogs();
+      setModerationLogs(logs);
 
       const stats = await fetchButtonClickStats();
       setClickStats(stats);
@@ -341,287 +473,681 @@ export default function UserProfile() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Main content: Boutiques & Products Queues + Analytics (Left 8 cols) */}
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-8 space-y-6">
             
-            {/* Queue 1: Pending Boutique Registrations */}
-            <div className="space-y-4">
-              <div className="border-b-2 border-black pb-2 flex justify-between items-center">
-                <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
-                  <Store className="w-4 h-4" />
-                  <span>Pending Boutique Registrations ({allPendingStores.length})</span>
-                </h2>
-                <button 
-                  onClick={loadProfileMetrics}
-                  className="p-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold flex items-center space-x-1 shadow-[2px_2px_0px_0px_#000000]"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>REFRESH STREAM</span>
-                </button>
-              </div>
+            {/* Admin Tab Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] select-none">
+              <button
+                onClick={() => setActiveAdminTab("Registrations")}
+                className={`py-3 text-[10px] font-mono font-bold uppercase transition-all border-b lg:border-b-0 border-r-2 border-black flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-1.5 ${
+                  activeAdminTab === "Registrations" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Registrations ({allPendingStores.length})</span>
+              </button>
+              <button
+                onClick={() => setActiveAdminTab("Products")}
+                className={`py-3 text-[10px] font-mono font-bold uppercase transition-all border-b lg:border-b-0 border-r-2 border-black flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-1.5 ${
+                  activeAdminTab === "Products" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Product Queue ({allPendingProducts.length})</span>
+              </button>
+              <button
+                onClick={() => setActiveAdminTab("AllShops")}
+                className={`py-3 text-[10px] font-mono font-bold uppercase transition-all border-b lg:border-b-0 border-r-2 border-black flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-1.5 ${
+                  activeAdminTab === "AllShops" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Manage Shops</span>
+              </button>
+              <button
+                onClick={() => setActiveAdminTab("AllProducts")}
+                className={`py-3 text-[10px] font-mono font-bold uppercase transition-all border-b border-r-2 border-black flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-1.5 ${
+                  activeAdminTab === "AllProducts" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>Manage Products</span>
+              </button>
+              <button
+                onClick={() => setActiveAdminTab("DeleteRequests")}
+                className={`py-3 text-[10px] font-mono font-bold uppercase transition-all border-b border-r-2 sm:border-r-0 lg:border-r-2 border-black flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-1.5 ${
+                  activeAdminTab === "DeleteRequests" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Requests ({allStoresList.filter(s => s.accountDeleteRequested).length})</span>
+              </button>
+              <button
+                onClick={() => setActiveAdminTab("Analytics")}
+                className={`py-3 text-[10px] font-mono font-bold uppercase transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-1.5 ${
+                  activeAdminTab === "Analytics" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Analytics</span>
+              </button>
+            </div>
 
-              {allPendingStores.length === 0 ? (
-                <div className="border-2 border-dashed border-neutral-400 bg-white p-6 text-center text-neutral-400 shadow-[2px_2px_0px_0px_#000000]">
-                  <Store className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
-                  <p className="font-mono text-[10px] uppercase font-bold text-black">No pending store registrations</p>
-                  <p className="text-[9px] font-mono mt-0.5">All boutiques are verified and active.</p>
+            {/* Tab 1: Pending Boutique Registrations */}
+            {activeAdminTab === "Registrations" && (
+              <div className="space-y-4">
+                <div className="border-b-2 border-black pb-2 flex justify-between items-center">
+                  <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
+                    <Store className="w-4 h-4" />
+                    <span>Pending Boutique Registrations ({allPendingStores.length})</span>
+                  </h2>
+                  <button 
+                    onClick={loadProfileMetrics}
+                    className="p-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold flex items-center space-x-1 shadow-[2px_2px_0px_0px_#000000]"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>REFRESH STREAM</span>
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {allPendingStores.map((pendingStore) => (
+
+                {allPendingStores.length === 0 ? (
+                  <div className="border-2 border-dashed border-neutral-400 bg-white p-6 text-center text-neutral-400 shadow-[2px_2px_0px_0px_#000000]">
+                    <Store className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+                    <p className="font-mono text-[10px] uppercase font-bold text-black">No pending store registrations</p>
+                    <p className="text-[9px] font-mono mt-0.5">All boutiques are verified and active.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {allPendingStores.map((pendingStore) => (
+                      <div 
+                        key={pendingStore.id} 
+                        className="bg-white border-4 border-black p-6 shadow-[4px_4px_0px_0px_#000000] space-y-4"
+                      >
+                        <div className="flex items-start justify-between border-b border-neutral-200 pb-3">
+                          <div className="flex items-center space-x-2">
+                            {pendingStore.logoUrl && (
+                              <img 
+                                src={pendingStore.logoUrl} 
+                                alt={pendingStore.name} 
+                                referrerPolicy="no-referrer"
+                                className="w-8 h-8 rounded-full border border-black object-cover"
+                              />
+                            )}
+                            <div>
+                              <span className="font-mono text-[9px] text-neutral-400 uppercase block">SUBMITTED ON {new Date(pendingStore.createdAt).toLocaleDateString()}</span>
+                              <h3 className="font-display font-bold text-sm uppercase text-black">{pendingStore.name}</h3>
+                            </div>
+                          </div>
+                          <span className="font-mono text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 px-2 py-0.5 uppercase">
+                            Awaiting Approval
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                          <div>
+                            <span className="text-neutral-400 block uppercase text-[9px]">Owner Email</span>
+                            <span className="font-bold text-black break-all">{pendingStore.email}</span>
+                          </div>
+                          <div>
+                            <span className="text-neutral-400 block uppercase text-[9px]">Tax ID (Mã Số Thuế)</span>
+                            <span className="font-bold text-black">{pendingStore.taxId}</span>
+                          </div>
+                          <div>
+                            <span className="text-neutral-400 block uppercase text-[9px]">Contact Phone</span>
+                            <span className="font-bold text-black">{pendingStore.phone}</span>
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="text-neutral-400 block uppercase text-[9px]">Physical Address</span>
+                            <span className="font-bold text-black">{pendingStore.address}</span>
+                          </div>
+                          <div className="md:col-span-2 border-t border-dashed border-neutral-200 pt-2">
+                            <span className="text-neutral-400 block uppercase text-[9px]">Boutique Description</span>
+                            <p className="text-neutral-700 italic font-sans text-xs mt-1 leading-relaxed">
+                              {pendingStore.description || pendingStore.story || "No description provided."}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Store Moderation Actions */}
+                        <div className="pt-4 border-t border-neutral-200 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                          <div className="md:col-span-6">
+                            <input
+                              type="text"
+                              placeholder="Rejection Reason (Required if Declining: e.g. 'Invalid Tax ID')"
+                              value={rejectionReasons[pendingStore.id] || ""}
+                              onChange={(e) => setRejectionReasons({
+                                ...rejectionReasons,
+                                [pendingStore.id]: e.target.value
+                              })}
+                              className="w-full border-2 border-black p-2 font-mono text-[11px] focus:outline-none"
+                            />
+                          </div>
+                          <div className="md:col-span-6 flex space-x-2">
+                            {/* Decline button */}
+                            <button
+                              onClick={() => handleAdminModerateStore(pendingStore.id, "Rejected")}
+                              className="flex-1 bg-white hover:bg-red-50 text-red-600 border-2 border-red-600 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>DECLINE STORE</span>
+                            </button>
+                            {/* Quick Approve button */}
+                            <button
+                              onClick={() => handleAdminModerateStore(pendingStore.id, "Approved")}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-emerald-700 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>APPROVE STORE</span>
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: Pending Product Queue */}
+            {activeAdminTab === "Products" && (
+              <div className="space-y-4">
+                <div className="border-b-2 border-black pb-2 flex justify-between items-center">
+                  <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
+                    <Layers className="w-4 h-4" />
+                    <span>Pending Product Queue ({allPendingProducts.length})</span>
+                  </h2>
+                </div>
+
+                {allPendingProducts.length === 0 ? (
+                  <div className="border-2 border-dashed border-neutral-400 bg-white p-12 text-center text-neutral-400 shadow-[2px_2px_0px_0px_#000000]">
+                    <Check className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                    <p className="font-mono text-xs uppercase font-bold text-black">All queues cleared!</p>
+                    <p className="text-[11px] font-mono mt-1">No products are currently awaiting moderation checks.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {allPendingProducts.map((prod) => (
+                      <div 
+                        key={prod.id} 
+                        className="bg-white border-4 border-black p-6 shadow-[4px_4px_0px_0px_#000000] space-y-4"
+                      >
+                        <div className="flex items-start justify-between border-b border-neutral-200 pb-3">
+                          <div>
+                            <span className="font-mono text-[9px] text-neutral-400 uppercase">SUBMITTED BY {prod.storeName.toUpperCase()}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-display font-bold text-base uppercase text-black">{prod.name}</h3>
+                              {prod.deleteRequested && (
+                                <span className="bg-red-100 text-red-800 border border-red-300 font-mono text-[9px] font-bold px-1.5 py-0.5 uppercase shrink-0 animate-pulse">
+                                  🚨 DELETION REQUEST
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-mono text-xs font-bold text-neutral-700 bg-neutral-100 border border-neutral-300 px-2 py-0.5 uppercase">
+                            {prod.category}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row gap-4">
+                          <img 
+                            src={prod.images[0]} 
+                            alt={prod.name} 
+                            referrerPolicy="no-referrer"
+                            className="w-24 h-24 object-cover border-2 border-black flex-shrink-0" 
+                          />
+
+                          <div className="space-y-2 flex-1 text-xs">
+                            <div>
+                              <span className="font-mono text-[9px] text-neutral-400 uppercase">PRICE STRUCTURE</span>
+                              <p className="font-mono font-bold text-black text-sm">{prod.price.toLocaleString()} VND</p>
+                            </div>
+                            <div>
+                              <span className="font-mono text-[9px] text-neutral-400 uppercase">MATERIAL & COMPOSITION</span>
+                              <p className="font-mono uppercase font-bold text-black">{prod.material || "Unspecified"}</p>
+                            </div>
+                            <div>
+                              <span className="font-mono text-[9px] text-neutral-400 uppercase">NARRATIVE</span>
+                              <p className="text-neutral-600 italic line-clamp-2">{prod.description}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-neutral-200 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                          <div className="md:col-span-6">
+                            <input
+                              type="text"
+                              placeholder="Rejection Reason (Required if Declining: e.g. 'Photos blurry')"
+                              value={rejectionReasons[prod.id] || ""}
+                              onChange={(e) => setRejectionReasons({
+                                ...rejectionReasons,
+                                [prod.id]: e.target.value
+                              })}
+                              className="w-full border-2 border-black p-2 font-mono text-[11px] focus:outline-none"
+                            />
+                          </div>
+                          <div className="md:col-span-6 flex space-x-2">
+                            <button
+                              onClick={() => handleAdminModerate(prod.id, "Rejected")}
+                              className="flex-1 bg-white hover:bg-red-50 text-red-600 border-2 border-red-600 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>{prod.deleteRequested ? "DECLINE REMOVAL" : "DECLINE"}</span>
+                            </button>
+                            <button
+                              onClick={() => handleAdminModerate(prod.id, "Approved")}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-emerald-700 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{prod.deleteRequested ? "APPROVE REMOVAL" : "QUICK APPROVE"}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 3: Analytics Section: Global Button Click Tracker */}
+            {activeAdminTab === "Analytics" && (
+              <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-6">
+                <div className="border-b-4 border-black pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="font-display font-black text-lg uppercase text-black tracking-tight flex items-center space-x-2">
+                      <BarChart3 className="w-5 h-5 text-emerald-600" />
+                      <span>Admin Analytics: Global Button Click Tracker</span>
+                    </h2>
+                    <p className="text-[11px] font-mono text-neutral-500 uppercase mt-0.5">
+                      Real-time count of clicks on all button elements across every page
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setLoadingStats(true);
+                      const stats = await fetchButtonClickStats();
+                      setClickStats(stats);
+                      setLoadingStats(false);
+                    }}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black font-mono text-xs font-bold uppercase py-1.5 px-3 flex items-center space-x-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all shrink-0"
+                  >
+                    <span>Refresh Stats</span>
+                  </button>
+                </div>
+
+                {loadingStats ? (
+                  <div className="text-center py-12 font-mono text-xs text-neutral-500 animate-pulse">
+                    LOADING BUTTON CLICK TELEMETRY...
+                  </div>
+                ) : clickStats.length === 0 ? (
+                  <p className="font-mono text-xs text-neutral-400 italic">No button click telemetry recorded yet. Go click some buttons!</p>
+                ) : (
+                  <div className="overflow-x-auto border-2 border-black">
+                    <table className="w-full text-left border-collapse font-mono text-xs text-black">
+                      <thead>
+                        <tr className="bg-neutral-100 border-b-2 border-black">
+                          <th className="p-3 uppercase font-bold border-r-2 border-black">Button Label / Text</th>
+                          <th className="p-3 uppercase font-bold border-r-2 border-black">Page Path</th>
+                          <th className="p-3 uppercase font-bold border-r-2 border-black text-center">Clicks</th>
+                          <th className="p-3 uppercase font-bold">Last Clicked At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clickStats.map((stat) => (
+                          <tr key={stat.id} className="border-b border-neutral-300 hover:bg-neutral-50 transition-colors">
+                            <td className="p-3 font-bold border-r-2 border-black flex items-center space-x-2">
+                              <MousePointer className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                              <span className="truncate max-w-xs sm:max-w-md">{stat.buttonText}</span>
+                            </td>
+                            <td className="p-3 border-r-2 border-black text-neutral-600">
+                              <code>{stat.pagePath}</code>
+                            </td>
+                            <td className="p-3 border-r-2 border-black text-center font-bold text-emerald-600">
+                              {stat.clicks}
+                            </td>
+                            <td className="p-3 text-neutral-400 text-[10px]">
+                              {new Date(stat.lastClickedAt).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 4: All Shops management */}
+            {activeAdminTab === "AllShops" && (
+              <div className="space-y-4">
+                <div className="border-b-2 border-black pb-2 flex justify-between items-center">
+                  <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Quản lý tất cả Shops ({allStoresList.length})</span>
+                  </h2>
+                  <button 
+                    onClick={loadProfileMetrics}
+                    className="p-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold flex items-center space-x-1 shadow-[2px_2px_0px_0px_#000000]"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>REFRESH</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {allStoresList.map((store) => {
+                    const hasTimer = !!store.deleteScheduledAt;
+                    return (
+                      <div 
+                        key={store.id} 
+                        className={`bg-white border-4 border-black p-4 shadow-[4px_4px_0px_0px_#000000] space-y-3 ${
+                          store.hidden ? "opacity-75 bg-neutral-50" : ""
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-neutral-200 pb-2 gap-2">
+                          <div className="flex items-center space-x-3">
+                            {store.logoUrl && (
+                              <img 
+                                src={store.logoUrl} 
+                                alt={store.name} 
+                                referrerPolicy="no-referrer"
+                                className="w-10 h-10 rounded-full border border-black object-cover"
+                              />
+                            )}
+                            <div>
+                              <h3 className="font-display font-bold text-sm uppercase text-black">{store.name}</h3>
+                              <p className="font-mono text-[9px] text-neutral-400 uppercase">Store ID: {store.id}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            {store.hidden && (
+                              <span className="font-mono text-[9px] font-bold text-neutral-600 bg-neutral-100 border border-neutral-300 px-2 py-0.5 uppercase">
+                                Đang Ẩn (Hidden)
+                              </span>
+                            )}
+                            <span className={`font-mono text-[9px] font-bold border px-2 py-0.5 uppercase ${
+                              store.status === "Approved" ? "text-emerald-700 bg-emerald-50 border-emerald-300" :
+                              store.status === "Pending" ? "text-amber-700 bg-amber-50 border-amber-300" :
+                              "text-red-700 bg-red-50 border-red-300"
+                            }`}>
+                              {store.status || "Unverified"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono text-neutral-600">
+                          <div>
+                            <span className="text-neutral-400 block uppercase text-[8px]">Owner Email</span>
+                            <span className="font-bold text-black break-all">{store.email}</span>
+                          </div>
+                          <div>
+                            <span className="text-neutral-400 block uppercase text-[8px]">Address</span>
+                            <span className="text-black truncate block">{store.address || "N/A"}</span>
+                          </div>
+                          <div>
+                            <span className="text-neutral-400 block uppercase text-[8px]">Tax ID</span>
+                            <span className="text-black">{store.taxId || "N/A"}</span>
+                          </div>
+                        </div>
+
+                        {/* Store Deletion Timer Display */}
+                        {hasTimer && (
+                          <div className="bg-red-50 border border-red-500 p-2 text-xs font-mono text-red-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div>
+                              <span className="font-bold uppercase text-[10px]">⏰ Timer 24h Đã Kích Hoạt</span>
+                              <p className="text-[11px] font-sans text-neutral-700">
+                                Thời gian còn lại: <span className="font-mono font-bold text-red-600">{getTimerRemaining(store.deleteScheduledAt!)}</span>
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleImmediateStoreDelete(store.id)}
+                                className="px-2.5 py-1 bg-red-600 text-white hover:bg-red-700 border border-black font-mono text-[10px] font-bold uppercase transition-all shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[0.5px] hover:translate-y-[0.5px]"
+                              >
+                                Xoá Ngay
+                              </button>
+                              <button
+                                onClick={() => handleCancelStoreDelete(store.id)}
+                                className="px-2.5 py-1 bg-white text-black hover:bg-neutral-100 border border-black font-mono text-[10px] font-bold uppercase transition-all shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[0.5px] hover:translate-y-[0.5px]"
+                              >
+                                Huỷ Xoá
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Shop Actions */}
+                        <div className="flex gap-2 pt-2 border-t border-neutral-100 justify-end">
+                          <button
+                            onClick={() => handleToggleHideStore(store.id, !!store.hidden)}
+                            className="px-3 py-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold transition-all shadow-[1.5px_1.5px_0px_0px_#000000] active:translate-y-0.5"
+                          >
+                            {store.hidden ? "Hiện Shop" : "Ẩn Shop"}
+                          </button>
+
+                          {!hasTimer && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Bạn có chắc muốn bắt đầu đếm ngược 24 tiếng để xoá shop "${store.name}" và toàn bộ sản phẩm?`)) {
+                                  handleTriggerStoreDeleteTimer(store.id);
+                                }
+                              }}
+                              className="px-3 py-1 border border-black bg-red-100 hover:bg-red-200 text-red-800 font-mono text-[10px] uppercase font-bold transition-all shadow-[1.5px_1.5px_0px_0px_#000000] active:translate-y-0.5"
+                            >
+                              Xoá Shop
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {allStoresList.length === 0 && (
+                    <p className="font-mono text-xs text-neutral-400 text-center py-6">Không tìm thấy shop nào.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 5: All Products management */}
+            {activeAdminTab === "AllProducts" && (
+              <div className="space-y-4">
+                <div className="border-b-2 border-black pb-2 flex justify-between items-center">
+                  <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
+                    <Tag className="w-4 h-4" />
+                    <span>Quản lý tất cả Products ({allProductsList.length})</span>
+                  </h2>
+                  <button 
+                    onClick={loadProfileMetrics}
+                    className="p-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold flex items-center space-x-1 shadow-[2px_2px_0px_0px_#000000]"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>REFRESH</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {allProductsList.map((product) => (
                     <div 
-                      key={pendingStore.id} 
-                      className="bg-white border-4 border-black p-6 shadow-[4px_4px_0px_0px_#000000] space-y-4"
+                      key={product.id} 
+                      className={`bg-white border-4 border-black p-4 shadow-[4px_4px_0px_0px_#000000] space-y-3 ${
+                        product.hidden ? "opacity-75 bg-neutral-50" : ""
+                      }`}
                     >
-                      <div className="flex items-start justify-between border-b border-neutral-200 pb-3">
-                        <div className="flex items-center space-x-2">
-                          {pendingStore.logoUrl && (
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-neutral-200 pb-2 gap-2">
+                        <div className="flex items-center space-x-3">
+                          {product.images?.[0] && (
                             <img 
-                              src={pendingStore.logoUrl} 
-                              alt={pendingStore.name} 
+                              src={product.images[0]} 
+                              alt={product.name} 
                               referrerPolicy="no-referrer"
-                              className="w-8 h-8 rounded-full border border-black object-cover"
+                              className="w-12 h-12 border border-black object-cover"
                             />
                           )}
                           <div>
-                            <span className="font-mono text-[9px] text-neutral-400 uppercase block">SUBMITTED ON {new Date(pendingStore.createdAt).toLocaleDateString()}</span>
-                            <h3 className="font-display font-bold text-sm uppercase text-black">{pendingStore.name}</h3>
+                            <h3 className="font-display font-bold text-sm uppercase text-black">{product.name}</h3>
+                            <span className="font-mono text-[9px] text-neutral-400 uppercase">Shop: {product.storeName}</span>
                           </div>
                         </div>
-                        <span className="font-mono text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-300 px-2 py-0.5 uppercase">
-                          Awaiting Approval
-                        </span>
-                      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-                        <div>
-                          <span className="text-neutral-400 block uppercase text-[9px]">Owner Email</span>
-                          <span className="font-bold text-black break-all">{pendingStore.email}</span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-400 block uppercase text-[9px]">Tax ID (Mã Số Thuế)</span>
-                          <span className="font-bold text-black">{pendingStore.taxId}</span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-400 block uppercase text-[9px]">Contact Phone</span>
-                          <span className="font-bold text-black">{pendingStore.phone}</span>
-                        </div>
-                        <div className="md:col-span-2">
-                          <span className="text-neutral-400 block uppercase text-[9px]">Physical Address</span>
-                          <span className="font-bold text-black">{pendingStore.address}</span>
-                        </div>
-                        <div className="md:col-span-2 border-t border-dashed border-neutral-200 pt-2">
-                          <span className="text-neutral-400 block uppercase text-[9px]">Boutique Description</span>
-                          <p className="text-neutral-700 italic font-sans text-xs mt-1 leading-relaxed">
-                            {pendingStore.description || pendingStore.story || "No description provided."}
-                          </p>
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {product.hidden && (
+                            <span className="font-mono text-[9px] font-bold text-neutral-600 bg-neutral-100 border border-neutral-300 px-2 py-0.5 uppercase">
+                              Đang Ẩn (Hidden)
+                            </span>
+                          )}
+                          <span className={`font-mono text-[9px] font-bold border px-2 py-0.5 uppercase ${
+                            product.status === "Approved" ? "text-emerald-700 bg-emerald-50 border-emerald-300" :
+                            product.status === "Pending" ? "text-amber-700 bg-amber-50 border-amber-300" :
+                            "text-red-700 bg-red-50 border-red-300"
+                          }`}>
+                            {product.status || "Unapproved"}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Store Moderation Actions */}
-                      <div className="pt-4 border-t border-neutral-200 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                        <div className="md:col-span-6">
-                          <input
-                            type="text"
-                            placeholder="Rejection Reason (Required if Declining: e.g. 'Invalid Tax ID')"
-                            value={rejectionReasons[pendingStore.id] || ""}
-                            onChange={(e) => setRejectionReasons({
-                              ...rejectionReasons,
-                              [pendingStore.id]: e.target.value
-                            })}
-                            className="w-full border-2 border-black p-2 font-mono text-[11px] focus:outline-none"
-                          />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono text-neutral-600">
+                        <div>
+                          <span className="text-neutral-400 block uppercase text-[8px]">Price</span>
+                          <span className="font-bold text-black">{product.price.toLocaleString()} VND</span>
                         </div>
-                        <div className="md:col-span-6 flex space-x-2">
-                          {/* Decline button */}
-                          <button
-                            onClick={() => handleAdminModerateStore(pendingStore.id, "Rejected")}
-                            className="flex-1 bg-white hover:bg-red-50 text-red-600 border-2 border-red-600 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>DECLINE STORE</span>
-                          </button>
-                          {/* Quick Approve button */}
-                          <button
-                            onClick={() => handleAdminModerateStore(pendingStore.id, "Approved")}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-emerald-700 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>APPROVE STORE</span>
-                          </button>
+                        <div>
+                          <span className="text-neutral-400 block uppercase text-[8px]">Category</span>
+                          <span className="text-black">{product.category}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-400 block uppercase text-[8px]">Material</span>
+                          <span className="text-black">{product.material || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-400 block uppercase text-[8px]">Brand</span>
+                          <span className="text-black">{product.brand || "N/A"}</span>
                         </div>
                       </div>
 
+                      <div className="flex gap-2 pt-2 border-t border-neutral-100 justify-end">
+                        <button
+                          onClick={() => handleToggleHideProduct(product.id, !!product.hidden)}
+                          className="px-3 py-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold transition-all shadow-[1.5px_1.5px_0px_0px_#000000] active:translate-y-0.5"
+                        >
+                          {product.hidden ? "Hiện Sản Phẩm" : "Ẩn Sản Phẩm"}
+                        </button>
+
+                        <button
+                          onClick={() => handleImmediateProductDelete(product.id)}
+                          className="px-3 py-1 border border-black bg-red-100 hover:bg-red-200 text-red-800 font-mono text-[10px] uppercase font-bold transition-all shadow-[1.5px_1.5px_0px_0px_#000000] active:translate-y-0.5"
+                        >
+                          Xoá Vĩnh Viễn
+                        </button>
+                      </div>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
 
-            {/* Queue 2: Pending Product Queue */}
-            <div className="space-y-4">
-              <div className="border-b-2 border-black pb-2 flex justify-between items-center">
-                <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
-                  <Layers className="w-4 h-4" />
-                  <span>Pending Product Queue ({allPendingProducts.length})</span>
-                </h2>
+                  {allProductsList.length === 0 && (
+                    <p className="font-mono text-xs text-neutral-400 text-center py-6">Không tìm thấy sản phẩm nào.</p>
+                  )}
+                </div>
               </div>
+            )}
 
-              {allPendingProducts.length === 0 ? (
-                <div className="border-2 border-dashed border-neutral-400 bg-white p-12 text-center text-neutral-400 shadow-[2px_2px_0px_0px_#000000]">
-                  <Check className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                  <p className="font-mono text-xs uppercase font-bold text-black">All queues cleared!</p>
-                  <p className="text-[11px] font-mono mt-1">No products are currently awaiting moderation checks.</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {allPendingProducts.map((prod) => (
-                    <div 
-                      key={prod.id} 
-                      className="bg-white border-4 border-black p-6 shadow-[4px_4px_0px_0px_#000000] space-y-4"
-                    >
-                      <div className="flex items-start justify-between border-b border-neutral-200 pb-3">
-                        <div>
-                          <span className="font-mono text-[9px] text-neutral-400 uppercase">SUBMITTED BY {prod.storeName.toUpperCase()}</span>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-display font-bold text-base uppercase text-black">{prod.name}</h3>
-                            {prod.deleteRequested && (
-                              <span className="bg-red-100 text-red-800 border border-red-300 font-mono text-[9px] font-bold px-1.5 py-0.5 uppercase shrink-0 animate-pulse">
-                                🚨 DELETION REQUEST
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <span className="font-mono text-xs font-bold text-neutral-700 bg-neutral-100 border border-neutral-300 px-2 py-0.5 uppercase">
-                          {prod.category}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col md:flex-row gap-4">
-                        <img 
-                          src={prod.images[0]} 
-                          alt={prod.name} 
-                          referrerPolicy="no-referrer"
-                          className="w-24 h-24 object-cover border-2 border-black flex-shrink-0" 
-                        />
-
-                        <div className="space-y-2 flex-1 text-xs">
-                          <div>
-                            <span className="font-mono text-[9px] text-neutral-400 uppercase">PRICE STRUCTURE</span>
-                            <p className="font-mono font-bold text-black text-sm">{prod.price.toLocaleString()} VND</p>
-                          </div>
-                          <div>
-                            <span className="font-mono text-[9px] text-neutral-400 uppercase">MATERIAL & COMPOSITION</span>
-                            <p className="font-mono uppercase font-bold text-black">{prod.material || "Unspecified"}</p>
-                          </div>
-                          <div>
-                            <span className="font-mono text-[9px] text-neutral-400 uppercase">NARRATIVE</span>
-                            <p className="text-neutral-600 italic line-clamp-2">{prod.description}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-4 border-t border-neutral-200 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                        <div className="md:col-span-6">
-                          <input
-                            type="text"
-                            placeholder="Rejection Reason (Required if Declining: e.g. 'Photos blurry')"
-                            value={rejectionReasons[prod.id] || ""}
-                            onChange={(e) => setRejectionReasons({
-                              ...rejectionReasons,
-                              [prod.id]: e.target.value
-                            })}
-                            className="w-full border-2 border-black p-2 font-mono text-[11px] focus:outline-none"
-                          />
-                        </div>
-                        <div className="md:col-span-6 flex space-x-2">
-                          <button
-                            onClick={() => handleAdminModerate(prod.id, "Rejected")}
-                            className="flex-1 bg-white hover:bg-red-50 text-red-600 border-2 border-red-600 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>{prod.deleteRequested ? "DECLINE REMOVAL" : "DECLINE"}</span>
-                          </button>
-                          <button
-                            onClick={() => handleAdminModerate(prod.id, "Approved")}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-emerald-700 py-2 text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>{prod.deleteRequested ? "APPROVE REMOVAL" : "QUICK APPROVE"}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Analytics Section: Global Button Click Tracker */}
-            <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] space-y-6">
-              <div className="border-b-4 border-black pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="font-display font-black text-lg uppercase text-black tracking-tight flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5 text-emerald-600" />
-                    <span>Admin Analytics: Global Button Click Tracker</span>
+            {/* Tab 6: Deletion requests */}
+            {activeAdminTab === "DeleteRequests" && (
+              <div className="space-y-4">
+                <div className="border-b-2 border-black pb-2 flex justify-between items-center">
+                  <h2 className="font-display font-black text-sm uppercase text-black tracking-tight flex items-center space-x-2">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                    <span>Yêu cầu xoá tài khoản ({allStoresList.filter(s => s.accountDeleteRequested).length})</span>
                   </h2>
-                  <p className="text-[11px] font-mono text-neutral-500 uppercase mt-0.5">
-                    Real-time count of clicks on all button elements across every page
-                  </p>
+                  <button 
+                    onClick={loadProfileMetrics}
+                    className="p-1 border border-black bg-white hover:bg-neutral-100 font-mono text-[10px] uppercase font-bold flex items-center space-x-1 shadow-[2px_2px_0px_0px_#000000]"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>REFRESH</span>
+                  </button>
                 </div>
-                <button
-                  onClick={async () => {
-                    setLoadingStats(true);
-                    const stats = await fetchButtonClickStats();
-                    setClickStats(stats);
-                    setLoadingStats(false);
-                  }}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black font-mono text-xs font-bold uppercase py-1.5 px-3 flex items-center space-x-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all shrink-0"
-                >
-                  <span>Refresh Stats</span>
-                </button>
-              </div>
 
-              {loadingStats ? (
-                <div className="text-center py-12 font-mono text-xs text-neutral-500 animate-pulse">
-                  LOADING BUTTON CLICK TELEMETRY...
+                <div className="space-y-4">
+                  {allStoresList.filter(s => s.accountDeleteRequested).map((store) => (
+                    <div 
+                      key={store.id} 
+                      className="bg-red-50 border-4 border-red-500 p-4 shadow-[4px_4px_0px_0px_#000000] space-y-3"
+                    >
+                      <div className="flex justify-between items-center border-b border-red-200 pb-2">
+                        <div className="flex items-center space-x-3">
+                          {store.logoUrl && (
+                            <img 
+                              src={store.logoUrl} 
+                              alt={store.name} 
+                              referrerPolicy="no-referrer"
+                              className="w-10 h-10 rounded-full border border-black object-cover"
+                            />
+                          )}
+                          <div>
+                            <h3 className="font-display font-bold text-sm uppercase text-red-950">{store.name}</h3>
+                            <p className="font-mono text-[9px] text-red-700 uppercase">Store ID: {store.id}</p>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[9px] font-bold text-red-700 bg-white border border-red-300 px-2 py-0.5 uppercase">
+                          CẦN DUYỆT XOÁ (Delete Requested)
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono text-red-900">
+                        <div>
+                          <span className="text-red-700 block uppercase text-[8px]">Owner Email</span>
+                          <span className="font-bold break-all">{store.email}</span>
+                        </div>
+                        <div>
+                          <span className="text-red-700 block uppercase text-[8px]">Tax ID</span>
+                          <span>{store.taxId || "N/A"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-red-200 justify-end">
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Bạn có chắc chắn muốn CHẤP THUẬN yêu cầu xoá cửa hàng "${store.name}" và toàn bộ sản phẩm của họ vĩnh viễn không?`)) {
+                              await handleImmediateStoreDelete(store.id);
+                            }
+                          }}
+                          className="px-3 py-1 border border-black bg-red-600 hover:bg-red-700 text-white font-mono text-[10px] uppercase font-bold transition-all shadow-[1.5px_1.5px_0px_0px_#000000] active:translate-y-0.5"
+                        >
+                          Đồng Ý Xoá
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Bạn có chắc chắn muốn TỪ CHỐI yêu cầu xoá tài khoản này?`)) {
+                              try {
+                                const { doc, updateDoc } = await import("firebase/firestore");
+                                await updateDoc(doc(db, "stores", store.id), {
+                                  accountDeleteRequested: false
+                                });
+                                await loadProfileMetrics();
+                                alert("Đã từ chối yêu cầu xoá tài khoản.");
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }
+                          }}
+                          className="px-3 py-1 border border-black bg-white hover:bg-neutral-100 text-black font-mono text-[10px] uppercase font-bold transition-all shadow-[1.5px_1.5px_0px_0px_#000000] active:translate-y-0.5"
+                        >
+                          Từ Chối
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {allStoresList.filter(s => s.accountDeleteRequested).length === 0 && (
+                    <p className="font-mono text-xs text-neutral-400 text-center py-6">Không có yêu cầu xoá tài khoản nào đang chờ duyệt.</p>
+                  )}
                 </div>
-              ) : clickStats.length === 0 ? (
-                <p className="font-mono text-xs text-neutral-400 italic">No button click telemetry recorded yet. Go click some buttons!</p>
-              ) : (
-                <div className="overflow-x-auto border-2 border-black">
-                  <table className="w-full text-left border-collapse font-mono text-xs text-black">
-                    <thead>
-                      <tr className="bg-neutral-100 border-b-2 border-black">
-                        <th className="p-3 uppercase font-bold border-r-2 border-black">Button Label / Text</th>
-                        <th className="p-3 uppercase font-bold border-r-2 border-black">Page Path</th>
-                        <th className="p-3 uppercase font-bold border-r-2 border-black text-center">Clicks</th>
-                        <th className="p-3 uppercase font-bold">Last Clicked At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {clickStats.map((stat) => (
-                        <tr key={stat.id} className="border-b border-neutral-300 hover:bg-neutral-50 transition-colors">
-                          <td className="p-3 font-bold border-r-2 border-black flex items-center space-x-2">
-                            <MousePointer className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                            <span className="truncate max-w-xs sm:max-w-md">{stat.buttonText}</span>
-                          </td>
-                          <td className="p-3 border-r-2 border-black text-neutral-600">
-                            <code>{stat.pagePath}</code>
-                          </td>
-                          <td className="p-3 border-r-2 border-black text-center font-bold text-emerald-600">
-                            {stat.clicks}
-                          </td>
-                          <td className="p-3 text-neutral-400 text-[10px]">
-                            {new Date(stat.lastClickedAt).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
           </div>
 
@@ -635,19 +1161,30 @@ export default function UserProfile() {
               {moderationLogs.length === 0 ? (
                 <p className="font-mono text-[10px] text-neutral-400 italic">No operations logged in active session.</p>
               ) : (
-                <div className="space-y-3 font-mono text-[10px]">
+                <div className="space-y-3 font-mono text-[10px] max-h-[400px] overflow-y-auto pr-1">
                   {moderationLogs.map((log, idx) => (
-                    <div key={idx} className="border-b border-neutral-100 pb-2">
+                    <div key={idx} className="border-b border-neutral-100 pb-2 last:border-0 last:pb-0">
                       <div className="flex items-center justify-between">
-                        <span className={`font-bold uppercase ${
-                          log.status === "Approved" || log.status === "Store Approved" ? "text-emerald-600" : "text-red-600"
+                        <span className={`font-bold uppercase text-[9px] ${
+                          log.activity.includes("Approved") || log.activity.includes("approved")
+                            ? "text-emerald-600"
+                            : log.activity.includes("Rejected") || log.activity.includes("rejected") || log.activity.includes("Declined")
+                            ? "text-red-600"
+                            : "text-blue-600"
                         }`}>
-                          [{log.status}]
+                          [{log.activity}]
                         </span>
-                        <span className="text-neutral-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span className="text-neutral-400 font-bold text-[9px]">
+                          {new Date(log.timestamp).toLocaleString("vi-VN")}
+                        </span>
                       </div>
-                      <p className="text-black font-bold mt-1 uppercase">ID: {log.productId}</p>
-                      {log.reason && <p className="text-red-500 mt-0.5">Reason: {log.reason}</p>}
+                      {log.productName ? (
+                        <p className="text-black font-bold mt-1 text-[11px] font-sans">Product: {log.productName}</p>
+                      ) : log.storeName ? (
+                        <p className="text-black font-bold mt-1 text-[11px] font-sans">Store: {log.storeName}</p>
+                      ) : null}
+                      {log.reason && <p className="text-red-500 mt-1 uppercase text-[9px] bg-red-50 p-1 border border-red-100">Reason: {log.reason}</p>}
+                      <p className="text-neutral-400 text-[8px] uppercase mt-0.5">By: {log.actor}</p>
                     </div>
                   ))}
                 </div>
@@ -764,7 +1301,14 @@ export default function UserProfile() {
                         <div>
                           <span className="font-mono text-[9px] uppercase font-bold text-neutral-400 block">{prod.storeName}</span>
                           <h3 className="font-display font-black text-base uppercase text-black hover:underline">
-                            <Link to={`/products/${prod.id}`}>{prod.name}</Link>
+                            <Link 
+                              to={`/products/${prod.id}`}
+                              onClick={async () => {
+                                await incrementProductClick(prod.id);
+                              }}
+                            >
+                              {prod.name}
+                            </Link>
                           </h3>
                         </div>
 
@@ -812,6 +1356,9 @@ export default function UserProfile() {
                         <div className="flex space-x-2">
                           <Link
                             to={`/products/${prod.id}`}
+                            onClick={async () => {
+                              await incrementProductClick(prod.id);
+                            }}
                             className="flex-1 text-center py-1.5 border border-black bg-black text-white hover:bg-white hover:text-black font-mono text-[10px] font-bold uppercase transition-all"
                           >
                             Explore Details

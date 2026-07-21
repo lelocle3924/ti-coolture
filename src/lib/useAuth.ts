@@ -10,7 +10,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  loginAsMockUser?: (uid: string, email: string) => Promise<void>;
+  loginAsMockUser?: (uid: string, email: string, password?: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
