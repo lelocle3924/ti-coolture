@@ -1,75 +1,171 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-display: "Space Grotesk", sans-serif;
+/* ---------------------------------------------------------------
+   Tí Coolture — brand foundation
+   Authority: docs/BRAND-GUIDELINES-TÍ-COOLTURE.pdf
+             + docs/01-ART-DIRECTION-BRIEF.md
+   Ratio per guidelines: violet 60% · white 30% · teal 10%
+   --------------------------------------------------------------- */
+
+@font-face {
+  font-family: "DFVN Some Time Later";
+  src: url("../fonts/DFVN-SomeTimeLater.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
-/* Stark Brutalist Global Styling Rules */
+@font-face {
+  font-family: "Alexandria";
+  src: url("../fonts/Alexandria-VariableFont_wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* Brand palette — the only six values in the visual language */
+  --color-brand: #7520f7;
+  --color-brand-deep: #5a12c6;
+  --color-wave: #39d6cf;
+  --color-wave-ink: #0b7c77;
+  --color-ink: #12081f;
+  --color-paper: #ffffff;
+  --color-paper-warm: #faf8ff;
+
+  /* Two faces only. DFVN is display; Alexandria carries everything read.
+     font-mono is remapped to Alexandria so legacy `font-mono` utilities in
+     views not yet rebuilt stop rendering as a terminal. */
+  --font-display: "DFVN Some Time Later", "Alexandria", system-ui, sans-serif;
+  --font-sans: "Alexandria", system-ui, -apple-system, sans-serif;
+  --font-mono: "Alexandria", system-ui, -apple-system, sans-serif;
+
+  --radius-none: 0px;
+  --ease-brand: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: #f5f5f5;
-  color: #000000;
+  background-color: var(--color-brand);
+  color: var(--color-paper);
   overflow-x: hidden;
 }
 
-/* High-contrast custom scrollbar */
+/* Vietnamese diacritics in the display face:
+   Ẫ reaches .977em above the baseline and below-dot caps drop under it,
+   so uppercase spans ~1.18em. Never set display type below 1.0. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+/* Hairlines carry structure. No shadows outside modals. */
+.rule-dark {
+  border-color: rgba(18, 8, 31, 0.12);
+}
+.rule-light {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-left: 2px solid #000000;
+  background: var(--color-ink);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #000000;
-  border: 1px solid #ffffff;
+  background: var(--color-brand);
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+  background: var(--color-wave);
 }
 
-/* Brutalist card outline hover offset effect */
-.brutalist-card-hover {
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+:focus-visible {
+  outline: 2px solid var(--color-wave);
+  outline-offset: 3px;
 }
 
-.brutalist-card-hover:hover {
-  transform: translate(-4px, -4px);
-  box-shadow: 4px 4px 0px 0px #000000;
+/* The one authored moment: hero lines rise, then the wave draws. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    opacity: 0;
+    transform: translateY(0.16em);
+    animation: rise 0.62s var(--ease-brand) forwards;
+  }
+  .rise-1 { animation-delay: 0.05s; }
+  .rise-2 { animation-delay: 0.11s; }
+  .rise-3 { animation-delay: 0.17s; }
+  .rise-4 { animation-delay: 0.26s; }
+  .rise-5 { animation-delay: 0.34s; }
+
+  .draw path {
+    stroke-dasharray: 1400;
+    stroke-dashoffset: 1400;
+    animation: draw 1.1s var(--ease-brand) 0.42s forwards;
+  }
 }
 
-/* Button hover feedback */
-.brutalist-btn {
-  background-color: #000000;
-  color: #ffffff;
-  border: 2px solid #000000;
-  transition: all 0.1s ease;
+/* The film strip is positioned in JS (see FilmStrip.tsx) so the automatic
+   crawl and click-drag scrubbing share one offset. Nothing to keyframe. */
+
+/* Hidden-gem sparkle: breathes and glows so the tab reads as an invitation
+   rather than a scrollbar artefact. */
+@media (prefers-reduced-motion: no-preference) {
+  .gem-star {
+    animation: gem-pulse 2.4s ease-in-out infinite;
+  }
 }
 
-.brutalist-btn:hover {
-  background-color: #ffffff;
-  color: #000000;
-  box-shadow: 3px 3px 0px 0px #000000;
-  transform: translate(-2px, -2px);
+@keyframes gem-pulse {
+  0%,
+  100% {
+    transform: scale(0.86);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.55));
+  }
+  50% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.95))
+      drop-shadow(0 0 20px rgba(57, 214, 207, 0.7));
+  }
 }
 
-.brutalist-btn-secondary {
-  background-color: #ffffff;
-  color: #000000;
-  border: 2px solid #000000;
-  transition: all 0.1s ease;
+@keyframes gem-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.brutalist-btn-secondary:hover {
-  background-color: #000000;
-  color: #ffffff;
-  box-shadow: 3px 3px 0px 0px #000000;
-  transform: translate(-2px, -2px);
+.gem-card {
+  animation: gem-card-in 0.32s var(--ease-brand) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gem-card {
+    animation: none;
+  }
+}
+
+@keyframes rise {
+  to { opacity: 1; transform: none; }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
 }

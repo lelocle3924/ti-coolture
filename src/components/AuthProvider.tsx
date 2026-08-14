@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { onAuthStateChanged, User, signOut } from "firebase/auth";
-import { auth } from "../lib/firebase";
 import { UserProfile } from "../types";
 import { getOrCreateUserProfile } from "../lib/dbService";
 import { AuthContext } from "../lib/useAuth";
+
+/**
+ * Local session stand-in for Supabase Auth (docs/SRS.md §3.1, AD-01).
+ *
+ * There is no auth backend: the signed-in user lives in localStorage and any
+ * email/password combination is accepted by AuthGateway. This is a development
+ * placeholder — it authenticates nobody and must not reach production.
+ */
+const SESSION_KEY = "tcoolture_mock_user";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
@@ -12,77 +19,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (uid: string, email: string, password?: string) => {
     try {
-      const userProfile = await getOrCreateUserProfile(uid, email, password);
-      setProfile(userProfile);
+      setProfile(await getOrCreateUserProfile(uid, email, password));
     } catch (e) {
       console.error("Error fetching user profile:", e);
     }
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.uid, user.email || "");
-    }
+    if (user) await fetchProfile(user.uid, user.email || "");
   };
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    const initAuth = async () => {
+    const restore = async () => {
       setLoading(true);
-      const storedMockUser = localStorage.getItem("tcoolture_mock_user");
-      if (storedMockUser) {
+      const stored = localStorage.getItem(SESSION_KEY);
+      if (stored) {
         try {
-          const parsedUser = JSON.parse(storedMockUser);
-          setUser(parsedUser);
-          await fetchProfile(parsedUser.uid, parsedUser.email || "");
-          setLoading(false);
-          return;
-        } catch (e) {
-          console.error("Error parsing stored mock user:", e);
-          localStorage.removeItem("tcoolture_mock_user");
+          const parsed = JSON.parse(stored);
+          setUser(parsed);
+          await fetchProfile(parsed.uid, parsed.email || "");
+        } catch {
+          localStorage.removeItem(SESSION_KEY);
         }
       }
-
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          setUser(firebaseUser);
-          await fetchProfile(firebaseUser.uid, firebaseUser.email || "");
-        } else {
-          setUser(null);
-          setProfile(null);
-        }
-        setLoading(false);
-      });
+      setLoading(false);
     };
-
-    initAuth();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    restore();
   }, []);
 
   const loginAsMockUser = async (uid: string, email: string, password?: string) => {
-    setLoading(true);
-    const mockUser = { uid, email, isMock: true };
-    localStorage.setItem("tcoolture_mock_user", JSON.stringify(mockUser));
+    const mockUser = { uid, email };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(mockUser));
     setUser(mockUser);
     await fetchProfile(uid, email, password);
-    setLoading(false);
   };
 
   const logout = async () => {
-    setLoading(true);
-    localStorage.removeItem("tcoolture_mock_user");
-    try {
-      await signOut(auth);
-    } catch (e) {
-      console.error("Firebase signOut error:", e);
-    }
+    localStorage.removeItem(SESSION_KEY);
     setUser(null);
     setProfile(null);
-    setLoading(false);
   };
 
   return (

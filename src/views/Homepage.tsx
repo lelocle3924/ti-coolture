@@ -1,1043 +1,440 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  Search, 
-  MapPin, 
-  Map, 
-  Filter, 
-  X, 
-  Compass, 
-  ArrowRight, 
-  Sparkles, 
-  ChevronRight, 
-  ChevronLeft,
-  Volume2, 
-  RotateCcw,
-  AlertTriangle,
-  Edit,
-  Plus,
-  Trash2,
-  Save,
-  Upload,
-  Link2
-} from "lucide-react";
-import { fetchProducts, fetchTouristRoutes, triggerWebhook, incrementProductClick } from "../lib/dbService";
+import { ArrowRight, ArrowUpRight, X } from "lucide-react";
+import {
+  fetchProducts,
+  fetchTouristRoutes,
+  fetchCollections,
+  fetchHiddenGems,
+  triggerWebhook,
+  incrementProductClick,
+  type Collection,
+} from "../lib/dbService";
 import { Product, TouristRoute, RouteStop } from "../types";
-import { motion, AnimatePresence } from "motion/react";
-import { useAuth } from "../lib/useAuth";
-import { db } from "../lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { ImageUploader } from "../components/ImageUploader";
+import { WaveBottomExtended, RibbonLoop, ArcTopRight } from "../components/BrandShapes";
+import FilmStrip from "../components/FilmStrip";
+
+const formatPrice = (value: number) =>
+  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
 
 export default function Homepage() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
 
-  // State Management
   const [products, setProducts] = useState<Product[]>([]);
   const [routes, setRoutes] = useState<TouristRoute[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [gems, setGems] = useState<Array<{ product: Product; note: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  // What's In Store Carousel State
-  const [carouselIndex, setCarouselIndex] = useState(0);
-
-  const topTenProducts = useMemo(() => {
-    return [...products]
-      .sort((a, b) => (b.clicks || 0) - (a.clicks || 0))
-      .slice(0, 10);
-  }, [products]);
-
-  const visibleProducts = useMemo(() => {
-    if (topTenProducts.length === 0) return [];
-    const result = [];
-    for (let i = 0; i < 4; i++) {
-      const idx = (carouselIndex + i) % topTenProducts.length;
-      result.push(topTenProducts[idx]);
-    }
-    return result;
-  }, [topTenProducts, carouselIndex]);
-
-  const handlePrevSlide = () => {
-    if (topTenProducts.length === 0) return;
-    setCarouselIndex((prev) => (prev === 0 ? topTenProducts.length - 1 : prev - 1));
-  };
-
-  const handleNextSlide = () => {
-    if (topTenProducts.length === 0) return;
-    setCarouselIndex((prev) => (prev + 1) % topTenProducts.length);
-  };
-
-  // Homepage Banner Customization States
-  const [bannerBg, setBannerBg] = useState("https://images.unsplash.com/photo-1555181126-cf46a03827c0?w=1600");
-  const [bannerMainText, setBannerMainText] = useState("Hành trình kết nối di sản thủ công Việt Nam với không gian sống hiện đại");
-  const [bannerSubText, setBannerSubText] = useState("Connecting timeless traditional Vietnamese craftsmanship with contemporary creative spaces and boutique design houses.");
-  const [isEditingBanner, setIsEditingBanner] = useState(false);
-
-  // Active Route Editing States Sync
-  const [activeRouteMapUrl, setActiveRouteMapUrl] = useState("");
-  const [activeRouteName, setActiveRouteName] = useState("");
-  const [activeRouteStops, setActiveRouteStops] = useState<RouteStop[]>([]);
-  const [isEditingRoute, setIsEditingRoute] = useState(false);
-  const [isAddingPin, setIsAddingPin] = useState(false);
-  
-  // New pin form states
-  const [newPinX, setNewPinX] = useState(50);
-  const [newPinY, setNewPinY] = useState(50);
-  const [newPinName, setNewPinName] = useState("");
-  const [newPinAddress, setNewPinAddress] = useState("");
-  const [newPinDescription, setNewPinDescription] = useState("");
-
-  // Search & Session tracking
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [previousSearches, setPreviousSearches] = useState<string[]>(() => {
-    const saved = sessionStorage.getItem("t_coolture_searches");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // Price Filters
-  const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(null);
-
-  // Routes Map State
-  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
+  const [selectedRouteId, setSelectedRouteId] = useState("");
   const [selectedStop, setSelectedStop] = useState<RouteStop | null>(null);
+  const [isGemOpen, setIsGemOpen] = useState(false);
 
-  // Random Curated Product Popup State
-  const [curatedProduct, setCuratedProduct] = useState<Product | null>(null);
-  const [showPopup, setShowPopup] = useState(false);
-  const [isGemOpen, setIsGemOpen] = useState(true);
+  const activeRoute = routes.find((r) => r.id === selectedRouteId);
+  const gem = gems[0];
 
-  // Sync route edit states when selectedRoute changes
-  const activeRoute = routes.find(r => r.id === selectedRouteId);
+  const railProducts = useMemo(
+    () => [...products].sort((a, b) => (b.clicks || 0) - (a.clicks || 0)).slice(0, 10),
+    [products]
+  );
 
-  useEffect(() => {
-    if (activeRoute) {
-      setActiveRouteMapUrl(activeRoute.mapImageUrl || "");
-      setActiveRouteName(activeRoute.name || "");
-      setActiveRouteStops(activeRoute.stops || []);
-    }
-  }, [selectedRouteId, routes]);
-
-  // Load Data
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      const approvedProducts = await fetchProducts("Approved");
-      setProducts(approvedProducts);
-
-      if (approvedProducts.length > 0) {
-        const randomIndex = Math.floor(Math.random() * approvedProducts.length);
-        setCuratedProduct(approvedProducts[randomIndex]);
-        setShowPopup(true);
-      }
-
-      const touristRoutes = await fetchTouristRoutes();
+  const loadData = async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [approved, touristRoutes, cols, hiddenGems] = await Promise.all([
+        fetchProducts("Approved", { throwOnError: true }),
+        fetchTouristRoutes({ throwOnError: true }),
+        fetchCollections(),
+        fetchHiddenGems(),
+      ]);
+      setProducts(approved);
       setRoutes(touristRoutes);
+      setCollections(cols);
+      setGems(hiddenGems);
       if (touristRoutes.length > 0) {
         setSelectedRouteId(touristRoutes[0].id);
-        if (touristRoutes[0].stops.length > 0) {
-          setSelectedStop(touristRoutes[0].stops[0]);
-        }
+        setSelectedStop(touristRoutes[0].stops[0] ?? null);
       }
-
-      // Fetch Homepage Banner Settings
-      try {
-        const bannerRef = doc(db, "settings", "homepage_banner");
-        const bannerSnap = await getDoc(bannerRef);
-        if (bannerSnap.exists()) {
-          const data = bannerSnap.data();
-          if (data.bgUrl) setBannerBg(data.bgUrl);
-          if (data.mainTitle) setBannerMainText(data.mainTitle);
-          if (data.subTitle) setBannerSubText(data.subTitle);
-        }
-      } catch (err) {
-        console.error("Error loading homepage banner settings:", err);
-      }
-
-      setLoading(false);
+    } catch (err) {
+      console.error("Error loading homepage data:", err);
+      setLoadError(true);
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
-  // Periodic random popups logic
-  useEffect(() => {
-    if (products.length === 0) return;
-
-    // Trigger random popups every 30 seconds (30,000 ms)
-    const interval = setInterval(() => {
-      triggerRandomPopup();
-    }, 30000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [products]);
-
-  const triggerRandomPopup = () => {
-    if (products.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * products.length);
-    const randomProd = products[randomIndex];
-    setCuratedProduct(randomProd);
-    setShowPopup(true);
-
-    // Trigger simulated webhook for curated pop-up display log
-    triggerWebhook("CURATED_POPUP_DISPLAYED", {
-      productId: randomProd.id,
-      productName: randomProd.name,
-      price: randomProd.price,
-      storeName: randomProd.storeName,
-      timestamp: new Date().toISOString()
-    });
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    if (!query) return;
-
-    // Add to session tracking
-    if (!previousSearches.includes(query)) {
-      const updated = [query, ...previousSearches].slice(0, 5); // Keep last 5 searches
-      setPreviousSearches(updated);
-      sessionStorage.setItem("t_coolture_searches", JSON.stringify(updated));
-    }
-  };
-
-  const handleClearSearches = () => {
-    setPreviousSearches([]);
-    sessionStorage.removeItem("t_coolture_searches");
-  };
-
-  const handleSearchClick = (term: string) => {
-    setSearchQuery(term);
-  };
-
-  // Price range matching helpers
-  const matchesPrice = (price: number) => {
-    if (!selectedPriceRange) return true;
-    switch (selectedPriceRange) {
-      case "under-100": return price < 100000;
-      case "100-200": return price >= 100000 && price <= 200000;
-      case "200-300": return price >= 200000 && price <= 300000;
-      case "300-500": return price >= 300000 && price <= 500000;
-      case "500-1m": return price >= 500000 && price <= 1000000;
-      case "over-1m": return price > 1000000;
-      default: return true;
-    }
-  };
-
-  // Filtering products
-  const filteredProducts = products.filter(prod => {
-    const matchesSearch = searchQuery 
-      ? prod.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        prod.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        prod.storeName.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-    return matchesSearch && matchesPrice(prod.price);
-  });
-
   return (
-    <div className="min-h-screen bg-neutral-100 select-none relative flex flex-col">
-      
-      {/* 1. HERO BANNER SECTION (Quote & Background image) */}
-      <section 
-        className="relative h-[550px] flex flex-col justify-center items-center text-center px-6 border-b-4 border-black bg-cover bg-center"
-        style={{ 
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), url('${bannerBg}')` 
-        }}
-      >
-        {profile?.role === "Admin" && (
-          <button
-            onClick={() => setIsEditingBanner(true)}
-            className="absolute top-4 right-4 bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black font-mono text-xs font-bold uppercase py-1.5 px-3 flex items-center space-x-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all z-30"
-          >
-            <Edit className="w-3.5 h-3.5" />
-            <span>Edit Banner</span>
-          </button>
-        )}
-
-        <div className="max-w-3xl space-y-8">
-          <span className="font-mono text-xs uppercase text-emerald-400 tracking-widest font-bold">
-            // TÍ COOLTURE CULTURAL HERITAGE
-          </span>
-          <h1 className="font-display font-black text-3xl md:text-5xl text-white uppercase tracking-tight leading-none drop-shadow-md">
-            {bannerMainText}
+    <div className="bg-brand text-paper">
+      {/* ============ HERO ============ */}
+      <section className="relative overflow-hidden bg-brand">
+        <div
+          style={{ paddingBottom: "calc(18.2vw + 2.5rem)" }}
+          className="relative z-10 mx-auto flex min-h-[70vh] max-w-7xl flex-col items-start justify-center px-5 pt-24 md:px-8 md:pt-32">
+          <h1 className="m-0 max-w-4xl text-[clamp(1.75rem,5.2vw,3.5rem)] font-medium uppercase leading-tight tracking-[-0.025em] rise rise-1">
+            Mỗi người một <span className="font-display text-wave normal-case">Tí</span> chất
+            riêng.
           </h1>
-          <p className="font-mono text-xs md:text-sm text-neutral-300 max-w-2xl mx-auto uppercase tracking-wide leading-relaxed">
-            "{bannerSubText}"
+
+          <p className="mt-6 max-w-xl text-base md:text-lg leading-relaxed text-white/88 rise rise-2">
+            Nơi tuyển chọn local brand và artist Việt. Không phải nơi bán hàng — nơi tìm ra thứ đáng
+            mua.
           </p>
+
+          <div className="mt-8 flex flex-wrap gap-3 rise rise-3">
+            <a
+              href="#kho"
+              className="group inline-flex items-center gap-2 min-h-11 rounded-md bg-paper px-6 text-brand label transition-colors hover:bg-wave hover:text-ink"
+            >
+              Khám phá ngay
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+            </a>
+            <Link
+              to="/stores"
+              className="inline-flex items-center min-h-11 rounded-md border border-white/50 px-6 label transition-colors hover:border-paper hover:bg-white/10"
+            >
+              Xem tất cả shop
+            </Link>
+          </div>
+        </div>
+
+        {/* Horizon group. The ribbon is a sibling *under* the curve, so where
+            the two overlap the white always wins and no teal crosses it. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]">
+          <RibbonLoop
+            className="absolute bottom-0 right-0 z-0 translate-x-[16%]"
+            style={{ width: "clamp(14rem, 26vw, 26rem)" }}
+            ribbon="var(--color-wave)"
+            dot="var(--color-paper)"
+          />
+          <WaveBottomExtended className="relative z-10" fill="var(--color-paper)" />
         </div>
       </section>
 
-      {/* 1.5 ADMIN EDIT BANNER MODAL */}
-      <AnimatePresence>
-        {isEditingBanner && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-4 border-black p-6 w-full max-w-lg shadow-[8px_8px_0px_0px_#000000] space-y-4 font-mono text-xs text-black"
-            >
-              <div className="flex justify-between items-center border-b-2 border-black pb-2">
-                <h3 className="font-display font-black text-sm uppercase">EDIT HERO BANNER</h3>
-                <button onClick={() => setIsEditingBanner(false)} className="p-1 hover:bg-neutral-100 border border-black">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      {/* ============ WHAT'S IN STORE ============ */}
+      <section id="kho" className="bg-paper text-ink pb-16 pt-8 md:pb-24 md:pt-12 scroll-mt-20">
+        <h2 className="display m-0 text-center text-[2rem] md:text-[2.5rem] leading-tight normal-case">
+          Đang có trong kho
+        </h2>
 
-              <div className="space-y-3 bg-neutral-50 p-3 border-2 border-dashed border-neutral-300">
-                <div className="space-y-1">
-                  <label className="block font-bold uppercase text-[10px]">Background Image</label>
-                  <ImageUploader 
-                    id="banner-image-upload"
-                    onUploadComplete={(url) => setBannerBg(url)}
-                  />
-                  <input 
-                    type="text" 
-                    value={bannerBg}
-                    onChange={(e) => setBannerBg(e.target.value)}
-                    placeholder="Or paste image URL here..."
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none bg-white mt-1"
-                  />
+        {/* The strip: an infinitely looping reel of frames, paused on hover */}
+        <div className="mt-8 md:mt-10">
+          {loading ? (
+            <div className="flex gap-4 overflow-hidden px-5 md:px-8" aria-busy="true">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-[210px] shrink-0 animate-pulse md:w-[240px]">
+                  <div className="aspect-square rounded-sm bg-paper-warm" />
+                  <div className="mt-3 h-3 w-2/5 bg-paper-warm" />
+                  <div className="mt-2 h-4 w-4/5 bg-paper-warm" />
                 </div>
-
-                <div className="space-y-1">
-                  <label className="block font-bold uppercase text-[10px]">Main Heading Text</label>
-                  <textarea 
-                    value={bannerMainText}
-                    onChange={(e) => setBannerMainText(e.target.value)}
-                    rows={3}
-                    placeholder="Enter main heading..."
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block font-bold uppercase text-[10px]">Subtext Below</label>
-                  <textarea 
-                    value={bannerSubText}
-                    onChange={(e) => setBannerSubText(e.target.value)}
-                    rows={3}
-                    placeholder="Enter subtext..."
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2">
-                <button 
-                  onClick={() => setIsEditingBanner(false)}
-                  className="px-4 py-2 border-2 border-black hover:bg-neutral-100 uppercase font-bold text-[10px]"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={async () => {
-                    try {
-                      const bannerRef = doc(db, "settings", "homepage_banner");
-                      await setDoc(bannerRef, {
-                        bgUrl: bannerBg,
-                        mainTitle: bannerMainText,
-                        subTitle: bannerSubText
-                      });
-                      setIsEditingBanner(false);
-                      triggerWebhook("HOMEPAGE_BANNER_UPDATED", {
-                        bgUrl: bannerBg,
-                        mainTitle: bannerMainText,
-                        subTitle: bannerSubText
-                      });
-                    } catch (err) {
-                      console.error("Error saving banner:", err);
-                    }
-                  }}
-                  className="px-4 py-2 bg-black text-white hover:bg-neutral-800 border-2 border-black uppercase font-bold text-[10px] flex items-center space-x-1"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Settings</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* 2. WHAT'S IN STORE SECTION (Immediate next) */}
-      <section id="whats-in-store" className="py-12 px-4 md:px-8 max-w-7xl mx-auto w-full border-b-4 border-black">
-        <div className="border-b-4 border-black pb-4 mb-8 text-center">
-          <h2 className="font-display font-black text-2xl md:text-3xl uppercase tracking-tight text-black mx-auto">
-            What's In Store
-          </h2>
-        </div>
-        
-        {/* Carousel Component */}
-        {loading ? (
-          <div className="flex justify-center items-center py-24">
-            <span className="font-mono text-xs animate-pulse text-neutral-500">
-              FETCHING POPULAR PRODUCTS...
-            </span>
-          </div>
-        ) : topTenProducts.length === 0 ? (
-          <div className="border-4 border-black p-12 text-center bg-white space-y-3 shadow-[4px_4px_0px_0px_#000000]">
-            <p className="font-mono text-xs font-bold uppercase text-neutral-500">No products available</p>
-          </div>
-        ) : (
-          <div className="relative flex items-center px-4 md:px-12 w-full">
-            {/* Left Scroll Arrow */}
-            <button
-              onClick={handlePrevSlide}
-              className="absolute left-0 z-10 p-3 border-4 border-black bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all font-bold"
-              aria-label="Previous Products"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-
-            {/* Carousel Viewport */}
-            <div className="overflow-hidden w-full py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 transition-all duration-300">
-                {visibleProducts.map((prod) => (
-                  <Link
-                    key={prod.id}
-                    to={`/products/${prod.id}`}
-                    onClick={async () => {
-                      await incrementProductClick(prod.id);
-                    }}
-                    className="group bg-white border-4 border-black hover:shadow-[8px_8px_0px_0px_#000000] transition-all flex flex-col h-full"
-                    id={`product-card-${prod.id}`}
-                  >
-                    {/* Square main product image, transitions to secondary image on hover */}
-                    <div className="aspect-square border-b-4 border-black bg-neutral-100 overflow-hidden relative">
-                      <img
-                        src={prod.images[0]}
-                        alt={prod.name}
-                        referrerPolicy="no-referrer"
-                        className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
-                          prod.images[1] ? "group-hover:opacity-0" : ""
-                        }`}
-                      />
-                      {prod.images[1] && (
-                        <img
-                          src={prod.images[1]}
-                          alt={`${prod.name} secondary view`}
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-300"
-                        />
-                      )}
-                      <span className="absolute top-2 left-2 bg-white text-black text-[9px] font-mono font-bold px-1.5 py-0.5 border-2 border-black uppercase">
-                        {prod.category}
-                      </span>
-                      {/* Popularity indicator */}
-                      {profile?.role === "Admin" && (
-                        <span className="absolute bottom-2 right-2 bg-yellow-400 text-black text-[9px] font-mono font-bold px-1.5 py-0.5 border-2 border-black uppercase flex items-center space-x-1">
-                          <span>🔥 {prod.clicks || 0} clicks</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Product descriptions */}
-                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                      <div>
-                        <div className="flex items-center space-x-1.5 mb-1.5">
-                          {prod.storeLogo && (
-                            <img
-                              src={prod.storeLogo}
-                              alt={prod.storeName}
-                              className="w-4 h-4 rounded-full border border-black object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                          )}
-                          <span className="font-mono text-[10px] text-neutral-500 uppercase">
-                            {prod.storeName}
-                          </span>
-                        </div>
-                        <h3 className="font-display font-bold text-sm text-black group-hover:underline uppercase leading-snug line-clamp-2">
-                          {prod.name}
-                        </h3>
-                      </div>
-
-                      <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-black">
-                          {prod.price.toLocaleString()} {prod.currency}
-                        </span>
-                        <div className="flex items-center text-[10px] font-mono text-neutral-400 group-hover:text-black font-bold uppercase transition-colors">
-                          <span>EXPLORE</span>
-                          <ChevronRight className="w-3.5 h-3.5 ml-0.5 group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              ))}
             </div>
-
-            {/* Right Scroll Arrow */}
-            <button
-              onClick={handleNextSlide}
-              className="absolute right-0 z-10 p-3 border-4 border-black bg-white text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all font-bold"
-              aria-label="Next Products"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* 3. CULTURAL ROUTE EXPLORER SECTION (Comes last) */}
-      <section id="route-explorer" className="py-12 px-4 md:px-8 max-w-7xl mx-auto w-full">
-        <div className="border-b-4 border-black pb-4 mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <h2 className="font-display font-black text-2xl md:text-3xl uppercase tracking-tight flex items-center space-x-2 text-black">
-              <Map className="w-6 h-6 shrink-0" />
-              <span>Cultural Route Explorer</span>
-            </h2>
-            <p className="text-xs font-mono text-neutral-500 uppercase mt-1">
-              Explore bespoke heritage walks
-            </p>
-          </div>
-
-          {profile?.role === "Admin" && activeRoute && (
-            <button
-              onClick={() => {
-                setIsEditingRoute(!isEditingRoute);
-                setIsAddingPin(false);
-              }}
-              className="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black font-mono text-xs font-bold uppercase py-1.5 px-3 flex items-center space-x-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all z-10 shrink-0"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>{isEditingRoute ? "EXIT MAP EDITOR" : "EDIT ACTIVE ROUTE MAP"}</span>
-            </button>
-          )}
-        </div>
-
-        {/* Route Swappable Cards Map block */}
-        <div className="bg-white border-4 border-black p-4 md:p-8 shadow-[6px_6px_0px_0px_#000000] space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-black pb-3 gap-4">
-            <span className="font-mono text-xs font-bold uppercase text-neutral-500">
-              SELECT CURATED PATHWAY:
-            </span>
-            
-            {/* Route switches */}
-            <div className="flex border-2 border-black self-start sm:self-auto bg-neutral-100 flex-wrap">
-              {routes.map((route) => {
-                const isActive = selectedRouteId === route.id;
-                return (
-                  <button
-                    key={route.id}
-                    onClick={() => {
-                      setSelectedRouteId(route.id);
-                      if (route.stops.length > 0) {
-                        setSelectedStop(route.stops[0]);
-                      }
-                      triggerWebhook("TOURIST_ROUTE_SELECTED", {
-                        routeId: route.id,
-                        routeName: route.name,
-                        stopCount: route.stops.length
-                      });
-                    }}
-                    className={`px-3 py-1.5 font-mono text-[10px] font-bold uppercase transition-all ${
-                      isActive ? "bg-black text-white" : "hover:bg-neutral-200 text-black"
-                    }`}
-                  >
-                    {route.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Admin editing top settings */}
-          {isEditingRoute && (
-            <div className="bg-yellow-50 border-2 border-black p-4 font-mono text-xs text-black space-y-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              <div className="flex items-center space-x-2 text-yellow-800">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="font-bold uppercase">Route Editor Mode Active</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="block font-bold uppercase text-[10px]">Route Display Name</label>
-                  <input
-                    type="text"
-                    value={activeRouteName}
-                    onChange={(e) => setActiveRouteName(e.target.value)}
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none bg-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block font-bold uppercase text-[10px]">Map Image background Upload / URL</label>
-                  <ImageUploader 
-                    id="route-map-upload"
-                    onUploadComplete={(url) => setActiveRouteMapUrl(url)}
-                  />
-                  <input
-                    type="text"
-                    value={activeRouteMapUrl}
-                    onChange={(e) => setActiveRouteMapUrl(e.target.value)}
-                    placeholder="Or paste map image URL..."
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none bg-white mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeRoute ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
-              {/* Visual Brutalist Map Mockup */}
-              <div 
-                onClick={(e) => {
-                  if (profile?.role !== "Admin" || !isEditingRoute) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-                  const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-                  setNewPinX(x);
-                  setNewPinY(y);
-                  setIsAddingPin(true);
-                }}
-                className={`lg:col-span-7 border-4 border-black bg-neutral-50 h-72 md:h-[450px] relative overflow-hidden flex items-center justify-center p-4 transition-all ${
-                  isEditingRoute ? "cursor-crosshair border-yellow-500 bg-neutral-100" : ""
-                }`}
+          ) : loadError ? (
+            <div className="px-5 py-6 md:px-8">
+              <p className="m-0 text-base font-medium">Không tải được danh sách.</p>
+              <p className="mt-1 text-sm text-ink/60">Thử lại sau vài giây.</p>
+              <button
+                onClick={loadData}
+                className="mt-4 inline-flex items-center min-h-11 rounded-md bg-brand px-6 text-paper label transition-colors hover:bg-brand-deep"
               >
-                {/* Background Map Image or Grid lines */}
-                {activeRouteMapUrl ? (
-                  <img 
-                    src={activeRouteMapUrl} 
-                    alt="Route Map schema" 
-                    className="absolute inset-0 w-full h-full object-cover pointer-events-none" 
-                    referrerPolicy="no-referrer" 
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:16px_16px]"></div>
-                )}
-                
-                {/* Connected Path Graphic lines */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                  <polyline
-                    points={(isEditingRoute ? activeRouteStops : activeRoute.stops).map(s => `${s.x}%,${s.y}%`).join(" ")}
-                    fill="none"
-                    stroke="#000"
-                    strokeWidth="3"
-                    strokeDasharray="4,4"
-                  />
-                </svg>
+                Thử lại
+              </button>
+            </div>
+          ) : railProducts.length === 0 ? (
+            <div className="px-5 py-6 md:px-8">
+              <p className="m-0 text-base font-medium">Kho đang trống.</p>
+              <p className="mt-1 text-sm text-ink/60">
+                Chưa có sản phẩm nào được duyệt. Quay lại sau nhé.
+              </p>
+            </div>
+          ) : (
+            <FilmStrip products={railProducts} />
+          )}
+        </div>
 
-                {/* Stops pins on canvas map */}
-                {(isEditingRoute ? activeRouteStops : activeRoute.stops).map((stop, idx) => {
-                  const isSelected = selectedStop?.id === stop.id;
+        <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
+          <p className="m-0 max-w-[42ch] text-[0.8125rem] leading-normal text-ink/60">
+            Giá tham khảo · cập nhật 08/2026. Giá cuối do shop quyết định.
+          </p>
+          <Link
+            to="/products"
+            className="inline-flex items-center justify-center min-h-11 rounded-md bg-brand px-6 text-paper label whitespace-nowrap transition-colors hover:bg-brand-deep"
+          >
+            Xem tất cả sản phẩm
+          </Link>
+        </div>
+      </section>
+
+      {/* ============ DISCOVERY ROUTE ============ */}
+      <section id="lotrinh" className="relative overflow-hidden bg-brand-deep py-16 md:py-24 scroll-mt-20">
+        <ArcTopRight
+          className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-25"
+          style={{ width: "clamp(9rem, 22vw, 20rem)" }}
+        />
+
+        <div className="relative z-10 mx-auto max-w-7xl px-5 md:px-8">
+          <p className="m-0 label text-wave">Lộ trình khám phá</p>
+          <h2 className="mt-3 m-0 text-[1.75rem] md:text-[2rem] font-medium leading-tight">
+            Hành trình khám phá
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm md:text-base leading-relaxed text-white/88">
+            Vài buổi đi bộ quanh thành phố, ghép từ những xưởng và cửa hiệu đáng ghé.
+          </p>
+
+          {loadError ? (
+            <div className="mt-8">
+              <p className="m-0 text-base font-medium">Không tải được lộ trình.</p>
+              <button
+                onClick={loadData}
+                className="mt-4 inline-flex items-center min-h-11 rounded-md bg-paper px-6 text-brand label hover:bg-wave hover:text-ink transition-colors"
+              >
+                Thử lại
+              </button>
+            </div>
+          ) : !loading && routes.length === 0 ? (
+            <p className="mt-8 text-sm text-white/80">Tí đang dựng những tuyến đầu tiên.</p>
+          ) : (
+            <>
+              <div className="mt-8 flex flex-wrap items-center gap-2">
+                {routes.map((route, idx) => {
+                  const isActive = selectedRouteId === route.id;
                   return (
                     <button
-                      key={stop.id}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedStop(stop);
+                      key={route.id}
+                      onClick={() => {
+                        setSelectedRouteId(route.id);
+                        setSelectedStop(route.stops[0] ?? null);
+                        triggerWebhook("TOURIST_ROUTE_SELECTED", {
+                          routeId: route.id,
+                          routeName: route.name,
+                          stopCount: route.stops.length,
+                        });
                       }}
-                      style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-                      className="absolute transform -translate-x-1/2 -translate-y-1/2 group z-10"
+                      aria-pressed={isActive}
+                      className={`grid h-11 w-11 place-items-center rounded-md border text-sm tabular-nums transition-colors ${
+                        isActive
+                          ? "border-wave bg-wave text-ink"
+                          : "border-white/30 text-paper hover:border-paper"
+                      }`}
+                      title={route.name}
                     >
-                      {/* Ring */}
-                      <div className={`w-8 h-8 rounded-full border-2 border-black flex items-center justify-center transition-all ${
-                        isSelected ? "bg-black text-white scale-125" : "bg-white hover:bg-neutral-200 text-black shadow-xs"
-                      }`}>
-                        <span className="font-mono text-[10px] font-bold">{idx + 1}</span>
-                      </div>
-                      {/* Tooltip text on map */}
-                      <span className="absolute left-1/2 -translate-x-1/2 top-9 bg-black text-white text-[8px] font-mono px-1 py-0.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase">
-                        {stop.name}
-                      </span>
+                      {idx + 1}
                     </button>
                   );
                 })}
-
-                {isEditingRoute && (
-                  <div className="absolute top-2 left-2 bg-yellow-400 text-black border border-black font-mono text-[9px] font-bold px-2 py-1 uppercase tracking-wider z-20 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                    PIN MODE: Click map schematic to drop a pin
-                  </div>
+                {activeRoute?.description && (
+                  <span className="ml-2 label text-white/80">{activeRoute.description}</span>
                 )}
               </div>
 
-              {/* Stop Specific Information Sidebar details */}
-              <div className="lg:col-span-5 flex flex-col justify-between border-4 border-black p-6 bg-neutral-50 space-y-6">
-                
-                {isEditingRoute ? (
-                  /* Route stops administrator / inline editor */
-                  <div className="space-y-4 flex-1 flex flex-col justify-between">
-                    
-                    {isAddingPin ? (
-                      /* Adding stop form */
-                      <div className="space-y-3 font-mono text-black border-2 border-black p-3 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                        <div className="flex justify-between items-center border-b border-black pb-1.5">
-                          <span className="text-[10px] font-bold text-yellow-600 uppercase">ADD PIN ({newPinX}%, {newPinY}%)</span>
-                          <button 
-                            type="button"
-                            onClick={() => setIsAddingPin(false)}
-                            className="text-[9px] font-bold uppercase text-neutral-400 hover:text-black"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+              <div className="mt-8 grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:gap-12">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-white/22 bg-brand md:aspect-[16/10]">
+                  <svg viewBox="0 0 320 240" aria-hidden="true" className="h-full w-full">
+                    <path
+                      d="M0 60h320M0 120h320M0 180h320M80 0v240M160 0v240M240 0v240"
+                      stroke="var(--color-paper)"
+                      strokeWidth="1"
+                      opacity=".14"
+                    />
+                  </svg>
 
-                        <div className="space-y-1">
-                          <label className="block text-[9px] font-bold uppercase">Stop Name *</label>
-                          <input 
-                            type="text"
-                            value={newPinName}
-                            onChange={(e) => setNewPinName(e.target.value)}
-                            placeholder="e.g. Traditional Craft Boutique"
-                            className="w-full border-2 border-black p-1.5 text-xs bg-neutral-50 font-mono"
-                          />
-                        </div>
+                  {activeRoute && activeRoute.stops.length > 1 && (
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 h-full w-full"
+                    >
+                      <polyline
+                        points={activeRoute.stops.map((s) => `${s.x},${s.y}`).join(" ")}
+                        fill="none"
+                        stroke="var(--color-wave)"
+                        strokeWidth="0.7"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    </svg>
+                  )}
 
-                        <div className="space-y-1">
-                          <label className="block text-[9px] font-bold uppercase">Maps link / Address *</label>
-                          <input 
-                            type="text"
-                            value={newPinAddress}
-                            onChange={(e) => setNewPinAddress(e.target.value)}
-                            placeholder="Address text or full google maps link..."
-                            className="w-full border-2 border-black p-1.5 text-xs bg-neutral-50 font-mono"
-                          />
-                        </div>
+                  {activeRoute?.stops.map((stop, idx) => {
+                    const isSelected = selectedStop?.id === stop.id;
+                    return (
+                      <button
+                        key={stop.id}
+                        onClick={() => setSelectedStop(stop)}
+                        aria-pressed={isSelected}
+                        aria-label={`Điểm dừng ${idx + 1}: ${stop.name}`}
+                        style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
+                        className={`absolute grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border text-xs font-medium tabular-nums transition-colors ${
+                          isSelected
+                            ? "border-ink bg-wave text-ink"
+                            : "border-wave bg-brand-deep text-wave hover:bg-wave hover:text-ink"
+                        }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
 
-                        <div className="space-y-1">
-                          <label className="block text-[9px] font-bold uppercase">Description *</label>
-                          <textarea 
-                            value={newPinDescription}
-                            onChange={(e) => setNewPinDescription(e.target.value)}
-                            placeholder="Artisan history or details..."
-                            rows={3}
-                            className="w-full border-2 border-black p-1.5 text-xs bg-neutral-50 font-mono"
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!newPinName.trim() || !newPinAddress.trim()) {
-                              alert("Name and Address/Maps URL are required!");
-                              return;
-                            }
-                            const newStop: RouteStop = {
-                              id: "stop_" + Date.now(),
-                              name: newPinName.trim(),
-                              address: newPinAddress.trim(),
-                              description: newPinDescription.trim(),
-                              x: newPinX,
-                              y: newPinY
-                            };
-                            setActiveRouteStops([...activeRouteStops, newStop]);
-                            setNewPinName("");
-                            setNewPinAddress("");
-                            setNewPinDescription("");
-                            setIsAddingPin(false);
-                          }}
-                          className="w-full py-2 bg-black text-white hover:bg-neutral-800 border-2 border-black uppercase text-[10px] font-bold flex items-center justify-center space-x-1"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Stop Pin Checkpoint</span>
-                        </button>
-                      </div>
-                    ) : (
-                      /* Stop manager scroll view */
-                      <div className="space-y-3 flex-1 flex flex-col justify-between">
-                        <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1">
-                          <span className="text-[10px] font-bold uppercase text-neutral-400 tracking-wider block border-b border-neutral-200 pb-1.5">
-                            MANAGE TIMELINE STOPS
-                          </span>
-
-                          {activeRouteStops.length === 0 ? (
-                            <p className="text-xs text-neutral-400 italic">No pins placed yet. Click on the map schematic to drop a checkpoint pin!</p>
-                          ) : (
-                            <div className="space-y-3">
-                              {activeRouteStops.map((stop, idx) => (
-                                <div key={stop.id} className="border-2 border-black p-2.5 bg-white space-y-1.5 relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-black">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold">STOP #{idx + 1}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const updated = activeRouteStops.filter(s => s.id !== stop.id);
-                                        setActiveRouteStops(updated);
-                                      }}
-                                      className="text-red-500 hover:text-red-700 p-1 border border-transparent hover:border-red-500"
-                                      title="Delete stop pin"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-
-                                  <input 
-                                    type="text"
-                                    value={stop.name}
-                                    onChange={(e) => {
-                                      const updated = activeRouteStops.map(s => s.id === stop.id ? { ...s, name: e.target.value } : s);
-                                      setActiveRouteStops(updated);
-                                    }}
-                                    placeholder="Stop Name..."
-                                    className="w-full border border-black p-1 text-[11px] font-mono focus:outline-none"
-                                  />
-
-                                  <input 
-                                    type="text"
-                                    value={stop.address}
-                                    onChange={(e) => {
-                                      const updated = activeRouteStops.map(s => s.id === stop.id ? { ...s, address: e.target.value } : s);
-                                      setActiveRouteStops(updated);
-                                    }}
-                                    placeholder="Maps link or Address..."
-                                    className="w-full border border-black p-1 text-[11px] font-mono focus:outline-none"
-                                  />
-
-                                  <textarea 
-                                    value={stop.description}
-                                    onChange={(e) => {
-                                      const updated = activeRouteStops.map(s => s.id === stop.id ? { ...s, description: e.target.value } : s);
-                                      setActiveRouteStops(updated);
-                                    }}
-                                    placeholder="Description..."
-                                    rows={2}
-                                    className="w-full border border-black p-1 text-[11px] font-mono focus:outline-none"
-                                  />
-
-                                  <div className="grid grid-cols-2 gap-2 text-[8px] font-mono text-neutral-400 uppercase">
-                                    <div>X: <input type="number" value={stop.x} onChange={(e) => {
-                                      const updated = activeRouteStops.map(s => s.id === stop.id ? { ...s, x: Number(e.target.value) } : s);
-                                      setActiveRouteStops(updated);
-                                    }} className="w-10 border border-black p-0.5 ml-1 text-center font-mono text-black" />%</div>
-                                    <div>Y: <input type="number" value={stop.y} onChange={(e) => {
-                                      const updated = activeRouteStops.map(s => s.id === stop.id ? { ...s, y: Number(e.target.value) } : s);
-                                      setActiveRouteStops(updated);
-                                    }} className="w-10 border border-black p-0.5 ml-1 text-center font-mono text-black" />%</div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="pt-3 border-t-2 border-black flex space-x-2">
+                <div>
+                  <ol className="m-0 list-none p-0">
+                    {activeRoute?.stops.map((stop, idx) => {
+                      const isSelected = selectedStop?.id === stop.id;
+                      return (
+                        <li key={stop.id} className="border-b border-white/22">
                           <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const routeRef = doc(db, "routes", activeRoute.id);
-                                const updatedRouteData = {
-                                  id: activeRoute.id,
-                                  name: activeRouteName,
-                                  description: activeRoute.description || "",
-                                  mapImageUrl: activeRouteMapUrl,
-                                  stops: activeRouteStops
-                                };
-                                await setDoc(routeRef, updatedRouteData);
-
-                                setRoutes(routes.map(r => r.id === activeRoute.id ? updatedRouteData : r));
-                                setIsEditingRoute(false);
-                                if (activeRouteStops.length > 0) {
-                                  setSelectedStop(activeRouteStops[0]);
-                                } else {
-                                  setSelectedStop(null);
-                                }
-
-                                triggerWebhook("TOURIST_ROUTE_UPDATED", {
-                                  routeId: activeRoute.id,
-                                  routeName: activeRouteName,
-                                  stopsCount: activeRouteStops.length,
-                                  timestamp: new Date().toISOString()
-                                });
-                              } catch (err) {
-                                console.error("Error saving route changes:", err);
-                              }
-                            }}
-                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-[10px] border-2 border-black flex items-center justify-center space-x-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                            onClick={() => setSelectedStop(stop)}
+                            className="group flex w-full items-start gap-3 py-4 text-left"
                           >
-                            <Save className="w-3.5 h-3.5" />
-                            <span>Save Route Changes</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditingRoute(false);
-                              setIsAddingPin(false);
-                              setActiveRouteName(activeRoute.name || "");
-                              setActiveRouteMapUrl(activeRoute.mapImageUrl || "");
-                              setActiveRouteStops(activeRoute.stops || []);
-                            }}
-                            className="px-3 py-2 bg-white hover:bg-neutral-100 text-black border-2 border-black text-[10px] uppercase font-bold"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* Standard read-only timeline */
-                  <>
-                    <div className="space-y-4">
-                      <span className="font-mono text-[9px] uppercase font-bold text-neutral-400 tracking-widest block">
-                        ROUTE TIMELINE // LOCAL VISITS
-                      </span>
-                      
-                      {selectedStop ? (
-                        <div className="space-y-3">
-                          <div className="flex items-start space-x-1.5">
-                            <MapPin className="w-4 h-4 text-black shrink-0 mt-0.5" />
-                            <h3 className="font-display font-black text-base uppercase text-black leading-tight">
-                              {selectedStop.name}
-                            </h3>
-                          </div>
-                          <div className="font-mono text-[10px] text-neutral-500 uppercase leading-normal">
-                            <a 
-                              href={selectedStop.address.startsWith("http") ? selectedStop.address : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedStop.address)}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="hover:underline text-emerald-600 font-bold flex items-center gap-1"
-                            >
-                              {selectedStop.address} ↗
-                            </a>
-                          </div>
-                          <p className="text-xs text-neutral-700 leading-relaxed pt-2">
-                            {selectedStop.description}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-neutral-400 italic">
-                          Select a numerical checkpoint pin on the schematic to reveal details.
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Steps Progress List */}
-                    <div className="border-t-2 border-black pt-4">
-                      <p className="font-mono text-[9px] font-bold uppercase text-neutral-400 mb-2">
-                        STOPS TIMELINE
-                      </p>
-                      <div className="flex flex-col space-y-1">
-                        {activeRoute.stops.map((stop, idx) => {
-                          const isSelected = selectedStop?.id === stop.id;
-                          return (
-                            <button
-                              key={stop.id}
-                              onClick={() => setSelectedStop(stop)}
-                              className={`text-left text-[11px] font-mono px-2 py-1.5 flex items-center justify-between border border-transparent transition-all ${
-                                isSelected ? "bg-black text-white font-bold border-black" : "hover:bg-neutral-200 text-black"
+                            <span
+                              className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs tabular-nums transition-colors ${
+                                isSelected ? "border-wave bg-wave text-ink" : "border-wave text-wave"
                               }`}
                             >
-                              <span>{idx + 1}. {stop.name}</span>
-                              <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
+                              {idx + 1}
+                            </span>
+                            <span>
+                              <span className="block text-base leading-tight transition-colors group-hover:text-wave">
+                                {stop.name}
+                              </span>
+                              {isSelected && stop.address && (
+                                <a
+                                  href={
+                                    stop.address.startsWith("http")
+                                      ? stop.address
+                                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address)}`
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-1 inline-flex min-h-11 items-center gap-1 label text-wave hover:underline"
+                                >
+                                  Mở bản đồ
+                                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                </a>
+                              )}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
 
+                  <Link
+                    to="/stores"
+                    className="mt-6 inline-flex items-center gap-2 min-h-11 label text-wave hover:underline"
+                  >
+                    Xem chi tiết lộ trình
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </div>
               </div>
-
-            </div>
-          ) : (
-            <p className="text-center text-xs font-mono text-neutral-400 animate-pulse py-12">
-              Loading cultural map data...
-            </p>
+            </>
           )}
         </div>
-
-        {/* Global Footer element */}
-        <footer className="mt-16 pt-8 border-t-2 border-black flex flex-col md:flex-row justify-between items-center text-[10px] font-mono text-neutral-500 uppercase gap-4">
-          <span>© 2026 TÍ COOLTURE TRADING PLATFORM</span>
-          <div className="flex space-x-4">
-            <Link to="/auth-gateway" className="hover:text-black hover:underline">Auth Portal</Link>
-            <Link to="/shop-dashboard" className="hover:text-black hover:underline">Artisan Panel</Link>
-            <span>v1.0.0-MVP</span>
-          </div>
-        </footer>
       </section>
 
-      {/* 4. RANDOM CURATED PRODUCT POP-UP GEMS (Toggle window on the lower third of the right side) */}
-      <AnimatePresence>
-        {isGemOpen && curatedProduct && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-1/3 right-6 z-40 w-80 bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000000] p-4 flex flex-col space-y-3 font-sans text-black"
+      {/* ============ COLLECTIONS ============ */}
+      <section className="py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-5 md:px-8">
+          <h2 className="display m-0 text-center text-[2rem] md:text-[2.5rem] leading-tight normal-case">
+            Bộ sưu tập
+          </h2>
+
+          <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
+            {collections.map((collection, idx) => (
+              <Link
+                key={collection.id}
+                to="/products"
+                className={`group relative overflow-hidden rounded-lg border border-white/20 transition-colors hover:border-wave ${
+                  idx === 0 ? "lg:col-span-2 lg:row-span-2" : ""
+                }`}
+              >
+                <div className={`overflow-hidden bg-paper-warm ${idx === 0 ? "aspect-[16/10]" : "aspect-[3/2]"}`}>
+                  <img
+                    src={collection.coverUrl}
+                    alt=""
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
+                  />
+                </div>
+                <div className="p-5">
+                  <h3 className="m-0 text-lg font-medium leading-snug transition-colors group-hover:text-wave">
+                    {collection.title}
+                  </h3>
+                  <p className="mt-1.5 m-0 text-sm leading-relaxed text-white/80">
+                    {collection.description}
+                  </p>
+                  <p className="mt-3 m-0 label text-wave">{collection.productCount} sản phẩm</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ HIDDEN GEMS ============ */}
+      {gem && (
+        <>
+          <button
+            onClick={() => {
+              setIsGemOpen(true);
+              triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
+            }}
+            className={`fixed right-0 top-1/2 z-40 grid h-14 w-11 -translate-y-1/2 place-items-center rounded-l-lg bg-brand-deep/90 backdrop-blur-sm transition-transform hover:-translate-x-1 ${
+              isGemOpen ? "hidden" : ""
+            }`}
+            aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
           >
-            {/* Popup Header */}
-            <div className="flex justify-between items-start border-b border-black pb-2">
-              <div className="flex items-center space-x-1.5 text-black">
-                <Sparkles className="w-3.5 h-3.5 animate-pulse text-black" />
-                <span className="font-mono text-[9px] font-bold uppercase tracking-wider">
-                  ARTISAN GEM HIGHLIGHT
+            {/* four-point sparkle, breathing */}
+            <svg viewBox="0 0 24 24" className="gem-star h-6 w-6" aria-hidden="true">
+              <path fill="var(--color-paper)" d="M12.0,1.0L14.59,8.44L22.46,8.6L16.18,13.36L18.47,20.9L12.0,16.4L5.53,20.9L7.82,13.36L1.54,8.6L9.41,8.44Z" />
+            </svg>
+          </button>
+
+          {isGemOpen && (
+            <div className="gem-card fixed bottom-4 right-4 z-40 w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-2xl bg-paper text-ink shadow-[0_20px_60px_rgba(18,8,31,0.35)] md:bottom-8 md:right-8">
+              <div className="relative aspect-[4/3] bg-paper-warm">
+                <img
+                  src={gem.product.images[0]}
+                  alt={gem.product.name}
+                  className="h-full w-full object-cover"
+                />
+                <button
+                  onClick={() => setIsGemOpen(false)}
+                  className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full bg-ink/55 text-paper backdrop-blur-sm transition-colors hover:bg-ink"
+                  aria-label="Đóng"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  triggerWebhook("CURATED_GEM_CLICKED", { productId: gem.product.id });
+                  navigate(`/products/${gem.product.id}`);
+                }}
+                className="block w-full p-5 text-left transition-colors hover:bg-paper-warm"
+              >
+                <span className="inline-flex items-center rounded-full bg-wave/25 px-3 py-1 text-xs font-medium text-wave-ink">
+                  Cái này hay nè
                 </span>
-              </div>
-              <button
-                onClick={() => {
-                  setIsGemOpen(false);
-                  triggerWebhook("CURATED_POPUP_MINIMIZED", { productId: curatedProduct.id });
-                }}
-                className="p-0.5 hover:bg-neutral-200 border border-transparent hover:border-black"
-                title="Minimize gem"
-              >
-                <X className="w-3.5 h-3.5 text-black" />
+                <span className="mt-3 block text-lg font-medium leading-snug">
+                  {gem.product.name}
+                </span>
+                <span className="mt-0.5 block text-sm text-ink/60">{gem.product.storeName}</span>
+                <span className="mt-2 block text-base font-medium tabular-nums text-brand">
+                  {formatPrice(gem.product.price)}
+                </span>
               </button>
             </div>
-
-            {/* Popup Body */}
-            <div className="flex space-x-3">
-              <img
-                src={curatedProduct.images[0]}
-                alt={curatedProduct.name}
-                referrerPolicy="no-referrer"
-                className="w-16 h-16 object-cover border-2 border-black flex-shrink-0"
-              />
-              <div className="space-y-1 overflow-hidden">
-                <p className="font-mono text-[9px] text-neutral-400 uppercase truncate">
-                  {curatedProduct.storeName}
-                </p>
-                <h4 className="font-display font-bold text-xs uppercase leading-tight line-clamp-2 text-black">
-                  {curatedProduct.name}
-                </h4>
-                <p className="font-mono text-[10px] font-bold text-black">
-                  {curatedProduct.price.toLocaleString()} {curatedProduct.currency}
-                </p>
-              </div>
-            </div>
-
-            {/* Popup Action */}
-            <div className="flex space-x-2 pt-1">
-              <button
-                onClick={() => {
-                  triggerWebhook("CURATED_POPUP_CLICKED", {
-                    productId: curatedProduct.id,
-                    productName: curatedProduct.name,
-                    storeId: curatedProduct.storeId,
-                    storeName: curatedProduct.storeName
-                  });
-                  navigate(`/products/${curatedProduct.id}`);
-                }}
-                className="flex-1 bg-black text-white hover:bg-white hover:text-black border border-black py-1.5 text-[10px] font-mono font-bold uppercase transition-all text-center flex items-center justify-center space-x-1"
-              >
-                <span>EXPLORE GEM</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Gem Toggle Trigger when minimized */}
-      {!isGemOpen && curatedProduct && (
-        <button
-          onClick={() => setIsGemOpen(true)}
-          className="fixed bottom-1/3 right-6 z-40 bg-black text-white hover:bg-neutral-800 border-4 border-black shadow-[4px_4px_0px_0px_#000000] px-4 py-2.5 font-mono text-xs font-bold uppercase flex items-center space-x-2 transition-all cursor-pointer"
-        >
-          <Sparkles className="w-4 h-4 text-yellow-400 animate-bounce" />
-          <span>Show Explore Gem 💎</span>
-        </button>
+          )}
+        </>
       )}
-
     </div>
   );
 }

@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail
-} from "firebase/auth";
-import { query, collection, where, getDocs } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
 import { useAuth } from "../lib/useAuth";
-import { resetUserPassword } from "../lib/dbService";
+import { resetUserPassword, findUserByEmail } from "../lib/dbService";
 import { Shield, ArrowRight, Sparkles, Store, Compass } from "lucide-react";
 
 type AuthMode = "Select" | "UserForm" | "ShopForm";
@@ -69,19 +62,13 @@ export default function AuthGateway() {
     const mockUid = "mock_" + testEmail.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_");
 
     try {
-      // Attempt standard sign-in if possible, but fallback immediately to mock session on auth failure/disallowance
-      try {
-        await signInWithEmailAndPassword(auth, testEmail, "password123");
+      // No auth backend yet (Supabase Auth per SRS §3.1) — local session only.
+      if (loginAsMockUser) {
+        await loginAsMockUser(mockUid, testEmail);
+      } else {
         await refreshProfile();
-      } catch (firebaseErr: any) {
-        console.warn("Standard Firebase Auth failed/disabled. Falling back to local mock session.", firebaseErr);
-        if (loginAsMockUser) {
-          await loginAsMockUser(mockUid, testEmail);
-        } else {
-          throw firebaseErr;
-        }
       }
-      
+
       if (role === "User" || role === "Admin") {
         navigate("/user-profile");
       } else {
@@ -107,21 +94,15 @@ export default function AuthGateway() {
         return;
       }
       try {
-        const q = query(collection(db, "users"), where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
+        const existing = await findUserByEmail(email);
+        if (!existing) {
           setError("Account not found. Please sign up");
           setLoading(false);
           return;
         }
 
-        // Send actual reset email via Firebase Auth
-        try {
-          await sendPasswordResetEmail(auth, email);
-        } catch (authErr) {
-          console.warn("Firebase sendPasswordResetEmail failed.", authErr);
-        }
-
+        // No mail provider yet (Resend, per SRS §3.1). The reset link below is
+        // shown on screen instead of being emailed.
         setResetSent(true);
         setError(null);
       } catch (err: any) {
@@ -167,33 +148,25 @@ export default function AuthGateway() {
 
     try {
       if (formType === "Login") {
-        const q = query(collection(db, "users"), where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
+        const userData = await findUserByEmail(email);
+        if (!userData) {
           setError("Account not found. Please sign up");
           setLoading(false);
           return;
         }
 
-        const userData = querySnapshot.docs[0].data();
         if (userData.password && userData.password !== password) {
           setError("Invalid email or password.");
           setLoading(false);
           return;
         }
 
-        try {
-          await signInWithEmailAndPassword(auth, email, password);
+        if (loginAsMockUser) {
+          await loginAsMockUser(userData.id || mockUid, email, password);
+        } else {
           await refreshProfile();
-        } catch (firebaseErr: any) {
-          console.warn("Firebase sign-in failed. Activating mock session fallback.", firebaseErr);
-          if (loginAsMockUser) {
-            await loginAsMockUser(userData.id || mockUid, email, password);
-          } else {
-            throw firebaseErr;
-          }
         }
-        
+
         // Redirect logic
         if (mode === "ShopForm" || userData.role === "Shop") {
           navigate("/shop-dashboard");
@@ -209,21 +182,17 @@ export default function AuthGateway() {
           return;
         }
 
-        try {
-          await createUserWithEmailAndPassword(auth, registerEmail, password);
-          if (loginAsMockUser) {
-            const tempUid = auth.currentUser?.uid || mockUid;
-            await loginAsMockUser(tempUid, registerEmail, password);
-          } else {
-            await refreshProfile();
-          }
-        } catch (firebaseErr: any) {
-          console.warn("Firebase sign-up failed. Activating mock session fallback.", firebaseErr);
-          if (loginAsMockUser) {
-            await loginAsMockUser(mockUid, registerEmail, password);
-          } else {
-            throw firebaseErr;
-          }
+        const existing = await findUserByEmail(registerEmail);
+        if (existing) {
+          setError("This email is already registered. Please login instead.");
+          setLoading(false);
+          return;
+        }
+
+        if (loginAsMockUser) {
+          await loginAsMockUser(mockUid, registerEmail, password);
+        } else {
+          await refreshProfile();
         }
 
         if (mode === "ShopForm") {
@@ -605,7 +574,7 @@ export default function AuthGateway() {
             <div className="bg-neutral-50 border border-neutral-300 p-3 text-[10px] font-mono text-neutral-500 leading-relaxed">
               <span className="font-bold text-black">// CREDENTIAL SYSTEM OVERVIEW</span>
               <p className="mt-1">
-                Tí Coolture relies on standard Firebase Auth. For testing, you can use the auto-bypass seeder buttons on the gateway selection panel.
+                Chưa có hệ thống đăng nhập thật. Dùng các nút đăng nhập thử ở màn hình chọn vai trò — phiên đăng nhập chỉ lưu trên máy này.
               </p>
             </div>
           </div>

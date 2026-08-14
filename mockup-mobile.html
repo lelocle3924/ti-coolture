@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tí Coolture — Trang chủ (mobile 360px)</title>
+</head>
+<body>
+<!--
+THESIS: A curated catalogue that refuses the marketplace grid — violet owns the surface at 60% per the brand guidelines, and the product is the only white thing on the page. It rejects the white-ground editorial arrangement every "curated shop" ships.
+OWN-WORLD: #7520F7 violet ground, #FFFFFF relief, #39D6CF teal for the wave and marks only, #12081F ink close. DFVN Some Time Later (display, one weight, scale-only hierarchy) + Alexandria (everything read). Radius 2px, 1px hairlines, zero shadows.
+STORY: Something is being selected here, by someone with taste. The visitor scrolls objects, not listings, and leaves toward the maker's own channel.
+FIRST VIEWPORT: Violet fills the screen. Hero type at 15.5vw crops both edges, three lines, the drawn object interlocking between line 2 and 3. Primary action "Xem sản phẩm" sits under the subtitle, above the wave seam.
+FORM: Brief-pinned world (docs/01-ART-DIRECTION-BRIEF.md + BRAND-GUIDELINES), wireframed structure, impact mechanics from the dontboardme.com reference. No roll: pinned brief beats the roll.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
+
+<style>
+@font-face{
+  font-family:"DFVN Some Time Later";
+  src:url("fonts/DFVN-SomeTimeLater.woff2") format("woff2");
+  font-weight:400; font-style:normal; font-display:swap;
+}
+@font-face{
+  font-family:"Alexandria";
+  src:url("fonts/Alexandria-VariableFont_wght.woff2") format("woff2");
+  font-weight:100 900; font-style:normal; font-display:swap;
+}
+
+:root{
+  --ink:#12081F;
+  --paper:#FFFFFF;
+  --paper-warm:#FAF8FF;
+  --violet:#7520F7;
+  --violet-deep:#5A12C6;
+  --teal:#39D6CF;
+  --teal-ink:#0B7C77;
+
+  --display:"DFVN Some Time Later","Alexandria",system-ui,sans-serif;
+  --body:"Alexandria",system-ui,-apple-system,sans-serif;
+
+  --radius:2px;
+  --rule:1px solid rgba(18,8,31,.12);
+  --rule-light:1px solid rgba(255,255,255,.22);
+
+  --pad:20px;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+
+*,*::before,*::after{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0;
+  background:var(--violet);
+  color:var(--paper);
+  font-family:var(--body);
+  font-weight:400;
+  font-size:16px;
+  line-height:1.65;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+img,svg{display:block;max-width:100%;}
+a{color:inherit;text-decoration:none;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
+
+/* Vietnamese diacritics: DFVN's Ẫ reaches .977em above baseline and below-dot
+   caps drop under the baseline — uppercase VN spans ~1.18em. Never below 1.0. */
+.display{
+  font-family:var(--display);
+  font-weight:400;
+  text-transform:uppercase;
+  line-height:1.02;
+  letter-spacing:-.01em;
+}
+
+.label{
+  font-family:var(--body);
+  font-weight:500;
+  font-size:.6875rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  line-height:1.4;
+}
+
+.sample-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--body);font-weight:500;
+  font-size:.5625rem;letter-spacing:.14em;text-transform:uppercase;
+  white-space:nowrap;
+  padding:4px 8px;border-radius:var(--radius);
+  border:1px solid currentColor;
+  opacity:.75;
+}
+.sample-tag::before{
+  content:"";width:5px;height:5px;border-radius:50%;
+  background:currentColor;
+}
+
+/* ---------- header ---------- */
+.masthead{
+  position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;
+  padding:14px var(--pad);
+  background:var(--violet);
+  border-bottom:var(--rule-light);
+}
+.brandmark{width:72px;height:auto;}
+.brandmark .mark-teal{fill:var(--teal);}
+.brandmark .mark-violet{fill:var(--paper);}
+.masthead-right{display:flex;align-items:center;gap:14px;}
+.lang{display:flex;align-items:center;gap:5px;}
+.lang b{font-weight:600;}
+.lang span{opacity:.5;}
+.burger{
+  width:40px;height:40px;margin-right:-8px;
+  display:grid;place-items:center;
+}
+.burger svg{width:20px;height:14px;}
+.burger rect{fill:var(--paper);}
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative;
+  padding:34px 0 0;
+  overflow:hidden;
+}
+.hero-type{
+  position:relative;z-index:3;    /* type always reads in front of the object */
+  padding:0 var(--pad);
+}
+.hero-type h1{
+  margin:0;
+  font-size:clamp(3.8rem,20vw,6.4rem);
+  letter-spacing:-.02em;
+}
+.hero-line{display:block;}
+.hero-line--wide{
+  margin-left:-14px;      /* crop into the left edge */
+}
+.hero-line--quote{
+  color:var(--teal);
+}
+
+.hero-object{
+  position:absolute;
+  z-index:2;
+  right:-26px;
+  top:96px;
+  width:54%;
+  max-width:210px;
+  pointer-events:none;
+}
+.hero-copy{
+  position:relative;z-index:3;
+  padding:26px 96px 0 var(--pad);   /* clears the object's lower half */
+  max-width:34ch;
+}
+.hero-copy p{
+  margin:0;
+  font-size:.9375rem;
+  line-height:1.6;
+  color:rgba(255,255,255,.88);
+}
+.hero-actions{
+  position:relative;z-index:3;
+  display:flex;flex-wrap:wrap;gap:10px;
+  padding:20px var(--pad) 0;
+}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 22px;
+  white-space:nowrap;
+  border-radius:var(--radius);
+  font-family:var(--body);font-weight:500;
+  font-size:.8125rem;letter-spacing:.08em;text-transform:uppercase;
+  transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease),transform .15s var(--ease);
+}
+.btn--primary{background:var(--paper);color:var(--violet);}
+.btn--primary:active{transform:translateY(1px);background:var(--teal);color:var(--ink);}
+.btn--ghost{border:1px solid rgba(255,255,255,.5);color:var(--paper);}
+.btn--ghost:active{border-color:var(--paper);background:rgba(255,255,255,.1);}
+.btn--onlight{background:var(--violet);color:var(--paper);}
+.btn--onlight:active{background:var(--violet-deep);}
+.btn:focus-visible,a:focus-visible,button:focus-visible{
+  outline:2px solid var(--teal);outline-offset:3px;
+}
+
+/* ---------- wave seam ---------- */
+.seam{display:block;width:100%;height:auto;}
+.seam path{fill:none;stroke:var(--teal);stroke-width:2;}
+.seam--fill path{fill:var(--paper);stroke:none;}
+.seam--fill-violet path{fill:var(--violet);stroke:none;}
+.seam--fill-ink path{fill:var(--ink);stroke:none;}
+
+/* ---------- sections ---------- */
+.band{position:relative;}
+.band--paper{background:var(--paper);color:var(--ink);}
+.band--violet{background:var(--violet);color:var(--paper);}
+.band--ink{background:var(--ink);color:var(--paper);}
+
+.section-head{
+  padding:36px 46px 18px var(--pad);   /* right gutter clears the fixed gems tab */
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+}
+.section-head h2{
+  margin:0;
+  font-size:1.75rem;
+  max-width:12ch;
+}
+.band--paper .section-head h2{color:var(--ink);}
+
+/* ---------- product rail ---------- */
+.rail{
+  position:relative;
+  display:flex;gap:14px;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  padding:8px var(--pad) 30px;
+  scrollbar-width:none;
+}
+.rail::-webkit-scrollbar{display:none;}
+.rail-wave{
+  position:absolute;left:0;right:0;top:96px;
+  width:200%;height:40px;
+  pointer-events:none;opacity:.5;
+}
+.rail-wave path{fill:none;stroke:var(--teal);stroke-width:2;}
+
+.card{
+  position:relative;z-index:1;
+  flex:0 0 68vw;max-width:250px;
+  scroll-snap-align:start;
+}
+/* boats riding the wave — alternating offsets */
+.card:nth-child(odd){margin-top:0;}
+.card:nth-child(even){margin-top:16px;}
+
+.card-art{
+  position:relative;
+  aspect-ratio:1/1;
+  background:var(--paper-warm);
+  border:var(--rule);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+.card-art svg{width:100%;height:100%;}
+.card-save{
+  position:absolute;top:8px;right:8px;
+  width:36px;height:36px;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.92);
+  border:var(--rule);
+  border-radius:var(--radius);
+}
+.card-save svg{width:17px;height:17px;}
+.card-save path{fill:none;stroke:var(--ink);stroke-width:1.6;}
+.card-save[aria-pressed="true"]{background:var(--violet);border-color:var(--violet);}
+.card-save[aria-pressed="true"] path{fill:var(--paper);stroke:var(--paper);}
+
+.card-meta{padding:10px 2px 0;}
+.card-shop{
+  display:block;
+  color:var(--teal-ink);
+  font-weight:500;
+  font-size:.6875rem;letter-spacing:.12em;text-transform:uppercase;
+}
+.card-name{
+  margin:5px 0 0;
+  font-family:var(--body);
+  font-weight:400;font-size:1rem;line-height:1.35;
+  color:var(--ink);
+}
+.card-price{
+  margin:7px 0 0;
+  font-weight:500;font-size:.9375rem;
+  color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+/* synthetic stand-in copy: marked, never a filled block that fights the type */
+.placeholder-text{
+  border-bottom:1px dashed currentColor;
+  opacity:.72;
+}
+
+.rail-foot{
+  padding:0 var(--pad) 34px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.pricenote{
+  margin:0;
+  font-size:.75rem;line-height:1.5;
+  color:rgba(18,8,31,.62);
+  max-width:30ch;
+}
+
+/* ---------- routes ---------- */
+.routes{padding:0 var(--pad) 36px;}
+.map{
+  position:relative;
+  aspect-ratio:4/3;
+  background:var(--violet-deep);
+  border:var(--rule-light);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+.map svg{width:100%;height:100%;}
+.map-note{
+  position:absolute;left:10px;bottom:10px;
+  color:rgba(255,255,255,.72);
+}
+.stops{list-style:none;margin:18px 0 0;padding:0;}
+.stops li{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:13px 0;
+  border-top:var(--rule-light);
+}
+.stops li:last-child{border-bottom:var(--rule-light);}
+.stop-no{
+  flex:0 0 auto;
+  width:26px;height:26px;margin-top:2px;
+  display:grid;place-items:center;
+  border:1px solid var(--teal);
+  border-radius:50%;
+  color:var(--teal);
+  font-size:.75rem;font-weight:500;
+  font-variant-numeric:tabular-nums;
+}
+.stop-body strong{
+  display:block;font-weight:500;font-size:.9375rem;line-height:1.4;
+}
+.stop-body span{
+  font-size:.8125rem;color:rgba(255,255,255,.7);
+}
+
+/* ---------- gems ---------- */
+.gems{padding:0 var(--pad) 8px;}
+.gem{
+  padding:22px 0;
+  border-top:var(--rule);
+}
+.gem:first-child{border-top:0;}
+.gem blockquote{
+  margin:0;
+  font-family:var(--display);
+  text-transform:none;
+  font-size:1.375rem;line-height:1.28;
+  color:var(--ink);
+}
+.gem-from{
+  display:flex;align-items:center;gap:8px;
+  margin-top:12px;
+  color:var(--teal-ink);
+}
+.gem-from svg{width:22px;height:10px;flex:0 0 auto;}
+.gem-from path{fill:none;stroke:var(--teal-ink);stroke-width:1.6;}
+
+/* ---------- journal ---------- */
+.journal{padding:0 var(--pad) 34px;}
+.post{
+  display:block;
+  padding:18px 0;
+  border-top:var(--rule-light);
+}
+.post:last-child{border-bottom:var(--rule-light);}
+.post h3{
+  margin:0;
+  font-family:var(--body);font-weight:400;
+  font-size:1.0625rem;line-height:1.35;
+}
+.post .label{
+  display:block;margin-top:9px;
+  color:var(--teal);
+}
+
+/* ---------- footer ---------- */
+.footer{padding:34px var(--pad) 40px;}
+.footer .brandmark{width:88px;margin-bottom:20px;}
+.disclaimer{
+  margin:0 0 22px;
+  padding:14px;
+  border:var(--rule-light);
+  border-radius:var(--radius);
+  font-size:.8125rem;line-height:1.55;
+  color:rgba(255,255,255,.82);
+}
+.footer-nav{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;
+  margin-bottom:24px;
+}
+.footer-nav a{font-size:.875rem;color:rgba(255,255,255,.86);}
+.socials{display:flex;gap:8px;margin-bottom:24px;}
+.social{
+  width:44px;height:44px;
+  display:grid;place-items:center;
+  border:var(--rule-light);border-radius:var(--radius);
+  transition:border-color .15s var(--ease),background .15s var(--ease);
+}
+.social:active{background:rgba(255,255,255,.1);border-color:var(--paper);}
+.social svg{width:19px;height:19px;}
+.social path,.social rect,.social circle{
+  fill:none;stroke:var(--paper);stroke-width:1.5;
+}
+.colophon{
+  font-size:.75rem;line-height:1.6;
+  color:rgba(255,255,255,.55);
+}
+
+/* ---------- hidden gems edge tab ---------- */
+.gemtab{
+  position:fixed;z-index:70;
+  right:0;top:50%;
+  transform:translateY(-50%);
+  width:32px;padding:16px 0;
+  background:var(--teal);color:var(--ink);
+  border:0;border-radius:var(--radius) 0 0 var(--radius);
+  writing-mode:vertical-rl;
+  font-family:var(--body);font-weight:500;
+  font-size:.625rem;letter-spacing:.14em;text-transform:uppercase;
+}
+
+/* ---------- one authored moment ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .hero-line{
+    opacity:0;
+    transform:translateY(.16em);
+    animation:rise .62s var(--ease) forwards;
+  }
+  .hero-line:nth-child(1){animation-delay:.05s;}
+  .hero-line:nth-child(2){animation-delay:.11s;}
+  .hero-line:nth-child(3){animation-delay:.17s;}
+  .hero-object{
+    opacity:0;
+    animation:rise .7s var(--ease) .26s forwards;
+  }
+  .hero-copy,.hero-actions{
+    opacity:0;
+    animation:rise .6s var(--ease) .34s forwards;
+  }
+  .seam--draw path{
+    stroke-dasharray:1400;
+    stroke-dashoffset:1400;
+    animation:draw 1.1s var(--ease) .42s forwards;
+  }
+}
+@keyframes rise{to{opacity:1;transform:none;}}
+@keyframes draw{to{stroke-dashoffset:0;}}
+</style>
+
+<!-- ============ HEADER ============ -->
+<header class="masthead">
+  <a href="#" aria-label="Tí Coolture — trang chủ">
+    <svg class="brandmark" viewBox="0 0 82 50" role="img" aria-hidden="true">
+      <path class="mark-teal" d="M71.37,10.45,71.14.3C46.38,6.58,27,3.48,27,3.48V9.89l16.13,1-.5,38.87,4.49-2-1.3-35.41S60.67,12.67,71.37,10.45ZM67.3,5.09S65,8,60.24,7.05C60.24,7.05,61.92,4.61,67.3,5.09Z"/>
+      <path class="mark-teal" d="M69.19,39.88a2.88,2.88,0,0,0,.37-.53,2,2,0,0,0,.22-.6,5.48,5.48,0,0,0,0-1.56A19.2,19.2,0,0,0,69.44,35a8.84,8.84,0,0,0-.52-1.62,2.6,2.6,0,0,0-.79-1,2.41,2.41,0,0,0-1.22-.44,5.94,5.94,0,0,0-1.79.15l-1.21.28-1.55.41-1.9.51c.1.25.2.54.3.86s.2.64.3,1,.19.68.27,1,.15.62.21.88l.08.39c.06.32.13.68.2,1.08s.14.84.22,1.3.16.93.24,1.41.15,1,.22,1.41c.16,1.08.33,2.2.49,3.36l2.2-.41-.79-3.79,2.07-.43,2,4.53,4.08-1.11Zm-1.26-1.16a.68.68,0,0,1-.37.21l-2.17.4-1.1-5.74,2.17-.43a.51.51,0,0,1,.32.05.47.47,0,0,1,.23.23,7,7,0,0,1,.4,1.07c.13.42.23.79.29,1.09l.11.54c.06.3.12.67.17,1.1a8.2,8.2,0,0,1,.09,1.11A.57.57,0,0,1,67.93,38.72Z"/>
+      <path class="mark-teal" d="M21.91,34.4l-5.36-2-5,3.08-.49,9,3.28,2.69L20,46l2.71-10ZM20,41.75l-2.74,3a.22.22,0,0,1-.25.07l-3.07-.78a.22.22,0,0,1-.19-.21c-.08-.8-.18-1.59-.27-2.39,0-.4-.09-.8-.14-1.19,0-.11,0-.15.12-.15a2.63,2.63,0,0,0,.36,0q.06.54.12,1.05l.24,2.06s0,0,0,0c-.05.34.15.43.44.5.75.17,1.5.37,2.24.56a.17.17,0,0,0,.2-.06l2.37-2.6a.17.17,0,0,0,0-.21L18,37.25l-.39-1.12c0-.07,0-.12-.14-.12-.87.05-1.74.08-2.62.12l-.05,0c.18,1.86.37,3.73.56,5.58l1.72,0c-.08-1.22-.15-2.42-.23-3.65l-1.16.56-.22-.45,1.82-.87c0,.69.09,1.36.14,2,.06.89.11,1.79.17,2.68,0,.13,0,.17-.16.17L15,42.28h-.12c-.22-2.2-.44-4.4-.66-6.64l1.18,0,2.34-.09c.11,0,.16,0,.2.13.68,2,1.38,3.94,2.07,5.9A.17.17,0,0,1,20,41.75Z"/>
+      <path class="mark-violet" d="M48.52,20.92,48.75,31l2.8,1.49L52,20.92Zm4.34-5.65-4.49,2.39.68,1.62L54,17.69Z"/>
+      <path class="mark-violet" d="M11,32.11a2,2,0,0,0-.13-.62.37.37,0,0,0-.29-.27l-.77-.14-1.2-.21c-.46-.08-.95-.15-1.49-.2s-1.07-.1-1.61-.13-1.06,0-1.57,0a6.93,6.93,0,0,0-1.39.2,1.29,1.29,0,0,0-.7.4,1.35,1.35,0,0,0-.38.71l0,.13L.69,36.86c-.18,1-.33,2-.43,2.86L.17,40.87c0,.39,0,.75-.05,1.08a6.54,6.54,0,0,0,.05.92,1.77,1.77,0,0,0,.17.63,1.75,1.75,0,0,0,.72.6,11.76,11.76,0,0,0,1.33.57c.51.18,1.06.36,1.66.51s1.17.3,1.73.43,1.08.24,1.55.33.85.17,1.12.21a.42.42,0,0,0,.31-.06.39.39,0,0,0,.2-.25l1-3.9L6,40.88,5.64,43a.89.89,0,0,1-.19.36,1,1,0,0,1-.35.24,1.25,1.25,0,0,1-.59,0,3.8,3.8,0,0,1-1.15-.38,1,1,0,0,1-.58-.76,5.17,5.17,0,0,1,.06-1c.06-.49.14-1,.22-1.54s.23-1.32.37-2.07l.9-4.81a1.18,1.18,0,0,1,.22-.51A1,1,0,0,1,5,32.29a1.31,1.31,0,0,1,.76,0,3.41,3.41,0,0,1,.8.21,2.45,2.45,0,0,1,.49.27.9.9,0,0,1,.24.31.54.54,0,0,1,0,.26l-.41,2.45,3.6.59c.19-.92.34-1.74.43-2.49,0-.31.07-.62.09-.92A5.59,5.59,0,0,0,11,32.11Z"/>
+      <path class="mark-violet" d="M32.12,39c0-.34,0-.67,0-1s0-.61-.05-.88a5.5,5.5,0,0,0-.08-.69,5.89,5.89,0,0,0-.25-1,1.76,1.76,0,0,0-.38-.66,1.44,1.44,0,0,0-.59-.38,4,4,0,0,0-.9-.16l-.71,0-.7,0h-.75l-2.27-.09a1.7,1.7,0,0,0-.56,0,2.5,2.5,0,0,0-.48.21,1.07,1.07,0,0,0-.4.44,3.2,3.2,0,0,0-.14.49c-.06.24-.11.51-.17.83s-.1.67-.15,1-.09.76-.14,1.14c-.11.88-.22,1.85-.31,2.9s-.16,2.24-.19,3.21c0,.41,0,.82,0,1.23s0,.79,0,1.13a7.34,7.34,0,0,0,.08.9,1.08,1.08,0,0,0,.16.51,1.51,1.51,0,0,0,.78.44,8.92,8.92,0,0,0,1.16.28q.7.09,1.53.15a1.79,1.79,0,0,0,.36,0,1.65,1.65,0,0,0,.37.05l.49,0c.26,0,.53,0,.82,0a4.8,4.8,0,0,0,.85,0,5.76,5.76,0,0,0,.78-.13,1.67,1.67,0,0,0,.6-.27,1.4,1.4,0,0,0,.37-.51,4.9,4.9,0,0,0,.28-.82q.12-.46.21-1c.07-.37.12-.73.16-1.08q.16-1.3.21-2.82c0-.86,0-1.67.06-2.43C32.13,39.72,32.13,39.39,32.12,39ZM29,40.34c0,.45,0,.92-.06,1.42s0,1-.07,1.39l-.09,1.35c0,.46-.07.88-.12,1.27a6,6,0,0,1-.18,1,1.11,1.11,0,0,1-.29.56.52.52,0,0,1-.26.11,2.47,2.47,0,0,1-.39,0h-.76l-.44,0a3,3,0,0,1-.52-.1,3.12,3.12,0,0,1-.49-.17,1.07,1.07,0,0,1-.35-.24.67.67,0,0,1-.1-.32c0-.15,0-.33,0-.55s0-.45,0-.71,0-.51.05-.77c0-.6.11-1.27.2-2s.15-1.47.24-2.09c0-.27.08-.54.13-.81s.09-.52.13-.75.1-.44.15-.6a1.28,1.28,0,0,1,.15-.36,1,1,0,0,1,.36-.27,1.87,1.87,0,0,1,.44-.14l.41,0h.27a1.5,1.5,0,0,1,.39.08,2.39,2.39,0,0,1,.44.18,2.23,2.23,0,0,1,.41.27,1,1,0,0,1,.25.3,2.56,2.56,0,0,1,.13.76C29,39.48,29,39.89,29,40.34Z"/>
+      <path class="mark-violet" d="M35.75,46.41l.66-10.68L33.07,34l.25,15.42,7.37.09v-4Z"/>
+      <path class="mark-violet" d="M59.3,32,55.46,33.3l.84,11.26a2.9,2.9,0,0,1,0,.51,3.48,3.48,0,0,1-.1.41.61.61,0,0,1-.3.35,4.15,4.15,0,0,1-.75.24,7.3,7.3,0,0,1-.79.12,4.15,4.15,0,0,1-1.09,0,.56.56,0,0,1-.49-.51s0-.22,0-.54-.06-.72-.1-1.2-.09-1-.13-1.64-.1-1.22-.14-1.86c-.13-1.46-.18-1.75-.32-3.59l-3.27-1.73L50,46.52a2.31,2.31,0,0,0,.36.82A2.56,2.56,0,0,0,51,48a2.63,2.63,0,0,0,.73.3c.29.08.59.14.88.19s.58.07.85.08a5.85,5.85,0,0,0,.6,0l2.55-.19a6.93,6.93,0,0,0,.88-.13,7.09,7.09,0,0,0,.83-.23,6.79,6.79,0,0,0,.87-.39,1.48,1.48,0,0,0,.65-.66,3.84,3.84,0,0,0,.33-.84,5.71,5.71,0,0,0,.1-1Z"/>
+      <path class="mark-violet" d="M80.53,38.11,76.21,39.6l-1.33-3.87,2.75-.95-.79-2.31-4,1.38-.48-1.38,5.89-2-.54-1.56-7.49,2.58,4.21,12.66,7.34-2.43Z"/>
+    </svg>
+  </a>
+  <div class="masthead-right">
+    <div class="lang label"><b>VI</b><span>/</span><span>EN</span></div>
+    <button class="burger" aria-label="Mở menu" aria-expanded="false">
+      <svg viewBox="0 0 20 14" aria-hidden="true">
+        <rect x="0" y="0" width="20" height="1.6"/>
+        <rect x="0" y="6.2" width="20" height="1.6"/>
+        <rect x="0" y="12.4" width="14" height="1.6"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-type">
+    <h1 class="display">
+      <span class="hero-line hero-line--wide">Mỗi người</span>
+      <span class="hero-line hero-line--under">Một <span class="hero-line--quote">“Tí”</span></span>
+      <span class="hero-line hero-line--over">Chất riêng</span>
+    </h1>
+  </div>
+
+  <!-- authored object: a thrown vessel, crackle glaze — synthetic stand-in -->
+  <svg class="hero-object" viewBox="0 0 240 300" role="img" aria-label="Minh hoạ: dáng bình gốm — hình vẽ mẫu, không phải sản phẩm thật">
+    <!-- ink body so the white headline stays legible where it crosses in front -->
+    <path d="M96 26h48l-6 30c26 16 44 46 44 82 0 46-30 84-62 84S58 184 58 138c0-36 18-66 44-82Z" fill="#12081F"/>
+    <path d="M70 128c22 10 42 12 62 8s36-12 46-22M64 158c26 12 50 14 72 9M78 190c22 9 42 10 60 6" fill="none" stroke="#39D6CF" stroke-width="2.4"/>
+    <path d="M110 92c-8 22-10 44-6 66M136 96c6 20 6 42 0 62" fill="none" stroke="#39D6CF" stroke-width="1.4" opacity=".5"/>
+    <path d="M90 56h60" stroke="#39D6CF" stroke-width="2.4"/>
+    <ellipse cx="120" cy="26" rx="24" ry="7" fill="#39D6CF"/>
+  </svg>
+
+  <div class="hero-copy">
+    <p>Nơi tuyển chọn local brand và artist Việt. Không phải nơi bán hàng — nơi tìm ra thứ đáng mua.</p>
+  </div>
+
+  <div class="hero-actions">
+    <a class="btn btn--primary" href="#kho">Xem sản phẩm</a>
+    <a class="btn btn--ghost" href="#lotrinh">Lộ trình khám phá</a>
+  </div>
+
+  <svg class="seam seam--draw" viewBox="0 0 390 60" preserveAspectRatio="none" aria-hidden="true" style="margin-top:30px;height:52px;">
+    <path d="M0 34c40-26 70 20 110 4s60-30 100-14 60 26 100 8 70-16 80-10"/>
+  </svg>
+  <svg class="seam seam--fill" viewBox="0 0 390 40" preserveAspectRatio="none" aria-hidden="true" style="margin-top:-2px;height:34px;">
+    <path d="M0 22c50-22 84 16 130 4s72-24 118-10 84 20 142 2v22H0Z"/>
+  </svg>
+</section>
+
+<!-- ============ WHAT'S IN STORE ============ -->
+<section class="band band--paper" id="kho">
+  <div class="section-head">
+    <h2 class="display">Đang có trong kho</h2>
+    <span class="sample-tag" style="color:var(--violet)">Nội dung mẫu</span>
+  </div>
+
+  <div class="rail" role="list">
+    <svg class="rail-wave" viewBox="0 0 780 40" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 22c60-24 100 18 160 6s110-26 170-12 100 22 160 4 130-14 190-6"/>
+    </svg>
+
+    <!-- card 1 -->
+    <article class="card" role="listitem">
+      <div class="card-art">
+        <svg viewBox="0 0 200 200" role="img" aria-label="Hình vẽ mẫu: bình gốm men rạn">
+          <path d="M84 40h32l-4 20c18 11 30 31 30 55 0 31-20 56-42 56s-42-25-42-56c0-24 12-44 30-55Z" fill="#FFFFFF" stroke="#12081F" stroke-width="2"/>
+          <path d="M62 108c16 7 28 8 42 5s24-8 30-15M58 130c18 8 34 9 48 6" fill="none" stroke="#39D6CF" stroke-width="2"/>
+          <path d="M78 60h44" stroke="#12081F" stroke-width="2"/>
+          <ellipse cx="100" cy="40" rx="16" ry="5" fill="#7520F7"/>
+        </svg>
+      </div>
+      <button class="card-save" aria-label="Lưu sản phẩm" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17S3 12.6 3 7.8A4.2 4.2 0 0 1 10 5a4.2 4.2 0 0 1 7 2.8C17 12.6 10 17 10 17Z"/></svg>
+      </button>
+      <div class="card-meta">
+        <span class="card-shop placeholder-text">Tên shop</span>
+        <p class="card-name">Bình gốm men rạn</p>
+        <p class="card-price placeholder-text">000.000₫</p>
+      </div>
+    </article>
+
+    <!-- card 2 -->
+    <article class="card" role="listitem">
+      <div class="card-art">
+        <svg viewBox="0 0 200 200" role="img" aria-label="Hình vẽ mẫu: poster in lụa lệch bản">
+          <rect x="34" y="30" width="120" height="140" fill="#FFFFFF" stroke="#12081F" stroke-width="2"/>
+          <rect x="46" y="44" width="96" height="60" fill="#39D6CF"/>
+          <rect x="52" y="50" width="96" height="60" fill="#7520F7" opacity=".82"/>
+          <path d="M46 126h96M46 140h72M46 154h50" stroke="#12081F" stroke-width="3"/>
+        </svg>
+      </div>
+      <button class="card-save" aria-label="Bỏ lưu sản phẩm" aria-pressed="true">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17S3 12.6 3 7.8A4.2 4.2 0 0 1 10 5a4.2 4.2 0 0 1 7 2.8C17 12.6 10 17 10 17Z"/></svg>
+      </button>
+      <div class="card-meta">
+        <span class="card-shop placeholder-text">Tên shop</span>
+        <p class="card-name">Poster in lụa thủ công</p>
+        <p class="card-price placeholder-text">000.000₫</p>
+      </div>
+    </article>
+
+    <!-- card 3 -->
+    <article class="card" role="listitem">
+      <div class="card-art">
+        <svg viewBox="0 0 200 200" role="img" aria-label="Hình vẽ mẫu: vải thêu tay">
+          <rect x="30" y="30" width="140" height="140" fill="#FAF8FF" stroke="#12081F" stroke-width="2"/>
+          <path d="M30 65h140M30 100h140M30 135h140" stroke="#12081F" stroke-width="1" opacity=".25"/>
+          <path d="M50 82l14-14 14 14-14 14zM100 82l14-14 14 14-14 14zM75 117l14-14 14 14-14 14zM125 117l14-14 14 14-14 14z" fill="#7520F7"/>
+          <path d="M40 152h120" stroke="#39D6CF" stroke-width="4" stroke-dasharray="10 8"/>
+        </svg>
+      </div>
+      <button class="card-save" aria-label="Lưu sản phẩm" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17S3 12.6 3 7.8A4.2 4.2 0 0 1 10 5a4.2 4.2 0 0 1 7 2.8C17 12.6 10 17 10 17Z"/></svg>
+      </button>
+      <div class="card-meta">
+        <span class="card-shop placeholder-text">Tên shop</span>
+        <p class="card-name">Túi thêu tay trên vải lanh</p>
+        <p class="card-price placeholder-text">000.000₫</p>
+      </div>
+    </article>
+
+    <!-- card 4 -->
+    <article class="card" role="listitem">
+      <div class="card-art">
+        <svg viewBox="0 0 200 200" role="img" aria-label="Hình vẽ mẫu: tượng resin hình cá">
+          <path d="M42 100c22-34 60-46 92-30 10-14 24-20 34-18-6 12-6 22-2 30 8 14 6 30-4 42-24 30-70 32-96 6-8-8-18-16-24-30Z" fill="#39D6CF" stroke="#12081F" stroke-width="2"/>
+          <circle cx="118" cy="88" r="7" fill="#FFFFFF" stroke="#12081F" stroke-width="2"/>
+          <circle cx="118" cy="88" r="2.6" fill="#12081F"/>
+          <path d="M66 116c14 8 30 10 46 6" fill="none" stroke="#12081F" stroke-width="2"/>
+          <path d="M74 148h60" stroke="#7520F7" stroke-width="6"/>
+        </svg>
+      </div>
+      <button class="card-save" aria-label="Lưu sản phẩm" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17S3 12.6 3 7.8A4.2 4.2 0 0 1 10 5a4.2 4.2 0 0 1 7 2.8C17 12.6 10 17 10 17Z"/></svg>
+      </button>
+      <div class="card-meta">
+        <span class="card-shop placeholder-text">Tên shop</span>
+        <p class="card-name">Tượng resin đúc thủ công</p>
+        <p class="card-price placeholder-text">000.000₫</p>
+      </div>
+    </article>
+
+    <!-- card 5 -->
+    <article class="card" role="listitem">
+      <div class="card-art">
+        <svg viewBox="0 0 200 200" role="img" aria-label="Hình vẽ mẫu: nến sáp đậu nành">
+          <rect x="58" y="76" width="84" height="94" fill="#FFFFFF" stroke="#12081F" stroke-width="2"/>
+          <path d="M58 96h84M58 116h84M58 136h84" stroke="#7520F7" stroke-width="1.4" opacity=".4"/>
+          <rect x="58" y="76" width="84" height="16" fill="#39D6CF"/>
+          <path d="M100 76V52" stroke="#12081F" stroke-width="2"/>
+          <path d="M100 52c9-6 9-18 0-26-9 8-9 20 0 26Z" fill="#7520F7"/>
+        </svg>
+      </div>
+      <button class="card-save" aria-label="Lưu sản phẩm" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17S3 12.6 3 7.8A4.2 4.2 0 0 1 10 5a4.2 4.2 0 0 1 7 2.8C17 12.6 10 17 10 17Z"/></svg>
+      </button>
+      <div class="card-meta">
+        <span class="card-shop placeholder-text">Tên shop</span>
+        <p class="card-name">Nến sáp đậu nành</p>
+        <p class="card-price placeholder-text">000.000₫</p>
+      </div>
+    </article>
+
+    <!-- card 6 -->
+    <article class="card" role="listitem">
+      <div class="card-art">
+        <svg viewBox="0 0 200 200" role="img" aria-label="Hình vẽ mẫu: lọ gia vị thuỷ tinh">
+          <rect x="70" y="34" width="60" height="14" fill="#7520F7"/>
+          <path d="M78 48h44v18c14 8 22 22 22 38v56H56v-56c0-16 8-30 22-38Z" fill="#FFFFFF" stroke="#12081F" stroke-width="2"/>
+          <path d="M56 118h88" stroke="#12081F" stroke-width="2"/>
+          <path d="M62 130h76M62 144h76M62 158h76" stroke="#39D6CF" stroke-width="5"/>
+        </svg>
+      </div>
+      <button class="card-save" aria-label="Lưu sản phẩm" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17S3 12.6 3 7.8A4.2 4.2 0 0 1 10 5a4.2 4.2 0 0 1 7 2.8C17 12.6 10 17 10 17Z"/></svg>
+      </button>
+      <div class="card-meta">
+        <span class="card-shop placeholder-text">Tên shop</span>
+        <p class="card-name">Lọ gia vị vùng miền</p>
+        <p class="card-price placeholder-text">000.000₫</p>
+      </div>
+    </article>
+  </div>
+
+  <div class="rail-foot">
+    <p class="pricenote">Giá tham khảo · cập nhật 08/2026. Giá cuối do shop quyết định.</p>
+    <a class="btn btn--onlight" href="#">Tất cả</a>
+  </div>
+
+  <svg class="seam seam--fill-violet" viewBox="0 0 390 40" preserveAspectRatio="none" aria-hidden="true" style="height:36px;">
+    <path d="M0 18c56 22 92-16 140-6s70 26 122 12 78-18 128-6v22H0Z"/>
+  </svg>
+</section>
+
+<!-- ============ CITY ROUTES ============ -->
+<section class="band band--violet" id="lotrinh">
+  <div class="section-head">
+    <h2 class="display">Lộ trình khám phá</h2>
+    <span class="sample-tag">Nội dung mẫu</span>
+  </div>
+
+  <div class="routes">
+    <div class="map">
+      <svg viewBox="0 0 320 240" role="img" aria-label="Bản đồ mẫu: ba điểm dừng nối bằng đường sóng">
+        <path d="M0 60h320M0 120h320M0 180h320M80 0v240M160 0v240M240 0v240"
+              stroke="#FFFFFF" stroke-width="1" opacity=".14"/>
+        <path d="M46 176c30-34 44 10 74-18s42-52 76-56 48 14 74 10"
+              fill="none" stroke="#39D6CF" stroke-width="2.5"/>
+        <g fill="#39D6CF" stroke="#12081F" stroke-width="1.5">
+          <circle cx="46" cy="176" r="15"/>
+          <circle cx="160" cy="120" r="15"/>
+          <circle cx="270" cy="112" r="15"/>
+        </g>
+        <g fill="#12081F" font-family="Alexandria, sans-serif" font-size="14" font-weight="600" text-anchor="middle">
+          <text x="46" y="181">1</text>
+          <text x="160" y="125">2</text>
+          <text x="270" y="117">3</text>
+        </g>
+      </svg>
+      <span class="map-note label">Chạm để mở to</span>
+    </div>
+
+    <ol class="stops">
+      <li>
+        <span class="stop-no">1</span>
+        <span class="stop-body">
+          <strong class="placeholder-text">Điểm dừng một</strong>
+          <span>Quận 1 · 20 phút</span>
+        </span>
+      </li>
+      <li>
+        <span class="stop-no">2</span>
+        <span class="stop-body">
+          <strong class="placeholder-text">Điểm dừng hai</strong>
+          <span>Chợ Lớn · 45 phút</span>
+        </span>
+      </li>
+      <li>
+        <span class="stop-no">3</span>
+        <span class="stop-body">
+          <strong class="placeholder-text">Điểm dừng ba</strong>
+          <span>Thủ Đức · 1 giờ</span>
+        </span>
+      </li>
+    </ol>
+  </div>
+
+  <svg class="seam seam--fill" viewBox="0 0 390 40" preserveAspectRatio="none" aria-hidden="true" style="height:36px;">
+    <path d="M0 20c48-20 88 14 136 4s76-22 124-8 82 16 130 4v20H0Z"/>
+  </svg>
+</section>
+
+<!-- ============ HIDDEN GEMS ============ -->
+<section class="band band--paper" id="gems">
+  <div class="section-head">
+    <h2 class="display">Viên ngọc ẩn</h2>
+    <span class="sample-tag" style="color:var(--violet)">Nội dung mẫu</span>
+  </div>
+
+  <div class="gems">
+    <article class="gem">
+      <blockquote class="placeholder-text">“Câu ghi chú của người tuyển chọn sẽ nằm ở đây — một dòng, viết tay, có quan điểm.”</blockquote>
+      <p class="gem-from label">
+        <svg viewBox="0 0 24 12" aria-hidden="true"><path d="M0 8c4-8 8 4 12-2s8-6 12-2"/></svg>
+        Dẫn tới sản phẩm
+      </p>
+    </article>
+    <article class="gem">
+      <blockquote class="placeholder-text">“Dòng thứ hai — lý do món này được giữ lại, không phải mô tả sản phẩm.”</blockquote>
+      <p class="gem-from label">
+        <svg viewBox="0 0 24 12" aria-hidden="true"><path d="M0 8c4-8 8 4 12-2s8-6 12-2"/></svg>
+        Dẫn tới sản phẩm
+      </p>
+    </article>
+  </div>
+
+  <svg class="seam seam--fill-ink" viewBox="0 0 390 40" preserveAspectRatio="none" aria-hidden="true" style="height:36px;">
+    <path d="M0 16c52 24 90-14 138-4s72 24 124 10 78-16 128-4v22H0Z"/>
+  </svg>
+</section>
+
+<!-- ============ JOURNAL ============ -->
+<section class="band band--ink">
+  <div class="section-head">
+    <h2 class="display">Từ tạp chí</h2>
+    <span class="sample-tag">Nội dung mẫu</span>
+  </div>
+
+  <div class="journal">
+    <a class="post" href="#">
+      <h3 class="placeholder-text">Tiêu đề bài viết dài hai dòng sẽ nằm ở vị trí này</h3>
+      <span class="label">Thủ công mỹ nghệ · 6 phút đọc</span>
+    </a>
+    <a class="post" href="#">
+      <h3 class="placeholder-text">Tiêu đề bài thứ hai, đủ dài để kiểm tra chỗ xuống dòng</h3>
+      <span class="label">Câu chuyện thương hiệu · 8 phút đọc</span>
+    </a>
+    <a class="post" href="#">
+      <h3 class="placeholder-text">Tiêu đề bài thứ ba trong danh sách tạp chí</h3>
+      <span class="label">Du lịch mua sắm · 11 phút đọc</span>
+    </a>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="band band--ink footer">
+  <svg class="brandmark" viewBox="0 0 82 50" role="img" aria-label="Tí Coolture">
+    <path class="mark-teal" d="M71.37,10.45,71.14.3C46.38,6.58,27,3.48,27,3.48V9.89l16.13,1-.5,38.87,4.49-2-1.3-35.41S60.67,12.67,71.37,10.45ZM67.3,5.09S65,8,60.24,7.05C60.24,7.05,61.92,4.61,67.3,5.09Z"/>
+    <path class="mark-teal" d="M69.19,39.88a2.88,2.88,0,0,0,.37-.53,2,2,0,0,0,.22-.6,5.48,5.48,0,0,0,0-1.56A19.2,19.2,0,0,0,69.44,35a8.84,8.84,0,0,0-.52-1.62,2.6,2.6,0,0,0-.79-1,2.41,2.41,0,0,0-1.22-.44,5.94,5.94,0,0,0-1.79.15l-1.21.28-1.55.41-1.9.51c.1.25.2.54.3.86s.2.64.3,1,.19.68.27,1,.15.62.21.88l.08.39c.06.32.13.68.2,1.08s.14.84.22,1.3.16.93.24,1.41.15,1,.22,1.41c.16,1.08.33,2.2.49,3.36l2.2-.41-.79-3.79,2.07-.43,2,4.53,4.08-1.11Zm-1.26-1.16a.68.68,0,0,1-.37.21l-2.17.4-1.1-5.74,2.17-.43a.51.51,0,0,1,.32.05.47.47,0,0,1,.23.23,7,7,0,0,1,.4,1.07c.13.42.23.79.29,1.09l.11.54c.06.3.12.67.17,1.1a8.2,8.2,0,0,1,.09,1.11A.57.57,0,0,1,67.93,38.72Z"/>
+    <path class="mark-teal" d="M21.91,34.4l-5.36-2-5,3.08-.49,9,3.28,2.69L20,46l2.71-10ZM20,41.75l-2.74,3a.22.22,0,0,1-.25.07l-3.07-.78a.22.22,0,0,1-.19-.21c-.08-.8-.18-1.59-.27-2.39,0-.4-.09-.8-.14-1.19,0-.11,0-.15.12-.15a2.63,2.63,0,0,0,.36,0q.06.54.12,1.05l.24,2.06s0,0,0,0c-.05.34.15.43.44.5.75.17,1.5.37,2.24.56a.17.17,0,0,0,.2-.06l2.37-2.6a.17.17,0,0,0,0-.21L18,37.25l-.39-1.12c0-.07,0-.12-.14-.12-.87.05-1.74.08-2.62.12l-.05,0c.18,1.86.37,3.73.56,5.58l1.72,0c-.08-1.22-.15-2.42-.23-3.65l-1.16.56-.22-.45,1.82-.87c0,.69.09,1.36.14,2,.06.89.11,1.79.17,2.68,0,.13,0,.17-.16.17L15,42.28h-.12c-.22-2.2-.44-4.4-.66-6.64l1.18,0,2.34-.09c.11,0,.16,0,.2.13.68,2,1.38,3.94,2.07,5.9A.17.17,0,0,1,20,41.75Z"/>
+    <path class="mark-violet" d="M48.52,20.92,48.75,31l2.8,1.49L52,20.92Zm4.34-5.65-4.49,2.39.68,1.62L54,17.69Z"/>
+    <path class="mark-violet" d="M11,32.11a2,2,0,0,0-.13-.62.37.37,0,0,0-.29-.27l-.77-.14-1.2-.21c-.46-.08-.95-.15-1.49-.2s-1.07-.1-1.61-.13-1.06,0-1.57,0a6.93,6.93,0,0,0-1.39.2,1.29,1.29,0,0,0-.7.4,1.35,1.35,0,0,0-.38.71l0,.13L.69,36.86c-.18,1-.33,2-.43,2.86L.17,40.87c0,.39,0,.75-.05,1.08a6.54,6.54,0,0,0,.05.92,1.77,1.77,0,0,0,.17.63,1.75,1.75,0,0,0,.72.6,11.76,11.76,0,0,0,1.33.57c.51.18,1.06.36,1.66.51s1.17.3,1.73.43,1.08.24,1.55.33.85.17,1.12.21a.42.42,0,0,0,.31-.06.39.39,0,0,0,.2-.25l1-3.9L6,40.88,5.64,43a.89.89,0,0,1-.19.36,1,1,0,0,1-.35.24,1.25,1.25,0,0,1-.59,0,3.8,3.8,0,0,1-1.15-.38,1,1,0,0,1-.58-.76,5.17,5.17,0,0,1,.06-1c.06-.49.14-1,.22-1.54s.23-1.32.37-2.07l.9-4.81a1.18,1.18,0,0,1,.22-.51A1,1,0,0,1,5,32.29a1.31,1.31,0,0,1,.76,0,3.41,3.41,0,0,1,.8.21,2.45,2.45,0,0,1,.49.27.9.9,0,0,1,.24.31.54.54,0,0,1,0,.26l-.41,2.45,3.6.59c.19-.92.34-1.74.43-2.49,0-.31.07-.62.09-.92A5.59,5.59,0,0,0,11,32.11Z"/>
+    <path class="mark-violet" d="M32.12,39c0-.34,0-.67,0-1s0-.61-.05-.88a5.5,5.5,0,0,0-.08-.69,5.89,5.89,0,0,0-.25-1,1.76,1.76,0,0,0-.38-.66,1.44,1.44,0,0,0-.59-.38,4,4,0,0,0-.9-.16l-.71,0-.7,0h-.75l-2.27-.09a1.7,1.7,0,0,0-.56,0,2.5,2.5,0,0,0-.48.21,1.07,1.07,0,0,0-.4.44,3.2,3.2,0,0,0-.14.49c-.06.24-.11.51-.17.83s-.1.67-.15,1-.09.76-.14,1.14c-.11.88-.22,1.85-.31,2.9s-.16,2.24-.19,3.21c0,.41,0,.82,0,1.23s0,.79,0,1.13a7.34,7.34,0,0,0,.08.9,1.08,1.08,0,0,0,.16.51,1.51,1.51,0,0,0,.78.44,8.92,8.92,0,0,0,1.16.28q.7.09,1.53.15a1.79,1.79,0,0,0,.36,0,1.65,1.65,0,0,0,.37.05l.49,0c.26,0,.53,0,.82,0a4.8,4.8,0,0,0,.85,0,5.76,5.76,0,0,0,.78-.13,1.67,1.67,0,0,0,.6-.27,1.4,1.4,0,0,0,.37-.51,4.9,4.9,0,0,0,.28-.82q.12-.46.21-1c.07-.37.12-.73.16-1.08q.16-1.3.21-2.82c0-.86,0-1.67.06-2.43C32.13,39.72,32.13,39.39,32.12,39ZM29,40.34c0,.45,0,.92-.06,1.42s0,1-.07,1.39l-.09,1.35c0,.46-.07.88-.12,1.27a6,6,0,0,1-.18,1,1.11,1.11,0,0,1-.29.56.52.52,0,0,1-.26.11,2.47,2.47,0,0,1-.39,0h-.76l-.44,0a3,3,0,0,1-.52-.1,3.12,3.12,0,0,1-.49-.17,1.07,1.07,0,0,1-.35-.24.67.67,0,0,1-.1-.32c0-.15,0-.33,0-.55s0-.45,0-.71,0-.51.05-.77c0-.6.11-1.27.2-2s.15-1.47.24-2.09c0-.27.08-.54.13-.81s.09-.52.13-.75.1-.44.15-.6a1.28,1.28,0,0,1,.15-.36,1,1,0,0,1,.36-.27,1.87,1.87,0,0,1,.44-.14l.41,0h.27a1.5,1.5,0,0,1,.39.08,2.39,2.39,0,0,1,.44.18,2.23,2.23,0,0,1,.41.27,1,1,0,0,1,.25.3,2.56,2.56,0,0,1,.13.76C29,39.48,29,39.89,29,40.34Z"/>
+    <path class="mark-violet" d="M35.75,46.41l.66-10.68L33.07,34l.25,15.42,7.37.09v-4Z"/>
+    <path class="mark-violet" d="M59.3,32,55.46,33.3l.84,11.26a2.9,2.9,0,0,1,0,.51,3.48,3.48,0,0,1-.1.41.61.61,0,0,1-.3.35,4.15,4.15,0,0,1-.75.24,7.3,7.3,0,0,1-.79.12,4.15,4.15,0,0,1-1.09,0,.56.56,0,0,1-.49-.51s0-.22,0-.54-.06-.72-.1-1.2-.09-1-.13-1.64-.1-1.22-.14-1.86c-.13-1.46-.18-1.75-.32-3.59l-3.27-1.73L50,46.52a2.31,2.31,0,0,0,.36.82A2.56,2.56,0,0,0,51,48a2.63,2.63,0,0,0,.73.3c.29.08.59.14.88.19s.58.07.85.08a5.85,5.85,0,0,0,.6,0l2.55-.19a6.93,6.93,0,0,0,.88-.13,7.09,7.09,0,0,0,.83-.23,6.79,6.79,0,0,0,.87-.39,1.48,1.48,0,0,0,.65-.66,3.84,3.84,0,0,0,.33-.84,5.71,5.71,0,0,0,.1-1Z"/>
+    <path class="mark-violet" d="M80.53,38.11,76.21,39.6l-1.33-3.87,2.75-.95-.79-2.31-4,1.38-.48-1.38,5.89-2-.54-1.56-7.49,2.58,4.21,12.66,7.34-2.43Z"/>
+  </svg>
+
+  <p class="disclaimer">Tí Coolture không bán hàng và không xử lý giao dịch. Mọi trao đổi diễn ra trực tiếp giữa bạn và thương hiệu.</p>
+
+  <nav class="footer-nav">
+    <a href="#">Sản phẩm</a>
+    <a href="#">Shop</a>
+    <a href="#">Khám phá</a>
+    <a href="#">Tạp chí</a>
+    <a href="#">Về Tí</a>
+    <a href="#">Hợp tác với Tí</a>
+    <a href="#">Điều khoản sử dụng</a>
+    <a href="#">Chính sách bảo mật</a>
+  </nav>
+
+  <div class="socials">
+    <a class="social" href="#" aria-label="Instagram">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="15" height="15" rx="4"/>
+        <circle cx="10" cy="10" r="4"/>
+        <circle cx="14.6" cy="5.4" r=".9" fill="currentColor"/>
+      </svg>
+    </a>
+    <a class="social" href="#" aria-label="TikTok">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M11.6 2.5v9.6a3.2 3.2 0 1 1-2.6-3.1"/>
+        <path d="M11.6 4.4c.8 1.6 2.2 2.5 4 2.6"/>
+      </svg>
+    </a>
+    <a class="social" href="#" aria-label="Facebook">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M12.5 17.5V7.7c0-1.6 1-2.5 2.6-2.5h1.1"/>
+        <path d="M9.4 10.3h6.6"/>
+      </svg>
+    </a>
+    <a class="social" href="#" aria-label="Threads">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M16 6.4c-1-2-2.9-3.2-5.6-3.2-4.1 0-6.5 2.7-6.5 6.9s2.4 6.7 6.5 6.7c3.1 0 5.2-1.7 5.6-4"/>
+        <path d="M15.9 12.6c.3-2.3-1.4-3.6-3.8-3.7-2 0-3.4.8-3.4 2.2 0 1.2 1.1 2 2.5 2 1.9 0 3-1.4 3.1-3.6"/>
+      </svg>
+    </a>
+  </div>
+
+  <p class="colophon">
+    Tí Coolture — nơi tuyển chọn local brand và artist Việt.<br>
+    hello@ticoolture.vn<br>
+    © 2026 Tí Coolture
+  </p>
+</footer>
+
+<button class="gemtab">Viên ngọc ẩn</button>
+
+<script>
+  // save toggle — the one stateful control on this page
+  document.querySelectorAll('.card-save').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var on = b.getAttribute('aria-pressed') === 'true';
+      b.setAttribute('aria-pressed', String(!on));
+      b.setAttribute('aria-label', on ? 'Lưu sản phẩm' : 'Bỏ lưu sản phẩm');
+    });
+  });
+  document.querySelector('.gemtab').addEventListener('click', function () {
+    document.getElementById('gems').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+</script>
+</body>
+</html>

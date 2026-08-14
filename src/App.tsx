@@ -9,8 +9,9 @@ import UserProfile from "./views/UserProfile";
 import AuthGateway from "./views/AuthGateway";
 import Products from "./views/Products";
 import Stores from "./views/Stores";
+import Blog from "./views/Blog";
+import Footer from "./components/Footer";
 import { useEffect } from "react";
-import { seedFirestoreIfEmpty } from "./lib/seeder";
 import { recordButtonClick } from "./lib/dbService";
 
 function ScrollToTop() {
@@ -101,23 +102,19 @@ function ButtonClickTracker() {
 }
 
 export default function App() {
-  // Trigger Firestore seeder to populate real database with curated items if empty
-  useEffect(() => {
-    seedFirestoreIfEmpty();
-  }, []);
-
   return (
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
         <ButtonClickTracker />
-        <div className="min-h-screen bg-[#f5f5f5] flex flex-col justify-between selection:bg-black selection:text-white font-sans text-black">
+        <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
           <Header />
           <div className="flex-grow">
             <Routes>
               <Route path="/" element={<Homepage />} />
               <Route path="/products" element={<Products />} />
               <Route path="/stores" element={<Stores />} />
+              <Route path="/blog" element={<Blog />} />
               <Route path="/stores/:storeId" element={<ShopDisplay />} />
               <Route path="/products/:productId" element={<ProductDetail />} />
               <Route path="/shop-dashboard" element={<ShopDashboard />} />
@@ -126,6 +123,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
+          <Footer />
         </div>
       </BrowserRouter>
     </AuthProvider>

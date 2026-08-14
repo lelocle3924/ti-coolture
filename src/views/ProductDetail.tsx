@@ -5,7 +5,8 @@ import {
   triggerWebhook, 
   toggleWishlist, 
   saveWishlistNote,
-  incrementProductView
+  incrementProductView,
+  fetchStoreById,
 } from "../lib/dbService";
 import { useAuth } from "../lib/useAuth";
 import { Product, StoreProfile } from "../types";
@@ -23,8 +24,6 @@ import {
   ChevronRight,
   Maximize2
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
 
 export default function ProductDetail() {
   const { productId } = useParams<{ productId: string }>();
@@ -62,10 +61,9 @@ export default function ProductDetail() {
         incrementProductView(productId);
         
         // Fetch store details to get actual socials for ORDER NOW links
-        const storeRef = doc(db, "stores", prodData.storeId);
-        const storeSnap = await getDoc(storeRef);
-        if (storeSnap.exists()) {
-          setStore({ id: storeSnap.id, ...storeSnap.data() } as StoreProfile);
+        const storeData = await fetchStoreById(prodData.storeId);
+        if (storeData) {
+          setStore(storeData);
         }
       }
       setLoading(false);
@@ -100,10 +98,8 @@ export default function ProductDetail() {
     async function loadWishlistCount() {
       if (profile?.role === "Admin" && product) {
         try {
-          const { collection, query, where, getDocs } = await import("firebase/firestore");
-          const q = query(collection(db, "profiles"), where("wishlist", "array-contains", product.id));
-          const snap = await getDocs(q);
-          setWishlistCount(snap.size);
+          const { countWishlistHolders } = await import("../lib/dbService");
+          setWishlistCount(await countWishlistHolders(product.id));
         } catch (err) {
           console.error("Error loading wishlist count: ", err);
         }

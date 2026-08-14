@@ -45,8 +45,6 @@ import {
   Layers,
   Shield
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
 
 type WishlistFilter = "All" | "WatchLater" | "Sale" | "OutOfStock";
 
@@ -94,10 +92,8 @@ export default function UserProfile() {
 
   const handleToggleHideStore = async (storeId: string, currentHidden: boolean) => {
     try {
-      const { doc, updateDoc } = await import("firebase/firestore");
-      await updateDoc(doc(db, "stores", storeId), {
-        hidden: !currentHidden
-      });
+      const { upsertStoreProfile } = await import("../lib/dbService");
+      await upsertStoreProfile(storeId, { hidden: !currentHidden });
       await loadProfileMetrics();
       alert(`Shop has been successfully ${!currentHidden ? "hidden" : "shown"}!`);
     } catch (err) {
@@ -108,11 +104,9 @@ export default function UserProfile() {
 
   const handleTriggerStoreDeleteTimer = async (storeId: string) => {
     try {
-      const { doc, updateDoc } = await import("firebase/firestore");
+      const { upsertStoreProfile } = await import("../lib/dbService");
       const deleteScheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      await updateDoc(doc(db, "stores", storeId), {
-        deleteScheduledAt
-      });
+      await upsertStoreProfile(storeId, { deleteScheduledAt });
       await loadProfileMetrics();
       alert("Deletion timer initiated. This shop is scheduled to be deleted in 24 hours.");
     } catch (err) {
@@ -122,11 +116,8 @@ export default function UserProfile() {
 
   const handleCancelStoreDelete = async (storeId: string) => {
     try {
-      const { doc, updateDoc } = await import("firebase/firestore");
-      const storeRef = doc(db, "stores", storeId);
-      await updateDoc(storeRef, {
-        deleteScheduledAt: null
-      });
+      const { upsertStoreProfile } = await import("../lib/dbService");
+      await upsertStoreProfile(storeId, { deleteScheduledAt: null });
       await loadProfileMetrics();
       alert("Deletion schedule canceled.");
     } catch (err) {
@@ -137,14 +128,8 @@ export default function UserProfile() {
   const handleImmediateStoreDelete = async (storeId: string) => {
     if (!window.confirm("Are you sure you want to delete this shop and all of its products immediately? This action is permanent and cannot be undone.")) return;
     try {
-      const { doc, deleteDoc } = await import("firebase/firestore");
-      await deleteDoc(doc(db, "stores", storeId));
-      
-      const { fetchProductsStore } = await import("../lib/dbService");
-      const prods = await fetchProductsStore(storeId);
-      for (const p of prods) {
-        await deleteDoc(doc(db, "products", p.id));
-      }
+      const { deleteStore } = await import("../lib/dbService");
+      await deleteStore(storeId);
 
       await loadProfileMetrics();
       alert("Shop and all its products have been deleted successfully.");
@@ -156,10 +141,8 @@ export default function UserProfile() {
 
   const handleToggleHideProduct = async (productId: string, currentHidden: boolean) => {
     try {
-      const { doc, updateDoc } = await import("firebase/firestore");
-      await updateDoc(doc(db, "products", productId), {
-        hidden: !currentHidden
-      });
+      const { updateProduct } = await import("../lib/dbService");
+      await updateProduct(productId, { hidden: !currentHidden });
       await loadProfileMetrics();
       alert(`Product has been successfully ${!currentHidden ? "hidden" : "shown"}!`);
     } catch (err) {
@@ -1123,10 +1106,8 @@ export default function UserProfile() {
                           onClick={async () => {
                             if (window.confirm(`Bạn có chắc chắn muốn TỪ CHỐI yêu cầu xoá tài khoản này?`)) {
                               try {
-                                const { doc, updateDoc } = await import("firebase/firestore");
-                                await updateDoc(doc(db, "stores", store.id), {
-                                  accountDeleteRequested: false
-                                });
+                                const { upsertStoreProfile } = await import("../lib/dbService");
+                                await upsertStoreProfile(store.id, { accountDeleteRequested: false });
                                 await loadProfileMetrics();
                                 alert("Đã từ chối yêu cầu xoá tài khoản.");
                               } catch (err) {

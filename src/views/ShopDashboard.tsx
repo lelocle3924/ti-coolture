@@ -14,7 +14,8 @@ import {
   moderateStore,
   fetchStores,
   logApprovalActivity,
-  fetchApprovalLogs
+  fetchApprovalLogs,
+  fetchStoreById,
 } from "../lib/dbService";
 import { StoreProfile, Product, StoreSocials, StoreSocialToggles } from "../types";
 import { 
@@ -34,8 +35,6 @@ import {
   RefreshCw,
   FileText
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
 import { ImageUploader } from "../components/ImageUploader";
 
 type Tab = "Registration" | "Upload" | "Socials" | "Moderation";
@@ -126,11 +125,10 @@ export default function ShopDashboard() {
     setLoading(true);
 
     const storeId = `store_${user.uid}`;
-    const docRef = doc(db, "stores", storeId);
-    const docSnap = await getDoc(docRef);
+    const fetched = await fetchStoreById(storeId);
 
-    if (docSnap.exists()) {
-      const sData = { id: docSnap.id, ...docSnap.data() } as StoreProfile;
+    if (fetched) {
+      const sData = fetched;
       setStore(sData);
       
       // Seed registration states
@@ -795,10 +793,7 @@ export default function ShopDashboard() {
                       onClick={async () => {
                         if (window.confirm("Bạn có chắc chắn muốn gửi yêu cầu xoá tài khoản cửa hàng này không? Cửa hàng và toàn bộ sản phẩm của bạn sẽ bị xoá vĩnh viễn.")) {
                           try {
-                            const { updateDoc, doc } = await import("firebase/firestore");
-                            await updateDoc(doc(db, "stores", store.id), {
-                              accountDeleteRequested: true
-                            });
+                            await upsertStoreProfile(store.id, { accountDeleteRequested: true });
                             alert("Yêu cầu xoá tài khoản đã được gửi thành công. Vui lòng chờ Admin phê duyệt.");
                             await loadStoreData();
                           } catch (err) {

@@ -1,514 +1,549 @@
-import { 
-  collection, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc,
-  addDoc, 
-  query, 
-  where, 
-  increment,
-  onSnapshot
-} from "firebase/firestore";
-import { db } from "./firebase";
-import { StoreProfile, Product, TouristRoute, UserProfile, WebhookLog } from "../types";
+/**
+ * Data layer — placeholder implementation.
+ *
+ * Firebase/Firestore was removed on 2026-08-14. The target stack (docs/SRS.md
+ * §3.1) is Next.js 15 + Supabase (PostgreSQL) + Cloudflare R2, which does not
+ * exist yet. Until it does, this module serves docs/03-CONTENT-PACK.md data
+ * from memory.
+ *
+ * ── Why the indirection ──────────────────────────────────────────────────
+ * The store underneath (src/lib/mock/) is shaped like the real Postgres
+ * schema in SRS §4: snake_case columns, bilingual *_vi/*_en fields, price_vnd,
+ * publish_status, map_x/map_y. This file is the ONLY adapter between that
+ * shape and the camelCase types the views consume. When Supabase lands, the
+ * row-reading helpers here become `supabase.from(...).select(...)` calls and
+ * the views do not change.
+ *
+ * ── What is not real ─────────────────────────────────────────────────────
+ * Writes mutate memory only and are lost on reload. Every shop, product,
+ * price and route is invented placeholder content — see the warnings in
+ * src/lib/mock/seed.ts. None of it may ship to a public demo.
+ */
 
-// Trigger a real webhook log on the Express backend simulation server
-export async function triggerWebhook(action: string, payload: any) {
+import { Product, StoreProfile, TouristRoute, UserProfile, RouteStop } from "../types";
+import { seed } from "./mock/seed";
+import type { Database, ProductRow, ShopRow } from "./mock/schema";
+
+/** Session-scoped clone so writes never corrupt the seed module. */
+const db: Database = JSON.parse(JSON.stringify(seed));
+
+const LATENCY_MS = 120;
+const delay = <T>(value: T): Promise<T> =>
+  new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS));
+
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+
+/* ── row → view-model adapters ─────────────────────────────────────────── */
+
+const statusFromPublish = (s: ProductRow["status"]): Product["status"] =>
+  s === "published" ? "Approved" : s === "pending" ? "Pending" : "Rejected";
+
+function imagesFor(productId: string): string[] {
+  return db.product_images
+    .filter((i) => i.product_id === productId)
+    .sort((a, b) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
+    .map((i) => i.url);
+}
+
+function clicksFor(productId: string): number {
+  return db.click_events.filter((e) => e.product_id === productId && e.label === "click").length;
+}
+
+function toProduct(row: ProductRow): Product {
+  const shop = db.shops.find((s) => s.id === row.shop_id);
+  const category = db.categories.find((c) => c.id === row.category_id);
+  const materialLink = db.product_materials.find((m) => m.product_id === row.id);
+  const material = db.materials.find((m) => m.id === materialLink?.material_id);
+
+  return {
+    id: row.id,
+    storeId: row.shop_id,
+    storeName: shop?.name ?? "",
+    storeLogo: shop?.logo_url ?? undefined,
+    name: row.name_vi,
+    price: row.price_vnd ?? 0,
+    currency: "VND",
+    description: row.short_desc_vi ?? "",
+    images: imagesFor(row.id),
+    category: category?.name_vi ?? "",
+    variants: row.variants.flatMap((v) => v.values.map((val) => val.vi)),
+    material: material?.name_vi,
+    story: row.story_vi ?? undefined,
+    clicks: clicksFor(row.id),
+    views: 0,
+    status: statusFromPublish(row.status),
+    createdAt: row.created_at,
+    hidden: row.status === "archived",
+  };
+}
+
+/**
+ * Moderation flags the app uses that the SRS schema has no column for yet
+ * (hidden / deleteScheduledAt / accountDeleteRequested). Held beside the rows
+ * rather than invented into them, so the real schema stays the source of truth.
+ */
+const shopFlags = new Map<string, Partial<StoreProfile>>();
+
+function toStore(row: ShopRow): StoreProfile {
+  const socials = db.shop_socials.filter((s) => s.shop_id === row.id && s.is_visible);
+  const pick = (p: string) => socials.find((s) => s.platform === p)?.url;
+  const flags = shopFlags.get(row.id) ?? {};
+
+  return {
+    id: row.id,
+    userId: "",
+    name: row.name,
+    logoUrl: row.logo_url ?? "",
+    coverUrl: row.cover_url ?? "",
+    story: row.story_vi ?? "",
+    vibe: row.tagline_vi ?? "",
+    description: row.tagline_vi ?? undefined,
+    phone: "",
+    email: row.contact_email ?? "",
+    address: row.address ?? row.area_tag ?? "",
+    taxId: "",
+    socials: {
+      facebook: pick("facebook"),
+      instagram: pick("instagram"),
+      tiktok: pick("tiktok"),
+      threads: pick("threads"),
+      website: pick("website"),
+      zalo: pick("zalo"),
+    },
+    socialToggles: {
+      facebook: !!pick("facebook"),
+      instagram: !!pick("instagram"),
+      tiktok: !!pick("tiktok"),
+      threads: !!pick("threads"),
+      website: !!pick("website"),
+      zalo: !!pick("zalo"),
+    },
+    registered: true,
+    createdAt: row.created_at,
+    status: row.status === "published" ? "Approved" : "Pending",
+    hidden: row.status === "archived",
+    ...flags,
+  };
+}
+
+function toRoute(routeId: string): TouristRoute {
+  const row = db.routes.find((r) => r.id === routeId)!;
+  const stops: RouteStop[] = db.route_stops
+    .filter((s) => s.route_id === routeId)
+    .sort((a, b) => a.stop_number - b.stop_number)
+    .map((s) => ({
+      id: s.id,
+      name: s.name_vi,
+      address: s.external_url ?? s.address ?? "",
+      description: s.description_vi ?? "",
+      x: s.map_x,
+      y: s.map_y,
+    }));
+
+  return {
+    id: row.id,
+    name: row.title_vi,
+    description: row.description_vi ?? "",
+    mapImageUrl: row.cover_url ?? undefined,
+    stops,
+  };
+}
+
+/* ── local user profiles (no auth backend yet) ────────────────────────── */
+
+const USERS_KEY = "tcoolture_mock_profiles";
+
+function readUsers(): Record<string, UserProfile> {
   try {
-    const response = await fetch("/api/webhooks/trigger", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action,
-        payload,
-        timestamp: new Date().toISOString()
-      })
-    });
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Failed to trigger webhook:", error);
-    return null;
+    return JSON.parse(localStorage.getItem(USERS_KEY) || "{}");
+  } catch {
+    return {};
   }
 }
 
-// Fetch all stores
+function writeUsers(users: Record<string, UserProfile>) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+/* ── reads ─────────────────────────────────────────────────────────────── */
+
 export async function fetchStores(): Promise<StoreProfile[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, "stores"));
-    const stores: StoreProfile[] = [];
-    querySnapshot.forEach((doc) => {
-      stores.push({ id: doc.id, ...doc.data() } as StoreProfile);
-    });
-    return stores;
-  } catch (error) {
-    console.error("Error fetching stores:", error);
-    return [];
-  }
+  return delay(db.shops.filter((s) => s.status !== "archived").map(toStore));
 }
 
-// Fetch store by ID
 export async function fetchStoreById(storeId: string): Promise<StoreProfile | null> {
-  try {
-    const docRef = doc(db, "stores", storeId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as StoreProfile;
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching store ${storeId}:`, error);
-    return null;
-  }
+  const row = db.shops.find((s) => s.id === storeId);
+  return delay(row ? toStore(row) : null);
 }
 
-// Fetch products (supports filtering by status)
-export async function fetchProducts(status: "Pending" | "Approved" | "Rejected" = "Approved"): Promise<Product[]> {
-  try {
-    const q = query(collection(db, "products"), where("status", "==", status));
-    const querySnapshot = await getDocs(q);
-    const products: Product[] = [];
-    querySnapshot.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() } as Product);
-    });
-
-    if (status === "Approved") {
-      const stores = await fetchStores();
-      const hiddenStoreIds = new Set(stores.filter(s => s.hidden).map(s => s.id));
-      return products.filter(p => !p.hidden && !hiddenStoreIds.has(p.storeId));
-    }
-
-    return products;
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    return [];
-  }
+export async function fetchProducts(
+  status: "Pending" | "Approved" | "Rejected" = "Approved",
+  _opts?: { throwOnError?: boolean }
+): Promise<Product[]> {
+  const rows = db.products.filter((p) => statusFromPublish(p.status) === status);
+  return delay(rows.map(toProduct));
 }
 
-// Fetch all products regardless of status (mostly for shop owner or admin)
 export async function fetchAllProducts(): Promise<Product[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, "products"));
-    const products: Product[] = [];
-    querySnapshot.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() } as Product);
-    });
-    return products;
-  } catch (error) {
-    console.error("Error fetching all products:", error);
-    return [];
-  }
+  return delay(db.products.map(toProduct));
 }
 
-// Fetch products of a specific store
 export async function fetchProductsStore(storeId: string): Promise<Product[]> {
-  try {
-    const q = query(collection(db, "products"), where("storeId", "==", storeId));
-    const querySnapshot = await getDocs(q);
-    const products: Product[] = [];
-    querySnapshot.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() } as Product);
-    });
-    return products;
-  } catch (error) {
-    console.error(`Error fetching products for store ${storeId}:`, error);
-    return [];
-  }
+  return delay(db.products.filter((p) => p.shop_id === storeId).map(toProduct));
 }
 
-// Fetch single product by ID
 export async function fetchProductById(productId: string): Promise<Product | null> {
-  try {
-    const docRef = doc(db, "products", productId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as Product;
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching product ${productId}:`, error);
-    return null;
-  }
+  const row = db.products.find((p) => p.id === productId);
+  return delay(row ? toProduct(row) : null);
 }
 
-// Increment product click count (for Popular Now section)
+export async function fetchTouristRoutes(_opts?: { throwOnError?: boolean }): Promise<TouristRoute[]> {
+  const routes = db.routes
+    .filter((r) => r.status === "published")
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((r) => toRoute(r.id));
+  return delay(routes);
+}
+
+export async function fetchMessageTemplate(): Promise<string> {
+  const row = db.site_settings.find((s) => s.key === "message_template");
+  return delay(row?.value ?? "");
+}
+
+/** Hidden Gems — SRS §4 stores these in featured_items alongside the carousel. */
+export async function fetchHiddenGems(): Promise<Array<{ product: Product; note: string }>> {
+  const gems = db.featured_items
+    .filter((f) => f.placement === "hidden_gem" && f.is_active)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((f) => {
+      const row = db.products.find((p) => p.id === f.product_id);
+      return row ? { product: toProduct(row), note: f.note_vi ?? "" } : null;
+    })
+    .filter((g): g is { product: Product; note: string } => g !== null);
+  return delay(gems);
+}
+
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  topic: string;
+  coverUrl: string;
+  readMinutes: number;
+  publishedAt: string;
+}
+
+export async function fetchBlogPosts(): Promise<BlogPost[]> {
+  const posts = db.blog_posts
+    .filter((p) => p.status === "published")
+    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+    .map((p) => ({
+      id: p.id,
+      slug: p.slug,
+      title: p.title_vi,
+      excerpt: p.excerpt_vi ?? "",
+      topic: db.blog_topics.find((t) => t.id === p.topic_id)?.name_vi ?? "",
+      coverUrl: p.cover_url ?? "",
+      readMinutes: p.read_minutes,
+      publishedAt: p.published_at ?? "",
+    }));
+  return delay(posts);
+}
+
+export interface Collection {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  coverUrl: string;
+  productCount: number;
+}
+
+export async function fetchCollections(): Promise<Collection[]> {
+  const collections = db.collections
+    .filter((c) => c.status === "published")
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      title: c.title_vi,
+      description: c.description_vi ?? "",
+      coverUrl: c.cover_url ?? "",
+      productCount: db.collection_products.filter((cp) => cp.collection_id === c.id).length,
+    }));
+  return delay(collections);
+}
+
+/* ── writes (memory only) ─────────────────────────────────────────────── */
+
+export async function triggerWebhook(action: string, payload: any) {
+  // The webhook logger lived in the deleted Express server. Kept as a no-op so
+  // call sites stay intact until the new backend defines its own events.
+  console.debug(`[event] ${action}`, payload);
+}
+
 export async function incrementProductClick(productId: string): Promise<void> {
-  try {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, {
-      clicks: increment(1)
-    });
-  } catch (error) {
-    console.error(`Error incrementing clicks for ${productId}:`, error);
-  }
+  db.click_events.push({
+    id: `clk-${Date.now()}`,
+    product_id: productId,
+    label: "click",
+    page_path: window.location.pathname,
+    created_at: new Date().toISOString(),
+  });
 }
 
-// Increment product view count
 export async function incrementProductView(productId: string): Promise<void> {
-  try {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, {
-      views: increment(1)
-    });
-  } catch (error) {
-    console.error(`Error incrementing views for ${productId}:`, error);
-  }
+  db.click_events.push({
+    id: `view-${Date.now()}`,
+    product_id: productId,
+    label: "view",
+    page_path: window.location.pathname,
+    created_at: new Date().toISOString(),
+  });
 }
 
-// Fetch tourist routes for Homepage
-export async function fetchTouristRoutes(): Promise<TouristRoute[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, "routes"));
-    const routes: TouristRoute[] = [];
-    querySnapshot.forEach((doc) => {
-      routes.push({ id: doc.id, ...doc.data() } as TouristRoute);
-    });
-    return routes;
-  } catch (error) {
-    console.error("Error fetching tourist routes:", error);
-    return [];
-  }
-}
-
-// Create or retrieve a UserProfile
-export async function getOrCreateUserProfile(userId: string, email: string, password?: string): Promise<UserProfile> {
-  try {
-    const docRef = doc(db, "users", userId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      // If profile exists but password is not set yet, update it
-      if (password && !data.password) {
-        await updateDoc(docRef, { password });
-        data.password = password;
-      }
-      return { id: docSnap.id, ...data } as UserProfile;
-    } else {
-      const isMockAdmin = email === "admin@ticoolture.vn" || email === "locle30092004@gmail.com";
-      const newProfile: UserProfile = {
-        id: userId,
-        email,
-        role: isMockAdmin ? "Admin" : email.endsWith("@shop.vn") ? "Shop" : "User",
-        wishlist: [],
-        wishlistNotes: {},
-        wishlistPriceAlerts: {},
-        followedShops: [],
-        createdAt: new Date().toISOString()
-      };
-      if (password) {
-        newProfile.password = password;
-      }
-      await setDoc(docRef, newProfile);
-      return newProfile;
-    }
-  } catch (error) {
-    console.error(`Error creating user profile for ${userId}:`, error);
-    throw error;
-  }
-}
-
-// Reset user password in Firestore database
-export async function resetUserPassword(email: string, newPassword: string): Promise<void> {
-  try {
-    const q = query(collection(db, "users"), where("email", "==", email));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
-      await updateDoc(doc(db, "users", userDoc.id), {
-        password: newPassword
-      });
-    } else {
-      throw new Error("User profile not found.");
-    }
-  } catch (error) {
-    console.error("Error resetting user password:", error);
-    throw error;
-  }
-}
-
-// Toggle wishlist status
-export async function toggleWishlist(userId: string, productId: string): Promise<string[]> {
-  try {
-    const docRef = doc(db, "users", userId);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) return [];
-    
-    const data = docSnap.data() as UserProfile;
-    let newWishlist = [...(data.wishlist || [])];
-    if (newWishlist.includes(productId)) {
-      newWishlist = newWishlist.filter(id => id !== productId);
-    } else {
-      newWishlist.push(productId);
-    }
-    
-    await updateDoc(docRef, { wishlist: newWishlist });
-    return newWishlist;
-  } catch (error) {
-    console.error(`Error toggling wishlist for ${userId}:`, error);
-    return [];
-  }
-}
-
-// Save user notes on a wishlist item
-export async function saveWishlistNote(userId: string, productId: string, note: string): Promise<void> {
-  try {
-    const docRef = doc(db, "users", userId);
-    const fieldPath = `wishlistNotes.${productId}`;
-    await updateDoc(docRef, {
-      [fieldPath]: note
-    });
-  } catch (error) {
-    console.error("Error saving wishlist note:", error);
-  }
-}
-
-// Toggle store following status
-export async function toggleFollowShop(userId: string, storeId: string): Promise<string[]> {
-  try {
-    const docRef = doc(db, "users", userId);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) return [];
-
-    const data = docSnap.data() as UserProfile;
-    let newFollowed = [...(data.followedShops || [])];
-    if (newFollowed.includes(storeId)) {
-      newFollowed = newFollowed.filter(id => id !== storeId);
-    } else {
-      newFollowed.push(storeId);
-    }
-
-    await updateDoc(docRef, { followedShops: newFollowed });
-    return newFollowed;
-  } catch (error) {
-    console.error("Error toggling followed shop:", error);
-    return [];
-  }
-}
-
-// Register or Update a Store Profile
-export async function upsertStoreProfile(storeId: string, storeData: Partial<StoreProfile>): Promise<void> {
-  try {
-    const docRef = doc(db, "stores", storeId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const existing = docSnap.data() as StoreProfile;
-      const newStatus = existing.status === "Approved" ? "Approved" : "Pending";
-      await updateDoc(docRef, {
-        ...storeData,
-        status: newStatus,
-        rejectionReason: newStatus === "Pending" ? "" : (existing.rejectionReason || "")
-      });
-    } else {
-      await setDoc(docRef, {
-        id: storeId,
-        registered: true,
-        status: "Pending",
-        createdAt: new Date().toISOString(),
-        ...storeData
-      });
-    }
-  } catch (error) {
-    console.error(`Error upserting store ${storeId}:`, error);
-    throw error;
-  }
-}
-
-// Submit/Upload a new Product for Moderation
-export async function createProduct(productData: Omit<Product, "id" | "createdAt" | "clicks">): Promise<string> {
-  try {
-    const newProductRef = doc(collection(db, "products"));
-    const newProduct: Product = {
-      ...productData,
-      id: newProductRef.id,
-      clicks: 0,
-      createdAt: new Date().toISOString()
+export async function getOrCreateUserProfile(
+  userId: string,
+  email: string,
+  password?: string
+): Promise<UserProfile> {
+  const users = readUsers();
+  if (!users[userId]) {
+    users[userId] = {
+      id: userId,
+      email,
+      role: "User",
+      wishlist: [],
+      followedShops: [],
+      createdAt: new Date().toISOString(),
+      password,
     };
-    await setDoc(newProductRef, newProduct);
-    return newProductRef.id;
-  } catch (error) {
-    console.error("Error creating product for moderation:", error);
-    throw error;
+    writeUsers(users);
+  }
+  return delay(clone(users[userId]));
+}
+
+export async function findUserByEmail(email: string): Promise<UserProfile | null> {
+  const match = Object.values(readUsers()).find((u) => u.email === email);
+  return delay(match ? clone(match) : null);
+}
+
+export async function resetUserPassword(email: string, newPassword: string): Promise<void> {
+  const users = readUsers();
+  const match = Object.values(users).find((u) => u.email === email);
+  if (match) {
+    users[match.id] = { ...match, password: newPassword };
+    writeUsers(users);
   }
 }
 
-// Moderate/Approve/Reject a product (Admin capability)
-export async function moderateProduct(productId: string, status: "Approved" | "Rejected", rejectionReason?: string): Promise<void> {
-  try {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, {
-      status,
-      rejectionReason: rejectionReason || ""
-    });
-  } catch (error) {
-    console.error(`Error moderating product ${productId}:`, error);
-    throw error;
-  }
+export async function toggleWishlist(userId: string, productId: string): Promise<string[]> {
+  const users = readUsers();
+  const user = users[userId];
+  if (!user) return [];
+  const next = user.wishlist.includes(productId)
+    ? user.wishlist.filter((id) => id !== productId)
+    : [...user.wishlist, productId];
+  users[userId] = { ...user, wishlist: next };
+  writeUsers(users);
+  return delay(next);
 }
+
+export async function saveWishlistNote(userId: string, productId: string, note: string): Promise<void> {
+  const users = readUsers();
+  const user = users[userId];
+  if (!user) return;
+  users[userId] = { ...user, wishlistNotes: { ...(user.wishlistNotes || {}), [productId]: note } };
+  writeUsers(users);
+}
+
+export async function toggleFollowShop(userId: string, storeId: string): Promise<string[]> {
+  const users = readUsers();
+  const user = users[userId];
+  if (!user) return [];
+  const next = user.followedShops.includes(storeId)
+    ? user.followedShops.filter((id) => id !== storeId)
+    : [...user.followedShops, storeId];
+  users[userId] = { ...user, followedShops: next };
+  writeUsers(users);
+  return delay(next);
+}
+
+export async function upsertStoreProfile(storeId: string, storeData: Partial<StoreProfile>): Promise<void> {
+  const row = db.shops.find((s) => s.id === storeId);
+  if (!row) return;
+  if (storeData.name !== undefined) row.name = storeData.name;
+  if (storeData.vibe !== undefined) row.tagline_vi = storeData.vibe;
+  if (storeData.story !== undefined) row.story_vi = storeData.story;
+  if (storeData.logoUrl !== undefined) row.logo_url = storeData.logoUrl;
+  if (storeData.coverUrl !== undefined) row.cover_url = storeData.coverUrl;
+  if (storeData.email !== undefined) row.contact_email = storeData.email;
+  if (storeData.address !== undefined) row.address = storeData.address;
+
+  const flagKeys = ["hidden", "deleteScheduledAt", "accountDeleteRequested", "status", "rejectionReason"] as const;
+  const nextFlags = { ...(shopFlags.get(storeId) ?? {}) };
+  for (const key of flagKeys) {
+    if (storeData[key] !== undefined) (nextFlags as any)[key] = storeData[key];
+  }
+  shopFlags.set(storeId, nextFlags);
+
+  row.updated_at = new Date().toISOString();
+}
+
+/** Deletes a shop and every product belonging to it. */
+export async function deleteStore(storeId: string): Promise<void> {
+  const productIds = db.products.filter((p) => p.shop_id === storeId).map((p) => p.id);
+  db.products = db.products.filter((p) => p.shop_id !== storeId);
+  db.product_images = db.product_images.filter((i) => !productIds.includes(i.product_id));
+  db.shops = db.shops.filter((s) => s.id !== storeId);
+  db.shop_socials = db.shop_socials.filter((s) => s.shop_id !== storeId);
+  shopFlags.delete(storeId);
+}
+
+/** How many saved lists hold this product. */
+export async function countWishlistHolders(productId: string): Promise<number> {
+  const users = Object.values(readUsers());
+  return delay(users.filter((u) => u.wishlist.includes(productId)).length);
+}
+
+export async function createProduct(
+  productData: Omit<Product, "id" | "createdAt" | "clicks">
+): Promise<string> {
+  const id = `prod-local-${Date.now()}`;
+  const now = new Date().toISOString();
+  db.products.push({
+    id,
+    shop_id: productData.storeId,
+    category_id: db.categories.find((c) => c.name_vi === productData.category)?.id ?? db.categories[0].id,
+    slug: id,
+    name_vi: productData.name,
+    name_en: null,
+    short_desc_vi: productData.description ?? null,
+    short_desc_en: null,
+    story_vi: productData.story ?? null,
+    story_en: null,
+    price_vnd: productData.price,
+    price_note_vi: "Giá tham khảo, giá cuối do shop quyết định",
+    price_updated_at: now.slice(0, 10),
+    dimensions: productData.size ?? null,
+    status: "pending",
+    is_featured: false,
+    published_at: null,
+    created_at: now,
+    updated_at: now,
+    variants: [],
+  });
+  (productData.images || []).forEach((url, i) => {
+    db.product_images.push({
+      id: `img-${id}-${i}`,
+      product_id: id,
+      url,
+      alt_vi: productData.name,
+      alt_en: null,
+      is_cover: i === 0,
+      sort_order: i,
+      width: null,
+      height: null,
+    });
+  });
+  return id;
+}
+
+export async function updateProduct(productId: string, productData: Partial<Product>): Promise<void> {
+  const row = db.products.find((p) => p.id === productId);
+  if (!row) return;
+  if (productData.name !== undefined) row.name_vi = productData.name;
+  if (productData.price !== undefined) row.price_vnd = productData.price;
+  if (productData.description !== undefined) row.short_desc_vi = productData.description;
+  if (productData.story !== undefined) row.story_vi = productData.story;
+  if (productData.hidden !== undefined) row.status = productData.hidden ? "archived" : "published";
+  row.updated_at = new Date().toISOString();
+}
+
+export async function moderateProduct(
+  productId: string,
+  status: "Approved" | "Rejected",
+  _rejectionReason?: string
+): Promise<void> {
+  const row = db.products.find((p) => p.id === productId);
+  if (!row) return;
+  row.status = status === "Approved" ? "published" : "draft";
+  row.published_at = status === "Approved" ? new Date().toISOString() : null;
+}
+
+export async function moderateStore(
+  storeId: string,
+  status: "Approved" | "Rejected",
+  _rejectionReason?: string
+): Promise<void> {
+  const row = db.shops.find((s) => s.id === storeId);
+  if (!row) return;
+  row.status = status === "Approved" ? "published" : "draft";
+}
+
+export async function requestDeleteProduct(productId: string): Promise<void> {
+  const row = db.products.find((p) => p.id === productId);
+  if (row) row.status = "pending";
+}
+
+export async function permanentlyDeleteProduct(productId: string): Promise<void> {
+  db.products = db.products.filter((p) => p.id !== productId);
+  db.product_images = db.product_images.filter((i) => i.product_id !== productId);
+}
+
+export async function updateMessageTemplate(template: string): Promise<void> {
+  const row = db.site_settings.find((s) => s.key === "message_template");
+  if (row) row.value = template;
+  else db.site_settings.push({ key: "message_template", value: template });
+}
+
+/* ── analytics ─────────────────────────────────────────────────────────── */
 
 export interface ButtonClickStat {
   id: string;
   buttonText: string;
   pagePath: string;
-  clicks: number;
-  lastClickedAt: string;
+  count: number;
+  lastClicked: string;
 }
 
-// Track button click
 export async function recordButtonClick(buttonText: string, pagePath: string) {
-  try {
-    const cleanText = buttonText.trim().replace(/[\n\r]/g, " ").substring(0, 100) || "unlabeled-button";
-    const cleanPath = pagePath || "unknown-page";
-    const docId = encodeURIComponent(`${cleanPath}_${cleanText}`).replace(/\./g, "%2E");
-    const docRef = doc(db, "button_clicks", docId);
-    
-    await setDoc(docRef, {
-      buttonText: cleanText,
-      pagePath: cleanPath,
-      clicks: increment(1),
-      lastClickedAt: new Date().toISOString()
-    }, { merge: true });
-  } catch (error) {
-    console.error("Error recording button click:", error);
-  }
+  db.click_events.push({
+    id: `btn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    product_id: null,
+    label: buttonText,
+    page_path: pagePath,
+    created_at: new Date().toISOString(),
+  });
 }
 
-// Fetch all button click stats
 export async function fetchButtonClickStats(): Promise<ButtonClickStat[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, "button_clicks"));
-    const stats: ButtonClickStat[] = [];
-    querySnapshot.forEach((doc) => {
-      stats.push({ id: doc.id, ...doc.data() } as ButtonClickStat);
-    });
-    return stats.sort((a, b) => b.clicks - a.clicks);
-  } catch (error) {
-    console.error("Error fetching button click stats:", error);
-    return [];
-  }
-}
-
-// Update/Edit an existing product (puts it back to Pending)
-export async function updateProduct(productId: string, productData: Partial<Product>): Promise<void> {
-  try {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, {
-      ...productData,
-      status: "Pending", // Reset to pending for Admin moderation
-      rejectionReason: "" // Clear any previous rejection message
-    });
-  } catch (error) {
-    console.error(`Error updating product ${productId}:`, error);
-    throw error;
-  }
-}
-
-// Request deletion of a product (sets status to Pending and deleteRequested to true)
-export async function requestDeleteProduct(productId: string): Promise<void> {
-  try {
-    const docRef = doc(db, "products", productId);
-    await updateDoc(docRef, {
-      status: "Pending",
-      deleteRequested: true
-    });
-  } catch (error) {
-    console.error(`Error requesting deletion of product ${productId}:`, error);
-    throw error;
-  }
-}
-
-// Permanently delete a product (used by Admin to approve deletion)
-export async function permanentlyDeleteProduct(productId: string): Promise<void> {
-  try {
-    const docRef = doc(db, "products", productId);
-    await deleteDoc(docRef);
-  } catch (error) {
-    console.error(`Error permanently deleting product ${productId}:`, error);
-    throw error;
-  }
-}
-
-// Fetch message template
-export async function fetchMessageTemplate(): Promise<string> {
-  try {
-    const docRef = doc(db, "config", "message_template");
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return docSnap.data().template || "Hi, I saw your product {product_name} on Tí Coolture and want to buy it";
+  const grouped = new Map<string, ButtonClickStat>();
+  for (const e of db.click_events) {
+    if (e.product_id) continue;
+    const key = `${e.label}::${e.page_path}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.count += 1;
+      existing.lastClicked = e.created_at;
+    } else {
+      grouped.set(key, {
+        id: key,
+        buttonText: e.label,
+        pagePath: e.page_path,
+        count: 1,
+        lastClicked: e.created_at,
+      });
     }
-  } catch (error) {
-    console.error("Error fetching message template:", error);
   }
-  return "Hi, I saw your product {product_name} on Tí Coolture and want to buy it";
+  return delay([...grouped.values()].sort((a, b) => b.count - a.count));
 }
 
-// Update message template
-export async function updateMessageTemplate(template: string): Promise<void> {
-  try {
-    const docRef = doc(db, "config", "message_template");
-    await setDoc(docRef, { template }, { merge: true });
-  } catch (error) {
-    console.error("Error updating message template:", error);
-    throw error;
-  }
+export async function logApprovalActivity(_logData: Record<string, any>): Promise<void> {
+  // SRS §4 defines audit_logs for this. No backend to write to yet.
 }
 
-// Moderate/Approve/Reject a store profile (Admin capability)
-export async function moderateStore(storeId: string, status: "Approved" | "Rejected", rejectionReason?: string): Promise<void> {
-  try {
-    const docRef = doc(db, "stores", storeId);
-    await updateDoc(docRef, {
-      status,
-      rejectionReason: rejectionReason || ""
-    });
-  } catch (error) {
-    console.error(`Error moderating store ${storeId}:`, error);
-    throw error;
-  }
+export async function fetchApprovalLogs(_storeId?: string): Promise<any[]> {
+  return delay([]);
 }
-
-// Log a moderation/approval activity to firestore
-export async function logApprovalActivity(logData: {
-  productId?: string;
-  productName?: string;
-  storeId: string;
-  storeName?: string;
-  activity: string;
-  actor: string;
-  reason?: string;
-}): Promise<void> {
-  try {
-    const logRef = doc(collection(db, "approval_logs"));
-    await setDoc(logRef, {
-      id: logRef.id,
-      timestamp: new Date().toISOString(),
-      ...logData
-    });
-  } catch (error) {
-    console.error("Error logging approval activity:", error);
-  }
-}
-
-// Fetch approval logs, optionally filtered by storeId, sorted by timestamp descending
-export async function fetchApprovalLogs(storeId?: string): Promise<any[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, "approval_logs"));
-    const logs: any[] = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (!storeId || data.storeId === storeId) {
-        logs.push(data);
-      }
-    });
-    // Order by latest activity time
-    return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  } catch (error) {
-    console.error("Error fetching approval logs:", error);
-    return [];
-  }
-}
-

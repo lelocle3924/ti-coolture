@@ -1,17 +1,31 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { User as UserIcon, Terminal, LogOut, Shield, Search } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate, useLocation, NavLink } from "react-router-dom";
+import { User as UserIcon, LogOut, Shield, Search, Heart, Menu, X } from "lucide-react";
 import { useAuth } from "../lib/useAuth";
-import WebhookTerminal from "./WebhookTerminal";
 import { fetchProducts } from "../lib/dbService";
+import Brandmark from "./Brandmark";
+
+/**
+ * Navigation structure follows the Lovable mockup: centred primary links with
+ * an icon cluster (search, wishlist, language) on the right. Rendered on the
+ * violet ground rather than the mockup's white bar.
+ */
+const NAV_LINKS = [
+  { to: "/", label: "Trang chủ", end: true },
+  { to: "/products", label: "Sản phẩm" },
+  { to: "/stores", label: "Shop" },
+  { to: "/blog", label: "Tạp chí" },
+];
 
 export default function Header() {
   const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [terminalOpen, setTerminalOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [previousSearches, setPreviousSearches] = useState<string[]>(() => {
     const saved = sessionStorage.getItem("t_coolture_searches");
     return saved ? JSON.parse(saved) : [];
@@ -19,259 +33,249 @@ export default function Header() {
   const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    async function loadProducts() {
-      try {
-        const approvedProducts = await fetchProducts("Approved");
-        setProducts(approvedProducts);
-      } catch (err) {
-        console.error("Error loading search products suggestions:", err);
-      }
-    }
-    loadProducts();
+    fetchProducts("Approved")
+      .then(setProducts)
+      .catch((err) => console.error("Error loading search suggestions:", err));
   }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   const suggestions = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query) ||
-      p.storeName.toLowerCase().includes(query)
-    ).slice(0, 5);
+    const q = searchQuery.toLowerCase();
+    return products
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.storeName.toLowerCase().includes(q)
+      )
+      .slice(0, 5);
   }, [searchQuery, products]);
 
-  const handleLogoClick = (e: React.MouseEvent) => {
-    if (location.pathname === "/") {
-      e.preventDefault();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  const handleUserClick = () => {
-    if (user) {
-      if (profile?.role === "Shop") {
-        navigate("/shop-dashboard");
-      } else {
-        navigate("/user-profile");
-      }
-    } else {
-      navigate("/auth-gateway");
-    }
+  const rememberSearch = (term: string) => {
+    if (previousSearches.includes(term)) return;
+    const updated = [term, ...previousSearches].slice(0, 5);
+    setPreviousSearches(updated);
+    sessionStorage.setItem("t_coolture_searches", JSON.stringify(updated));
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
     if (!query) return;
-
-    if (!previousSearches.includes(query)) {
-      const updated = [query, ...previousSearches].slice(0, 5);
-      setPreviousSearches(updated);
-      sessionStorage.setItem("t_coolture_searches", JSON.stringify(updated));
-    }
-
+    rememberSearch(query);
     navigate(`/products?q=${encodeURIComponent(query)}`);
   };
 
+  const handleUserClick = () =>
+    navigate(user ? (profile?.role === "Shop" ? "/shop-dashboard" : "/user-profile") : "/auth-gateway");
+
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    `relative py-1 label transition-colors ${isActive ? "text-paper" : "text-white/70 hover:text-wave"}`;
+
   return (
-    <>
-      <header className="sticky top-0 z-40 bg-white border-b-4 border-black px-4 md:px-8 py-4 flex flex-col md:flex-row justify-between items-center select-none gap-4">
-        {/* Top-left Corner Logo and Search Bar */}
-        <div className="flex items-center justify-between md:justify-start space-x-4 w-full md:w-auto">
-          <Link 
-            to="/" 
-            onClick={handleLogoClick}
-            className="font-display font-black text-2xl tracking-tighter uppercase text-black hover:bg-black hover:text-white px-2 py-1 transition-all border-2 border-transparent hover:border-black shrink-0"
-            id="brand-logo"
-          >
-            Tí Coolture
-          </Link>
+    <header className="sticky top-0 z-40 bg-brand text-paper border-b border-white/20 select-none">
+      <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3 md:px-8 md:py-4">
+        <Link to="/" className="shrink-0" aria-label="Tí Coolture — trang chủ">
+          <Brandmark className="w-[72px] md:w-[80px] h-auto" body="var(--color-paper)" />
+        </Link>
 
-          {/* Global Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex border-2 border-black w-full max-w-[200px] sm:max-w-xs relative">
-            <input
-              type="text"
-              placeholder="Search crafts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-              className="w-full p-1.5 px-3 font-mono text-xs focus:outline-none text-black"
-            />
-            <button type="submit" className="bg-black text-white hover:bg-neutral-800 px-3 border-l-2 border-black font-mono text-xs font-bold uppercase transition-colors">
-              <Search className="w-3.5 h-3.5" />
-            </button>
+        <nav className="hidden md:flex items-center gap-8 mx-auto" aria-label="Điều hướng chính">
+          {NAV_LINKS.map((link) => (
+            <NavLink key={link.to} to={link.to} end={link.end} className={linkClass}>
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
 
-            {/* Recent Searches / Auto-matching Suggestions Dropdown under search bar when clicked */}
-            {isSearchFocused && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-black shadow-[4px_4px_0px_0px_#000000] z-50 p-3 space-y-2 min-w-[220px]">
-                {searchQuery.trim() === "" ? (
-                  <>
-                    <div className="flex items-center justify-between border-b border-neutral-200 pb-1.5">
-                      <span className="font-mono text-[9px] uppercase font-bold text-neutral-400">
-                        RECENT SEARCHES
-                      </span>
-                      {previousSearches.length > 0 && (
-                        <button 
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setPreviousSearches([]);
-                            sessionStorage.removeItem("t_coolture_searches");
-                          }}
-                          className="text-[9px] font-mono text-neutral-400 hover:text-black uppercase font-bold"
-                        >
-                          RESET
-                        </button>
-                      )}
-                    </div>
-                    {previousSearches.length === 0 ? (
-                      <p className="font-mono text-[10px] text-neutral-400 italic uppercase">
-                        No recent searches
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-1 text-left">
-                        {previousSearches.map((term, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onMouseDown={() => {
-                              setSearchQuery(term);
-                              navigate(`/products?q=${encodeURIComponent(term)}`);
-                            }}
-                            className="w-full text-left px-2 py-1 bg-neutral-100 hover:bg-black hover:text-white border border-neutral-300 hover:border-black text-[10px] font-mono transition-all uppercase truncate"
-                          >
-                            "{term}"
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between border-b border-neutral-200 pb-1.5">
-                      <span className="font-mono text-[9px] uppercase font-bold text-neutral-400">
-                        MATCHING SUGGESTIONS
-                      </span>
-                    </div>
-                    {suggestions.length === 0 ? (
-                      <p className="font-mono text-[10px] text-neutral-400 italic uppercase">
-                        No matches found
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-1.5 text-left">
-                        {suggestions.map((prod) => (
-                          <button
-                            key={prod.id}
-                            type="button"
-                            onMouseDown={() => {
-                              if (!previousSearches.includes(prod.name)) {
-                                const updated = [prod.name, ...previousSearches].slice(0, 5);
-                                setPreviousSearches(updated);
-                                sessionStorage.setItem("t_coolture_searches", JSON.stringify(updated));
-                              }
-                              setSearchQuery("");
-                              navigate(`/products/${prod.id}`);
-                            }}
-                            className="w-full text-left p-1.5 bg-neutral-50 hover:bg-black hover:text-white border border-neutral-200 hover:border-black transition-all flex items-center space-x-2"
-                          >
-                            <img
-                              src={prod.images[0]}
-                              alt={prod.name}
-                              referrerPolicy="no-referrer"
-                              className="w-6 h-6 object-cover border border-black shrink-0"
-                            />
-                            <div className="overflow-hidden flex-1">
-                              <p className="font-sans text-[10px] font-bold truncate uppercase text-black group-hover:text-white">{prod.name}</p>
-                              <p className="font-mono text-[8px] text-neutral-400 truncate uppercase">{prod.storeName} • {prod.category}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </form>
-        </div>
-
-        {/* Navigation & Controls */}
-        <div className="flex items-center space-x-2 md:space-x-4 w-full md:w-auto justify-end">
-          {/* Navigation link: Products */}
-          <Link
-            to="/products"
-            className="border-2 border-black px-3 py-1 text-xs font-mono font-bold uppercase hover:bg-black hover:text-white transition-all bg-white text-black"
-            id="nav-products"
-          >
-            Products
-          </Link>
-
-          {/* Navigation link: Stores */}
-          <Link
-            to="/stores"
-            className="border-2 border-black px-3 py-1 text-xs font-mono font-bold uppercase hover:bg-black hover:text-white transition-all bg-white text-black"
-            id="nav-stores"
-          >
-            Stores
-          </Link>
-
-          {/* Webhooks Terminal Toggle - Only shown for Admin profile */}
-          {profile?.role === "Admin" && (
-            <button
-              onClick={() => setTerminalOpen(true)}
-              className="flex items-center space-x-1 border-2 border-black px-3 py-1 font-mono text-xs hover:bg-black hover:text-white transition-all bg-white text-black"
-              id="btn-webhook-terminal"
-              title="Open real-time webhooks logger terminal"
-            >
-              <span className="relative flex h-2 w-2 mr-1">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <Terminal className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline font-bold">TERMINAL</span>
-            </button>
-          )}
-
-          {/* Account Button / User Icon */}
+        <div className="flex items-center gap-1 ml-auto md:ml-0">
           <button
-            onClick={handleUserClick}
-            className="border-2 border-black p-1.5 hover:bg-black hover:text-white transition-all bg-white text-black"
-            id="btn-user-profile"
-            title={user ? `Profile: ${user.email}` : "Log In / Register"}
+            onClick={() => setSearchOpen((v) => !v)}
+            className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
+            aria-label={searchOpen ? "Đóng tìm kiếm" : "Tìm kiếm"}
+            aria-expanded={searchOpen}
           >
-            <UserIcon className="w-5 h-5" />
+            {searchOpen ? <X className="w-[18px] h-[18px]" /> : <Search className="w-[18px] h-[18px]" />}
           </button>
 
-          {/* Auth Display & Sign Out */}
+          <button
+            onClick={() => navigate(user ? "/user-profile" : "/auth-gateway")}
+            className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
+            aria-label="Sản phẩm đã lưu"
+          >
+            <Heart className="w-[18px] h-[18px]" />
+          </button>
+
+          <span className="hidden sm:flex items-center gap-1.5 label pl-2 pr-1 text-white/70">
+            <span className="text-paper">VI</span>
+            <span aria-hidden="true">/</span>
+            <span title="Chưa có bản tiếng Anh">EN</span>
+          </span>
+
+          <button
+            onClick={handleUserClick}
+            className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
+            aria-label={user ? "Tài khoản của bạn" : "Đăng nhập hoặc đăng ký"}
+            title={user ? user.email : "Đăng nhập / Đăng ký"}
+          >
+            <UserIcon className="w-[18px] h-[18px]" />
+          </button>
+
           {user && (
-            <div className="flex items-center space-x-2 border-l-2 border-neutral-300 pl-2 md:pl-4">
-              <div className="hidden lg:flex flex-col text-right font-mono text-[10px]">
-                <span className="font-bold truncate max-w-[120px] text-black">{user.email}</span>
-                <span className="text-neutral-500 flex items-center justify-end space-x-1">
-                  {profile?.role === "Admin" && <Shield className="w-2.5 h-2.5 text-neutral-800 mr-0.5 inline" />}
-                  <span>{profile?.role || "User"}</span>
-                </span>
-              </div>
+            <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-white/20">
+              <span className="label text-white/80 flex items-center gap-1">
+                {profile?.role === "Admin" && <Shield className="w-3 h-3" aria-hidden="true" />}
+                {profile?.role || "User"}
+              </span>
               <button
                 onClick={async () => {
                   await logout();
                   navigate("/");
                 }}
-                className="p-1.5 border-2 border-transparent hover:border-black hover:bg-neutral-100 rounded-none transition-all text-neutral-700 hover:text-black"
-                id="btn-signout"
-                title="Sign Out"
+                className="w-9 h-9 grid place-items-center hover:text-wave transition-colors"
+                aria-label="Đăng xuất"
               >
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
           )}
-        </div>
-      </header>
 
-      {/* Webhook Stream Logs Terminal */}
-      <WebhookTerminal isOpen={terminalOpen} onClose={() => setTerminalOpen(false)} />
-    </>
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="md:hidden w-10 h-10 grid place-items-center"
+            aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Search drawer — the mockup hides search behind the icon */}
+      {searchOpen && (
+        <div className="border-t border-white/20 bg-brand">
+          <form
+            onSubmit={handleSearchSubmit}
+            role="search"
+            className="mx-auto max-w-7xl px-5 py-4 md:px-8"
+          >
+            <div className="flex items-center gap-3 border-b border-white/30 pb-2 focus-within:border-wave transition-colors">
+              <Search className="w-5 h-5 shrink-0 text-white/80" aria-hidden="true" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm sản phẩm, shop…"
+                aria-label="Tìm sản phẩm hoặc shop"
+                className="w-full bg-transparent py-2 text-lg text-paper placeholder:text-white/80 focus:outline-none"
+              />
+            </div>
+
+            <div className="mt-4">
+              {searchQuery.trim() === "" ? (
+                previousSearches.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="label text-white/80">Tìm gần đây</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviousSearches([]);
+                          sessionStorage.removeItem("t_coolture_searches");
+                        }}
+                        className="label text-white/80 hover:text-wave transition-colors"
+                      >
+                        Xoá hết
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {previousSearches.map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => navigate(`/products?q=${encodeURIComponent(term)}`)}
+                          className="min-h-11 px-4 border border-white/30 text-sm hover:border-paper hover:bg-white/10 transition-colors"
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )
+              ) : suggestions.length === 0 ? (
+                <p className="text-sm text-white/80">
+                  Không tìm thấy “{searchQuery}”. Tí sẽ ghi nhận — biết đâu tháng sau có.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {suggestions.map((prod) => (
+                    <li key={prod.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          rememberSearch(prod.name);
+                          setSearchQuery("");
+                          navigate(`/products/${prod.id}`);
+                        }}
+                        className="w-full flex items-center gap-3 p-2 text-left hover:bg-white/10 transition-colors"
+                      >
+                        <img
+                          src={prod.images[0]}
+                          alt=""
+                          className="w-10 h-10 object-cover shrink-0 bg-paper-warm"
+                        />
+                        <span className="overflow-hidden">
+                          <span className="block text-sm truncate">{prod.name}</span>
+                          <span className="block label text-wave truncate">{prod.storeName}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Mobile drawer */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-white/20 px-5 py-5">
+          <nav className="flex flex-col" aria-label="Điều hướng chính">
+            {NAV_LINKS.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className="display text-2xl py-2.5 border-b border-white/12"
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+          {user && (
+            <button
+              onClick={async () => {
+                await logout();
+                navigate("/");
+              }}
+              className="label mt-5 flex items-center gap-2 text-white/80"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+              Đăng xuất
+            </button>
+          )}
+        </div>
+      )}
+    </header>
   );
 }

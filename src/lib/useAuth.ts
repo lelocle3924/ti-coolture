@@ -1,11 +1,13 @@
-import { useEffect, useState, createContext, useContext } from "react";
-import { onAuthStateChanged, User, signOut } from "firebase/auth";
-import { auth } from "./firebase";
+import { createContext, useContext } from "react";
 import { UserProfile } from "../types";
-import { getOrCreateUserProfile } from "./dbService";
 
+/**
+ * Auth context. Firebase Auth was removed on 2026-08-14; the target stack
+ * (docs/SRS.md §3.1) uses Supabase Auth, which does not exist yet. Until then
+ * AuthProvider backs this with a local session — see its file header.
+ */
 interface AuthContextType {
-  user: any; // Allow real User or mock user
+  user: any;
   profile: UserProfile | null;
   loading: boolean;
   logout: () => Promise<void>;
@@ -19,7 +21,7 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   refreshProfile: async () => {},
-  loginAsMockUser: async () => {}
+  loginAsMockUser: async () => {},
 });
 
 export function useAuth() {
