@@ -1,0 +1,4 @@
+# Placeholder content is live (src/lib/mock/seed.ts): invented shops, products
+# and prices. Keep this file blocking until real data replaces the seed.
+User-agent: *
+Disallow: /

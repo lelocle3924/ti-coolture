@@ -13,9 +13,18 @@ import {
 import { Product, TouristRoute, RouteStop } from "../types";
 import { WaveBottomExtended, RibbonLoop, ArcTopRight } from "../components/BrandShapes";
 import FilmStrip from "../components/FilmStrip";
+import heroBackground from "../assets/background-hero.png";
 
 const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+
+/**
+ * Bộ sưu tập (Collections) is hidden for now. The section, its data and the
+ * collections/collection_products tables all stay in place — flip this to true
+ * to bring it back. Kept as a flag rather than deleted because the tables are
+ * a proposed addition to SRS section 4 and shouldn't quietly disappear.
+ */
+const SHOW_COLLECTIONS = false;
 
 export default function Homepage() {
   const navigate = useNavigate();
@@ -72,6 +81,32 @@ export default function Homepage() {
     <div className="bg-brand text-paper">
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden bg-brand">
+        {/* Street photograph behind the hero. bg-brand stays underneath so the
+            first paint is violet rather than white while the image loads. */}
+        <img
+          src={heroBackground}
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+
+        {/* Two-part scrim. The multiply tint pulls the photo's many hues back
+            toward brand violet; the gradient does the darkening, heaviest on
+            the left where the headline and buttons sit.
+            Weights were measured against this photograph, not guessed: at the
+            first pass (violet 40%, ink 88%) the image's mean luminance fell
+            from 0.19 to 0.007 — 96% of it gone, legible but mud. These values
+            keep 4x more of the picture while the brightest pixel under the
+            headline still leaves white text near 6:1. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-brand/25 mix-blend-multiply"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-ink/62 via-ink/56 to-ink/45"
+        />
         <div
           style={{ paddingBottom: "calc(18.2vw + 2.5rem)" }}
           className="relative z-10 mx-auto flex min-h-[70vh] max-w-7xl flex-col items-start justify-center px-5 pt-24 md:px-8 md:pt-32">
@@ -338,44 +373,46 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* ============ COLLECTIONS ============ */}
-      <section className="py-16 md:py-24">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <h2 className="display m-0 text-center text-[2rem] md:text-[2.5rem] leading-tight normal-case">
-            Bộ sưu tập
-          </h2>
+      {/* ============ COLLECTIONS (hidden — see SHOW_COLLECTIONS) ============ */}
+      {SHOW_COLLECTIONS && (
+        <section className="py-16 md:py-24">
+          <div className="mx-auto max-w-7xl px-5 md:px-8">
+            <h2 className="display m-0 text-center text-[2rem] md:text-[2.5rem] leading-tight normal-case">
+              Bộ sưu tập
+            </h2>
 
-          <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
-            {collections.map((collection, idx) => (
-              <Link
-                key={collection.id}
-                to="/products"
-                className={`group relative overflow-hidden rounded-lg border border-white/20 transition-colors hover:border-wave ${
-                  idx === 0 ? "lg:col-span-2 lg:row-span-2" : ""
-                }`}
-              >
-                <div className={`overflow-hidden bg-paper-warm ${idx === 0 ? "aspect-[16/10]" : "aspect-[3/2]"}`}>
-                  <img
-                    src={collection.coverUrl}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
-                  />
-                </div>
-                <div className="p-5">
-                  <h3 className="m-0 text-lg font-medium leading-snug transition-colors group-hover:text-wave">
-                    {collection.title}
-                  </h3>
-                  <p className="mt-1.5 m-0 text-sm leading-relaxed text-white/80">
-                    {collection.description}
-                  </p>
-                  <p className="mt-3 m-0 label text-wave">{collection.productCount} sản phẩm</p>
-                </div>
-              </Link>
-            ))}
+            <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
+              {collections.map((collection, idx) => (
+                <Link
+                  key={collection.id}
+                  to="/products"
+                  className={`group relative overflow-hidden rounded-lg border border-white/20 transition-colors hover:border-wave ${
+                    idx === 0 ? "lg:col-span-2 lg:row-span-2" : ""
+                  }`}
+                >
+                  <div className={`overflow-hidden bg-paper-warm ${idx === 0 ? "aspect-[16/10]" : "aspect-[3/2]"}`}>
+                    <img
+                      src={collection.coverUrl}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
+                    />
+                  </div>
+                  <div className="p-5">
+                    <h3 className="m-0 text-lg font-medium leading-snug transition-colors group-hover:text-wave">
+                      {collection.title}
+                    </h3>
+                    <p className="mt-1.5 m-0 text-sm leading-relaxed text-white/80">
+                      {collection.description}
+                    </p>
+                    <p className="mt-3 m-0 label text-wave">{collection.productCount} sản phẩm</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ============ HIDDEN GEMS ============ */}
       {gem && (
