@@ -1,0 +1,6 @@
+Partake:
+- hover animations
+- Carousel down at Daily-Dimple Popping Joy -> Carousel motion and hover animation only
+
+carousel.md for a different look, with the slanted left and right images
+
