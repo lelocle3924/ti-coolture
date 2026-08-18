@@ -1217,29 +1217,29 @@ export default function UserProfile() {
           
           {/* 1. WISHLIST SECTION (Left 8 columns) */}
           <div className="lg:col-span-8 space-y-6">
-            <div className="border-b-4 border-black pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border-b border-ink/10 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="font-display font-black text-lg uppercase text-black tracking-tight">
-                  Your Curated Wishlist ({wishlistItems.length})
+                <span className="label text-wave-ink text-[10px] font-semibold block">BỘ SƯU TẬP ĐÃ LƯU</span>
+                <h2 className="display text-2xl font-medium text-ink normal-case">
+                  Tác phẩm yêu thích ({wishlistItems.length})
                 </h2>
-                <p className="text-[11px] font-mono text-neutral-500 uppercase mt-0.5">
-                  Manage price warning thresholds and annotations
-                </p>
               </div>
 
-              {/* Custom filters for lists (Page 5 specifications: Tất cả sản phẩm đã lưu, Xem sau, Đang giảm giá, Đã hết hàng) */}
-              <div className="flex flex-wrap border-2 border-black bg-white font-mono text-[9px] font-bold uppercase">
+              {/* Custom filters for lists */}
+              <div className="p-1 rounded-full bg-black/5 flex flex-wrap gap-1">
                 {([
-                  { id: "All", label: "All Saved" },
-                  { id: "WatchLater", label: "Watch Later" },
-                  { id: "Sale", label: "Price Drop" },
-                  { id: "OutOfStock", label: "Out of Stock" }
+                  { id: "All", label: "Tất cả" },
+                  { id: "WatchLater", label: "Xem sau" },
+                  { id: "Sale", label: "Giảm giá" },
+                  { id: "OutOfStock", label: "Hết hàng" }
                 ] as const).map((filter) => (
                   <button
                     key={filter.id}
                     onClick={() => setActiveWishlistFilter(filter.id)}
-                    className={`px-2.5 py-1.5 border-r border-black last:border-0 hover:bg-neutral-100 transition-colors ${
-                      activeWishlistFilter === filter.id ? "bg-black text-white hover:bg-black" : "text-black"
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                      activeWishlistFilter === filter.id 
+                        ? "bg-brand text-paper shadow-xs" 
+                        : "text-ink/70 hover:text-ink"
                     }`}
                   >
                     {filter.label}
@@ -1249,13 +1249,15 @@ export default function UserProfile() {
             </div>
 
             {displayedWishlist.length === 0 ? (
-              <div className="border-2 border-dashed border-neutral-400 bg-white p-12 text-center text-neutral-400">
-                <Heart className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
-                <p className="font-mono text-xs uppercase font-bold text-black">Wishlist is currently empty</p>
-                <p className="text-[11px] font-mono mt-1">Explore the homepage and tap hearts to save artisan creations.</p>
+              <div className="p-2 rounded-[2.5rem] bg-black/5">
+                <div className="bg-paper rounded-[2.125rem] p-12 text-center space-y-3">
+                  <Heart className="w-8 h-8 text-brand mx-auto opacity-40" />
+                  <p className="text-sm font-semibold text-ink">Danh sách lưu đang trống</p>
+                  <p className="text-xs text-ink/60">Dạo quanh trang chủ và nhấn biểu tượng trái tim để lưu tác phẩm yêu thích nhé.</p>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 gap-5">
                 {displayedWishlist.map((prod) => {
                   const note = profile?.wishlistNotes?.[prod.id] || "";
                   const alertPrice = profile?.wishlistPriceAlerts?.[prod.id] || prod.price;
@@ -1264,96 +1266,82 @@ export default function UserProfile() {
                   return (
                     <div 
                       key={prod.id} 
-                      className="bg-white border-4 border-black p-4 md:p-6 shadow-[4px_4px_0px_0px_#000000] grid grid-cols-1 md:grid-cols-12 gap-6 relative"
+                      className="p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5 hover:-translate-y-0.5 transition-all duration-300"
                       id={`wishlist-item-${prod.id}`}
                     >
-                      {/* Image Block */}
-                      <div className="md:col-span-3 aspect-square border-2 border-black bg-neutral-100 overflow-hidden">
-                        <img 
-                          src={prod.images[0]} 
-                          alt={prod.name} 
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover" 
-                        />
-                      </div>
+                      <div className="bg-paper rounded-[1.625rem] p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-center border border-ink/5">
+                        
+                        {/* Image Block */}
+                        <div className="md:col-span-3 aspect-square rounded-2xl bg-paper-warm overflow-hidden border border-ink/10">
+                          <img 
+                            src={prod.images[0]} 
+                            alt={prod.name} 
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
 
-                      {/* Meta & Location Origins Details */}
-                      <div className="md:col-span-5 space-y-3">
-                        <div>
-                          <span className="font-mono text-[9px] uppercase font-bold text-neutral-400 block">{prod.storeName}</span>
-                          <h3 className="font-display font-black text-base uppercase text-black hover:underline">
-                            <Link 
+                        {/* Meta & Location Origins Details */}
+                        <div className="md:col-span-5 space-y-2.5">
+                          <div>
+                            <span className="text-[10px] font-semibold text-brand uppercase tracking-wider block">{prod.storeName}</span>
+                            <h3 className="font-medium text-base text-ink hover:text-brand transition-colors">
+                              <Link 
+                                to={`/products/${prod.id}`}
+                                onClick={async () => {
+                                  await incrementProductClick(prod.id);
+                                }}
+                              >
+                                {prod.name}
+                              </Link>
+                            </h3>
+                          </div>
+
+                          <div className="flex items-center space-x-1 text-xs text-ink/60">
+                            <MapPin className="w-3.5 h-3.5 text-brand shrink-0" />
+                            <span>Xưởng: {prod.brand || prod.storeName}</span>
+                          </div>
+
+                          {/* Personal Custom Annotation */}
+                          {note && (
+                            <div className="bg-paper-warm rounded-xl p-2.5 space-y-0.5 border border-ink/5">
+                              <span className="text-[10px] font-semibold text-ink/50 flex items-center space-x-1">
+                                <FileText className="w-3 h-3 text-brand" />
+                                <span>Ghi chú của bạn:</span>
+                              </span>
+                              <p className="text-ink/80 text-xs italic">"{note}"</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Pricing & Actions */}
+                        <div className="md:col-span-4 border-t md:border-t-0 md:border-l border-ink/10 pt-4 md:pt-0 md:pl-6 flex flex-col justify-between space-y-4">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-semibold text-ink/50 block">GIÁ NIÊM YẾT</span>
+                            <p className="font-bold text-lg text-brand">{prod.price.toLocaleString()} VND</p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Link
                               to={`/products/${prod.id}`}
                               onClick={async () => {
                                 await incrementProductClick(prod.id);
                               }}
+                              className="flex-1 text-center py-2.5 rounded-full bg-brand text-paper hover:bg-brand-deep text-xs font-semibold transition-all shadow-sm"
                             >
-                              {prod.name}
+                              Xem chi tiết
                             </Link>
-                          </h3>
-                        </div>
-
-                        {/* Location Origin details */}
-                        <div className="flex items-center space-x-1 font-mono text-[10px] text-neutral-500 uppercase">
-                          <MapPin className="w-3.5 h-3.5 text-black shrink-0" />
-                          <span>Source: {prod.brand || prod.storeName} Workshop</span>
-                        </div>
-
-                        {/* Personal Custom Annotation */}
-                        {note && (
-                          <div className="bg-neutral-50 border border-neutral-300 p-2.5 space-y-1">
-                            <span className="font-mono text-[9px] uppercase font-bold text-neutral-400 flex items-center space-x-1">
-                              <FileText className="w-3 h-3 text-black" />
-                              <span>Your Custom Note</span>
-                            </span>
-                            <p className="text-neutral-700 text-xs italic">"{note}"</p>
+                            <button
+                              onClick={() => handleRemoveWishlist(prod.id)}
+                              className="p-2.5 rounded-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                              title="Xoá khỏi wishlist"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Price structure warnings alerts (Page 5 Reference: Location details and price alerts) */}
-                      <div className="md:col-span-4 border-t-2 md:border-t-0 md:border-l-2 border-black pt-4 md:pt-0 md:pl-6 flex flex-col justify-between space-y-4">
-                        <div className="space-y-2">
-                          <span className="font-mono text-[9px] uppercase font-bold text-neutral-400 block">PRICING PROFILE</span>
-                          <p className="font-mono font-black text-black text-base">{prod.price.toLocaleString()} VND</p>
-                          
-                          {/* Price alert target indicators */}
-                          {alertPrice > 0 && (
-                            <div className="flex items-center space-x-1 font-mono text-[10px]">
-                              <Bell className="w-3.5 h-3.5 text-black shrink-0" />
-                              <span className="text-neutral-500">Alert threshold:</span>
-                              <span className="text-black font-bold">{alertPrice.toLocaleString()} VND</span>
-                            </div>
-                          )}
-
-                          {/* Price Warnings status indicator */}
-                          {hasPriceAlertWarning && (
-                            <span className="inline-block px-1.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 text-[8px] font-mono font-bold uppercase">
-                              ✓ Targets met / Discount alert active
-                            </span>
-                          )}
                         </div>
 
-                        <div className="flex space-x-2">
-                          <Link
-                            to={`/products/${prod.id}`}
-                            onClick={async () => {
-                              await incrementProductClick(prod.id);
-                            }}
-                            className="flex-1 text-center py-1.5 border border-black bg-black text-white hover:bg-white hover:text-black font-mono text-[10px] font-bold uppercase transition-all"
-                          >
-                            Explore Details
-                          </Link>
-                          <button
-                            onClick={() => handleRemoveWishlist(prod.id)}
-                            className="p-1.5 border border-red-600 hover:bg-red-50 text-red-600"
-                            title="Remove from wishlist"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
                       </div>
-
                     </div>
                   );
                 })}
@@ -1363,61 +1351,62 @@ export default function UserProfile() {
 
           {/* 2. FOLLOWED PAGES SECTION (Right 4 columns) */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="border-b-4 border-black pb-3">
-              <h2 className="font-display font-black text-lg uppercase text-black tracking-tight">
-                Followed Artisan Pages ({followedStores.length})
+            <div className="border-b border-ink/10 pb-4">
+              <span className="label text-wave-ink text-[10px] font-semibold block">XƯỞNG THEO DÕI</span>
+              <h2 className="display text-2xl font-medium text-ink normal-case">
+                Xưởng thủ công ({followedStores.length})
               </h2>
-              <p className="text-[11px] font-mono text-neutral-500 uppercase mt-0.5">
-                Direct telemetry from registered boutiques
-              </p>
             </div>
 
             {followedStores.length === 0 ? (
-              <div className="border-2 border-dashed border-neutral-400 bg-white p-6 text-center text-neutral-400">
-                <Store className="w-6 h-6 text-neutral-300 mx-auto mb-1.5" />
-                <p className="font-mono text-[10px] uppercase font-bold text-black">No boutique followed</p>
-                <p className="text-[9px] font-mono mt-1">Tap Follow on any store page to track artisan channels.</p>
+              <div className="p-2 rounded-[2.5rem] bg-black/5">
+                <div className="bg-paper rounded-[2.125rem] p-8 text-center space-y-2">
+                  <Store className="w-8 h-8 text-brand mx-auto opacity-40" />
+                  <p className="text-xs font-semibold text-ink">Chưa theo dõi xưởng nào</p>
+                  <p className="text-[11px] text-ink/60">Ghé danh bạ xưởng để theo dõi các local brand yêu thích.</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 {followedStores.map((store) => (
                   <div 
                     key={store.id} 
-                    className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_#000000] space-y-4"
+                    className="p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5"
                     id={`followed-shop-${store.id}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <img src={store.logoUrl} className="w-8 h-8 rounded-full border border-black" referrerPolicy="no-referrer" />
-                        <h4 className="font-display font-black text-xs uppercase text-black hover:underline">
-                          <Link to={`/stores/${store.id}`}>{store.name}</Link>
-                        </h4>
+                    <div className="bg-paper rounded-[1.625rem] p-5 space-y-4 border border-ink/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <img src={store.logoUrl} className="w-10 h-10 rounded-full border border-ink/10 object-cover" referrerPolicy="no-referrer" />
+                          <h4 className="font-semibold text-sm text-ink hover:text-brand transition-colors">
+                            <Link to={`/stores/${store.id}`}>{store.name}</Link>
+                          </h4>
+                        </div>
+                        <button
+                          onClick={() => handleUnfollowStore(store.id)}
+                          className="text-[11px] text-red-600 hover:underline font-semibold"
+                        >
+                          Bỏ theo dõi
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleUnfollowStore(store.id)}
-                        className="text-[9px] font-mono text-neutral-400 hover:text-red-500 uppercase underline"
+
+                      <div className="bg-paper-warm rounded-2xl p-3 space-y-1.5 border border-ink/5">
+                        <span className="text-[10px] font-semibold text-brand flex items-center space-x-1 uppercase tracking-wider">
+                          <MessageSquare className="w-3 h-3" />
+                          <span>Thông báo mới nhất:</span>
+                        </span>
+                        <p className="text-xs text-ink/75 leading-relaxed italic">
+                          {getMockNotification(store.name)}
+                        </p>
+                      </div>
+
+                      <Link
+                        to={`/stores/${store.id}`}
+                        className="w-full block text-center py-2.5 rounded-full bg-brand text-paper text-xs font-semibold hover:bg-brand-deep transition-all shadow-sm"
                       >
-                        Unfollow
-                      </button>
+                        Ghé thăm xưởng →
+                      </Link>
                     </div>
-
-                    {/* Mock announcements / special notifications from each shop (Page 5 Reference: Menu thông báo riêng của từng shop) */}
-                    <div className="bg-neutral-50 border border-neutral-200 p-3 space-y-2">
-                      <span className="font-mono text-[9px] uppercase font-bold text-black flex items-center space-x-1">
-                        <MessageSquare className="w-3 h-3 text-neutral-500" />
-                        <span>Artisan Broadcaster</span>
-                      </span>
-                      <p className="text-[11px] text-neutral-600 leading-relaxed font-sans italic">
-                        {getMockNotification(store.name)}
-                      </p>
-                    </div>
-
-                    <Link
-                      to={`/stores/${store.id}`}
-                      className="w-full block text-center py-1.5 border border-black text-[10px] font-mono font-bold uppercase hover:bg-black hover:text-white transition-all bg-white text-black"
-                    >
-                      Enter Showroom →
-                    </Link>
                   </div>
                 ))}
               </div>

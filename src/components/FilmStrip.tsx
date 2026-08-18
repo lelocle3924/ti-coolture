@@ -27,7 +27,7 @@ export default function FilmStrip({ products }: { products: Product[] }) {
     const prod = products[index];
     if (prod) {
       incrementProductClick(prod.id);
-      navigate(`/products/${prod.id}`);
+      navigate(`/products/${prod.id}`, { viewTransition: true });
     }
   };
 

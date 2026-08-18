@@ -10,6 +10,7 @@ import AuthGateway from "./views/AuthGateway";
 import Products from "./views/Products";
 import Stores from "./views/Stores";
 import Blog from "./views/Blog";
+import Discovery from "./views/Discovery";
 import Footer from "./components/Footer";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
@@ -115,6 +116,8 @@ export default function App() {
               <Route path="/products" element={<Products />} />
               <Route path="/stores" element={<Stores />} />
               <Route path="/blog" element={<Blog />} />
+              <Route path="/kham-pha" element={<Discovery />} />
+              <Route path="/kham-pha/:routeId" element={<Discovery />} />
               <Route path="/stores/:storeId" element={<ShopDisplay />} />
               <Route path="/products/:productId" element={<ProductDetail />} />
               <Route path="/shop-dashboard" element={<ShopDashboard />} />

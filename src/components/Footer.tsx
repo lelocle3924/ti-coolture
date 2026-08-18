@@ -71,6 +71,13 @@ export default function Footer() {
             Tí Coolture không bán hàng và không xử lý giao dịch.
           </p>
         </div>
+
+        {/* Monumental Scroll-Linked Wordmark (§D5 Wireframe Spec) */}
+        <div className="pt-10 overflow-hidden">
+          <div className="footer-wordmark">
+            TÍ
+          </div>
+        </div>
       </div>
     </footer>
   );

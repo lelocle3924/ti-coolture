@@ -6,6 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+note.txt
 
 # Claude Code local machine settings (absolute paths, per-machine grants)
 .claude/settings.local.json

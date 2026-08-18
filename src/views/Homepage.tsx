@@ -1,29 +1,23 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, X, Sparkles, Compass, Store, Heart, Check } from "lucide-react";
 import {
   fetchProducts,
   fetchTouristRoutes,
   fetchCollections,
   fetchHiddenGems,
   triggerWebhook,
-  incrementProductClick,
   type Collection,
 } from "../lib/dbService";
 import { Product, TouristRoute, RouteStop } from "../types";
 import { WaveBottomExtended, RibbonLoop, ArcTopRight } from "../components/BrandShapes";
 import FilmStrip from "../components/FilmStrip";
 import heroBackground from "../assets/background-hero.png";
+import { vtProductImage, vtShopLogo, withDirectionalTransition } from "../lib/viewTransitions";
 
 const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
 
-/**
- * Bộ sưu tập (Collections) is hidden for now. The section, its data and the
- * collections/collection_products tables all stay in place — flip this to true
- * to bring it back. Kept as a flag rather than deleted because the tables are
- * a proposed addition to SRS section 4 and shouldn't quietly disappear.
- */
 const SHOW_COLLECTIONS = false;
 
 export default function Homepage() {
@@ -37,7 +31,6 @@ export default function Homepage() {
   const [loadError, setLoadError] = useState(false);
 
   const [selectedRouteId, setSelectedRouteId] = useState("");
-  const [selectedStop, setSelectedStop] = useState<RouteStop | null>(null);
   const [isGemOpen, setIsGemOpen] = useState(false);
 
   const activeRoute = routes.find((r) => r.id === selectedRouteId);
@@ -64,7 +57,6 @@ export default function Homepage() {
       setGems(hiddenGems);
       if (touristRoutes.length > 0) {
         setSelectedRouteId(touristRoutes[0].id);
-        setSelectedStop(touristRoutes[0].stops[0] ?? null);
       }
     } catch (err) {
       console.error("Error loading homepage data:", err);
@@ -78,11 +70,11 @@ export default function Homepage() {
   }, []);
 
   return (
-    <div className="bg-brand text-paper">
-      {/* ============ HERO ============ */}
+    <div className="bg-brand text-paper min-h-[100dvh] select-none">
+      
+      {/* ============ HERO SECTION ============ */}
       <section className="relative overflow-hidden bg-brand">
-        {/* Street photograph behind the hero. bg-brand stays underneath so the
-            first paint is violet rather than white while the image loads. */}
+        {/* Street photograph background with measured multiply scrim */}
         <img
           src={heroBackground}
           alt=""
@@ -91,54 +83,48 @@ export default function Homepage() {
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />
 
-        {/* Two-part scrim. The multiply tint pulls the photo's many hues back
-            toward brand violet; the gradient does the darkening, heaviest on
-            the left where the headline and buttons sit.
-            Weights were measured against this photograph, not guessed: at the
-            first pass (violet 40%, ink 88%) the image's mean luminance fell
-            from 0.19 to 0.007 — 96% of it gone, legible but mud. These values
-            keep 4x more of the picture while the brightest pixel under the
-            headline still leaves white text near 6:1. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-brand/25 mix-blend-multiply"
+          className="pointer-events-none absolute inset-0 bg-ink/70 mix-blend-multiply grayscale"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-ink/62 via-ink/56 to-ink/45"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/70 to-ink/50"
         />
+
         <div
-          style={{ paddingBottom: "calc(18.2vw + 2.5rem)" }}
-          className="relative z-10 mx-auto flex min-h-[70vh] max-w-7xl flex-col items-start justify-center px-5 pt-24 md:px-8 md:pt-32">
-          <h1 className="m-0 max-w-4xl text-[clamp(1.75rem,5.2vw,3.5rem)] font-medium uppercase leading-tight tracking-[-0.025em] rise rise-1">
+          style={{ paddingBottom: "calc(14vw + 2rem)" }}
+          className="relative z-10 mx-auto flex min-h-[70vh] max-w-7xl flex-col items-start justify-center px-5 pt-20 md:px-8 md:pt-28"
+        >
+          <h1 className="mt-2 m-0 max-w-4xl text-[clamp(2.5rem,7vw,5rem)] font-medium uppercase leading-[1] tracking-[-0.03em] rise rise-1">
             Mỗi người một <span className="font-display text-wave normal-case">Tí</span> chất
             riêng.
           </h1>
 
-          <p className="mt-6 max-w-xl text-base md:text-lg leading-relaxed text-white/88 rise rise-2">
-            Nơi tuyển chọn local brand và artist Việt. Không phải nơi bán hàng — nơi tìm ra thứ đáng
-            mua.
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-3 rise rise-3">
+          {/* High-End Nested Button-in-Button CTA Architecture */}
+          <div className="mt-9 flex flex-wrap items-center gap-4 rise rise-3">
             <a
               href="#kho"
-              className="group inline-flex items-center gap-2 min-h-11 rounded-md bg-paper px-6 text-brand label transition-colors hover:bg-wave hover:text-ink"
+              className="group inline-flex items-center gap-3 rounded-full bg-paper pl-6 pr-2 py-2 text-brand label font-semibold transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-wave hover:text-ink hover:scale-105 active:scale-[0.98] shadow-lg shadow-black/20"
             >
-              Khám phá ngay
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+              <span>Khám phá ngay</span>
+              <div className="w-8 h-8 rounded-full bg-brand/10 group-hover:bg-ink group-hover:text-wave flex items-center justify-center transition-all duration-300 group-hover:translate-x-1">
+                <ArrowRight className="w-4 h-4 text-brand group-hover:text-wave" aria-hidden="true" />
+              </div>
             </a>
+
             <Link
               to="/stores"
-              className="inline-flex items-center min-h-11 rounded-md border border-white/50 px-6 label transition-colors hover:border-paper hover:bg-white/10"
+              viewTransition
+              className="group inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/5 backdrop-blur-sm px-6 py-3 text-sm font-semibold label transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-paper hover:bg-white/15 hover:scale-105 active:scale-[0.98]"
             >
-              Xem tất cả shop
+              <Store className="w-4 h-4 text-wave group-hover:rotate-12 transition-transform" />
+              <span>Ghé thăm các shop</span>
             </Link>
           </div>
         </div>
 
-        {/* Horizon group. The ribbon is a sibling *under* the curve, so where
-            the two overlap the white always wins and no teal crosses it. */}
+        {/* Brand Horizon Transition with RibbonLoop & WaveBottomExtended */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]">
           <RibbonLoop
             className="absolute bottom-0 right-0 z-0 translate-x-[16%]"
@@ -150,277 +136,239 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* ============ WHAT'S IN STORE ============ */}
-      <section id="kho" className="bg-paper text-ink pb-16 pt-10 md:pb-24 md:pt-16 scroll-mt-20">
-        <div className="mx-auto max-w-7xl px-5 md:px-8 text-center">
-          <p className="m-0 label text-wave-ink font-semibold tracking-wider">Tuyển chọn thủ công & nghệ nhân</p>
-          <h2 className="display mt-2 text-center text-[2rem] md:text-[2.75rem] leading-tight text-ink normal-case">
+      {/* ============ HOW IT WORKS ============ */}
+      <section className="bg-paper text-ink pb-8 pt-8 md:pb-12 md:pt-12 scroll-mt-10 relative border-b border-ink/5">
+        <div className="mx-auto max-w-7xl px-5 md:px-8">
+          <div className="grid gap-6 md:grid-cols-2 items-center">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+                <span>HƯỚNG DẪN</span>
+              </div>
+              <h2 className="display text-3xl md:text-4xl leading-tight text-ink normal-case">
+                Trải nghiệm <span className="text-brand">Tí</span>
+              </h2>
+            </div>
+            
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="p-4 rounded-2xl bg-paper-warm border border-ink/5 hover-elastic">
+                <h3 className="font-bold text-sm mb-1">Đã biết muốn mua gì?</h3>
+                <p className="text-xs text-ink/70">Dùng thanh tìm kiếm để tới thẳng sản phẩm bạn muốn.</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-paper-warm border border-ink/5 hover-elastic">
+                <h3 className="font-bold text-sm mb-1">Chưa có ý tưởng?</h3>
+                <p className="text-xs text-ink/70">Lướt xem bộ sưu tập "Đang có trong kho" bên dưới.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ WHAT'S IN STORE (CURATED SHOWCASE) ============ */}
+      <section id="kho" className="bg-paper text-ink pb-12 pt-8 md:pb-16 md:pt-12 scroll-mt-20 relative">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3.5 py-1 text-xs font-semibold text-brand">
+            <Sparkles className="w-3.5 h-3.5 text-brand" />
+            <span>KHO TÁC PHẨM ĐỘC BẢN</span>
+          </div>
+          
+          <h2 className="display text-center text-3xl md:text-5xl leading-tight text-ink normal-case">
             Đang có trong kho
           </h2>
-          <p className="mt-2 text-sm md:text-base text-ink/70 max-w-xl mx-auto leading-relaxed">
-            Kéo để xoay & khám phá từng món đồ đặc sắc từ các local brand và artist Việt.
+          
+          <p className="text-sm text-ink/75 max-w-xl mx-auto leading-relaxed">
+            Kéo hoặc vuốt ngang để xoay 3D & chiêm ngưỡng từng tác phẩm được chế tác tỉ mỉ từ các nghệ nhân Việt.
           </p>
         </div>
 
-        {/* The 3D Coverflow Carousel */}
-        <div className="mt-6 md:mt-8">
-          {loading ? (
-            <div className="flex justify-center gap-4 overflow-hidden px-5 py-12 md:px-8" aria-busy="true">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="w-[200px] shrink-0 animate-pulse md:w-[240px]">
-                  <div className="aspect-square rounded-2xl bg-paper-warm border border-ink/5" />
-                  <div className="mt-4 h-3 w-1/3 rounded bg-paper-warm" />
-                  <div className="mt-2 h-4 w-3/4 rounded bg-paper-warm" />
+        {/* DOUBLE-BEZEL CONTAINER FOR 3D CAROUSEL */}
+        <div className="rev mt-6 md:mt-8 max-w-7xl mx-auto px-4 md:px-8">
+          <div className="p-2 rounded-[2.5rem] bg-black/5 ring-1 ring-black/5 shadow-inner">
+            <div className="rounded-[2.125rem] bg-paper-warm/80 border border-ink/5 p-4 md:p-6 overflow-hidden">
+              {loading ? (
+                <div className="flex justify-center gap-4 overflow-hidden py-12" aria-busy="true">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="w-[200px] shrink-0 animate-pulse md:w-[240px]">
+                      <div className="aspect-square rounded-2xl bg-paper border border-ink/10" />
+                      <div className="mt-4 h-3 w-1/3 rounded bg-paper" />
+                      <div className="mt-2 h-4 w-3/4 rounded bg-paper" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : loadError ? (
+                <div className="mx-auto max-w-md py-8 text-center">
+                  <p className="text-base font-medium">Không tải được danh sách sản phẩm.</p>
+                  <p className="mt-1 text-sm text-ink/60">Thử lại sau vài giây nhé.</p>
+                  <button
+                    onClick={loadData}
+                    className="mt-4 inline-flex items-center rounded-full bg-brand px-6 py-2.5 text-paper label transition-all hover:bg-brand-deep hover:scale-105 active:scale-95 shadow-md shadow-brand/20"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              ) : railProducts.length === 0 ? (
+                <div className="mx-auto max-w-md py-10 text-center">
+                  <p className="text-base font-medium">Kho đang trống.</p>
+                  <p className="mt-1 text-sm text-ink/60">
+                    Chưa có sản phẩm nào được duyệt. Hãy ghé lại sau nhé.
+                  </p>
+                </div>
+              ) : (
+                <FilmStrip products={railProducts} />
+              )}
             </div>
-          ) : loadError ? (
-            <div className="mx-auto max-w-md px-5 py-8 text-center">
-              <p className="m-0 text-base font-medium">Không tải được danh sách sản phẩm.</p>
-              <p className="mt-1 text-sm text-ink/60">Thử lại sau vài giây nhé.</p>
-              <button
-                onClick={loadData}
-                className="mt-4 inline-flex items-center min-h-11 rounded-full bg-brand px-6 text-paper label transition-all hover:bg-brand-deep hover:scale-105 active:scale-95 shadow-md shadow-brand/20"
-              >
-                Thử lại
-              </button>
-            </div>
-          ) : railProducts.length === 0 ? (
-            <div className="mx-auto max-w-md px-5 py-10 text-center">
-              <p className="m-0 text-base font-medium">Kho đang trống.</p>
-              <p className="mt-1 text-sm text-ink/60">
-                Chưa có sản phẩm nào được duyệt. Hãy ghé lại sau nhé.
-              </p>
-            </div>
-          ) : (
-            <FilmStrip products={railProducts} />
-          )}
+          </div>
         </div>
 
-        <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
-          <p className="m-0 max-w-[44ch] text-[0.8125rem] leading-normal text-ink/60">
-            Giá tham khảo · cập nhật 08/2026. Mua trực tiếp từ trang chính thức của từng shop.
-          </p>
+        {/* Section Action Bar */}
+        <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
+          <div className="flex items-center gap-2 text-xs text-ink/60">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>Giá minh bạch từ xưởng · Cập nhật 08/2026 · Mua trực tiếp không phụ phí</span>
+          </div>
+
           <Link
             to="/products"
-            className="inline-flex items-center justify-center min-h-11 rounded-full bg-brand px-7 text-paper label whitespace-nowrap transition-all hover:bg-brand-deep hover:scale-105 active:scale-95 shadow-md shadow-brand/25"
+            viewTransition
+            className="group inline-flex items-center gap-3 rounded-full bg-brand pl-6 pr-2 py-2 text-paper label font-semibold whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-brand-deep hover:scale-105 active:scale-[0.98] shadow-md shadow-brand/25"
           >
-            Xem tất cả sản phẩm
+            <span>Xem tất cả tác phẩm</span>
+            <div className="w-8 h-8 rounded-full bg-white/20 group-hover:bg-wave group-hover:text-ink flex items-center justify-center transition-all duration-300 group-hover:translate-x-1">
+              <ArrowRight className="w-4 h-4 text-paper group-hover:text-ink" aria-hidden="true" />
+            </div>
           </Link>
         </div>
       </section>
 
-      {/* ============ DISCOVERY ROUTE ============ */}
-      <section id="lotrinh" className="relative overflow-hidden bg-brand-deep py-16 md:py-24 scroll-mt-20">
-        <ArcTopRight
-          className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-25"
-          style={{ width: "clamp(9rem, 22vw, 20rem)" }}
-        />
-
-        <div className="relative z-10 mx-auto max-w-7xl px-5 md:px-8">
-          <p className="m-0 label text-wave">Lộ trình khám phá</p>
-          <h2 className="mt-3 m-0 text-[1.75rem] md:text-[2rem] font-medium leading-tight">
-            Hành trình khám phá
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm md:text-base leading-relaxed text-white/88">
-            Vài buổi đi bộ quanh thành phố, ghép từ những xưởng và cửa hiệu đáng ghé.
-          </p>
+      {/* ============ DISCOVERY ROUTE (CULTURAL MAP TERMINAL) ============ */}
+      <section id="lotrinh" className="relative overflow-hidden bg-paper py-12 md:py-16 scroll-mt-20 border-t border-ink/5">
+        <div className="relative z-10 mx-auto max-w-7xl px-5 md:px-8 space-y-8">
+          <div className="space-y-2 text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+              <Compass className="w-3.5 h-3.5" />
+              <span>BẢN ĐỒ VĂN HOÁ THỦ CÔNG</span>
+            </div>
+            
+            <h2 className="text-3xl md:text-5xl font-medium leading-tight text-ink display normal-case">
+              Hành trình khám phá
+            </h2>
+            
+            <p className="text-sm md:text-base leading-relaxed text-ink/70">
+              Chọn một quận để bắt đầu. Nhấp vào các điểm trên bản đồ để xem lộ trình chi tiết các xưởng chế tác và không gian sáng tạo.
+            </p>
+          </div>
 
           {loadError ? (
-            <div className="mt-8">
-              <p className="m-0 text-base font-medium">Không tải được lộ trình.</p>
+            <div className="mt-8 text-center">
+              <p className="text-base font-medium text-ink">Không tải được lộ trình.</p>
               <button
                 onClick={loadData}
-                className="mt-4 inline-flex items-center min-h-11 rounded-md bg-paper px-6 text-brand label hover:bg-wave hover:text-ink transition-colors"
+                className="mt-4 inline-flex items-center rounded-full bg-brand px-6 py-2.5 text-paper label hover:bg-brand-deep transition-colors"
               >
                 Thử lại
               </button>
             </div>
           ) : !loading && routes.length === 0 ? (
-            <p className="mt-8 text-sm text-white/80">Tí đang dựng những tuyến đầu tiên.</p>
+            <p className="text-sm text-ink/70 text-center">Tí đang dựng những tuyến trải nghiệm đầu tiên.</p>
           ) : (
-            <>
-              <div className="mt-8 flex flex-wrap items-center gap-2">
+            <div className="space-y-6">
+              
+              {/* Route Selector Strip (Carousel navigation) */}
+              <div className="flex justify-center flex-wrap items-center gap-3">
                 {routes.map((route, idx) => {
                   const isActive = selectedRouteId === route.id;
                   return (
                     <button
                       key={route.id}
                       onClick={() => {
-                        setSelectedRouteId(route.id);
-                        setSelectedStop(route.stops[0] ?? null);
+                        const currentIdx = routes.findIndex(r => r.id === selectedRouteId);
+                        const nextDir = idx >= currentIdx ? "forward" : "backward";
+                        withDirectionalTransition(nextDir, () => {
+                          setSelectedRouteId(route.id);
+                        });
                         triggerWebhook("TOURIST_ROUTE_SELECTED", {
                           routeId: route.id,
                           routeName: route.name,
-                          stopCount: route.stops.length,
                         });
                       }}
                       aria-pressed={isActive}
-                      className={`grid h-11 w-11 place-items-center rounded-md border text-sm tabular-nums transition-colors ${
+                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
                         isActive
-                          ? "border-wave bg-wave text-ink"
-                          : "border-white/30 text-paper hover:border-paper"
+                          ? "bg-brand text-paper shadow-lg shadow-brand/20 scale-105"
+                          : "bg-paper-warm text-ink/70 hover:bg-ink/5 border border-ink/10"
                       }`}
-                      title={route.name}
                     >
-                      {idx + 1}
+                      <span className={`w-5 h-5 rounded-full grid place-items-center text-[10px] font-bold ${isActive ? 'bg-white/20' : 'bg-ink/10'}`}>
+                        {idx + 1}
+                      </span>
+                      <span>{route.name}</span>
                     </button>
                   );
                 })}
-                {activeRoute?.description && (
-                  <span className="ml-2 label text-white/80">{activeRoute.description}</span>
-                )}
               </div>
 
-              <div className="mt-8 grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:gap-12">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-white/22 bg-brand md:aspect-[16/10]">
-                  <svg viewBox="0 0 320 240" aria-hidden="true" className="h-full w-full">
-                    <path
-                      d="M0 60h320M0 120h320M0 180h320M80 0v240M160 0v240M240 0v240"
-                      stroke="var(--color-paper)"
-                      strokeWidth="1"
-                      opacity=".14"
-                    />
-                  </svg>
-
-                  {activeRoute && activeRoute.stops.length > 1 && (
-                    <svg
-                      viewBox="0 0 100 100"
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 h-full w-full"
-                    >
-                      <polyline
-                        points={activeRoute.stops.map((s) => `${s.x},${s.y}`).join(" ")}
-                        fill="none"
-                        stroke="var(--color-wave)"
-                        strokeWidth="0.7"
-                        vectorEffect="non-scaling-stroke"
+              {/* MAP CAROUSEL SLIDE */}
+              <div className="rev p-2 rounded-[2.5rem] bg-paper-warm ring-1 ring-ink/5 shadow-2xl max-w-4xl mx-auto">
+                <div className="rounded-[2.125rem] bg-white p-4 md:p-8">
+                  
+                  {/* Map Coordinate Canvas */}
+                  <div className="relative aspect-[4/3] md:aspect-[16/9] overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-inner">
+                    {/* Mock SVG of HCMC Districts (Simplified) */}
+                    <svg viewBox="0 0 800 600" aria-hidden="true" className="h-full w-full opacity-30 pointer-events-none">
+                      <g stroke="var(--color-ink)" strokeWidth="2" fill="none" opacity="0.4">
+                        {/* Abstract polygons representing districts */}
+                        <path d="M300,200 L450,180 L500,300 L400,350 L280,280 Z" fill="var(--color-brand)" opacity="0.1"/>
+                        <path d="M450,180 L600,150 L650,250 L500,300 Z" />
+                        <path d="M280,280 L400,350 L350,480 L200,400 Z" />
+                        <path d="M400,350 L500,300 L550,450 L450,500 Z" />
+                        <path d="M150,150 L300,200 L280,280 L120,250 Z" />
+                      </g>
+                      {/* Grid lines */}
+                      <path
+                        d="M0 150h800M0 300h800M0 450h800M200 0v600M400 0v600M600 0v600"
+                        stroke="var(--color-ink)"
+                        strokeWidth="1"
+                        strokeDasharray="4,4"
+                        opacity="0.2"
                       />
                     </svg>
-                  )}
 
-                  {activeRoute?.stops.map((stop, idx) => {
-                    const isSelected = selectedStop?.id === stop.id;
-                    return (
-                      <button
-                        key={stop.id}
-                        onClick={() => setSelectedStop(stop)}
-                        aria-pressed={isSelected}
-                        aria-label={`Điểm dừng ${idx + 1}: ${stop.name}`}
-                        style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-                        className={`absolute grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border text-xs font-medium tabular-nums transition-colors ${
-                          isSelected
-                            ? "border-ink bg-wave text-ink"
-                            : "border-wave bg-brand-deep text-wave hover:bg-wave hover:text-ink"
-                        }`}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div>
-                  <ol className="m-0 list-none p-0">
+                    {/* Display route pins */}
                     {activeRoute?.stops.map((stop, idx) => {
-                      const isSelected = selectedStop?.id === stop.id;
                       return (
-                        <li key={stop.id} className="border-b border-white/22">
-                          <button
-                            onClick={() => setSelectedStop(stop)}
-                            className="group flex w-full items-start gap-3 py-4 text-left"
-                          >
-                            <span
-                              className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs tabular-nums transition-colors ${
-                                isSelected ? "border-wave bg-wave text-ink" : "border-wave text-wave"
-                              }`}
-                            >
-                              {idx + 1}
-                            </span>
-                            <span>
-                              <span className="block text-base leading-tight transition-colors group-hover:text-wave">
-                                {stop.name}
-                              </span>
-                              {isSelected && stop.address && (
-                                <a
-                                  href={
-                                    stop.address.startsWith("http")
-                                      ? stop.address
-                                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address)}`
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="mt-1 inline-flex min-h-11 items-center gap-1 label text-wave hover:underline"
-                                >
-                                  Mở bản đồ
-                                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                                </a>
-                              )}
-                            </span>
-                          </button>
-                        </li>
+                        <button
+                          key={stop.id}
+                          onClick={() => {
+                            navigate(`/kham-pha/${activeRoute.id}?start=${stop.id}`);
+                          }}
+                          aria-label={`Bắt đầu từ ${stop.name}`}
+                          title={`Khám phá từ: ${stop.name}`}
+                          style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
+                          className="absolute grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-sm font-bold border-2 border-brand bg-white text-brand transition-all duration-300 hover:scale-110 hover:bg-brand hover:text-paper shadow-lg z-10 group"
+                        >
+                          <span className="relative z-10">{idx + 1}</span>
+                          {/* Ripple effect */}
+                          <span className="absolute inset-0 rounded-full border border-brand animate-ping opacity-75"></span>
+                          {/* Tooltip on hover */}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-ink text-paper text-xs whitespace-nowrap rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            {stop.name}
+                          </div>
+                        </button>
                       );
                     })}
-                  </ol>
+                  </div>
 
-                  <Link
-                    to="/stores"
-                    className="mt-6 inline-flex items-center gap-2 min-h-11 label text-wave hover:underline"
-                  >
-                    Xem chi tiết lộ trình
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+                  <div className="mt-4 text-center">
+                     <p className="text-xs text-ink/60 italic">Nhấp vào một điểm để bắt đầu lộ trình khám phá từ đó.</p>
+                  </div>
                 </div>
               </div>
-            </>
+
+            </div>
           )}
         </div>
       </section>
 
-      {/* ============ COLLECTIONS (hidden — see SHOW_COLLECTIONS) ============ */}
-      {SHOW_COLLECTIONS && (
-        <section className="py-16 md:py-24">
-          <div className="mx-auto max-w-7xl px-5 md:px-8">
-            <h2 className="display m-0 text-center text-[2rem] md:text-[2.5rem] leading-tight normal-case">
-              Bộ sưu tập
-            </h2>
-
-            <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
-              {collections.map((collection, idx) => (
-                <Link
-                  key={collection.id}
-                  to="/products"
-                  className={`group relative overflow-hidden rounded-lg border border-white/20 transition-colors hover:border-wave ${
-                    idx === 0 ? "lg:col-span-2 lg:row-span-2" : ""
-                  }`}
-                >
-                  <div className={`overflow-hidden bg-paper-warm ${idx === 0 ? "aspect-[16/10]" : "aspect-[3/2]"}`}>
-                    <img
-                      src={collection.coverUrl}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="m-0 text-lg font-medium leading-snug transition-colors group-hover:text-wave">
-                      {collection.title}
-                    </h3>
-                    <p className="mt-1.5 m-0 text-sm leading-relaxed text-white/80">
-                      {collection.description}
-                    </p>
-                    <p className="mt-3 m-0 label text-wave">{collection.productCount} sản phẩm</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ============ HIDDEN GEMS ============ */}
+      {/* ============ HIDDEN GEMS (CURIOUS FLOATING TEASER) ============ */}
       {gem && (
         <>
           <button
@@ -428,56 +376,71 @@ export default function Homepage() {
               setIsGemOpen(true);
               triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
             }}
-            className={`fixed right-0 top-1/2 z-40 grid h-14 w-11 -translate-y-1/2 place-items-center rounded-l-lg bg-brand-deep/90 backdrop-blur-sm transition-transform hover:-translate-x-1 ${
+            className={`fixed right-0 top-1/2 z-40 grid h-14 w-12 -translate-y-1/2 place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-all duration-300 hover:w-14 hover:scale-105 active:scale-95 ${
               isGemOpen ? "hidden" : ""
             }`}
             aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
           >
-            {/* four-point sparkle, breathing */}
-            <svg viewBox="0 0 24 24" className="gem-star h-6 w-6" aria-hidden="true">
-              <path fill="var(--color-paper)" d="M12.0,1.0L14.59,8.44L22.46,8.6L16.18,13.36L18.47,20.9L12.0,16.4L5.53,20.9L7.82,13.36L1.54,8.6L9.41,8.44Z" />
-            </svg>
+            <Sparkles className="w-6 h-6 animate-spin text-ink" style={{ animationDuration: "6s" }} />
           </button>
 
           {isGemOpen && (
-            <div className="gem-card fixed bottom-4 right-4 z-40 w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-2xl bg-paper text-ink shadow-[0_20px_60px_rgba(18,8,31,0.35)] md:bottom-8 md:right-8">
-              <div className="relative aspect-[4/3] bg-paper-warm">
-                <img
-                  src={gem.product.images[0]}
-                  alt={gem.product.name}
-                  className="h-full w-full object-cover"
-                />
+            <div className="gem-card fixed bottom-6 right-6 z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[2rem] bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] border border-ink/10 p-2 animate-scale-up">
+              <div className="rounded-[1.625rem] bg-paper overflow-hidden">
+                <div className="relative aspect-[4/3] bg-paper-warm overflow-hidden">
+                  <img
+                    src={gem.product.images[0]}
+                    alt={gem.product.name}
+                    style={{ viewTransitionName: vtProductImage(gem.product.id) }}
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    onClick={() => setIsGemOpen(false)}
+                    className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-paper backdrop-blur-md transition-colors hover:bg-black"
+                    aria-label="Đóng"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <div className="absolute top-3 left-3 bg-brand text-paper text-[10px] font-bold uppercase px-2.5 py-1 rounded-full shadow-xs">
+                    ✦ Curated Gem
+                  </div>
+                </div>
+
                 <button
-                  onClick={() => setIsGemOpen(false)}
-                  className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full bg-ink/55 text-paper backdrop-blur-sm transition-colors hover:bg-ink"
-                  aria-label="Đóng"
+                  onClick={() => {
+                    triggerWebhook("CURATED_GEM_CLICKED", { productId: gem.product.id });
+                    navigate(`/products/${gem.product.id}`, { viewTransition: true });
+                  }}
+                  className="block w-full p-5 text-left transition-colors hover:bg-paper-warm space-y-2"
                 >
-                  <X className="h-4 w-4" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-brand uppercase tracking-wider">
+                      {gem.product.storeName}
+                    </span>
+                    <span className="font-bold text-sm text-ink">
+                      {formatPrice(gem.product.price)}
+                    </span>
+                  </div>
+
+                  <h4 className="font-medium text-base text-ink line-clamp-1 leading-snug">
+                    {gem.product.name}
+                  </h4>
+
+                  <p className="text-xs text-ink/75 italic line-clamp-2">
+                    "{gem.note || 'Tác phẩm độc bản được ban biên tập Tí tuyển chọn kỹ lưỡng.'}"
+                  </p>
+
+                  <div className="pt-2 flex items-center justify-between text-xs font-semibold text-brand">
+                    <span>Xem tác phẩm</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
                 </button>
               </div>
-
-              <button
-                onClick={() => {
-                  triggerWebhook("CURATED_GEM_CLICKED", { productId: gem.product.id });
-                  navigate(`/products/${gem.product.id}`);
-                }}
-                className="block w-full p-5 text-left transition-colors hover:bg-paper-warm"
-              >
-                <span className="inline-flex items-center rounded-full bg-wave/25 px-3 py-1 text-xs font-medium text-wave-ink">
-                  Cái này hay nè
-                </span>
-                <span className="mt-3 block text-lg font-medium leading-snug">
-                  {gem.product.name}
-                </span>
-                <span className="mt-0.5 block text-sm text-ink/60">{gem.product.storeName}</span>
-                <span className="mt-2 block text-base font-medium tabular-nums text-brand">
-                  {formatPrice(gem.product.price)}
-                </span>
-              </button>
             </div>
           )}
         </>
       )}
+
     </div>
   );
 }

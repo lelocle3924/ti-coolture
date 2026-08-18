@@ -4,3 +4,11 @@ Partake:
 
 carousel.md for a different look, with the slanted left and right images
 
+thêm 1 phần hướng dẫn / how it works
+
+Trò chuyện với người xem như thế nào.
+Ví dụ:
+- Lướt xem các bước để mua hàng
+- Đã biết muốn mua gì chưa? -> Search để tìm đúng sp mình muốn
+- Chưa biết muốn mua gì? -> Browse what's in store/curated collections
+- Map chắc để cuối cùng

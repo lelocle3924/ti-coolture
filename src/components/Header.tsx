@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { to: "/", label: "Trang chủ", end: true },
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
+  { to: "/kham-pha", label: "Khám phá" },
   { to: "/blog", label: "Tạp chí" },
 ];
 
@@ -84,13 +85,13 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 bg-brand text-paper border-b border-white/20 select-none">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3 md:px-8 md:py-4">
-        <Link to="/" className="shrink-0" aria-label="Tí Coolture — trang chủ">
+        <Link to="/" viewTransition className="shrink-0" aria-label="Tí Coolture — trang chủ">
           <Brandmark className="w-[72px] md:w-[80px] h-auto" body="var(--color-paper)" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8 mx-auto" aria-label="Điều hướng chính">
           {NAV_LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end} className={linkClass}>
+            <NavLink key={link.to} to={link.to} end={link.end} viewTransition className={linkClass}>
               {link.label}
             </NavLink>
           ))}

@@ -62,6 +62,61 @@ export function WaveBottomExtended({
   );
 }
 
+/** Unique curve for Products subpage - gentle swell on the right */
+export function WaveProducts({
+  className = "",
+  fill = "var(--color-paper-warm)",
+}: {
+  className?: string;
+  fill?: string;
+}) {
+  return (
+    <svg viewBox="0 0 1920 200" aria-hidden="true" className={`block h-auto w-full ${className}`}>
+      <path
+        fill={fill}
+        d="M0 160 C 600 160, 1000 160, 1400 80 C 1700 20, 1800 60, 1920 40 L1920 200 L0 200 Z"
+      />
+    </svg>
+  );
+}
+
+/** Unique curve for Stores subpage - soft double ripple */
+export function WaveStores({
+  className = "",
+  fill = "var(--color-paper-warm)",
+}: {
+  className?: string;
+  fill?: string;
+}) {
+  return (
+    <svg viewBox="0 0 1920 200" aria-hidden="true" className={`block h-auto w-full ${className}`}>
+      <path
+        fill={fill}
+        d="M0 170 C 400 170, 700 120, 1000 140 C 1300 160, 1600 80, 1920 100 L1920 200 L0 200 Z"
+      />
+    </svg>
+  );
+}
+
+/** Unique curve for Blog subpage - sweeping asymmetrical ascent */
+export function WaveBlog({
+  className = "",
+  fill = "var(--color-paper-warm)",
+}: {
+  className?: string;
+  fill?: string;
+}) {
+  return (
+    <svg viewBox="0 0 1920 200" aria-hidden="true" className={`block h-auto w-full ${className}`}>
+      <path
+        fill={fill}
+        d="M0 180 C 800 180, 1200 40, 1920 10 L1920 200 L0 200 Z"
+      />
+    </svg>
+  );
+}
+
+
 /** The open arc — used as a corner accent, cropping off the edge it sits on. */
 export function ArcTopRight({
   className = "",
