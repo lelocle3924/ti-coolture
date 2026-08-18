@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tí Coolture — Wireframes v0.1</title>
+<style>
+:root{
+  --ink:#1c1c1c; --mid:#6b6b6b; --line:#c4c4c4; --line2:#dcdcdc;
+  --fill:#ececec; --fill2:#f5f5f5; --paper:#fbfbfa;
+  --note:#0b5d8f; --note-bg:#e8f1f7;
+  --warn:#8a5a00; --warn-bg:#fdf3e0;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+.wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px}
+
+/* ---------- page furniture ---------- */
+.masthead{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:28px}
+.masthead h1{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+.masthead p{margin:0;color:var(--mid);max-width:70ch}
+.meta{font-family:var(--mono);font-size:11px;color:var(--mid);margin-top:10px}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:18px 0 0;font-family:var(--mono);font-size:11px;color:var(--mid);align-items:center}
+.legend b{display:inline-flex;align-items:center;gap:6px;font-weight:400}
+.sw{width:22px;height:12px;border:1px solid var(--line);display:inline-block}
+.sw.f{background:var(--fill)}
+.sw.i{background:
+  linear-gradient(to top right,transparent calc(50% - .5px),var(--line),transparent calc(50% + .5px)),
+  linear-gradient(to bottom right,transparent calc(50% - .5px),var(--line),transparent calc(50% + .5px));}
+.sw.d{border-style:dashed}
+
+h2.sec{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.09em;
+  border-top:1px solid var(--ink);padding-top:10px;margin:56px 0 6px}
+h2.sec span{color:var(--mid);text-transform:none;letter-spacing:0}
+.secnote{color:var(--mid);margin:0 0 24px;max-width:80ch}
+
+.row{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+.scrollx{overflow-x:auto;padding-bottom:12px}
+
+/* ---------- frame ---------- */
+.f{width:360px;flex:0 0 auto}
+.f.wide{width:960px}
+.f-hd{font-family:var(--mono);font-size:11px;margin-bottom:8px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.f-hd b{font-size:12px;letter-spacing:.03em}
+.f-hd i{font-style:normal;color:var(--mid)}
+.f-hd em{font-style:normal;background:var(--ink);color:#fff;padding:1px 6px;border-radius:2px;font-size:10px}
+.screen{border:1px solid var(--ink);background:#fff;position:relative;overflow:visible}
+.f.wide .screen{border-width:1px}
+
+/* ---------- lo-fi atoms ---------- */
+.b{background:var(--fill);border:1px solid var(--line2)}
+.img{border:1px solid var(--line);background:
+  linear-gradient(to top right,transparent calc(50% - .5px),var(--line),transparent calc(50% + .5px)),
+  linear-gradient(to bottom right,transparent calc(50% - .5px),var(--line),transparent calc(50% + .5px)),
+  var(--fill2);}
+.lbl{font-family:var(--mono);font-size:10px;color:var(--mid);letter-spacing:.02em}
+.tl{height:7px;background:var(--fill);border-radius:1px;margin:0 0 6px}
+.tl.s{width:55%} .tl.m{width:78%} .tl.xs{width:34%}
+.pad{padding:12px}
+.stack>*+*{margin-top:10px}
+.hr{height:1px;background:var(--line2);margin:12px 0}
+.center{display:flex;align-items:center;justify-content:center;text-align:center}
+.between{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gap6{display:flex;gap:6px} .gap8{display:flex;gap:8px} .gap10{display:flex;gap:10px}
+
+.btn{border:1px solid var(--ink);background:#fff;font-family:var(--mono);font-size:11px;
+  padding:9px 12px;text-align:center;letter-spacing:.02em}
+.btn.solid{background:var(--ink);color:#fff}
+.btn.ghost{border-color:var(--line);color:var(--mid)}
+.btn.blk{display:block;width:100%}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-family:var(--mono);
+  font-size:10.5px;white-space:nowrap;background:#fff}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.badge{background:var(--ink);color:#fff;border-radius:999px;font-family:var(--mono);
+  font-size:9px;padding:1px 5px;margin-left:4px}
+.ico{width:22px;height:22px;border:1px solid var(--line);border-radius:3px;display:grid;
+  place-items:center;font-size:10px;color:var(--mid);font-family:var(--mono);flex:0 0 auto}
+
+/* ---------- app chrome ---------- */
+.appbar{border-bottom:1px solid var(--line);padding:10px 12px;display:flex;align-items:center;
+  justify-content:space-between;gap:10px;background:#fff}
+.logo{font-weight:700;font-size:15px;letter-spacing:-.02em}
+.crumb{font-family:var(--mono);font-size:9.5px;color:var(--mid);padding:7px 12px;border-bottom:1px solid var(--line2)}
+.tabbar{border-top:1px solid var(--line);padding:9px 12px;display:flex;gap:8px;background:#fff}
+
+/* ---------- product grid ---------- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card .img{aspect-ratio:1;margin-bottom:6px}
+
+/* ---------- overlays ---------- */
+.scrim{position:absolute;inset:0;background:rgba(28,28,28,.42)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--ink);padding:14px}
+.grab{width:34px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 12px}
+.modal{position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);
+  background:#fff;border:1px solid var(--ink);padding:14px}
+.sticky{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--ink);
+  padding:10px 12px;display:flex;gap:8px;align-items:center}
+.gemtab{position:absolute;right:0;top:56%;transform:translateY(-50%);width:30px;height:118px;
+  border:1px solid var(--ink);border-right:0;background:#fff;display:grid;place-items:center}
+.gemtab span{writing-mode:vertical-rl;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em}
+.drawer{position:absolute;right:0;top:0;bottom:0;width:80%;background:#fff;border-left:1px solid var(--ink);padding:12px}
+.drawerL{position:absolute;left:0;top:0;bottom:0;width:78%;background:#fff;border-right:1px solid var(--ink);padding:14px}
+
+/* ---------- annotation pins ---------- */
+.p{position:absolute;width:19px;height:19px;border-radius:50%;background:var(--note);color:#fff;
+  font-family:var(--mono);font-size:10px;display:grid;place-items:center;z-index:9;
+  box-shadow:0 0 0 2px #fff;cursor:default}
+.p.w{background:var(--warn)}
+.rel{position:relative}
+body.hidepins .p{display:none}
+
+/* ---------- notes list ---------- */
+.notes{margin-top:10px;border-left:2px solid var(--note);padding:2px 0 2px 11px}
+.notes.warnbar{border-left-color:var(--warn)}
+.notes dl{margin:0;font-size:11.5px;line-height:1.5}
+.notes dt{font-family:var(--mono);font-size:10px;color:var(--note);float:left;clear:left;
+  width:20px;font-weight:700}
+.notes dd{margin:0 0 5px 26px;color:#3a3a3a}
+.notes dd code{font-family:var(--mono);font-size:10px;background:var(--fill);padding:0 3px}
+.tag{font-family:var(--mono);font-size:9px;background:var(--fill);border:1px solid var(--line2);
+  padding:0 4px;margin-left:3px;color:var(--mid);white-space:nowrap}
+.tag.dec{background:var(--warn-bg);border-color:#e6cf9e;color:var(--warn)}
+
+.callout{background:var(--warn-bg);border:1px solid #e6cf9e;padding:12px 14px;margin:18px 0;font-size:13px}
+.callout>b:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--warn);display:block;margin-bottom:4px}
+.info{background:var(--note-bg);border:1px solid #b9d4e6;padding:12px 14px;margin:18px 0;font-size:13px}
+.info>b:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--note);display:block;margin-bottom:4px}
+
+/* ---------- IA map ---------- */
+.ia{font-family:var(--mono);font-size:11.5px;line-height:1.75;white-space:pre;overflow-x:auto;
+  border:1px solid var(--line);background:#fff;padding:16px}
+
+.toolbar{position:sticky;top:0;z-index:50;background:var(--paper);border-bottom:1px solid var(--line2);
+  padding:8px 0;margin-bottom:0;display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:11px}
+.toolbar button{font-family:var(--mono);font-size:11px;border:1px solid var(--ink);background:#fff;
+  padding:5px 10px;cursor:pointer}
+@media print{.toolbar{display:none}.f{break-inside:avoid}}
+</style>
+<style>
+/* v0.2 additions */
+.f.mid{width:520px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-family:var(--mono);font-size:9.5px;background:#fff}
+.arrow{font-family:var(--mono);font-size:11px;color:var(--mid);text-align:center;margin:6px 0}
+.state{border:1px dashed var(--line);padding:8px;font-family:var(--mono);font-size:10px;color:var(--mid);background:var(--fill2)}
+.revfoot{position:absolute;left:0;right:0;bottom:0;background:var(--fill);border-top:1px solid var(--ink);padding:14px;z-index:0}
+.sheetlayer{position:absolute;left:0;right:0;background:#fff;border-bottom:1px solid var(--ink);z-index:1;box-shadow:0 8px 14px -10px rgba(0,0,0,.35)}
+.toast{position:absolute;left:12px;right:12px;background:#fff;border:1px solid var(--ink);padding:9px 11px;display:flex;gap:8px;align-items:center;z-index:12}
+.tick{width:16px;height:16px;border:1px solid #1a7a44;color:#1a7a44;border-radius:50%;display:grid;place-items:center;font-size:10px;flex:0 0 auto}
+.hot{position:absolute;width:13px;height:13px;border:1.5px solid var(--ink);border-radius:50%;background:#fff}
+.hot.on{background:var(--ink)}
+.hot.num{width:19px;height:19px;font-family:var(--mono);font-size:9px;color:#fff;background:var(--ink);display:grid;place-items:center}
+.poly{position:absolute;border-top:1.5px dashed var(--ink);transform-origin:0 0}
+.newtag{background:#1a7a44;color:#fff;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:2px;margin-left:6px;letter-spacing:.03em;text-transform:none;font-weight:400;vertical-align:middle;white-space:nowrap}
+h2.sec span.newtag{color:#fff;text-transform:none;letter-spacing:.03em}
+table.chg{border-collapse:collapse;width:100%;font-size:12.5px}
+table.chg th,table.chg td{border:1px solid var(--line2);padding:7px 9px;text-align:left;vertical-align:top}
+table.chg th{background:var(--fill);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+table.chg td:first-child{font-family:var(--mono);font-size:10.5px;white-space:nowrap;width:70px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="masthead">
+  <h1>Tí Coolture — Wireframes v0.2</h1>
+  <p>Low-fidelity structure only. No typeface, colour, imagery or brand expression. Revised against team feedback of 18/08 — the map concept, hero, scroll behaviour and admin intake have all changed materially since v0.1.</p>
+  <div class="meta">SRS v1.1 · UX-FOUNDATIONS v0.2 · team notes 18/08 · mobile-first, 360px baseline</div>
+  <div class="legend">
+    <b><span class="sw f"></span> content block</b>
+    <b><span class="sw i"></span> image</b>
+    <b><span class="sw d"></span> optional / conditional</b>
+    <b><span class="p" style="position:static;box-shadow:none"></span> annotation</b>
+    <b><span class="p w" style="position:static;box-shadow:none"></span> open decision</b>
+    <b><span class="tag">HP-01</span> SRS requirement</b>
+    <b><span class="tag dec">DECISION</span> needs a yes/no</b>
+    <b><span class="newtag">NEW v0.2</span> changed since v0.1</b>
+  </div>
+</div>
+
+<div class="toolbar">
+  <button onclick="document.body.classList.toggle('hidepins')">Toggle annotation pins</button>
+  <span>21 screens · 4 personas · 8 flows</span>
+</div>
+
+<h2 class="sec">00 — What changed since v0.1</h2>
+<table class="chg">
+<tr><th>Item</th><th>v0.1 said</th><th>v0.2 — after your notes</th></tr>
+<tr><td>Route map</td><td>One city-wide map, static image on mobile, ordered stop list. Framed as "the project's reason to exist".</td><td><b>Wrong on both counts.</b> Now a district carousel; tapping a start point reveals one route of places to go. And it's an <em>added-value feature</em>, not the reason to exist — most featured shops have no physical store, so these are places to visit, not shops to buy from. Screens MAP1–MAP3.</td></tr>
+<tr><td>Hero</td><td>Static hero block.</td><td>Looped image sequence. Tí's own image first, then shop-submitted images. Fixed aspect ratio + quality bar, because it's the face of the site. M1, and a spec note.</td></tr>
+<tr><td>Header + chips</td><td>Both permanently sticky.</td><td>Hide on scroll-down, return on scroll-up. Screens S1–S3.</td></tr>
+<tr><td>Footer</td><td>A strip at the bottom.</td><td>Full-viewport reveal panel — content sheet sweeps up over it. Screen S3.</td></tr>
+<tr><td>Wishlist</td><td>A page at <code>/wishlist</code>, with a warning about device storage.</td><td>Drawer only. Informational card, not a warning. Green tick toast on save. Screen M8.</td></tr>
+<tr><td>Empty state</td><td>Ask what they were looking for, publicly framed.</td><td>Kept, but private, product-only — never asks for a shop name. Stored alongside <code>search_logs</code> for comparison. Screen M5.</td></tr>
+<tr><td>Admin</td><td>Manual copy-paste from Google Form.</td><td>Sheets → auto-routed approval queue in the CMS, with image preview and templated email feedback. Screen A1.</td></tr>
+<tr><td>Bottom tab bar</td><td>Ruled out partly because Hidden Gems and ORDER NOW both claim screen edges.</td><td>That argument was weak — they never appear on the same page. Top bar still recommended, but on the deep-landing/SEO reason alone.</td></tr>
+<tr><td>Search</td><td>Icon in the header <em>and</em> a field in the homepage body.</td><td><b>Header only.</b> No search field anywhere in the page body, on any screen. The ⌕ icon opens the full-screen overlay (M2). Buys back ~76px above the fold on the homepage.</td></tr>
+<tr><td>Categories</td><td>Unknown (blocking).</td><td>Resolved: Thời trang · Sản phẩm sáng tạo · Văn phòng phẩm · Quà tặng · Nhà cửa · Body care · Giải trí.</td></tr>
+</table>
+
+
+<h2 class="sec">01 — Information architecture <span>· all six IA questions now answered</span></h2>
+
+<div class="ia">TÍ COOLTURE
+│
+├─ /                                    Trang chủ
+│
+├─ SẢN PHẨM ─── /san-pham               lưới + lọc          AP-01…07
+│               └─ /san-pham/[slug]     chi tiết sản phẩm   PD-01…07
+│
+├─ SHOP ─────── /shop                   ✔ IA-2 CÓ trong V1
+│               └─ /shop/[slug]         chi tiết shop       SD-01…05
+│
+├─ KHÁM PHÁ ─── /kham-pha               ✔ IA-1 CẢ HAI: section ở / + trang riêng
+│               └─ ?quan=[slug]         mỗi quận 1 map, carousel
+│
+├─ BLOG ─────── /blog                   BL-01…03
+│               ├─ /blog/chu-de/[slug]  ✔ IA-3 URL thật
+│               └─ /blog/[slug]         BL-04…06
+│
+├─ VỀ TÍ ────── /gioi-thieu · /faq · /hop-tac
+│
+├─ ♡ ────────── drawer                  ✔ IA-4 CHỈ drawer, không có trang
+│
+├─ footer ───── panel toàn màn hình, lộ ra khi cuộn hết trang
+│               liên hệ · điều khoản · bảo mật · sitemap · VI|EN     HP-07
+│
+└─ /admin       noindex · 2FA · hàng đợi duyệt · CRUD × 6 · analytics</div>
+
+<div class="info"><b>7 danh mục — chốt</b>
+Thời trang · Sản phẩm sáng tạo · Văn phòng phẩm · Quà tặng · Nhà cửa · Body care · Giải trí
+<br><br>Two of these are long enough to matter for layout. "Sản phẩm sáng tạo" and "Văn phòng phẩm" are ~20 and ~16 characters; at 10.5px mono in a chip they run roughly 130px and 105px. The chip row therefore cannot show more than two and a half categories at 360px, which is the correct behaviour for a scroll strip — but it does mean the first chip after "Tất cả" should be the highest-traffic category, not alphabetical. Suggest ordering by catalogue volume once entry is done. <span class="tag dec">DECISION</span></div>
+
+
+<h2 class="sec">02 — Scroll behaviour <span class="newtag">NEW v0.2</span> <span>· the chrome model everything else assumes</span></h2>
+<p class="secnote">Three states. This is a behaviour spec rather than a page, so it's drawn as one screen in three moments.</p>
+
+<div class="row">
+
+  <div class="f">
+    <div class="f-hd"><em>S1</em> <b>Nghỉ / cuộn lên</b> <i>header + chip hiện</i></div>
+    <div class="screen rel" style="height:560px">
+      <div class="p" style="left:-9px;top:8px">1</div>
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">≡</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div><div class="ico" style="width:auto;padding:0 5px">VI</div></div>
+      </div>
+      <div style="padding:9px 12px;border-bottom:1px solid var(--line2);overflow:hidden">
+        <div class="gap6" style="width:420px">
+          <span class="chip on">Tất cả</span><span class="chip">Thời trang</span><span class="chip">Quà tặng</span>
+        </div>
+      </div>
+      <div class="pad">
+        <div class="grid2">
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+        </div>
+      </div>
+      <div class="state" style="position:absolute;left:12px;right:12px;bottom:12px">▲ cuộn lên → chrome trượt xuống trong ~200ms</div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Header and chip row translate as <em>one block</em>. Splitting them makes two separate reveals from one gesture, which reads as jitter. <span class="tag dec">DECISION</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>S2</em> <b>Đang cuộn xuống</b> <i>chrome ẩn</i></div>
+    <div class="screen rel" style="height:560px">
+      <div class="p" style="left:-9px;top:8px">1</div>
+      <div class="state" style="border-style:solid;border-color:var(--line);opacity:.45;margin:0;padding:6px 12px">↑ header + chip đã trượt lên khỏi màn hình</div>
+      <div class="pad">
+        <div class="grid2">
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+        </div>
+      </div>
+      <div class="p" style="left:-9px;top:470px">2</div>
+      <div class="state" style="position:absolute;left:12px;right:12px;bottom:12px">▼ +72px nội dung hiện thêm · ~9% chiều cao màn 360×780</div>
+    </div>
+    <div class="notes"><dl>
+      <dt>2</dt><dd>Four guards, or this pattern turns into a bug report: (a) never hide while a filter sheet, drawer or modal is open; (b) reveal immediately if a keyboard user tabs to a hidden control, or focus is lost; (c) ignore scrolls under ~8px so a thumb tremor doesn't flicker the bar; (d) respect <code>prefers-reduced-motion</code> by snapping instead of easing — the bar still hides, it just doesn't animate. <span class="tag">§6.4</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>S3</em> <b>Cuối trang — footer lộ ra</b> <i>như video tham chiếu</i> <span class="newtag">NEW</span></div>
+    <div class="screen rel" style="height:560px">
+      <div class="revfoot" style="top:0;padding:16px">
+        <div class="p" style="left:-9px;top:6px">1</div>
+        <div class="stack" style="font-size:11px">
+          <div class="gap10" style="justify-content:space-between">
+            <div><div class="lbl">KHÁM PHÁ</div><div class="lbl">Sản phẩm</div><div class="lbl">Shop</div><div class="lbl">Khám phá</div><div class="lbl">Blog</div></div>
+            <div><div class="lbl">VỀ TÍ</div><div class="lbl">Giới thiệu</div><div class="lbl">FAQ</div><div class="lbl">Hợp tác</div></div>
+            <div><div class="lbl">PHÁP LÝ</div><div class="lbl">Điều khoản</div><div class="lbl">Bảo mật</div></div>
+          </div>
+          <div class="hr"></div>
+          <div class="lbl">hello@ticoolture.vn</div>
+          <div class="gap6"><span class="chip on">VI</span><span class="chip">EN</span></div>
+        </div>
+        <div class="center" style="position:absolute;left:0;right:0;bottom:10px;font-size:52px;font-weight:800;letter-spacing:-.04em;color:var(--line)">TÍ</div>
+      </div>
+      <div class="sheetlayer" style="top:0;height:330px">
+        <div class="pad">
+          <div class="grid2">
+            <div class="card"><div class="img"></div><div class="tl m"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          </div>
+          <div class="center gap8" style="margin-top:12px"><span class="chip">‹</span><span class="chip on">1</span><span class="chip">2</span><span class="chip">›</span></div>
+        </div>
+        <div class="p" style="left:-9px;top:318px">2</div>
+      </div>
+      <div class="state" style="position:absolute;left:12px;right:12px;bottom:6px;z-index:5;background:#fff">↑ nội dung trượt lên, footer đứng yên bên dưới</div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Footer is a fixed underlay at the viewport's full height; the content sheet scrolls over it. Because it now has real room, it should carry the whole sitemap — it's the only reliable surface for <code>/hop-tac</code> and <code>/faq</code>. <span class="tag">HP-07</span></dd>
+      <dt>2</dt><dd>Three implementation notes worth having before build: the content sheet needs an opaque background or the footer shows through mid-scroll; the sheet needs <code>margin-bottom</code> equal to the footer height or the last row is unreachable; and on iOS Safari a <code>100vh</code> footer is taller than the visible area once the address bar shows — use <code>100dvh</code>. <span class="tag dec">DECISION</span></dd>
+    </dl></div>
+    <div class="notes warnbar"><dl>
+      <dt>3</dt><dd>On the product page this footer and the sticky ORDER NOW bar occupy the same corner. ORDER NOW must stay on top and stay visible; the footer reveals behind it. Slightly crowded at the very end of the page, and worth looking at on a real device before it's locked.</dd>
+    </dl></div>
+  </div>
+
+</div>
+
+<h2 class="sec">03 — Primary flow, mobile <span>· Flow A: discovery → outbound</span></h2>
+<p class="secnote">Persona P1 (Linh, 24). Every screen 360px. Chrome shown in its visible state; assume S1–S3 behaviour throughout.</p>
+
+<div class="row">
+
+  <!-- M1 HOME -->
+  <div class="f">
+    <div class="f-hd"><em>M1</em> <b>Trang chủ</b> <i>/</i> <span class="newtag">search ra header</span></div>
+    <div class="screen rel" style="height:815px">
+      <div class="p" style="left:-9px;top:8px">1</div>
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">≡</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div><div class="ico" style="width:auto;padding:0 5px">VI</div></div>
+      </div>
+
+      <div class="p" style="left:-9px;top:52px">2</div>
+      <div class="img center rel" style="height:290px;border-left:0;border-right:0">
+        <span class="lbl">HERO — chuỗi ảnh loop<br>①&nbsp;Tí Coolture → ② shop A → ③ shop B → ①…<br>tỉ lệ khung cố định</span>
+        <div style="position:absolute;left:0;right:0;bottom:9px" class="center gap6">
+          <span class="lbl">●</span><span class="lbl">○</span><span class="lbl">○</span><span class="lbl">○</span>
+        </div>
+        <div class="pill" style="position:absolute;left:9px;bottom:26px">Ảnh: Xưởng Gốm Bát Tràng ↗</div>
+      </div>
+
+      <div class="pad stack">
+        <div class="p" style="left:-9px;top:360px">3</div>
+        <div class="between"><span class="lbl">WHAT'S IN STORE</span><span class="lbl">‹ ›</span></div>
+        <div class="gap8" style="overflow:hidden">
+          <div class="card" style="flex:0 0 46%"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card" style="flex:0 0 46%"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card" style="flex:0 0 20%"><div class="img"></div></div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:560px">4</div>
+        <div class="between"><span class="lbl">KHÁM PHÁ SÀI GÒN</span><span class="lbl">Quận 1 · 1/5 ‹ ›</span></div>
+        <div class="img center rel" style="height:150px">
+          <span class="lbl">MAP QUẬN 1 · các địa điểm rải rác<br>vuốt ngang → quận khác</span>
+          <div class="hot" style="left:22%;top:30%"></div>
+          <div class="hot" style="left:48%;top:56%"></div>
+          <div class="hot" style="left:70%;top:26%"></div>
+          <div class="hot" style="left:60%;top:76%"></div>
+        </div>
+        <div class="lbl" style="text-align:center">Chạm một điểm để mở lộ trình quanh đó</div>
+      </div>
+
+      <div class="p" style="right:38px;top:430px">5</div>
+      <div class="gemtab"><span>HIDDEN GEMS</span></div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd><b>Search lives here and nowhere else</b> <span class="newtag">v0.2.1</span>. The ⌕ icon is the only entry point on mobile; there is no field in the page body. Tapping it opens M2 full-screen. Because the header returns on any upward scroll, search is never more than one gesture away from anywhere on the page. Wishlist icon opens a drawer, not a page. <span class="tag">HP-02</span> <span class="tag">IA-4</span></dd>
+      <dt>3</dt><dd>Carousel now sits directly under the hero. Removing the search field returns roughly 76px above the fold, which is most of a product card — the carousel is visible on a 360×780 screen without scrolling. <span class="tag">HP-03</span></dd>
+      <dt>4</dt><dd>District carousel. Detail in MAP1–MAP3. <span class="tag">HP-04</span></dd>
+      <dt>5</dt><dd>Tab ≤32px at 60–70% height, hides on scroll-down, never auto-opens on mobile. <span class="tag">HP-05</span></dd>
+    </dl></div>
+    <div class="notes warnbar"><dl>
+      <dt>6</dt><dd><b>What moving search costs, and how to cover it.</b> SRS §5.1 puts a live search bar on the homepage as HP-02, P0. The feature is unchanged — only its position — but two things follow.<br><br>First, an icon is less discoverable than a field. That mostly affects visitors who arrive knowing what they want, which is a smaller group than P1, so the trade is reasonable. It does slightly reduce the volume of <code>search_logs</code> and zero-result data, and §8.3 group C calls that the gold mine — worth watching in the first fortnight rather than assuming it's fine.<br><br>Second, an icon-only control needs an accessible name (<code>aria-label="Tìm kiếm"</code>) and a real 44px target, which at a 22px glyph means 11px of padding on each side. On desktop the header already carries a full field, so this only applies to mobile. <span class="tag">HP-02</span> <span class="tag">§6.4</span> <span class="tag">§8.3</span></dd>
+      <dt>2</dt><dd><b>Hero spec — needs numbers before you brief the shops.</b> Three things to fix now, because re-collecting images from shops later is expensive. <b>(a) One canonical ratio.</b> Portrait 4:5 works on both: mobile shows it whole, desktop centre-crops to a wide band. Two crops per submission would be more control but doubles the ask on every shop. <b>(b) A safe zone.</b> Nothing meaningful within ~15% of the top or bottom edge, or desktop cropping will decapitate it. <b>(c) A quality floor</b> — suggest ≥1600×2000, sRGB, no text baked into the image (it can't be translated for the EN build, and it won't survive cropping). <br><br>Also worth deciding: attribution. The pill credits the shop and links to them, which is a real incentive for shops to submit good images — and gives the slot a measurable outcome rather than being decoration. Not in the SRS. <span class="tag dec">DECISION</span><br><br>Technical: only frame ① loads eagerly, the rest lazily, or the loop wrecks the LCP &lt; 2.5s target in HP-01. Pause the loop under <code>prefers-reduced-motion</code>, and give it a visible pause control if a cycle is faster than 5s.</dd>
+    </dl></div>
+  </div>
+
+  <!-- M2 SEARCH -->
+  <div class="f">
+    <div class="f-hd"><em>M2</em> <b>Tìm kiếm — đang gõ</b> <i>overlay</i></div>
+    <div class="screen rel" style="height:830px">
+      <div class="appbar">
+        <div class="ico">←</div>
+        <div class="b" style="flex:1;padding:7px 10px"><span class="lbl">tui vai|</span></div>
+        <div class="ico">✕</div>
+      </div>
+      <div class="p" style="left:-9px;top:56px">1</div>
+      <div class="pad stack">
+        <span class="lbl">GỢI Ý — 250ms debounce</span>
+        <div class="b" style="padding:0">
+          <div class="between pad" style="padding:9px 10px;border-bottom:1px solid var(--line2)">
+            <div class="gap8" style="align-items:center"><div class="img" style="width:34px;height:34px"></div>
+            <div><div class="lbl" style="color:var(--ink)">Túi vải canvas in tay</div><div class="lbl">Xưởng In Thủ Công · 180.000₫</div></div></div>
+          </div>
+          <div class="between pad" style="padding:9px 10px;border-bottom:1px solid var(--line2)">
+            <div class="gap8" style="align-items:center"><div class="img" style="width:34px;height:34px"></div>
+            <div><div class="lbl" style="color:var(--ink)">Túi vải thêu sen</div><div class="lbl">Chỉ &amp; Kim · 240.000₫</div></div></div>
+          </div>
+          <div class="between pad" style="padding:9px 10px">
+            <div class="gap8" style="align-items:center"><div class="img" style="width:34px;height:34px;border-radius:50%"></div>
+            <div><div class="lbl" style="color:var(--ink)">Xưởng In Thủ Công</div><div class="lbl">SHOP · 34 sản phẩm</div></div></div>
+          </div>
+        </div>
+        <div class="p" style="left:-9px;top:280px">2</div>
+        <div class="lbl">tối đa 8 · sản phẩm trước, shop sau · "tui vai" → "Túi vải"</div>
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:352px">3</div>
+        <div class="lbl">TÌM GẦN ĐÂY</div>
+        <div class="gap6" style="flex-wrap:wrap"><span class="chip">gốm men rạn</span><span class="chip">quà tặng</span><span class="chip">sổ tay</span></div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Full-screen overlay. At 360px a dropdown covers the page anyway, and the keyboard takes half the viewport. <span class="tag">HP-02</span></dd>
+      <dt>2</dt><dd>Thumbnail, shop and price per row; shops appear in the same list, labelled. Diacritic-insensitive matching is required. <span class="tag">HP-02</span></dd>
+      <dt>3</dt><dd>Recent searches from <code>localStorage</code> — no personal data, so no PDPL exposure. <span class="tag dec">DECISION</span></dd>
+    </dl></div>
+  </div>
+
+  <!-- M3 PRODUCTS -->
+  <div class="f">
+    <div class="f-hd"><em>M3</em> <b>Tất cả sản phẩm</b> <i>/san-pham</i> <span class="newtag">7 danh mục</span></div>
+    <div class="screen rel" style="height:900px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">≡</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div></div>
+      </div>
+      <div class="crumb">Trang chủ › Sản phẩm</div>
+
+      <div class="p" style="left:-9px;top:96px">1</div>
+      <div style="padding:9px 12px;border-bottom:1px solid var(--line2);overflow:hidden">
+        <div class="gap6" style="width:520px">
+          <span class="chip on">Tất cả</span><span class="chip">Thời trang</span><span class="chip">Quà tặng</span><span class="chip">Nhà cửa</span>
+        </div>
+      </div>
+      <div class="lbl" style="padding:0 12px 6px">↔ Sản phẩm sáng tạo · Văn phòng phẩm · Body care · Giải trí</div>
+
+      <div class="between" style="padding:9px 12px;border-bottom:1px solid var(--line2)">
+        <span class="lbl">218 sản phẩm</span>
+        <div class="gap6">
+          <span class="chip">Bộ lọc <span class="badge">3</span></span>
+          <span class="chip">Mới nhất ▾</span>
+        </div>
+      </div>
+      <div class="p" style="left:-9px;top:186px">2</div>
+
+      <div class="pad">
+        <div class="grid2">
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+        </div>
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:840px">3</div>
+        <div class="center gap8"><span class="chip">‹</span><span class="chip on">1</span><span class="chip">2</span><span class="chip">…</span><span class="chip">9</span><span class="chip">›</span></div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Seven categories, two of them long. At 360px only about two and a half fit — correct for a scroll strip, but it makes the first two positions valuable. Order by catalogue volume, not alphabetically. Hides and returns with the header. <span class="tag">AP-02</span> <span class="tag">AP-06</span></dd>
+      <dt>2</dt><dd>Everything else behind one button with an active-count badge → M4. The result count stays put when the chrome hides, so the user never loses their sense of how filtered they are. <span class="tag">AP-06</span></dd>
+      <dt>3</dt><dd>24/page, real crawlable page links rather than infinite scroll — SSR and indexability need them. <span class="tag">AP-01</span> <span class="tag">D3</span></dd>
+    </dl></div>
+  </div>
+
+  <!-- M4 FILTER -->
+  <div class="f">
+    <div class="f-hd"><em>M4</em> <b>Bộ lọc — bottom sheet</b> <i>trên M3</i></div>
+    <div class="screen rel" style="height:830px">
+      <div class="appbar"><div class="logo" style="opacity:.35">TÍ</div></div>
+      <div class="pad" style="opacity:.3"><div class="grid2">
+        <div class="card"><div class="img"></div></div><div class="card"><div class="img"></div></div>
+        <div class="card"><div class="img"></div></div><div class="card"><div class="img"></div></div>
+      </div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="between" style="margin-bottom:12px"><b style="font-size:13px">Bộ lọc</b><span class="lbl">✕</span></div>
+
+        <div class="p" style="left:-9px;top:60px">1</div>
+        <span class="lbl">CHẤT LIỆU</span>
+        <div class="gap6" style="flex-wrap:wrap;margin:7px 0 14px">
+          <span class="chip on">Gốm ✓</span><span class="chip">Giấy</span><span class="chip">Vải</span>
+          <span class="chip on">Gỗ ✓</span><span class="chip">Kim loại</span>
+        </div>
+
+        <span class="lbl">KHOẢNG GIÁ</span>
+        <div class="gap6" style="flex-wrap:wrap;margin:7px 0 8px">
+          <span class="chip">&lt;100k</span><span class="chip on">100–300k ✓</span><span class="chip">300k–1tr</span>
+          <span class="chip">&gt;1tr</span><span class="chip">Liên hệ</span>
+        </div>
+        <div class="p w" style="left:-9px;top:200px">2</div>
+        <div class="lbl" style="margin-bottom:14px">sản phẩm không có giá → nhóm "Liên hệ"</div>
+
+        <span class="lbl">SẮP XẾP</span>
+        <div class="gap6" style="flex-wrap:wrap;margin:7px 0 16px">
+          <span class="chip on">Mới nhất</span><span class="chip">Phổ biến</span><span class="chip">Giá ↑</span><span class="chip">Giá ↓</span>
+        </div>
+
+        <div class="p" style="left:-9px;top:340px">3</div>
+        <div class="gap8">
+          <div class="btn ghost" style="flex:1">Xoá lọc</div>
+          <div class="btn solid" style="flex:2">Áp dụng · 18 kết quả</div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Material, price and sort together. No request fires while choosing. Chrome does not auto-hide while this sheet is open. <span class="tag">AP-03</span> <span class="tag">AP-04</span> <span class="tag">AP-05</span></dd>
+      <dt>3</dt><dd>One batched request, with the result count shown before applying so nobody commits to a zero. Then the URL updates — shareable and indexable. <span class="tag">AP-06</span> <span class="tag">AP-01</span></dd>
+    </dl></div>
+    <div class="notes warnbar"><dl>
+      <dt>2</dt><dd>Band boundaries in VNĐ are still unspecified. Four bands plus "Liên hệ" is drawn here; AP-04 says five bands. Needs numbers.</dd>
+    </dl></div>
+  </div>
+
+  <!-- M5 EMPTY -->
+  <div class="f">
+    <div class="f-hd"><em>M5</em> <b>Không có kết quả</b> <i>Flow B</i> <span class="newtag">phản hồi riêng tư</span></div>
+    <div class="screen rel" style="height:895px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">≡</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div></div>
+      </div>
+      <div style="padding:9px 12px;border-bottom:1px solid var(--line2);overflow:hidden">
+        <div class="gap6" style="width:520px"><span class="chip">Tất cả</span><span class="chip on">Nhà cửa</span><span class="chip">Quà tặng</span></div>
+      </div>
+
+      <div class="pad stack" style="padding-top:26px">
+        <div class="center" style="flex-direction:column;gap:6px">
+          <div class="lbl" style="font-size:26px;color:var(--line)">◌</div>
+          <b style="font-size:15px">Chưa có "nến thơm handmade"</b>
+        </div>
+        <div class="p" style="left:-9px;top:126px">1</div>
+        <div class="b pad" style="padding:11px">
+          <div class="lbl" style="margin-bottom:8px">BỎ BỚT BỘ LỌC ĐỂ XEM THÊM</div>
+          <div class="gap6" style="flex-wrap:wrap">
+            <span class="chip">✕ Nhà cửa</span><span class="chip">✕ 100–300k</span>
+          </div>
+        </div>
+
+        <div class="p" style="left:-9px;top:238px">2</div>
+        <div class="b pad" style="padding:11px;border-style:dashed">
+          <div class="lbl" style="margin-bottom:3px">BẠN ĐANG TÌM SẢN PHẨM GÌ?</div>
+          <div class="lbl" style="margin-bottom:7px">Tí sẽ dựa vào đây để tìm thêm shop phù hợp.</div>
+          <div class="b" style="height:34px;border-style:dashed"></div>
+          <div class="lbl" style="margin:5px 0 7px">ví dụ: "nến thơm sáp đậu nành, mùi nhẹ"</div>
+          <div class="btn blk">Gửi</div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:470px">3</div>
+        <span class="lbl">CÓ THỂ BẠN THÍCH</span>
+        <div class="grid2">
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Active filters as individually removable chips — recovery in one tap, and the user can see <em>which</em> constraint killed the result. <span class="tag">AP-07</span></dd>
+      <dt>3</dt><dd>Four suggestions. An empty screen should be an invitation, not a wall. <span class="tag">AP-07</span></dd>
+    </dl></div>
+    <div class="notes warnbar"><dl>
+      <dt>2</dt><dd><b>Product only — never the shop name.</b> Asking which shop sells it would invert the site's purpose; the whole point is that the visitor doesn't have to know. The prompt and the example placeholder both have to steer toward describing the object.<br><br>Stored privately and never displayed. Two rows go in the store — the raw query from <code>search_logs</code> and this free-text answer — because they answer different questions. The query tells you what people typed; the answer tells you what they meant. "nến thơm" alone doesn't say soy-wax, unscented or gift-boxed, and that difference is what determines which shop you go and recruit. <span class="tag">§8.3 C</span> <span class="tag dec">DECISION</span><br><br>One legal check before build: free text is user-submitted content. It's private and unattributed, so the exposure is low, but the retention period should be written into <code>/bao-mat</code> rather than left implicit. <span class="tag">§9</span></dd>
+    </dl></div>
+  </div>
+
+  <!-- M6 PRODUCT -->
+  <div class="f">
+    <div class="f-hd"><em>M6</em> <b>Chi tiết sản phẩm</b> <i>/san-pham/[slug]</i> <span class="newtag">toast lưu</span></div>
+    <div class="screen rel" style="height:1005px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">←</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">♡</div><div class="ico">⤴</div></div>
+      </div>
+      <div class="crumb">Trang chủ › Sản phẩm › Nhà cửa › Bình men rạn</div>
+
+      <div class="p" style="left:-9px;top:120px">1</div>
+      <div class="img center" style="height:250px;border-left:0;border-right:0"><span class="lbl">ẢNH CHÍNH 1:1 · vuốt ngang</span></div>
+      <div class="center gap6" style="padding:8px">
+        <span class="lbl">● ○ ○ ○ ○</span> <span class="lbl" style="margin-left:8px">1/5 · chạm để phóng to</span>
+      </div>
+
+      <div class="pad stack" style="padding-bottom:78px">
+        <div class="p" style="left:-9px;top:355px">2</div>
+        <div class="gap8" style="align-items:center"><div class="img" style="width:30px;height:30px;border-radius:50%"></div>
+          <span class="lbl" style="color:var(--ink)">Xưởng Gốm Bát Tràng ›</span></div>
+        <b style="font-size:16px;display:block">Bình hoa men rạn thủ công</b>
+        <div class="between">
+          <b style="font-size:17px">420.000₫</b>
+          <span class="lbl">giá tham khảo · 12/08/2026</span>
+        </div>
+
+        <div class="hr"></div>
+        <div class="between"><span class="lbl">Chất liệu</span><span class="lbl" style="color:var(--ink)">Gốm, men rạn</span></div>
+        <div class="between"><span class="lbl">Kích thước</span><span class="lbl" style="color:var(--ink)">18 × 24 cm</span></div>
+        <div class="between"><span class="lbl">Biến thể</span><div class="gap6"><span class="chip">Trắng</span><span class="chip">Xanh</span></div></div>
+
+        <div class="hr"></div>
+        <span class="lbl">CÂU CHUYỆN SẢN PHẨM</span>
+        <div class="tl"></div><div class="tl"></div><div class="tl m"></div>
+
+        <div class="hr"></div>
+        <span class="lbl">SẢN PHẨM LIÊN QUAN</span>
+        <div class="grid2">
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+        </div>
+      </div>
+
+      <div class="p" style="left:-9px;bottom:116px">3</div>
+      <div class="toast" style="bottom:70px">
+        <div class="tick">✓</div>
+        <div><div class="lbl" style="color:var(--ink)">Đã lưu vào Wishlist</div><div class="lbl">Lưu trên thiết bị này</div></div>
+        <div class="lbl" style="margin-left:auto">Xem</div>
+      </div>
+
+      <div class="p" style="left:-9px;bottom:14px">4</div>
+      <div class="sticky">
+        <div class="ico" style="width:40px;height:40px;font-size:14px">♥</div>
+        <div class="btn solid" style="flex:1;padding:12px">ORDER NOW ▸ Instagram · TikTok</div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Full-bleed square gallery, swipe on mobile, tap for fullscreen lightbox. Max 8 images in V1. <span class="tag">PD-01</span></dd>
+      <dt>2</dt><dd>Shop identity above the product name — on a curation platform the brand is part of the value, not a footnote. <span class="tag">PD-05</span></dd>
+      <dt>3</dt><dd>Green tick, two lines, and a "Xem" shortcut into the drawer. Informational, not cautionary. Auto-dismiss ~3s, and it must clear the ORDER NOW bar rather than sit on it. <span class="tag">PD-06</span></dd>
+      <dt>4</dt><dd>ORDER NOW is permanently visible — confirmed. It sits above the reveal footer at the end of the page. The heart mirrors the toast state so saving is confirmed in two places without the user hunting. <span class="tag">PD-02</span></dd>
+    </dl></div>
+  </div>
+
+  <!-- M7 COPY MODAL -->
+  <div class="f">
+    <div class="f-hd"><em>M7</em> <b>Modal copy tin nhắn</b> <i>PD-03 · P1</i></div>
+    <div class="screen rel" style="height:830px">
+      <div class="appbar"><div class="logo" style="opacity:.35">TÍ</div></div>
+      <div class="img" style="height:220px;opacity:.35;border-left:0;border-right:0"></div>
+      <div class="pad" style="opacity:.35"><div class="tl m"></div><div class="tl"></div><div class="tl s"></div></div>
+      <div class="scrim"></div>
+      <div class="modal">
+        <div class="between" style="margin-bottom:11px"><b style="font-size:14px">Nhắn shop</b><span class="lbl">✕</span></div>
+        <div class="p" style="left:-9px;top:44px">1</div>
+        <div class="lbl" style="margin-bottom:6px">TIN NHẮN ĐÃ SOẠN SẴN</div>
+        <div class="b pad" style="padding:10px;font-size:11px;line-height:1.6;color:#444">
+          Chào shop! Mình thấy <b>Bình hoa men rạn thủ công</b> trên Tí Coolture.<br>
+          Sản phẩm còn hàng không ạ? Mình muốn hỏi thêm về màu Xanh.<br>
+          <span class="lbl">ticoolture.vn/san-pham/binh-hoa-men-ran</span>
+        </div>
+        <div class="p" style="left:-9px;top:176px">2</div>
+        <div class="lbl" style="margin:8px 0 0">↑ vùng chọn tay được (textarea) — fallback bắt buộc</div>
+        <div class="gap8" style="margin-top:12px">
+          <div class="btn ghost" style="flex:1">Bỏ qua</div>
+          <div class="btn solid" style="flex:2">Sao chép &amp; mở Instagram</div>
+        </div>
+        <div class="p" style="left:-9px;top:264px">3</div>
+        <div class="lbl" style="text-align:center;margin-top:9px">✓ Đã sao chép &nbsp;/&nbsp; ✕ Không sao chép được — hãy chọn và copy tay</div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Message carries the product name and URL, so the shop knows what's being asked about — which is also what makes the outbound attributable at their end. <span class="tag">PD-03</span></dd>
+      <dt>2</dt><dd>The body <em>is</em> a selectable textarea. <code>navigator.clipboard.write()</code> needs HTTPS and a direct gesture, and Safari iOS is unreliable — the fallback is mandatory. <span class="tag">PD-03</span></dd>
+      <dt>3</dt><dd>Success and failure both explicit. A silent failure means the buyer lands in a DM with nothing to say. <span class="tag">PD-03</span></dd>
+    </dl></div>
+  </div>
+
+  <!-- M8 WISHLIST DRAWER -->
+  <div class="f">
+    <div class="f-hd"><em>M8</em> <b>Wishlist — drawer</b> <i>IA-4</i> <span class="newtag">đổi từ trang</span></div>
+    <div class="screen rel" style="height:830px">
+      <div class="appbar" style="opacity:.35"><div class="logo">TÍ</div></div>
+      <div class="pad" style="opacity:.25"><div class="grid2"><div class="card"><div class="img"></div></div><div class="card"><div class="img"></div></div></div></div>
+      <div class="scrim"></div>
+      <div class="drawer">
+        <div class="between" style="margin-bottom:12px"><b style="font-size:14px">Đã lưu · 7</b><span class="lbl">✕</span></div>
+        <div class="p" style="left:-9px;top:44px">1</div>
+        <div class="b pad" style="padding:9px;margin-bottom:12px">
+          <div class="gap8"><div class="tick" style="border-color:var(--line);color:var(--mid)">ⓘ</div>
+          <span class="lbl">Danh sách lưu trên thiết bị này. Sắp tới sẽ có tài khoản để đồng bộ.</span></div>
+        </div>
+        <div class="stack">
+          <div class="gap8"><div class="img" style="width:58px;height:58px;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="tl m"></div><div class="tl s"></div><div class="tl xs"></div></div>
+            <div class="lbl">♥</div></div>
+          <div class="gap8"><div class="img" style="width:58px;height:58px;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="tl m"></div><div class="tl s"></div><div class="tl xs"></div></div>
+            <div class="lbl">♥</div></div>
+          <div class="gap8"><div class="img" style="width:58px;height:58px;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="tl m"></div><div class="tl s"></div><div class="tl xs"></div></div>
+            <div class="lbl">♥</div></div>
+        </div>
+        <div class="p" style="left:-9px;top:400px">2</div>
+        <div class="hr"></div>
+        <div class="b pad center" style="height:84px;flex-direction:column;gap:7px;border-style:dashed">
+          <span class="lbl">TRẠNG THÁI RỖNG</span>
+          <span class="lbl">"Chưa lưu gì cả"</span>
+          <span class="chip">Khám phá sản phẩm</span>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>An informational card, not a warning — no icon of alarm, no "you will lose this". It states where the list lives and what's coming. Show it on first open only, dismissible, and don't repeat it every session. <span class="tag">IA-4</span></dd>
+      <dt>2</dt><dd>Empty state routes back into browsing rather than dead-ending. <span class="tag">PD-06</span></dd>
+    </dl></div>
+    <div class="info" style="margin-top:12px;font-size:12px"><b>Why the drawer removes a story</b>
+      v0.1 had a story about reaching the wishlist from every page. A drawer is available from the header on every page by definition, so that story is now redundant and has been dropped rather than restated.</div>
+  </div>
+
+</div>
+
+<h2 class="sec">04 — Bản đồ khám phá <span class="newtag">NEW v0.2 — thay hoàn toàn</span></h2>
+
+<div class="callout"><b>Correcting v0.1</b>
+I described the map as "the project's reason to exist" and drew its stops as shops to go and buy from. Both were wrong. The map shows <b>places worth visiting</b> — somewhere to eat, look at things, spend an afternoon. It is not a directory of Tí Coolture shops, and most featured shops have no physical premises at all. It is an added-value feature that gives a visitor a reason to stay on the site and a reason to come back; it is not the site's purpose.<br><br>
+This matters beyond wording, because it changes what the screens say. A stop is a destination, so the primary action is <b>Mở bản đồ</b>, not "browse this shop's products". Only the minority of stops that happen to be a Tí shop with a physical address get a secondary link into the catalogue. Drawing every stop as a shop card would have promised something the data can't deliver.<br><br>
+The internal analytics value in SRS §8.5 survives intact, and is in fact cleaner this way: ranking which places people click tells you where attention and footfall are concentrated in the city, which is exactly the input for deciding where Tí's <em>own</em> future store should sit. That's a signal about neighbourhoods, not about individual shops.</div>
+
+<div class="row">
+
+  <div class="f">
+    <div class="f-hd"><em>MAP1</em> <b>Carousel theo quận — chưa mở route</b> <i>/kham-pha</i></div>
+    <div class="screen rel" style="height:790px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">←</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div></div>
+      </div>
+      <div class="crumb">Trang chủ › Khám phá</div>
+
+      <div class="p" style="left:-9px;top:96px">1</div>
+      <div class="between" style="padding:10px 12px">
+        <div class="gap6"><span class="chip">‹</span><b style="font-size:14px;align-self:center">Quận 1</b><span class="chip">›</span></div>
+        <span class="lbl">1 / 5 quận</span>
+      </div>
+
+      <div class="p" style="left:-9px;top:150px">2</div>
+      <div style="padding:0 12px">
+        <div class="img rel" style="height:310px">
+          <svg viewBox="0 0 336 310" width="100%" height="100%" style="display:block">
+            <circle cx="70" cy="82" r="7" fill="#fff" stroke="#1c1c1c" stroke-width="1.5"/>
+            <circle cx="168" cy="140" r="7" fill="#fff" stroke="#1c1c1c" stroke-width="1.5"/>
+            <circle cx="255" cy="70" r="7" fill="#fff" stroke="#1c1c1c" stroke-width="1.5"/>
+            <circle cx="118" cy="228" r="7" fill="#fff" stroke="#1c1c1c" stroke-width="1.5"/>
+            <circle cx="246" cy="215" r="7" fill="#fff" stroke="#1c1c1c" stroke-width="1.5"/>
+            <circle cx="196" cy="272" r="7" fill="#fff" stroke="#1c1c1c" stroke-width="1.5"/>
+            <text x="168" y="30" font-family="monospace" font-size="9.5" fill="#6b6b6b" text-anchor="middle">ẢNH MAP QUẬN 1</text>
+            <text x="168" y="300" font-family="monospace" font-size="9.5" fill="#6b6b6b" text-anchor="middle">điểm bắt đầu rải rác — chạm để mở lộ trình</text>
+          </svg>
+        </div>
+      </div>
+      <div class="center gap6" style="padding:10px"><span class="lbl">● ○ ○ ○ ○</span></div>
+
+      <div class="p" style="left:-9px;top:520px">3</div>
+      <div class="pad stack">
+        <div class="lbl">6 điểm khởi đầu ở Quận 1</div>
+        <div class="b pad" style="padding:9px">
+          <div class="between"><span class="lbl" style="color:var(--ink)">Chợ Bến Thành</span><span class="lbl">3 lộ trình ›</span></div>
+        </div>
+        <div class="b pad" style="padding:9px">
+          <div class="between"><span class="lbl" style="color:var(--ink)">Nhà thờ Đức Bà</span><span class="lbl">2 lộ trình ›</span></div>
+        </div>
+        <div class="b pad" style="padding:9px">
+          <div class="between"><span class="lbl" style="color:var(--ink)">Phố đi bộ Nguyễn Huệ</span><span class="lbl">4 lộ trình ›</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Districts as a carousel — swipe or arrows. Arrows matter as much as the swipe: a swipe here competes with the page's vertical scroll and with the browser's back gesture at the screen edge, so arrows are the reliable path and the swipe is the pleasant one. <span class="tag">HP-04</span></dd>
+      <dt>2</dt><dd><b>The district split is what makes this work on mobile.</b> §5.8 rejected a tappable map because a city-wide view puts pins at ~8px, under the 44px minimum. One district at 336px wide is roughly a 3× zoom, which brings a pin to a usable size while still showing the whole area. That objection is now resolved by the concept rather than worked around — worth recording, because §5.8 currently reads as if tappable maps were rejected outright.</dd>
+      <dt>3</dt><dd>A text list under the map, mirroring the pins. It carries the accessible path (a pin on an image is not keyboard-reachable), the SEO path (crawlable place names), and the fallback if the map image fails. Same data, two representations. <span class="tag">§6.4</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>MAP2</em> <b>Lộ trình đang mở</b> <i>chạm điểm bắt đầu</i></div>
+    <div class="screen rel" style="height:790px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">←</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div></div>
+      </div>
+      <div class="crumb">Trang chủ › Khám phá › Quận 1</div>
+      <div class="between" style="padding:10px 12px">
+        <div class="gap6"><span class="chip">‹</span><b style="font-size:14px;align-self:center">Quận 1</b><span class="chip">›</span></div>
+        <span class="lbl">1 / 5</span>
+      </div>
+
+      <div class="p" style="left:-9px;top:150px">1</div>
+      <div style="padding:0 12px">
+        <div class="img rel" style="height:310px">
+          <svg viewBox="0 0 336 310" width="100%" height="100%" style="display:block">
+            <polyline points="70,82 168,140 246,215 196,272" fill="none" stroke="#1c1c1c" stroke-width="1.6" stroke-dasharray="5 4"/>
+            <circle cx="255" cy="70" r="6" fill="#fff" stroke="#c4c4c4" stroke-width="1.2"/>
+            <circle cx="118" cy="228" r="6" fill="#fff" stroke="#c4c4c4" stroke-width="1.2"/>
+            <circle cx="70" cy="82" r="12" fill="#1c1c1c"/>
+            <text x="70" y="86" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">1</text>
+            <circle cx="168" cy="140" r="11" fill="#1c1c1c"/>
+            <text x="168" y="144" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">2</text>
+            <circle cx="246" cy="215" r="11" fill="#1c1c1c"/>
+            <text x="246" y="219" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">3</text>
+            <circle cx="196" cy="272" r="11" fill="#1c1c1c"/>
+            <text x="196" y="276" font-family="monospace" font-size="10" fill="#fff" text-anchor="middle">4</text>
+            <text x="168" y="24" font-family="monospace" font-size="9.5" fill="#6b6b6b" text-anchor="middle">polyline nối các điểm · điểm khác mờ đi</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="p" style="left:-9px;top:480px">2</div>
+      <div class="between" style="padding:10px 12px">
+        <div><b style="font-size:13px">Một chiều quanh Bến Thành</b><div class="lbl">4 điểm · ~1.8 km</div></div>
+        <span class="chip">Đóng ✕</span>
+      </div>
+
+      <div class="pad stack" style="padding-top:0">
+        <div class="p" style="left:-9px;top:590px">3</div>
+        <div class="b pad" style="padding:9px">
+          <div class="gap8"><div class="center" style="width:21px;height:21px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;flex:0 0 auto">1</div>
+          <div style="flex:1"><div class="lbl" style="color:var(--ink)">Chợ Bến Thành</div><div class="lbl">Điểm bắt đầu · chợ &amp; ăn vặt</div></div>
+          <div class="img" style="width:40px;height:40px;flex:0 0 auto"></div></div>
+        </div>
+        <div class="b pad" style="padding:9px">
+          <div class="gap8"><div class="center" style="width:21px;height:21px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;flex:0 0 auto">2</div>
+          <div style="flex:1"><div class="lbl" style="color:var(--ink)">Cà phê Vợt Phan Đình Phùng</div><div class="lbl">Cà phê · 6 phút đi bộ</div></div>
+          <div class="img" style="width:40px;height:40px;flex:0 0 auto"></div></div>
+        </div>
+        <div class="b pad" style="padding:9px">
+          <div class="gap8"><div class="center" style="width:21px;height:21px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;flex:0 0 auto">3</div>
+          <div style="flex:1"><div class="lbl" style="color:var(--ink)">Ga Sài Gòn Studio</div><div class="lbl">Triển lãm · có shop trên Tí ✦</div></div>
+          <div class="img" style="width:40px;height:40px;flex:0 0 auto"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Tapping a start point draws its route; tapping the same point again closes it. Only one route open at a time — opening a second closes the first, so there's never an ambiguous state. Unrelated points fade rather than disappear, so the user can still see what else they could open. <span class="tag">HP-04</span></dd>
+      <dt>2</dt><dd>The route needs a name, a stop count and a rough distance. Without a total, nobody can decide whether to start.</dd>
+      <dt>3</dt><dd>The list is ordered and numbered to match the pins. A marker (✦) shows the rare stop that is also a Tí shop — the exception, not the pattern.</dd>
+    </dl></div>
+    <div class="notes warnbar"><dl>
+      <dt>4</dt><dd><b>Schema implications, worth raising with Lộc before this is built.</b> The SRS models routes as a flat set of <code>routes</code> and <code>route_stops</code> with percentage coordinates. This concept needs three things it doesn't currently have: a district to group maps by and one background image per district; a start point per route, where several routes can share one start ("3 lộ trình" in MAP1); and a place record that is independent of any shop, since most stops aren't shops. Percentage coordinates still work, but they're now relative to a district image rather than a city image — which means the existing pin editor (AD-05) needs a district selector.<br><br>Analytics changes too. §8.5's funnel assumed one route that everyone sees; now a route is opened deliberately, so the useful events are <code>map_district_view → route_open → route_stop_click → route_stop_external</code>, and drop-off is measured within an opened route rather than across the site. Which districts get swiped to is itself a signal.</dd>
+    </dl></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>MAP3</em> <b>Chi tiết điểm dừng</b> <i>chạm 1 điểm trong lộ trình</i></div>
+    <div class="screen rel" style="height:790px">
+      <div class="appbar" style="opacity:.35"><div class="logo">TÍ</div></div>
+      <div style="padding:0 12px;opacity:.3">
+        <div class="img" style="height:280px"></div>
+      </div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="gap10" style="margin-bottom:12px">
+          <div class="img" style="width:78px;height:78px;flex:0 0 auto"></div>
+          <div style="flex:1">
+            <div class="lbl">ĐIỂM 2 / 4</div>
+            <b style="font-size:14px;display:block;margin:2px 0 4px">Cà phê Vợt Phan Đình Phùng</b>
+            <div class="lbl">Cà phê lâu đời · mở 6:00–22:00</div>
+            <div class="lbl">Số 330 Phan Đình Phùng, Q. Phú Nhuận</div>
+          </div>
+        </div>
+        <div class="tl"></div><div class="tl"></div><div class="tl m"></div>
+
+        <div class="p" style="left:-9px;top:200px">1</div>
+        <div class="gap8" style="margin:14px 0 8px">
+          <div class="btn solid" style="flex:2">Mở bản đồ ↗</div>
+          <div class="btn ghost" style="flex:1">Chia sẻ</div>
+        </div>
+        <div class="p" style="left:-9px;top:262px">2</div>
+        <div class="btn ghost blk" style="border-style:dashed">Xem shop trên Tí ✦ &nbsp;<span class="lbl">— chỉ khi điểm này có shop</span></div>
+
+        <div class="hr"></div>
+        <div class="between">
+          <span class="chip">‹ Điểm 1</span><span class="lbl">2 / 4</span><span class="chip">Điểm 3 ›</span>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd><b>Mở bản đồ</b> opens Google Maps with that exact place as the query, in a new tab. Use the place name plus its full address in the query rather than raw coordinates — a name resolves to the business card with hours and reviews, whereas coordinates drop a bare pin. Fires <code>route_stop_external</code>. <span class="tag">§8.5</span> <span class="tag dec">confirmed</span></dd>
+      <dt>2</dt><dd>Only rendered when the place is linked to a Tí shop. Most stops won't have this, so it must not be a permanent empty slot — an always-present disabled button would misrepresent what the map is.</dd>
+      <dt>3</dt><dd>Prev/next between stops without closing the sheet, so someone reading the route can walk through it in order. Cheap, and it's the difference between a route and a list of places.</dd>
+    </dl></div>
+  </div>
+
+</div>
+
+<h2 class="sec">05 — Secondary screens, mobile</h2>
+
+<div class="row">
+
+  <div class="f">
+    <div class="f-hd"><em>M9</em> <b>Chi tiết shop</b> <i>/shop/[slug]</i></div>
+    <div class="screen rel" style="height:900px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">←</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">♡</div><div class="ico">⤴</div></div>
+      </div>
+      <div class="crumb">Trang chủ › Shop › Xưởng Gốm Bát Tràng</div>
+      <div class="p" style="left:-9px;top:120px">1</div>
+      <div class="img center" style="height:110px;border-left:0;border-right:0"><span class="lbl">COVER 3:2 (mobile) · 21:9 (desktop)</span></div>
+
+      <div class="pad stack">
+        <div class="gap10" style="align-items:center;margin-top:-30px">
+          <div class="img" style="width:58px;height:58px;border-radius:50%;background:#fff;flex:0 0 auto"></div>
+          <div style="flex:1;padding-top:26px"><b style="font-size:15px">Xưởng Gốm Bát Tràng</b>
+            <div class="lbl">Nhà cửa · 34 sản phẩm</div></div>
+        </div>
+
+        <div class="p" style="left:-9px;top:262px">2</div>
+        <div class="gap6"><span class="chip">Instagram ↗</span><span class="chip">TikTok ↗</span><span class="chip">Facebook ↗</span></div>
+
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:330px">3</div>
+        <span class="lbl">CÂU CHUYỆN THƯƠNG HIỆU</span>
+        <div class="tl"></div><div class="tl"></div><div class="tl"></div><div class="tl m"></div>
+        <span class="lbl">Đọc tiếp ▾</span>
+
+        <div class="hr"></div>
+        <span class="lbl">ĐANG ĐƯỢC QUAN TÂM</span>
+        <div class="gap8" style="overflow:hidden">
+          <div class="card" style="flex:0 0 44%"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card" style="flex:0 0 44%"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card" style="flex:0 0 18%"><div class="img"></div></div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="between"><span class="lbl">TẤT CẢ SẢN PHẨM · 34</span><span class="chip">Sắp xếp ▾</span></div>
+        <div class="grid2">
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Two crops per shop, 3:2 and 21:9. Flag this to whoever collects assets — it's easy to miss and expensive to redo across every partner. <span class="tag">SD-01</span></dd>
+      <dt>2</dt><dd>Only platforms with a link and <code>is_visible</code>. UTM appended, <code>rel="noopener noreferrer"</code>. <span class="tag">SD-03</span> <span class="tag">§8.4</span></dd>
+      <dt>3</dt><dd>Story above the grid. A prospective partner judges Tí by looking at how an existing brand is presented, so this block is what makes "we tell your story" credible instead of a claim on a recruitment page. <span class="tag">SD-02</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>M10</em> <b>Hidden Gems — mở</b> <i>HP-05</i></div>
+    <div class="screen rel" style="height:790px">
+      <div class="appbar"><div class="logo" style="opacity:.35">TÍ</div></div>
+      <div class="pad" style="opacity:.3"><div class="img" style="height:120px"></div><div class="tl m"></div><div class="tl"></div></div>
+      <div class="scrim"></div>
+      <div class="drawer">
+        <div class="between" style="margin-bottom:12px"><b style="font-size:14px">Hidden Gems</b><span class="lbl">✕</span></div>
+        <div class="p" style="left:-9px;top:44px">1</div>
+        <div class="lbl" style="margin-bottom:10px">Những món ít người biết, Tí nghĩ bạn sẽ thích</div>
+        <div class="stack">
+          <div class="gap8"><div class="img" style="width:64px;height:64px;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="tl m"></div><div class="tl s"></div><div class="tl xs"></div></div></div>
+          <div class="gap8"><div class="img" style="width:64px;height:64px;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="tl m"></div><div class="tl s"></div><div class="tl xs"></div></div></div>
+          <div class="gap8"><div class="img" style="width:64px;height:64px;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="tl m"></div><div class="tl s"></div><div class="tl xs"></div></div></div>
+        </div>
+        <div class="p" style="left:-9px;top:300px">2</div>
+        <div class="lbl" style="margin-top:12px">Nội dung KHÔNG đổi khi drawer đang mở</div>
+        <div class="btn ghost blk" style="margin-top:10px">Xem tất cả</div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Opens only on tap on mobile. Desktop may auto-open past 40% scroll or after 20s — never a 3s timer, and never re-open after the user closes it. <span class="tag">HP-05</span></dd>
+      <dt>2</dt><dd>Content frozen while open; re-rolls on close/reopen. <span class="tag">HP-05</span></dd>
+    </dl></div>
+    <div class="info" style="margin-top:12px;font-size:12px"><b>Đo lường thay vì A/B</b>
+      <code>gem_tab_impression → gem_tab_click → gem_view → gem_outbound</code>. Two weeks <code>tab_only</code>, two weeks <code>auto_open</code>, compare. Under 2% tab CTR after four weeks → flag to <code>off</code>. <span class="tag">§5.9</span></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>M11</em> <b>Menu điều hướng</b></div>
+    <div class="screen rel" style="height:790px">
+      <div class="appbar" style="opacity:.35"><div class="logo">TÍ</div></div>
+      <div class="pad" style="opacity:.25"><div class="img" style="height:110px"></div></div>
+      <div class="scrim"></div>
+      <div class="drawerL">
+        <div class="between" style="margin-bottom:16px"><div class="logo">TÍ COOLTURE</div><span class="lbl">✕</span></div>
+        <div class="p" style="left:-9px;top:56px">1</div>
+        <div class="stack" style="font-size:14px">
+          <div style="padding:9px 0;border-bottom:1px solid var(--line2)">Sản phẩm</div>
+          <div style="padding:9px 0;border-bottom:1px solid var(--line2);margin-top:0">Shop</div>
+          <div style="padding:9px 0;border-bottom:1px solid var(--line2);margin-top:0">Khám phá <span class="lbl">· bản đồ theo quận</span></div>
+          <div style="padding:9px 0;border-bottom:1px solid var(--line2);margin-top:0">Blog</div>
+          <div style="padding:9px 0;border-bottom:1px solid var(--line2);margin-top:0">Về Tí</div>
+        </div>
+        <div class="p" style="left:-9px;top:290px">2</div>
+        <div class="stack" style="margin-top:18px">
+          <div class="between"><span class="lbl">Đã lưu</span><span class="badge">7</span></div>
+          <div class="between"><span class="lbl">Hợp tác cùng Tí</span><span class="lbl">›</span></div>
+          <div class="between"><span class="lbl">FAQ</span><span class="lbl">›</span></div>
+        </div>
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:430px">3</div>
+        <div class="gap6"><span class="chip on">VI</span><span class="chip">EN</span></div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Five primary items. <code>Khám phá</code> rather than <code>Bản đồ</code> — the value, not the mechanism. <span class="tag">IA-6</span></dd>
+      <dt>2</dt><dd><code>Hợp tác</code> here and in the footer; it's P3's only entry point. <span class="tag">§5.6</span></dd>
+      <dt>3</dt><dd>Language switch in both the menu and the top bar — an English speaker can't read the label that hides it. <span class="tag">§6.3</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f">
+    <div class="f-hd"><em>M12</em> <b>Hợp tác cùng Tí</b> <i>/hop-tac</i> <span class="newtag">NEW</span></div>
+    <div class="screen rel" style="height:790px">
+      <div class="appbar">
+        <div class="gap8" style="align-items:center"><div class="ico">≡</div><div class="logo">TÍ</div></div>
+        <div class="gap8"><div class="ico">⌕</div><div class="ico">♡</div></div>
+      </div>
+      <div class="pad stack">
+        <b style="font-size:17px;display:block;margin-top:8px">Đưa thương hiệu của bạn lên Tí</b>
+        <div class="tl"></div><div class="tl m"></div>
+
+        <div class="p" style="left:-9px;top:170px">1</div>
+        <div class="btn solid blk" style="padding:13px">Liên hệ với Tí</div>
+        <div class="lbl" style="text-align:center">Tí sẽ phản hồi trong 3–5 ngày làm việc</div>
+
+        <div class="hr"></div>
+        <span class="lbl">BẠN NHẬN ĐƯỢC GÌ</span>
+        <div class="stack">
+          <div class="gap8"><span class="lbl">01</span><div style="flex:1"><div class="tl m"></div><div class="tl s"></div></div></div>
+          <div class="gap8"><span class="lbl">02</span><div style="flex:1"><div class="tl m"></div><div class="tl s"></div></div></div>
+          <div class="gap8"><span class="lbl">03</span><div style="flex:1"><div class="tl m"></div><div class="tl s"></div></div></div>
+        </div>
+
+        <div class="hr"></div>
+        <span class="lbl">TÍ TÌM GÌ Ở MỘT THƯƠNG HIỆU</span>
+        <div class="tl"></div><div class="tl m"></div>
+
+        <div class="hr"></div>
+        <div class="p" style="left:-9px;top:600px">2</div>
+        <span class="lbl">VÍ DỤ MỘT TRANG SHOP</span>
+        <div class="b pad" style="padding:10px">
+          <div class="gap8" style="align-items:center">
+            <div class="img" style="width:44px;height:44px;border-radius:50%;flex:0 0 auto"></div>
+            <div style="flex:1"><div class="lbl" style="color:var(--ink)">Xưởng Gốm Bát Tràng</div><div class="lbl">Xem shop này trông thế nào ›</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Contact button first, above the fold — a brand owner who already knows they want in shouldn't have to read the pitch. The persuasion sits underneath for everyone else. <span class="tag">§5.6</span></dd>
+      <dt>2</dt><dd>One example shop at the bottom, as proof rather than as navigation. Temporary by design: once <code>/shop</code> has enough brands, this block can go, because the shops index will do the same job better. Worth putting a note in <code>DECISIONS.md</code> so it's removed deliberately rather than forgotten.</dd>
+    </dl></div>
+  </div>
+
+</div>
+
+
+<h2 class="sec">06 — Desktop <span>· only where it diverges</span></h2>
+
+<div class="scrollx"><div class="row">
+
+  <div class="f wide">
+    <div class="f-hd"><em>D1</em> <b>Trang chủ — desktop</b> <i>≥1024px</i> <span class="newtag">hero + map</span></div>
+    <div class="screen rel" style="height:880px">
+      <div class="appbar" style="padding:12px 22px">
+        <div class="gap10" style="align-items:center">
+          <div class="logo" style="font-size:17px">TÍ COOLTURE</div>
+          <div class="gap10" style="margin-left:22px"><span class="lbl">Sản phẩm</span><span class="lbl">Shop</span><span class="lbl">Khám phá</span><span class="lbl">Blog</span><span class="lbl">Về Tí</span></div>
+        </div>
+        <div class="gap10" style="align-items:center">
+          <div class="b" style="width:200px;height:30px;padding:6px 9px"><span class="lbl">⌕ Tìm kiếm</span></div>
+          <div class="ico">♡</div><div class="ico" style="width:auto;padding:0 6px">VI|EN</div>
+        </div>
+      </div>
+
+      <div class="p" style="left:-9px;top:56px">1</div>
+      <div class="img center rel" style="height:230px;border-left:0;border-right:0">
+        <span class="lbl">HERO — cùng chuỗi ảnh, crop giữa theo dải ngang<br>vùng an toàn 15% trên/dưới</span>
+        <div class="pill" style="position:absolute;left:22px;bottom:14px">Ảnh: Xưởng Gốm Bát Tràng ↗</div>
+        <div style="position:absolute;right:22px;bottom:14px" class="gap6"><span class="lbl">● ○ ○ ○</span></div>
+      </div>
+
+      <div style="padding:18px 22px">
+        <div class="between" style="margin-bottom:10px"><span class="lbl">WHAT'S IN STORE</span><div class="gap6"><span class="chip">‹</span><span class="chip">›</span></div></div>
+        <div class="grid4" style="margin-bottom:20px">
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+        </div>
+
+        <div class="p" style="left:-9px;top:490px">2</div>
+        <div class="between" style="margin-bottom:8px"><span class="lbl">KHÁM PHÁ SÀI GÒN — QUẬN 1</span><div class="gap6"><span class="chip">‹ Quận 3</span><span class="chip">Quận 4 ›</span></div></div>
+        <div class="gap10">
+          <div class="img center" style="flex:2;height:200px">
+            <span class="lbl">MAP QUẬN 1 · click điểm → polyline<br>click lại → đóng</span>
+          </div>
+          <div class="b pad" style="flex:1;height:200px">
+            <div class="lbl" style="margin-bottom:6px">MỘT CHIỀU QUANH BẾN THÀNH · 4 ĐIỂM</div>
+            <div class="stack">
+              <div class="gap6"><span class="lbl">①</span><span class="lbl">Chợ Bến Thành</span></div>
+              <div class="gap6"><span class="lbl">②</span><span class="lbl">Cà phê Vợt</span></div>
+              <div class="gap6"><span class="lbl">③</span><span class="lbl">Ga Sài Gòn Studio ✦</span></div>
+              <div class="gap6"><span class="lbl">④</span><span class="lbl">Bờ kè Bạch Đằng</span></div>
+            </div>
+            <div class="gap6" style="margin-top:10px"><span class="chip">Mở bản đồ ↗</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="p" style="right:38px;top:360px">3</div>
+      <div class="gemtab"><span>HIDDEN GEMS</span></div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Same image set as mobile, centre-cropped to a horizontal band. This is exactly why the 15% top/bottom safe zone in the submission spec matters. <span class="tag">HP-01</span></dd>
+      <dt>2</dt><dd>Districts as prev/next rather than a swipe; route list in a side panel instead of below. Same interaction model, more room. <span class="tag">HP-04</span></dd>
+      <dt>3</dt><dd>Desktop may auto-open past 40% scroll or after 20s, once per session. <span class="tag">HP-05</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f wide">
+    <div class="f-hd"><em>D2</em> <b>Tất cả sản phẩm — desktop</b> <i>lọc dạng sidebar</i></div>
+    <div class="screen rel" style="height:630px">
+      <div class="appbar" style="padding:12px 22px">
+        <div class="gap10" style="align-items:center"><div class="logo" style="font-size:17px">TÍ COOLTURE</div>
+          <div class="gap10" style="margin-left:22px"><span class="lbl">Sản phẩm</span><span class="lbl">Shop</span><span class="lbl">Khám phá</span><span class="lbl">Blog</span><span class="lbl">Về Tí</span></div></div>
+        <div class="gap10"><div class="b" style="width:200px;height:30px;padding:6px 9px"><span class="lbl">⌕ Tìm kiếm</span></div><div class="ico">♡</div></div>
+      </div>
+      <div class="crumb" style="padding:8px 22px">Trang chủ › Sản phẩm › Quà tặng</div>
+
+      <div style="display:flex;gap:22px;padding:18px 22px">
+        <div class="p" style="left:-9px;top:112px">1</div>
+        <div style="width:190px;flex:0 0 auto">
+          <div class="lbl" style="margin-bottom:7px">DANH MỤC</div>
+          <div class="stack" style="margin-bottom:16px">
+            <div class="between"><span class="lbl">▢ Thời trang</span><span class="lbl">52</span></div>
+            <div class="between"><span class="lbl">▢ Sản phẩm sáng tạo</span><span class="lbl">44</span></div>
+            <div class="between"><span class="lbl">▢ Văn phòng phẩm</span><span class="lbl">31</span></div>
+            <div class="between"><span class="lbl">▣ Quà tặng</span><span class="lbl">38</span></div>
+            <div class="between"><span class="lbl">▢ Nhà cửa</span><span class="lbl">27</span></div>
+            <div class="between"><span class="lbl">▢ Body care</span><span class="lbl">14</span></div>
+            <div class="between"><span class="lbl">▢ Giải trí</span><span class="lbl">12</span></div>
+          </div>
+          <div class="hr"></div>
+          <div class="lbl" style="margin-bottom:7px">CHẤT LIỆU</div>
+          <div class="stack" style="margin-bottom:16px">
+            <div class="lbl">▢ Gốm</div><div class="lbl">▢ Giấy</div><div class="lbl">▢ Gỗ</div><div class="lbl">▢ Vải</div>
+          </div>
+          <div class="hr"></div>
+          <div class="lbl" style="margin-bottom:7px">KHOẢNG GIÁ</div>
+          <div class="stack"><div class="lbl">○ &lt;100k</div><div class="lbl">◉ 100–300k</div><div class="lbl">○ 300k–1tr</div><div class="lbl">○ &gt;1tr</div><div class="lbl">○ Liên hệ</div></div>
+        </div>
+
+        <div style="flex:1">
+          <div class="p" style="left:216px;top:112px">2</div>
+          <div class="between" style="margin-bottom:12px">
+            <div class="gap6"><span class="chip on">Quà tặng ✕</span><span class="chip on">100–300k ✕</span><span class="lbl" style="align-self:center">38 kết quả</span></div>
+            <span class="chip">Mới nhất ▾</span>
+          </div>
+          <div class="grid4">
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+            <div class="card"><div class="img"></div><div class="tl m"></div><div class="tl xs"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>All seven categories visible at once with counts — the long labels that constrain the mobile chip row are a non-issue here. <span class="tag">AP-02</span></dd>
+      <dt>2</dt><dd>Active filters repeat as removable chips above the grid. Every combination is a distinct indexable URL. <span class="tag">AP-01</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f wide">
+    <div class="f-hd"><em>D3</em> <b>Chi tiết sản phẩm — desktop</b></div>
+    <div class="screen rel" style="height:560px">
+      <div class="appbar" style="padding:12px 22px">
+        <div class="gap10" style="align-items:center"><div class="logo" style="font-size:17px">TÍ COOLTURE</div>
+          <div class="gap10" style="margin-left:22px"><span class="lbl">Sản phẩm</span><span class="lbl">Shop</span><span class="lbl">Khám phá</span><span class="lbl">Blog</span><span class="lbl">Về Tí</span></div></div>
+        <div class="gap10"><div class="b" style="width:200px;height:30px;padding:6px 9px"><span class="lbl">⌕ Tìm kiếm</span></div><div class="ico">♡</div></div>
+      </div>
+      <div class="crumb" style="padding:8px 22px">Trang chủ › Sản phẩm › Nhà cửa › Bình hoa men rạn thủ công</div>
+
+      <div style="display:flex;gap:24px;padding:20px 22px">
+        <div class="p" style="left:-9px;top:112px">1</div>
+        <div class="gap8" style="flex:0 0 auto">
+          <div class="stack" style="width:52px">
+            <div class="img" style="height:52px;border-color:var(--ink)"></div>
+            <div class="img" style="height:52px"></div><div class="img" style="height:52px"></div>
+            <div class="img" style="height:52px"></div><div class="img" style="height:52px"></div>
+          </div>
+          <div class="img center" style="width:310px;height:310px"><span class="lbl">1:1 · click → lightbox<br>← → điều hướng bàn phím</span></div>
+        </div>
+
+        <div style="flex:1">
+          <div class="gap8" style="align-items:center;margin-bottom:8px">
+            <div class="img" style="width:30px;height:30px;border-radius:50%"></div>
+            <span class="lbl" style="color:var(--ink)">Xưởng Gốm Bát Tràng ›</span>
+          </div>
+          <b style="font-size:19px;display:block;margin-bottom:6px">Bình hoa men rạn thủ công</b>
+          <div class="between" style="margin-bottom:12px">
+            <b style="font-size:19px">420.000₫</b><span class="lbl">giá tham khảo · cập nhật 12/08/2026</span>
+          </div>
+          <div class="hr"></div>
+          <div class="stack" style="margin-bottom:14px">
+            <div class="between"><span class="lbl">Chất liệu</span><span class="lbl" style="color:var(--ink)">Gốm, men rạn</span></div>
+            <div class="between"><span class="lbl">Kích thước</span><span class="lbl" style="color:var(--ink)">18 × 24 cm</span></div>
+            <div class="between"><span class="lbl">Biến thể</span><div class="gap6"><span class="chip">Trắng</span><span class="chip">Xanh</span></div></div>
+          </div>
+          <div class="p" style="left:414px;top:292px">2</div>
+          <div class="b pad" style="padding:12px">
+            <div class="lbl" style="margin-bottom:9px">ĐẶT HÀNG TRỰC TIẾP VỚI SHOP</div>
+            <div class="gap8">
+              <div class="btn solid" style="flex:1">Instagram ↗</div>
+              <div class="btn" style="flex:1">TikTok ↗</div>
+              <div class="btn" style="flex:1">Facebook ↗</div>
+            </div>
+            <div class="gap8" style="margin-top:8px">
+              <div class="btn ghost" style="flex:1">♡ Lưu</div>
+              <div class="btn ghost" style="flex:1">⤴ Chia sẻ</div>
+            </div>
+          </div>
+          <div class="p" style="left:414px;top:406px">3</div>
+          <div class="lbl" style="margin-top:9px">ⓘ Tí Coolture không bán hàng. Mọi giao dịch diễn ra trực tiếp với shop.</div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Vertical thumbnails beside a square main image; lightbox with keyboard nav. <span class="tag">PD-01</span> <span class="tag">§6.4</span></dd>
+      <dt>2</dt><dd>One button per registered platform. Each writes <code>click_events</code> then opens a new tab with UTM. Fire-and-forget — the write must never block navigation, or the click feels broken on slow mobile data. <span class="tag">PD-02</span> <span class="tag">§8.4</span></dd>
+      <dt>3</dt><dd>One line stating Tí doesn't transact. Sets expectations before the click and reinforces the positioning that keeps V1 out of intermediary-platform classification. <span class="tag">§0</span> <span class="tag">§9</span></dd>
+    </dl></div>
+  </div>
+
+</div></div>
+
+
+<h2 class="sec">07 — Admin <span class="newtag">A1 mới — hàng đợi duyệt</span></h2>
+<p class="secnote">The intake pipeline replaces manual copy-paste: Google Form → Sheets → auto-routed queue in the CMS → approve or reject with a templated email.</p>
+
+<div class="scrollx"><div class="row">
+
+  <div class="f wide">
+    <div class="f-hd"><em>A1</em> <b>Hàng đợi duyệt shop</b> <i>/admin/duyet</i> <span class="newtag">NEW v0.2</span></div>
+    <div class="screen rel" style="height:560px">
+      <div class="appbar" style="padding:10px 18px">
+        <div class="gap10"><b style="font-size:13px">TÍ ADMIN</b>
+          <div class="gap10" style="margin-left:16px"><span class="lbl" style="color:var(--ink)">Hàng đợi <span class="badge">6</span></span><span class="lbl">Shop</span><span class="lbl">Sản phẩm</span><span class="lbl">Blog</span><span class="lbl">Route</span><span class="lbl">Analytics</span></div></div>
+        <span class="lbl">đồng bộ Sheets · 4 phút trước ⟳</span>
+      </div>
+
+      <div style="display:flex;gap:0;height:505px">
+        <div class="p" style="left:-9px;top:56px">1</div>
+        <div style="width:230px;flex:0 0 auto;border-right:1px solid var(--line2)">
+          <div class="between" style="padding:8px 12px;border-bottom:1px solid var(--line2)">
+            <span class="lbl">CHỜ DUYỆT · 6</span><span class="chip">Mới nhất ▾</span>
+          </div>
+          <div style="padding:9px 12px;border-bottom:1px solid var(--line2);background:var(--fill)">
+            <div class="lbl" style="color:var(--ink)">Xưởng Gốm Bát Tràng</div>
+            <div class="lbl">18/08 · 12 ảnh · Nhà cửa</div>
+          </div>
+          <div style="padding:9px 12px;border-bottom:1px solid var(--line2)">
+            <div class="lbl" style="color:var(--ink)">Chỉ &amp; Kim</div><div class="lbl">17/08 · 8 ảnh · Thời trang</div>
+          </div>
+          <div style="padding:9px 12px;border-bottom:1px solid var(--line2)">
+            <div class="lbl" style="color:var(--ink)">Lacquer Lab</div><div class="lbl">17/08 · 20 ảnh ⚠ · Quà tặng</div>
+          </div>
+          <div style="padding:9px 12px;border-bottom:1px solid var(--line2)">
+            <div class="lbl" style="color:var(--ink)">Giấy &amp; Mực</div><div class="lbl">16/08 · 5 ảnh · Văn phòng phẩm</div>
+          </div>
+          <div class="between" style="padding:8px 12px;border-bottom:1px solid var(--line2);margin-top:6px">
+            <span class="lbl">ĐÃ TỪ CHỐI · 3</span><span class="lbl">›</span>
+          </div>
+        </div>
+
+        <div style="flex:1;padding:14px 16px">
+          <div class="between" style="margin-bottom:12px">
+            <div><b style="font-size:14px">Xưởng Gốm Bát Tràng</b><div class="lbl">gom.battrang@gmail.com · IG @xuonggom · gửi 18/08</div></div>
+            <div class="gap6"><span class="chip">Xem bản Form gốc ↗</span></div>
+          </div>
+
+          <div class="p" style="left:250px;top:120px">2</div>
+          <div class="between" style="margin-bottom:6px"><span class="lbl">XEM TRƯỚC — TRANG SHOP</span><div class="gap6"><span class="chip on">Mobile</span><span class="chip">Desktop</span></div></div>
+          <div class="gap10" style="margin-bottom:12px">
+            <div class="img center" style="width:150px;height:190px"><span class="lbl">preview<br>trang shop</span></div>
+            <div style="flex:1">
+              <div class="lbl" style="margin-bottom:6px">ẢNH GỬI LÊN · 12</div>
+              <div class="gap6" style="flex-wrap:wrap">
+                <div class="img" style="width:52px;height:52px"></div><div class="img" style="width:52px;height:52px"></div>
+                <div class="img" style="width:52px;height:52px"></div><div class="img" style="width:52px;height:52px"></div>
+                <div class="img" style="width:52px;height:52px"></div><div class="img" style="width:52px;height:52px"></div>
+              </div>
+              <div class="p w" style="left:250px;top:250px">3</div>
+              <div class="lbl" style="margin-top:8px">⚠ 3 ảnh dưới 1200px · ⚠ 1 ảnh sai tỉ lệ hero</div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="p" style="left:250px;top:352px">4</div>
+          <div class="between" style="margin-bottom:8px">
+            <span class="lbl">PHẢN HỒI QUA EMAIL</span>
+            <div class="gap6"><span class="chip on">Duyệt</span><span class="chip">Cần sửa</span><span class="chip">Từ chối</span></div>
+          </div>
+          <div class="b" style="height:64px;padding:8px"><span class="lbl">Mẫu email tự điền tên shop + lý do. Sửa được trước khi gửi.</span></div>
+          <div class="gap8" style="margin-top:10px">
+            <div class="btn ghost" style="flex:1">Lưu nháp</div>
+            <div class="btn" style="flex:1">Từ chối &amp; gửi email</div>
+            <div class="btn solid" style="flex:2">Duyệt · tạo shop &amp; gửi email</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Queue populated from the Sheet, not by hand. Approving creates the shop record directly — this is the step that removes the copy-paste. <span class="tag dec">NEW</span></dd>
+      <dt>2</dt><dd>Preview renders the real shop-page component with the submitted assets, at both breakpoints. It's how you catch a cover that crops badly before a partner sees it live, and it's the reason the preview has to use the actual component rather than a mock. <span class="tag">SD-01</span></dd>
+      <dt>4</dt><dd>Three outcomes, not two. "Cần sửa" is the one that matters in practice — most submissions won't be rejected, they'll be missing an image or a story, and a reject/approve binary forces you to either publish something weak or turn a willing partner away. <span class="tag dec">DECISION</span></dd>
+    </dl></div>
+    <div class="notes warnbar"><dl>
+      <dt>3</dt><dd><b>Automated asset checks, and one scope warning.</b> Flagging dimensions and aspect ratio automatically is cheap and saves the reviewer opening every file — it's also the only practical way to enforce the hero image spec across dozens of partners.<br><br>The warning: SRS §1 lists a moderation pipeline (Pending / Approved / Rejected) under <b>V2, gated on legal advice</b>. What's drawn here is that pipeline. The legal concern behind that gating was shop <em>accounts</em> and self-upload, and neither exists here — submissions still arrive by form and a human still decides — so the classification risk stays where D1 put it. But the build cost is real and it is not in the V1 estimate: a Sheets sync, a queue UI, an asset checker, an email template system and a reject/revise state machine. Against a 31/08 launch with one developer, I'd ship V1 with the queue reading from Sheets and the approve action, and leave the templated email as a manual send until September. That keeps the copy-paste saving, which is the actual point, and defers the fiddliest part. <span class="tag">§1</span> <span class="tag dec">DECISION</span></dd>
+    </dl></div>
+  </div>
+
+  <div class="f wide" style="width:660px">
+    <div class="f-hd"><em>A2</em> <b>Dashboard analytics</b> <i>AD-08 · §8.3</i></div>
+    <div class="screen rel" style="height:490px">
+      <div class="appbar" style="padding:10px 18px">
+        <div class="gap10"><b style="font-size:13px">TÍ ADMIN</b>
+          <div class="gap10" style="margin-left:16px"><span class="lbl">Hàng đợi</span><span class="lbl">Shop</span><span class="lbl">Sản phẩm</span><span class="lbl" style="color:var(--ink)">Analytics</span></div></div>
+        <div class="gap6"><span class="chip">7 ngày ▾</span><span class="chip">Export CSV</span></div>
+      </div>
+      <div style="padding:16px 18px">
+        <div class="grid4" style="margin-bottom:16px">
+          <div class="b pad" style="padding:9px"><div class="lbl">KHÁCH DUY NHẤT</div><b style="font-size:19px">1.284</b><div class="lbl">▲ 12%</div></div>
+          <div class="b pad" style="padding:9px;border-color:var(--ink)"><div class="lbl">OUTBOUND CTR ⭐</div><b style="font-size:19px">6,4%</b><div class="lbl">▲ 0,8pp</div></div>
+          <div class="b pad" style="padding:9px"><div class="lbl">SAVE RATE</div><b style="font-size:19px">3,1%</b><div class="lbl">▼ 0,2pp</div></div>
+          <div class="b pad" style="padding:9px"><div class="lbl">MOBILE</div><b style="font-size:19px">87%</b><div class="lbl">vi 78% · en 22%</div></div>
+        </div>
+        <div class="gap10">
+          <div style="flex:1">
+            <div class="p" style="left:2px;top:144px">1</div>
+            <div class="lbl" style="margin-bottom:6px">XẾP HẠNG THEO OUTBOUND CTR — KHÔNG PHẢI LƯỢT XEM</div>
+            <div class="b" style="padding:0">
+              <div class="between" style="padding:7px 9px;border-bottom:1px solid var(--line2)"><span class="lbl">1 · Bình men rạn</span><span class="lbl">14,2% · 312 view</span></div>
+              <div class="between" style="padding:7px 9px;border-bottom:1px solid var(--line2)"><span class="lbl">2 · Túi vải thêu sen</span><span class="lbl">11,8% · 208 view</span></div>
+              <div class="between" style="padding:7px 9px"><span class="lbl">⚠ Sổ tay giấy — nhiều view, CTR thấp</span><span class="lbl">0,9% · 890 view</span></div>
+            </div>
+          </div>
+          <div style="width:250px;flex:0 0 auto">
+            <div class="p" style="left:380px;top:144px">2</div>
+            <div class="lbl" style="margin-bottom:6px">TÌM 0 KẾT QUẢ + MÔ TẢ CỦA KHÁCH ⭐</div>
+            <div class="b" style="padding:0;margin-bottom:12px">
+              <div style="padding:6px 9px;border-bottom:1px solid var(--line2)"><div class="between"><span class="lbl">"nến thơm"</span><span class="lbl">34</span></div><div class="lbl">↳ "sáp đậu nành, mùi nhẹ" ×9</div></div>
+              <div style="padding:6px 9px;border-bottom:1px solid var(--line2)"><div class="between"><span class="lbl">"sổ tay da"</span><span class="lbl">27</span></div><div class="lbl">↳ "khâu tay, giấy trơn" ×6</div></div>
+              <div style="padding:6px 9px"><div class="between"><span class="lbl">"tranh nhỏ"</span><span class="lbl">19</span></div><div class="lbl">↳ chưa có mô tả</div></div>
+            </div>
+            <div class="p" style="left:380px;top:276px">3</div>
+            <div class="lbl" style="margin-bottom:6px">ĐIỂM TRÊN MAP ĐƯỢC MỞ NHIỀU NHẤT</div>
+            <div class="b" style="padding:0">
+              <div class="between" style="padding:6px 9px;border-bottom:1px solid var(--line2)"><span class="lbl">Q1 · Chợ Bến Thành</span><span class="lbl">142</span></div>
+              <div class="between" style="padding:6px 9px;border-bottom:1px solid var(--line2)"><span class="lbl">Q1 · Nguyễn Huệ</span><span class="lbl">98</span></div>
+              <div class="between" style="padding:6px 9px"><span class="lbl">Q3 · Hồ Con Rùa</span><span class="lbl">76</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><dl>
+      <dt>1</dt><dd>Ranked by outbound CTR, not views. The high-views/low-CTR row is called out as a diagnostic: the photo, price or description is wrong. <span class="tag">§8.3 B</span></dd>
+      <dt>2</dt><dd>Query and the visitor's own description side by side. The query alone says "nến thơm"; the description says which shop to go and recruit. This is the payoff for the M5 capture. <span class="tag">§8.3 C</span></dd>
+      <dt>3</dt><dd>Which map points get opened, by district. Read as an attention signal about neighbourhoods — useful input for where Tí's own store might sit — and not as a claim about individual venues. <span class="tag">§8.5</span></dd>
+    </dl></div>
+  </div>
+
+</div></div>
+
+
+<h2 class="sec">08 — Còn lại</h2>
+<div class="row" style="gap:20px">
+  <div style="flex:1;min-width:300px">
+    <div class="callout"><b>Cần trả lời trước khi build</b>
+      <ul style="margin:6px 0 0;padding-left:18px">
+        <li><b>Hero image spec.</b> Ratio, minimum resolution, safe zone, and whether the shop credit links out. Shops need this brief before they start sending files, so it's the most time-sensitive item here.</li>
+        <li><b>Price band boundaries in VNĐ.</b> AP-04 says five bands; nobody has written the numbers.</li>
+        <li><b>Districts and map assets.</b> How many districts, which ones, and who draws or sources each map image. Appendix A question 4 has been open since v1.0 of the SRS.</li>
+        <li><b>Admin intake scope for V1.</b> Full pipeline, or queue-plus-approve now and templated email in September.</li>
+        <li><b>Category chip order</b> on mobile — by catalogue volume once entry is done.</li>
+      </ul>
+    </div>
+  </div>
+  <div style="flex:1;min-width:300px">
+    <div class="info"><b>Chưa vẽ, có chủ đích</b>
+      <ul style="margin:6px 0 0;padding-left:18px">
+        <li><b>Blog</b> (BL-01…06) — conventional layouts, low structural risk, no bearing on the primary conversion.</li>
+        <li><b>Trang tĩnh</b> — <code>/gioi-thieu</code>, <code>/faq</code>, <code>/dieu-khoan</code>, <code>/bao-mat</code>: single-column prose.</li>
+        <li><b>/shop index</b> — confirmed in for V1 (IA-2). It's a filtered grid of shop cards and reuses M3's structure; worth drawing only if you want it reviewed separately.</li>
+        <li><b>Trình sửa map</b> (AD-05) — now needs a district selector. Most expensive admin screen, and the first candidate to cut if the week slips; a manual coordinate field is an acceptable stopgap.</li>
+        <li><b>404 / 500</b> — no structural decisions.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:34px;border-top:1px solid var(--ink);padding-top:12px" class="meta">
+  Tí Coolture · wireframes v0.2 · 18/08/2026 · low-fidelity, structure only · pairs with UX-FOUNDATIONS.md v0.2
+</div>
+
+</div>
+</body>
+</html>

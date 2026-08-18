@@ -4,7 +4,7 @@ import {
   fetchProductById, 
   triggerWebhook, 
   toggleWishlist, 
-  saveWishlistNote,
+  saveWishlistNote, 
   incrementProductView,
   fetchStoreById,
 } from "../lib/dbService";
@@ -16,14 +16,18 @@ import {
   ChevronUp, 
   ChevronDown, 
   Send,
-  Instagram,
-  Facebook,
+  Instagram, 
+  Facebook, 
   MessageCircle,
   X,
   ChevronLeft,
   ChevronRight,
-  Maximize2
+  Maximize2,
+  Sparkles
 } from "lucide-react";
+
+const formatPrice = (value: number) =>
+  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
 
 export default function ProductDetail() {
   const { productId } = useParams<{ productId: string }>();
@@ -34,18 +38,15 @@ export default function ProductDetail() {
   const [store, setStore] = useState<StoreProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Gallery state
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [isEnlarged, setIsEnlarged] = useState(false);
 
-  // Wishlist customizations
   const [isSaved, setIsSaved] = useState(false);
   const [wishlistNote, setWishlistNote] = useState("");
   const [savingCustomization, setSavingCustomization] = useState(false);
   const [customizationSavedMessage, setCustomizationSavedMessage] = useState(false);
 
-  // Social custom states
-  const [msgTemplate, setMsgTemplate] = useState("Hi, I saw your product {product_name} on Tí Coolture and want to buy it");
+  const [msgTemplate, setMsgTemplate] = useState("Chào bạn, mình thấy sản phẩm {product_name} trên Tí Coolture và muốn đặt mua.");
   const [socialPopup, setSocialPopup] = useState<{ platform: string; url: string } | null>(null);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [wishlistCount, setWishlistCount] = useState<number>(0);
@@ -57,10 +58,8 @@ export default function ProductDetail() {
       const prodData = await fetchProductById(productId);
       if (prodData) {
         setProduct(prodData);
-        // Increment the view count when user lands on product detail page
         incrementProductView(productId);
         
-        // Fetch store details to get actual socials for ORDER NOW links
         const storeData = await fetchStoreById(prodData.storeId);
         if (storeData) {
           setStore(storeData);
@@ -71,7 +70,6 @@ export default function ProductDetail() {
     loadProduct();
   }, [productId]);
 
-  // Wishlist initialization
   useEffect(() => {
     if (profile && product) {
       const saved = profile.wishlist?.includes(product.id) || false;
@@ -80,7 +78,6 @@ export default function ProductDetail() {
     }
   }, [profile, product]);
 
-  // Load custom template and wishlist count
   useEffect(() => {
     async function loadTemplate() {
       try {
@@ -94,35 +91,6 @@ export default function ProductDetail() {
     loadTemplate();
   }, []);
 
-  useEffect(() => {
-    async function loadWishlistCount() {
-      if (profile?.role === "Admin" && product) {
-        try {
-          const { countWishlistHolders } = await import("../lib/dbService");
-          setWishlistCount(await countWishlistHolders(product.id));
-        } catch (err) {
-          console.error("Error loading wishlist count: ", err);
-        }
-      }
-    }
-    loadWishlistCount();
-  }, [profile, product]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isEnlarged) return;
-      if (e.key === "Escape") {
-        setIsEnlarged(false);
-      } else if (e.key === "ArrowLeft") {
-        traverseGallery("up");
-      } else if (e.key === "ArrowRight") {
-        traverseGallery("down");
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isEnlarged, product]);
-
   const handleWishlistToggle = async () => {
     if (!user) {
       navigate("/auth-gateway");
@@ -131,16 +99,12 @@ export default function ProductDetail() {
     if (!product) return;
 
     const newWishlist = await toggleWishlist(user.uid, product.id);
-    await refreshProfile();
     setIsSaved(newWishlist.includes(product.id));
+    await refreshProfile();
 
-    // Webhook dispatch
     triggerWebhook("WISHLIST_TOGGLED", {
       userId: user.uid,
-      userEmail: user.email,
       productId: product.id,
-      productName: product.name,
-      price: product.price,
       savedState: newWishlist.includes(product.id),
       timestamp: new Date().toISOString()
     });
@@ -157,7 +121,6 @@ export default function ProductDetail() {
     setCustomizationSavedMessage(true);
     setTimeout(() => setCustomizationSavedMessage(false), 3000);
 
-    // Webhook dispatch
     triggerWebhook("WISHLIST_CUSTOMIZATION_SAVED", {
       userId: user.uid,
       productId: product.id,
@@ -173,7 +136,7 @@ export default function ProductDetail() {
 
   const handleSocialClick = async (platform: string, directUrl?: string) => {
     if (!product) return;
-    const url = directUrl || "https://facebook.com"; // fallback
+    const url = directUrl || "https://facebook.com";
     const compiled = getCompiledMessage();
     
     try {
@@ -186,7 +149,6 @@ export default function ProductDetail() {
 
     setSocialPopup({ platform, url });
 
-    // Webhook Telemetry
     triggerWebhook("ORDER_NOW_CLICKED", {
       userId: user?.uid || "anonymous",
       userEmail: user?.email || "anonymous",
@@ -213,37 +175,35 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center bg-neutral-100 font-mono text-xs">
-        <span className="animate-pulse text-neutral-500">RESOLVING CULTURAL METRICS...</span>
+      <div className="min-h-[70vh] flex justify-center items-center bg-paper-warm">
+        <span className="text-sm font-medium animate-pulse text-brand">Đang tải tác phẩm...</span>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-100 p-8 text-center space-y-4">
-        <h2 className="font-display font-black text-lg uppercase">[ERROR: PRODUCT RETRIEVAL FAILURE]</h2>
-        <p className="font-mono text-xs text-neutral-500">The cultural item may have been unlisted or is awaiting moderator approval.</p>
-        <Link to="/" className="px-4 py-2 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-all text-xs font-bold uppercase font-mono">
-          Return to Hub
+      <div className="min-h-[70vh] flex flex-col items-center justify-center bg-paper-warm p-8 text-center space-y-4">
+        <h2 className="display text-2xl normal-case text-ink">Không tìm thấy sản phẩm</h2>
+        <p className="text-sm text-ink/60">Tác phẩm này có thể đã được gỡ hoặc đang chờ kiểm duyệt.</p>
+        <Link to="/" className="inline-flex items-center rounded-full bg-brand px-6 py-2.5 text-paper label hover:bg-brand-deep transition-all">
+          Quay lại trang chủ
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-100 p-4 md:p-8 select-none space-y-6">
-
+    <div className="min-h-screen bg-paper-warm text-ink p-4 md:p-8 pb-20 select-none space-y-8">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* 1. PRODUCT GALLERY (Left 7 columns - Vertical Thumbnail + Main Image Grid) */}
-        <div className="lg:col-span-7 bg-white border-4 border-black p-4 flex flex-col md:flex-row gap-4 shadow-[6px_6px_0px_0px_#000000]">
-          
-          {/* Vertical thumbnails on left side of gallery */}
+        {/* 1. PRODUCT GALLERY (Left 7 columns) */}
+        <div className="lg:col-span-7 bg-paper rounded-2xl border border-ink/10 p-4 md:p-6 flex flex-col md:flex-row gap-4 shadow-sm">
+          {/* Thumbnails */}
           <div className="flex flex-row md:flex-col justify-start md:justify-between items-center gap-2 md:w-20 order-2 md:order-1">
             <button 
               onClick={() => traverseGallery("up")}
-              className="p-1 border border-black hover:bg-black hover:text-white transition-colors hidden md:block"
+              className="p-2 rounded-lg text-ink/60 hover:text-ink hover:bg-paper-warm transition-colors hidden md:block"
             >
               <ChevronUp className="w-4 h-4" />
             </button>
@@ -255,8 +215,8 @@ export default function ProductDetail() {
                   <button
                     key={idx}
                     onClick={() => setActiveImageIdx(idx)}
-                    className={`w-14 aspect-square border-2 transition-all flex-shrink-0 ${
-                      isActive ? "border-black scale-105" : "border-neutral-300 hover:border-black"
+                    className={`w-14 aspect-square rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                      isActive ? "border-brand ring-2 ring-brand/20 scale-105" : "border-ink/10 hover:border-ink/30"
                     }`}
                   >
                     <img 
@@ -272,246 +232,222 @@ export default function ProductDetail() {
 
             <button 
               onClick={() => traverseGallery("down")}
-              className="p-1 border border-black hover:bg-black hover:text-white transition-colors hidden md:block"
+              className="p-2 rounded-lg text-ink/60 hover:text-ink hover:bg-paper-warm transition-colors hidden md:block"
             >
               <ChevronDown className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Main big square image */}
+          {/* Main big image */}
           <div 
             onClick={() => setIsEnlarged(true)}
-            className="flex-1 aspect-square border-2 border-black bg-neutral-50 relative order-1 md:order-2 overflow-hidden cursor-zoom-in group"
-            title="Click to enlarge image to full screen"
+            className="flex-1 aspect-square rounded-xl bg-paper-warm relative order-1 md:order-2 overflow-hidden cursor-zoom-in group border border-ink/5"
+            title="Nhấn để phóng to ảnh"
           >
             <img 
               src={product.images[activeImageIdx]} 
               alt={product.name} 
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
             />
-            {/* Hover overlay with Enlarge button */}
-            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <span className="bg-black/80 text-white font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-2 border border-white/20 flex items-center space-x-2 shadow-lg scale-95 group-hover:scale-100 transition-transform duration-200">
+            <div className="absolute inset-0 bg-ink/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span className="bg-paper/90 backdrop-blur-sm text-ink text-xs font-semibold px-3 py-1.5 rounded-full border border-ink/10 flex items-center gap-1.5 shadow-md">
                 <Maximize2 className="w-3.5 h-3.5" />
-                <span>Enlarge Image</span>
+                <span>Xem ảnh lớn</span>
               </span>
             </div>
           </div>
         </div>
 
-        {/* 2. ORDER NOW & DESCRIPTION PANEL (Right 5 columns) */}
+        {/* 2. ORDER NOW & DETAILS (Right 5 columns) */}
         <div className="lg:col-span-5 space-y-6">
           
           {/* Main Info Card */}
-          <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_#000000] space-y-6">
+          <div className="bg-paper rounded-2xl border border-ink/10 p-6 shadow-sm space-y-6">
             
-            {/* Store link circle logo */}
-            <div className="flex items-center space-x-3 border-b-2 border-black pb-4">
+            {/* Store link */}
+            <div className="flex items-center space-x-3 border-b border-ink/5 pb-4">
               <Link to={`/stores/${product.storeId}`} className="shrink-0">
                 <img 
                   src={product.storeLogo || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=100"} 
                   alt={product.storeName}
                   referrerPolicy="no-referrer"
-                  className="w-10 h-10 rounded-full border-2 border-black hover:scale-105 transition-transform" 
+                  className="w-10 h-10 rounded-full border border-ink/10 object-cover hover:scale-105 transition-transform" 
                 />
               </Link>
               <div>
-                <span className="font-mono text-[9px] text-neutral-400 font-bold uppercase tracking-widest block">CURATED STORE</span>
+                <span className="label text-wave-ink font-semibold block">Nghệ nhân / Local Brand</span>
                 <Link 
                   to={`/stores/${product.storeId}`}
-                  className="font-display font-bold text-sm text-black hover:underline uppercase block"
+                  className="font-medium text-base text-ink hover:text-brand transition-colors block leading-tight"
                 >
                   {product.storeName}
                 </Link>
               </div>
             </div>
 
-            {/* Product Meta details */}
-            <div className="space-y-2">
-              <span className="px-2 py-0.5 bg-black text-white text-[9px] font-mono font-bold uppercase">
+            {/* Product Meta */}
+            <div className="space-y-3">
+              <span className="inline-flex items-center gap-1 rounded-full bg-wave/20 px-3 py-0.5 text-xs font-semibold text-wave-ink">
                 {product.category}
               </span>
-              <div className="flex items-center justify-between gap-4">
-                <h1 className="font-display font-black text-xl md:text-2xl uppercase tracking-tight text-black leading-tight flex-1">
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="font-medium text-2xl md:text-3xl text-ink leading-tight flex-1">
                   {product.name}
                 </h1>
                 <button
                   onClick={handleWishlistToggle}
-                  className={`p-2 border-2 border-black transition-colors shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] ${
-                    isSaved ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                  className={`p-2.5 rounded-full border transition-all shrink-0 ${
+                    isSaved ? "bg-red-50 border-red-200 text-red-500" : "bg-paper-warm border-ink/10 text-ink/60 hover:text-red-500"
                   }`}
-                  title={isSaved ? "Remove from wishlist" : "Save to wishlist"}
+                  title={isSaved ? "Bỏ lưu khỏi danh sách" : "Lưu vào danh sách yêu thích"}
                 >
-                  <Heart className={`w-5 h-5 ${isSaved ? "fill-white" : ""}`} />
+                  <Heart className={`w-5 h-5 ${isSaved ? "fill-red-500" : ""}`} />
                 </button>
               </div>
-              <p className="font-mono text-lg font-black text-black">
-                {product.price.toLocaleString()} {product.currency}
+              <p className="text-2xl font-semibold text-brand tabular-nums">
+                {formatPrice(product.price)}
               </p>
-
-              {/* Admin metrics indicator */}
-              {profile?.role === "Admin" && (
-                <div className="mt-2 bg-yellow-50 border-2 border-yellow-300 p-2 text-yellow-900 font-mono text-[10px] uppercase font-bold flex flex-wrap gap-x-4 gap-y-1">
-                  <span>👁️ seen by: {product.views || 0}</span>
-                  <span>🖱️ {product.clicks || 0} clicks</span>
-                  <span>❤️ saved by: {wishlistCount}</span>
-                </div>
-              )}
             </div>
 
-            {/* Direct Social Grid */}
-            <div className="border-t-2 border-black pt-4 space-y-3">
-              <div className="grid grid-cols-4 gap-2">
-                {/* TikTok button */}
-                <button
-                  onClick={() => handleSocialClick("TikTok", store?.socials.tiktok)}
-                  className="bg-[#000000] hover:bg-white text-white hover:text-black border border-black p-2 text-center transition-all flex flex-col items-center justify-center space-y-1"
-                >
-                  <span className="font-sans font-black text-[9px]">TIKTOK</span>
-                </button>
-
-                {/* Facebook button */}
+            {/* Direct Social Ordering */}
+            <div className="border-t border-ink/5 pt-5 space-y-3">
+              <span className="label text-ink/70 font-semibold block">
+                Liên hệ đặt mua trực tiếp
+              </span>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleSocialClick("Facebook", store?.socials.facebook)}
-                  className="bg-[#3b5998] hover:bg-white text-white hover:text-[#3b5998] border border-[#3b5998] p-2 text-center transition-all flex flex-col items-center justify-center space-y-1"
+                  className="bg-[#1877f2] hover:bg-[#166fe5] text-paper rounded-xl p-3 text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-xs hover:scale-[1.02] active:scale-98"
                 >
-                  <Facebook className="w-3.5 h-3.5" />
-                  <span className="font-sans font-black text-[9px]">FACEBOOK</span>
+                  <Facebook className="w-4 h-4" />
+                  <span>Facebook</span>
                 </button>
 
-                {/* Instagram button */}
                 <button
                   onClick={() => handleSocialClick("Instagram", store?.socials.instagram)}
-                  className="bg-[#e1306c] hover:bg-white text-white hover:text-[#e1306c] border border-[#e1306c] p-2 text-center transition-all flex flex-col items-center justify-center space-y-1"
+                  className="bg-gradient-to-tr from-[#f58529] via-[#dd2a7b] to-[#8134af] text-paper rounded-xl p-3 text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-xs hover:scale-[1.02] active:scale-98"
                 >
-                  <Instagram className="w-3.5 h-3.5" />
-                  <span className="font-sans font-black text-[9px]">INSTAGRAM</span>
+                  <Instagram className="w-4 h-4" />
+                  <span>Instagram</span>
                 </button>
 
-                {/* Threads button */}
+                <button
+                  onClick={() => handleSocialClick("TikTok", store?.socials.tiktok)}
+                  className="bg-ink hover:bg-ink/80 text-paper rounded-xl p-3 text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-xs hover:scale-[1.02] active:scale-98"
+                >
+                  <span>TikTok Shop</span>
+                </button>
+
                 <button
                   onClick={() => handleSocialClick("Threads", store?.socials.threads)}
-                  className="bg-neutral-800 hover:bg-white text-white hover:text-black border border-black p-2 text-center transition-all flex flex-col items-center justify-center space-y-1"
+                  className="bg-paper-warm hover:bg-ink/5 text-ink border border-ink/10 rounded-xl p-3 text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-xs hover:scale-[1.02] active:scale-98"
                 >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span className="font-sans font-black text-[9px]">THREADS</span>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Threads</span>
                 </button>
               </div>
             </div>
 
-            {/* Description Narrative */}
-            <div className="border-t border-neutral-200 pt-4">
-              <p className="text-xs text-neutral-700 leading-relaxed font-sans">{product.description}</p>
+            {/* Description */}
+            <div className="border-t border-ink/5 pt-4">
+              <p className="text-xs md:text-sm text-ink/75 leading-relaxed">{product.description}</p>
             </div>
 
-            {/* Details spec grid */}
-            <div className="border-t border-neutral-200 pt-4 grid grid-cols-2 gap-x-4 gap-y-2 font-mono text-[10px]">
+            {/* Specs */}
+            <div className="border-t border-ink/5 pt-4 grid grid-cols-2 gap-3 text-xs">
               {product.material && (
-                <div>
-                  <span className="text-neutral-400 uppercase">MATERIAL</span>
-                  <p className="text-black font-bold uppercase">{product.material}</p>
+                <div className="rounded-xl bg-paper-warm p-3 border border-ink/5">
+                  <span className="label text-ink/50 text-[10px] block">Chất liệu</span>
+                  <p className="font-semibold text-ink mt-0.5">{product.material}</p>
                 </div>
               )}
               {product.size && (
-                <div>
-                  <span className="text-neutral-400 uppercase">DIMENSION</span>
-                  <p className="text-black font-bold uppercase">{product.size}</p>
+                <div className="rounded-xl bg-paper-warm p-3 border border-ink/5">
+                  <span className="label text-ink/50 text-[10px] block">Kích thước</span>
+                  <p className="font-semibold text-ink mt-0.5">{product.size}</p>
                 </div>
               )}
               {product.brand && (
-                <div>
-                  <span className="text-neutral-400 uppercase">BRAND ORIGIN</span>
-                  <p className="text-black font-bold uppercase">{product.brand}</p>
+                <div className="rounded-xl bg-paper-warm p-3 border border-ink/5 col-span-2">
+                  <span className="label text-ink/50 text-[10px] block">Nguồn gốc thương hiệu</span>
+                  <p className="font-semibold text-ink mt-0.5">{product.brand}</p>
                 </div>
               )}
             </div>
-
           </div>
 
-          {/* 3. USER SANDBOX: SAVE TO WISHLIST NOTES (Only shown if explorer) */}
-          <div className="bg-white border-4 border-black p-4 shadow-[6px_6px_0px_0px_#000000] space-y-4">
-            <div className="border-b-2 border-black pb-2">
-              <h3 className="font-display font-black text-xs uppercase text-black">
-                MY NOTES
-              </h3>
-            </div>
+          {/* 3. WISHLIST NOTES */}
+          <div className="bg-paper rounded-2xl border border-ink/10 p-6 shadow-sm space-y-4">
+            <h3 className="label text-ink font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-brand" />
+              <span>Ghi chú cá nhân</span>
+            </h3>
 
             {!user ? (
-              <div className="p-2 bg-neutral-50 border border-neutral-300 font-mono text-[10px] text-neutral-500 text-center uppercase">
-                <p>Log in as Explorer to write personal notes.</p>
-                <Link to="/auth-gateway" className="underline font-bold text-black hover:text-neutral-700 block mt-1">
-                  PORTAL ACCESS →
+              <div className="p-4 bg-paper-warm rounded-xl text-xs text-ink/70 text-center space-y-2">
+                <p>Đăng nhập để viết ghi chú riêng cho món đồ này.</p>
+                <Link to="/auth-gateway" className="inline-block font-semibold text-brand hover:underline">
+                  Đăng nhập ngay →
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4 font-mono text-xs">
+              <div className="space-y-4 text-xs">
                 {isSaved ? (
                   <div className="space-y-3">
-                    {/* Notes annotation */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1 flex items-center space-x-1">
-                        <FileText className="w-3.5 h-3.5 text-black" />
-                        <span>MY NOTES</span>
-                      </label>
-                      <textarea
-                        value={wishlistNote}
-                        onChange={(e) => setWishlistNote(e.target.value)}
-                        placeholder="Add a custom note (e.g., 'Pairs with concrete dining room table')"
-                        className="w-full border border-black p-1.5 text-[11px] font-sans focus:outline-none focus:bg-neutral-50 h-16"
-                      />
-                    </div>
-
-                    {/* Submit settings */}
+                    <textarea
+                      value={wishlistNote}
+                      onChange={(e) => setWishlistNote(e.target.value)}
+                      placeholder="Ví dụ: Phối với bàn ăn phòng khách, mua tặng sinh nhật..."
+                      className="w-full rounded-xl border border-ink/10 p-3 text-xs bg-paper-warm focus:outline-none focus:ring-2 focus:ring-brand/20 h-20 leading-relaxed"
+                    />
                     <button
                       onClick={handleSaveCustomizations}
                       disabled={savingCustomization}
-                      className="w-full py-1.5 bg-black text-white hover:bg-neutral-800 border border-black text-[10px] font-bold uppercase transition-all flex items-center justify-center space-x-1"
+                      className="w-full py-2.5 rounded-full bg-brand text-paper hover:bg-brand-deep text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-sm"
                     >
-                      <Send className="w-3 h-3" />
-                      <span>{savingCustomization ? "SAVING..." : "SAVE NOTES"}</span>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{savingCustomization ? "Đang lưu..." : "Lưu ghi chú"}</span>
                     </button>
-
                     {customizationSavedMessage && (
-                      <p className="text-[9px] text-emerald-600 text-center font-bold">
-                        ✓ Personal notes successfully updated in Firestore!
+                      <p className="text-xs text-emerald-600 text-center font-medium">
+                        ✓ Đã lưu ghi chú thành công!
                       </p>
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-2 text-neutral-400 text-[10px] italic uppercase leading-snug">
-                    <p>Click the heart symbol next to the product name above to save this item to your wishlist and enable custom notes.</p>
-                  </div>
+                  <p className="text-center py-2 text-ink/50 text-xs italic">
+                    Nhấn biểu tượng trái tim ở trên để lưu sản phẩm và viết ghi chú.
+                  </p>
                 )}
               </div>
             )}
           </div>
 
         </div>
-
       </div>
 
       {/* Social Popup Modal */}
       {socialPopup && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white border-4 border-black p-6 w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-center font-mono text-xs space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="border-b-2 border-black pb-2 text-left flex justify-between items-center">
-              <h3 className="font-display font-black text-xs uppercase text-black">
-                CONNECT TO STORE OWNER
+        <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-paper rounded-2xl border border-ink/10 p-6 w-full max-w-md shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="border-b border-ink/10 pb-3 text-left flex justify-between items-center">
+              <h3 className="font-medium text-base text-ink">
+                Kết nối với chủ tiệm
               </h3>
               <button 
                 onClick={() => setSocialPopup(null)}
-                className="p-1 border-2 border-black hover:bg-neutral-100"
+                className="p-1 rounded-lg text-ink/60 hover:text-ink hover:bg-paper-warm"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             
-            <p className="text-left font-sans text-xs text-neutral-700 leading-relaxed">
-              We have compiled a purchase request and <span className="font-bold text-emerald-600">automatically copied it to your clipboard</span>. You can paste it directly when you message the shop owner on {socialPopup.platform}!
+            <p className="text-left text-xs text-ink/75 leading-relaxed">
+              Tí đã soạn sẵn tin nhắn đặt hàng và <span className="font-semibold text-wave-ink">tự động sao chép vào bộ nhớ tạm</span>. Bạn chỉ cần dán vào khung chat khi mở {socialPopup.platform}!
             </p>
 
-            <div className="bg-neutral-50 border-2 border-dashed border-neutral-400 p-3 text-left italic text-neutral-600 break-words font-mono text-[11px]">
+            <div className="bg-paper-warm rounded-xl border border-ink/5 p-3 text-left italic text-ink/80 text-xs break-words">
               "{getCompiledMessage()}"
             </div>
 
@@ -521,82 +457,76 @@ export default function ProductDetail() {
                   window.open(socialPopup.url, "_blank", "noopener,noreferrer");
                   setSocialPopup(null);
                 }}
-                className="w-full bg-black text-white hover:bg-neutral-800 border-2 border-black py-2 px-4 font-bold uppercase text-[11px] tracking-wider transition-all"
+                className="w-full rounded-full bg-brand text-paper hover:bg-brand-deep py-2.5 px-4 font-semibold text-xs transition-all shadow-md shadow-brand/20"
               >
-                PROCEED TO {socialPopup.platform} & PASTE MESSAGE
+                Mở {socialPopup.platform} & Dán tin nhắn
               </button>
               <button
                 onClick={() => setSocialPopup(null)}
-                className="w-full bg-white hover:bg-neutral-100 text-black border-2 border-black py-2 px-4 font-bold uppercase text-[11px] tracking-wider transition-all"
+                className="w-full rounded-full bg-paper-warm hover:bg-ink/5 text-ink/70 py-2.5 px-4 font-semibold text-xs transition-all"
               >
-                STAY HERE / CANCEL
+                Đóng
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Fullscreen Image Enlarged Lightbox Modal */}
+      {/* Lightbox Modal */}
       {isEnlarged && (
         <div 
-          className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[9999] transition-opacity duration-300 animate-in fade-in"
+          className="fixed inset-0 bg-ink/95 backdrop-blur-md flex items-center justify-center p-4 z-[9999] transition-opacity duration-300 animate-in fade-in"
           onClick={() => setIsEnlarged(false)}
         >
-          {/* Close button */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
               setIsEnlarged(false);
             }}
-            className="absolute top-6 right-6 p-2 bg-black/50 hover:bg-black text-white border border-neutral-700 hover:border-white transition-all rounded-full z-10"
-            aria-label="Close fullscreen view"
+            className="absolute top-6 right-6 p-2 bg-paper/10 hover:bg-paper/20 text-paper rounded-full transition-all z-10"
+            aria-label="Đóng xem toàn màn hình"
           >
             <X className="w-6 h-6" />
           </button>
 
-          {/* Left Arrow Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               traverseGallery("up");
             }}
-            className="absolute left-4 md:left-6 p-4 bg-black/50 hover:bg-black text-white border border-neutral-700 hover:border-white transition-all rounded-full flex items-center justify-center shadow-lg z-10"
-            aria-label="Previous image"
+            className="absolute left-4 md:left-6 p-3 bg-paper/10 hover:bg-paper/20 text-paper rounded-full transition-all z-10"
+            aria-label="Ảnh trước"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          {/* Main Enlarged Image container */}
           <div 
             className="max-w-[85vw] max-h-[85vh] flex flex-col items-center justify-center relative select-none"
             onClick={(e) => e.stopPropagation()}
           >
             <img 
               src={product.images[activeImageIdx]} 
-              alt={`${product.name} Enlarged View`}
+              alt={`${product.name} Phóng to`}
               referrerPolicy="no-referrer"
-              className="max-w-full max-h-[75vh] object-contain border-2 border-white shadow-2xl" 
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl" 
             />
-            {/* Image counter indicator */}
-            <div className="mt-4 font-mono text-xs uppercase text-neutral-400 bg-neutral-900 px-3 py-1 border border-neutral-800 tracking-wider">
-              Image {activeImageIdx + 1} of {product.images.length}
+            <div className="mt-4 text-xs text-white/70 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+              Ảnh {activeImageIdx + 1} / {product.images.length}
             </div>
           </div>
 
-          {/* Right Arrow Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               traverseGallery("down");
             }}
-            className="absolute right-4 md:right-6 p-4 bg-black/50 hover:bg-black text-white border border-neutral-700 hover:border-white transition-all rounded-full flex items-center justify-center shadow-lg z-10"
-            aria-label="Next image"
+            className="absolute right-4 md:right-6 p-3 bg-paper/10 hover:bg-paper/20 text-paper rounded-full transition-all z-10"
+            aria-label="Ảnh kế tiếp"
           >
             <ChevronRight className="w-6 h-6" />
           </button>
         </div>
       )}
-
     </div>
   );
 }

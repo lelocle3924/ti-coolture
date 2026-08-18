@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tí Coolture — Scroll & swipe directions v0.1</title>
+<style>
+:root{
+  --ink:#1c1c1c; --mid:#6b6b6b; --line:#c4c4c4; --line2:#dcdcdc;
+  --fill:#ececec; --fill2:#f5f5f5; --paper:#fbfbfa;
+  --note:#0b5d8f; --note-bg:#e8f1f7;
+  --warn:#8a5a00; --warn-bg:#fdf3e0;
+  --bad:#8c2f2f; --bad-bg:#fbeeee;
+  --ok:#1a7a44; --ok-bg:#e9f5ee;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55}
+.wrap{max-width:1400px;margin:0 auto;padding:32px 24px 90px}
+
+.masthead{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:24px}
+.masthead h1{font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+.masthead p{margin:0;color:var(--mid);max-width:78ch}
+.meta{font-family:var(--mono);font-size:11px;color:var(--mid);margin-top:10px}
+
+h2.sec{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.09em;
+  border-top:1px solid var(--ink);padding-top:10px;margin:52px 0 6px}
+h2.sec span{color:var(--mid);text-transform:none;letter-spacing:0}
+.secnote{color:var(--mid);margin:0 0 22px;max-width:82ch}
+
+.row{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+.card{width:392px;flex:0 0 auto}
+.card.w{width:600px}
+.hd{font-family:var(--mono);font-size:11px;margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hd b{font-size:12.5px;letter-spacing:.02em}
+.t{font-family:var(--mono);font-size:9.5px;padding:2px 6px;border-radius:2px;letter-spacing:.03em;white-space:nowrap}
+.t1{background:var(--ok);color:#fff}
+.t2{background:var(--warn);color:#fff}
+.t3{background:var(--bad);color:#fff}
+.tag{font-family:var(--mono);font-size:9px;background:var(--fill);border:1px solid var(--line2);
+  padding:1px 5px;color:var(--mid);white-space:nowrap}
+
+/* phone viewport */
+.vp{width:360px;height:520px;border:1px solid var(--ink);background:#fff;overflow-y:auto;
+  overflow-x:hidden;position:relative;scroll-timeline:--vp block}
+.vp.wide{width:100%}
+.vp::-webkit-scrollbar{width:5px}
+.vp::-webkit-scrollbar-thumb{background:var(--line)}
+.hint{font-family:var(--mono);font-size:10px;color:var(--mid);margin-top:7px;display:block}
+
+.b{background:var(--fill);border:1px solid var(--line2)}
+.img{border:1px solid var(--line);background:
+  linear-gradient(to top right,transparent calc(50% - .5px),var(--line),transparent calc(50% + .5px)),
+  linear-gradient(to bottom right,transparent calc(50% - .5px),var(--line),transparent calc(50% + .5px)),
+  var(--fill2);}
+.lbl{font-family:var(--mono);font-size:10px;color:var(--mid)}
+.tl{height:7px;background:var(--fill);border-radius:1px;margin-bottom:6px}
+.tl.m{width:78%} .tl.s{width:52%}
+.pad{padding:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pcard .img{aspect-ratio:1;margin-bottom:6px}
+
+.note{border-left:2px solid var(--note);padding:2px 0 2px 11px;margin-top:10px;font-size:12px}
+.note.w{border-left-color:var(--warn)}
+.note.b{border-left-color:var(--bad)}
+.note p{margin:0 0 6px}
+code{font-family:var(--mono);font-size:10.5px;background:var(--fill);padding:0 3px}
+pre{font-family:var(--mono);font-size:10.5px;background:#fff;border:1px solid var(--line2);
+  padding:9px 10px;overflow-x:auto;margin:8px 0 0;line-height:1.5}
+pre b{font-weight:700;color:var(--note)}
+
+.callout{background:var(--warn-bg);border:1px solid #e6cf9e;padding:13px 15px;margin:18px 0;font-size:13px}
+.callout>b:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--warn);display:block;margin-bottom:5px}
+.info{background:var(--note-bg);border:1px solid #b9d4e6;padding:13px 15px;margin:18px 0;font-size:13px}
+.info>b:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--note);display:block;margin-bottom:5px}
+.stop{background:var(--bad-bg);border:1px solid #e0b6b6;padding:13px 15px;margin:14px 0;font-size:13px}
+.stop>b:first-child{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--bad);display:block;margin-bottom:5px}
+
+table.t{border-collapse:collapse;width:100%;font-size:12.5px}
+table.t th,table.t td{border:1px solid var(--line2);padding:7px 9px;text-align:left;vertical-align:top}
+table.t th{background:var(--fill);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+
+/* ============ D1 progress bar ============ */
+.prog{position:sticky;top:0;height:3px;background:var(--ink);transform-origin:0 50%;z-index:5;
+  animation:grow linear both;animation-timeline:scroll(nearest block)}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ============ D2 staggered reveal ============ */
+.rev{animation:revup linear both;animation-timeline:view(block);animation-range:entry 5% entry 55%}
+@keyframes revup{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+.rev:nth-child(2n){animation-range:entry 12% entry 62%}
+
+/* ============ D3 parallax + scale ============ */
+.plx-frame{height:200px;overflow:hidden;position:relative;border:1px solid var(--line)}
+.plx{position:absolute;inset:-14% 0;animation:plx linear both;
+  animation-timeline:view(block);animation-range:cover}
+@keyframes plx{from{transform:translateY(-9%)}to{transform:translateY(9%)}}
+.zoomout{animation:zo linear both;animation-timeline:view(block);animation-range:entry}
+@keyframes zo{from{transform:scale(1.12)}to{transform:scale(1)}}
+
+/* ============ D4 header shrink ============ */
+.shrinkbar{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:4;
+  display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+  animation:shrink linear both;animation-timeline:scroll(nearest block);animation-range:0 90px}
+@keyframes shrink{from{height:74px}to{height:44px}}
+.shrinkbar .logo{font-weight:800;letter-spacing:-.03em;
+  animation:logoshrink linear both;animation-timeline:scroll(nearest block);animation-range:0 90px}
+@keyframes logoshrink{from{font-size:26px}to{font-size:15px}}
+
+/* ============ D5 reveal footer ============ */
+.sheet{background:#fff;position:relative;z-index:2;box-shadow:0 10px 22px -14px rgba(0,0,0,.5);
+  margin-bottom:300px}
+.footpanel{position:sticky;bottom:0;height:300px;background:var(--fill);border-top:1px solid var(--ink);
+  z-index:1;display:flex;flex-direction:column;justify-content:space-between;padding:14px;margin-top:-300px}
+.wordmark{font-weight:800;letter-spacing:-.05em;color:var(--line);line-height:1.18;
+  padding-bottom:.16em;text-align:center;font-size:76px;
+  animation:wm linear both;animation-timeline:view(block);animation-range:entry 0% cover 100%}
+@keyframes wm{from{opacity:.25;transform:translateY(28px)}to{opacity:1;transform:none}}
+
+/* ============ D6 scroll-snap carousel ============ */
+.snap{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+  scroll-padding:12px;padding:12px;scrollbar-width:none}
+.snap::-webkit-scrollbar{display:none}
+.snap>div{flex:0 0 84%;scroll-snap-align:start;scroll-snap-stop:always}
+
+/* ============ D7 pinned horizontal ============ */
+.pinwrap{height:1450px;position:relative}
+.pin{position:sticky;top:0;height:518px;display:flex;align-items:center;overflow:hidden}
+.track{display:flex;gap:12px;padding:0 12px;
+  animation:slide linear both;animation-timeline:view(block);animation-range:contain}
+@keyframes slide{from{transform:translateX(2%)}to{transform:translateX(-58%)}}
+.track>div{flex:0 0 132px}
+
+/* ============ D8 view transition ============ */
+.vt-a,.vt-b{padding:12px}
+.vt-hero{view-transition-name:vt-hero}
+#vtroot .hidden{display:none}
+::view-transition-old(vt-hero),::view-transition-new(vt-hero){animation-duration:.42s}
+
+@media (prefers-reduced-motion:reduce){
+  .rev,.plx,.zoomout,.shrinkbar,.shrinkbar .logo,.wordmark,.track,.prog{animation:none!important;transform:none!important;opacity:1!important}
+  .shrinkbar{height:52px} .shrinkbar .logo{font-size:17px}
+}
+.nosupport{display:none}
+@supports not (animation-timeline:view()){
+  .nosupport{display:block;background:var(--bad-bg);border:1px solid #e0b6b6;padding:10px 12px;
+    font-size:12px;margin-bottom:16px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="masthead">
+  <h1>Tí Coolture — Scroll &amp; swipe directions v0.1</h1>
+  <p>Every demo below is live — scroll or swipe inside the phone frames. Greyscale on purpose: these are motion and interaction proposals, not visual design. Each is tiered by what it costs you against a 31/08 launch with one beginner developer.</p>
+  <div class="meta">18/08/2026 · pairs with wireframes v0.2 · all effects wrapped in prefers-reduced-motion</div>
+</div>
+
+<div class="nosupport"><b>Your browser doesn't support <code>animation-timeline</code></b> — the demos below will render statically. Chrome, Edge or Safari 26+ will show them moving.</div>
+
+<div class="info"><b>The finding that changes the cost calculation</b>
+Most awwwards-style scroll work used to mean GSAP ScrollTrigger, Lenis and a lot of JavaScript running on the main thread. That's no longer true. <b>Scroll-driven animations are now native CSS</b> — <code>animation-timeline: scroll()</code> and <code>view()</code> — supported in Chrome/Edge 115+ and Safari 26, with Firefox still behind a flag as of mid-2026. Around 84–85% globally, and higher than that in Vietnam where mobile Chrome and Safari dominate.<br><br>
+Two consequences that matter for you specifically. First, these run on the <b>compositor thread</b>, so they stay smooth even on a budget Android where main-thread JavaScript would stutter — and 87% of your traffic is mobile. Second, unsupported browsers simply ignore <code>animation-timeline</code> and show the end state, so with <code>animation-fill-mode: both</code> the fallback is "no animation", not "broken layout". That makes almost everything in Tier 1 a genuinely safe bet on your timeline.</div>
+
+
+<h2 class="sec">Tier 1 <span>· native CSS, ship these — hours of work, not days</span></h2>
+
+<div class="row">
+
+  <!-- D1 -->
+  <div class="card">
+    <div class="hd"><span class="t t1">TIER 1</span><b>01 · Scroll progress</b></div>
+    <div class="vp">
+      <div class="prog"></div>
+      <div class="pad">
+        <div class="lbl" style="margin-bottom:10px">CÂU CHUYỆN THƯƠNG HIỆU</div>
+        <div class="tl"></div><div class="tl"></div><div class="tl m"></div>
+        <div class="img" style="height:130px;margin:12px 0"></div>
+        <div class="tl"></div><div class="tl"></div><div class="tl"></div><div class="tl m"></div>
+        <div class="img" style="height:130px;margin:12px 0"></div>
+        <div class="tl"></div><div class="tl"></div><div class="tl s"></div>
+        <div class="img" style="height:110px;margin:12px 0"></div>
+        <div class="tl"></div><div class="tl m"></div>
+      </div>
+    </div>
+    <span class="hint">↕ scroll inside the frame</span>
+    <div class="note">
+      <p>Four lines of CSS. Best on blog posts and long shop stories — it tells someone how much is left, which measurably reduces abandonment on long reads.</p>
+      <pre>.prog{
+  animation:grow linear both;
+  <b>animation-timeline:scroll();</b>
+  transform-origin:0 50%;
+}
+@keyframes grow{from{transform:scaleX(0)}
+                to{transform:scaleX(1)}}</pre>
+      <p style="margin-top:7px"><span class="tag">BL-04</span> <span class="tag">SD-02</span></p>
+    </div>
+  </div>
+
+  <!-- D2 -->
+  <div class="card">
+    <div class="hd"><span class="t t1">TIER 1</span><b>02 · Staggered grid reveal</b></div>
+    <div class="vp">
+      <div class="pad">
+        <div class="lbl" style="margin-bottom:10px">218 SẢN PHẨM</div>
+        <div class="grid2">
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard rev"><div class="img"></div><div class="tl m"></div><div class="tl s"></div></div>
+        </div>
+      </div>
+    </div>
+    <span class="hint">↕ cards lift as they enter · odd/even offset makes the stagger</span>
+    <div class="note">
+      <p>The single highest ratio of perceived polish to effort on the whole site. Note the restraint: 26px of travel, no rotation, no scale-from-zero. Dramatic entrances read as a template; a short lift reads as craft.</p>
+      <pre>.rev{
+  animation:revup linear both;
+  <b>animation-timeline:view();</b>
+  <b>animation-range:entry 5% entry 55%;</b>
+}</pre>
+      <p style="margin-top:7px"><b>Do not apply above the fold.</b> Fading in the hero delays your LCP and HP-01 requires &lt; 2.5s. Reveal below the first screen only. <span class="tag">AP-01</span> <span class="tag">HP-01</span></p>
+    </div>
+  </div>
+
+  <!-- D3 -->
+  <div class="card">
+    <div class="hd"><span class="t t1">TIER 1</span><b>03 · Parallax &amp; settle</b></div>
+    <div class="vp">
+      <div class="pad">
+        <div class="lbl">cuộn xuống…</div>
+        <div style="height:150px"></div>
+        <div class="plx-frame">
+          <div class="plx img" style="height:135%"></div>
+          <div class="lbl" style="position:absolute;left:10px;bottom:9px;background:#fff;padding:2px 6px">ảnh dịch chậm hơn khung</div>
+        </div>
+        <div style="height:80px"></div>
+        <div class="img zoomout" style="height:170px"></div>
+        <div class="lbl" style="margin-top:6px">ảnh thu về 1.0 khi vào khung nhìn</div>
+        <div style="height:180px"></div>
+        <div class="tl"></div><div class="tl m"></div>
+      </div>
+    </div>
+    <span class="hint">↕ two variants: parallax drift, then a settle-to-scale</span>
+    <div class="note">
+      <p>Parallax on shop covers and blog headers. The settle version (1.12 → 1.0) suits product cards better because it doesn't need overflow room.</p>
+      <p><b>Keep it under about 10%</b> of travel. Heavy parallax on a phone is a common cause of motion discomfort, and it fights your header hide/show logic by making the page feel like it's moving at two speeds.</p>
+      <p><span class="tag">SD-01</span> <span class="tag">HP-01</span></p>
+    </div>
+  </div>
+
+  <!-- D4 -->
+  <div class="card">
+    <div class="hd"><span class="t t1">TIER 1</span><b>04 · Header shrink on scroll</b></div>
+    <div class="vp">
+      <div class="shrinkbar">
+        <div class="logo">TÍ</div>
+        <div class="lbl">⌕ &nbsp; ♡ &nbsp; VI</div>
+      </div>
+      <div class="pad">
+        <div class="tl"></div><div class="tl m"></div>
+        <div class="img" style="height:120px;margin:10px 0"></div>
+        <div class="grid2">
+          <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+          <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+          <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+          <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+          <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+          <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+        </div>
+      </div>
+    </div>
+    <span class="hint">↕ 74px → 44px, tied to scroll position, not a timer</span>
+    <div class="note">
+      <p>An alternative to the hide/show you specified — or a companion to it. Shrink first over the initial 90px, then hide entirely on continued scroll-down.</p>
+      <p><b>Why this is better than a JS scroll listener:</b> it's <em>positionally</em> linked, so scrubbing back up reverses it exactly. A listener with a class toggle snaps between two states and feels cheap by comparison.</p>
+      <p>Reduced-motion falls back to a fixed 52px bar — the guard is already in this file's CSS.</p>
+    </div>
+  </div>
+
+  <!-- D5 -->
+  <div class="card">
+    <div class="hd"><span class="t t1">TIER 1</span><b>05 · Reveal footer + wordmark</b></div>
+    <div class="vp">
+      <div class="sheet">
+        <div class="pad">
+          <div class="lbl" style="margin-bottom:10px">SẢN PHẨM</div>
+          <div class="grid2">
+            <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+            <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+            <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+            <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+            <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+            <div class="pcard"><div class="img"></div><div class="tl m"></div></div>
+          </div>
+          <div class="lbl" style="text-align:center;padding:14px 0">‹ 1 2 3 ›</div>
+        </div>
+      </div>
+      <div class="footpanel">
+        <div style="display:flex;gap:22px">
+          <div><div class="lbl">KHÁM PHÁ</div><div class="lbl">Sản phẩm</div><div class="lbl">Shop</div><div class="lbl">Blog</div></div>
+          <div><div class="lbl">VỀ TÍ</div><div class="lbl">Giới thiệu</div><div class="lbl">Hợp tác</div><div class="lbl">FAQ</div></div>
+        </div>
+        <div class="wordmark">TÍ</div>
+      </div>
+    </div>
+    <span class="hint">↕ scroll to the bottom — the sheet lifts, the wordmark rises</span>
+    <div class="note">
+      <p>Your reference video's pattern, with one addition: the wordmark itself is scroll-linked, so it arrives rather than just sitting there. This is the one place I'd spend the boldness.</p>
+      <p><b>Diacritic warning, and it's a real one for you.</b> At 76px here and 15rem in your art direction, the acute on <span style="font-family:var(--mono)">Í</span> is the first thing to get clipped. This demo carries <code>line-height:1.18</code> and <code>padding-bottom:.16em</code> deliberately — your DECISIONS log already records 0.88 line-height clipping Vietnamese diacritics. Any transform on a display-size <code>TÍ</code> needs headroom above the cap line, not just below the baseline.</p>
+    </div>
+  </div>
+
+  <!-- D6 -->
+  <div class="card">
+    <div class="hd"><span class="t t1">TIER 1</span><b>06 · Snap carousel — hero &amp; map</b></div>
+    <div class="vp">
+      <div class="pad" style="padding-bottom:0"><div class="lbl">KHÁM PHÁ SÀI GÒN — vuốt ngang</div></div>
+      <div class="snap">
+        <div><div class="img" style="height:190px;display:grid;place-items:center"><span class="lbl">MAP QUẬN 1</span></div><div class="lbl" style="margin-top:6px">Quận 1 · 6 điểm</div></div>
+        <div><div class="img" style="height:190px;display:grid;place-items:center"><span class="lbl">MAP QUẬN 3</span></div><div class="lbl" style="margin-top:6px">Quận 3 · 4 điểm</div></div>
+        <div><div class="img" style="height:190px;display:grid;place-items:center"><span class="lbl">MAP QUẬN 4</span></div><div class="lbl" style="margin-top:6px">Quận 4 · 3 điểm</div></div>
+        <div><div class="img" style="height:190px;display:grid;place-items:center"><span class="lbl">BÌNH THẠNH</span></div><div class="lbl" style="margin-top:6px">Bình Thạnh · 5 điểm</div></div>
+      </div>
+      <div class="pad">
+        <div class="lbl" style="margin-bottom:8px">WHAT'S IN STORE</div>
+      </div>
+      <div class="snap" style="padding-top:0">
+        <div style="flex-basis:62%"><div class="img" style="aspect-ratio:1"></div><div class="tl m" style="margin-top:6px"></div></div>
+        <div style="flex-basis:62%"><div class="img" style="aspect-ratio:1"></div><div class="tl m" style="margin-top:6px"></div></div>
+        <div style="flex-basis:62%"><div class="img" style="aspect-ratio:1"></div><div class="tl m" style="margin-top:6px"></div></div>
+        <div style="flex-basis:62%"><div class="img" style="aspect-ratio:1"></div><div class="tl m" style="margin-top:6px"></div></div>
+      </div>
+    </div>
+    <span class="hint">↔ swipe or drag horizontally — native momentum, zero JavaScript</span>
+    <div class="note">
+      <p>This is what should power both the district carousel (MAP1) and the What's In Store row (HP-03). No Swiper, no Embla, no touch handlers.</p>
+      <pre>.snap{
+  display:flex; overflow-x:auto;
+  <b>scroll-snap-type:x mandatory;</b>
+  scroll-padding:12px;
+}
+.snap>div{
+  flex:0 0 84%;
+  <b>scroll-snap-align:start;</b>
+  <b>scroll-snap-stop:always;</b>
+}</pre>
+      <p style="margin-top:7px"><code>scroll-snap-stop:always</code> is the detail people miss: without it a fast flick skips three districts at once. Note the 84% width — the peek of the next card <em>is</em> the swipe affordance, which is why the wireframe shows a partial third card.</p>
+      <p><b>One conflict to handle:</b> a horizontal snap area sitting inside a vertically-scrolling page will occasionally swallow a diagonal thumb swipe. Your arrow buttons aren't decoration — they're the reliable path. <span class="tag">HP-03</span> <span class="tag">HP-04</span></p>
+    </div>
+  </div>
+
+</div>
+
+
+<h2 class="sec">Tier 1, continued <span>· page transitions — the biggest single win for an SSR site</span></h2>
+
+<div class="row">
+  <div class="card w">
+    <div class="hd"><span class="t t1">TIER 1</span><b>07 · Cross-document view transitions</b></div>
+    <div class="vp wide" id="vtroot" style="height:430px">
+      <div class="vt-a" id="vtA">
+        <div class="lbl" style="margin-bottom:10px">/san-pham — chạm một sản phẩm</div>
+        <div class="grid2" style="grid-template-columns:repeat(3,1fr)">
+          <div class="pcard" onclick="goB()" style="cursor:pointer"><div class="img vt-hero" style="aspect-ratio:1"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard"><div class="img" style="aspect-ratio:1"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard"><div class="img" style="aspect-ratio:1"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard"><div class="img" style="aspect-ratio:1"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard"><div class="img" style="aspect-ratio:1"></div><div class="tl m"></div><div class="tl s"></div></div>
+          <div class="pcard"><div class="img" style="aspect-ratio:1"></div><div class="tl m"></div><div class="tl s"></div></div>
+        </div>
+      </div>
+      <div class="vt-b hidden" id="vtB">
+        <div class="lbl" style="margin-bottom:10px;cursor:pointer" onclick="goA()">← /san-pham/binh-hoa-men-ran</div>
+        <div style="display:flex;gap:14px">
+          <div class="img vt-hero" style="width:200px;height:200px;flex:0 0 auto"></div>
+          <div style="flex:1">
+            <div class="lbl">Xưởng Gốm Bát Tràng</div>
+            <b style="display:block;font-size:15px;margin:4px 0">Bình hoa men rạn thủ công</b>
+            <b style="font-size:16px">420.000₫</b>
+            <div class="tl" style="margin-top:12px"></div><div class="tl"></div><div class="tl m"></div>
+            <div style="background:var(--ink);color:#fff;font-family:var(--mono);font-size:11px;padding:9px;text-align:center;margin-top:12px">ORDER NOW ▸</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="hint">click the first product card, then the back link — the image morphs rather than cutting</span>
+    <div class="note">
+      <p><b>This is the effect that makes an MPA feel like an app, and it costs almost nothing.</b> Cross-document view transitions ship in Chrome/Edge 126+ and Safari 18.2+; Firefox is still in development. Unsupported browsers just navigate normally.</p>
+      <p>Your SRS bans a SPA (D3, correctly — SEO is the growth channel). Historically that meant accepting hard cuts between pages as the price of server rendering. It no longer does.</p>
+      <pre>/* both pages, in the global stylesheet */
+<b>@view-transition{ navigation:auto; }</b>
+
+/* the shared element, on both pages */
+.product-image{
+  <b>view-transition-name:product-hero;</b>
+}</pre>
+      <p style="margin-top:7px">The name must be <b>unique among visible elements</b> — two cards sharing <code>product-hero</code> throws and skips the transition. Generate it per product: <code>view-transition-name:product-<em>{slug}</em></code>, set on the grid card and on the detail page's main image.</p>
+      <p><b>Where I'd use it:</b> product card → product page (the morph above); shop card → shop page; and a directional slide on blog topic navigation. That's three transitions covering most of the site's movement.</p>
+      <p><span class="tag">D3</span> <span class="tag">PD-01</span> <span class="tag">AP-01</span></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><span class="t t2">TIER 2</span><b>08 · Pinned horizontal scroll</b></div>
+    <div class="vp">
+      <div class="pad"><div class="lbl">cuộn xuống — nội dung chạy ngang</div><div style="height:60px"></div></div>
+      <div class="pinwrap">
+        <div class="pin">
+          <div class="track">
+            <div><div class="img" style="aspect-ratio:3/4"></div><div class="lbl" style="margin-top:6px">01 · Thời trang</div></div>
+            <div><div class="img" style="aspect-ratio:3/4"></div><div class="lbl" style="margin-top:6px">02 · Nhà cửa</div></div>
+            <div><div class="img" style="aspect-ratio:3/4"></div><div class="lbl" style="margin-top:6px">03 · Quà tặng</div></div>
+            <div><div class="img" style="aspect-ratio:3/4"></div><div class="lbl" style="margin-top:6px">04 · Body care</div></div>
+            <div><div class="img" style="aspect-ratio:3/4"></div><div class="lbl" style="margin-top:6px">05 · Giải trí</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="pad"><div class="tl"></div><div class="tl m"></div></div>
+    </div>
+    <span class="hint">↕ scroll vertically — the track moves sideways, section pinned</span>
+    <div class="note w">
+      <p>The signature awwwards move, and achievable with <code>position:sticky</code> plus a scroll-linked translate — still no JavaScript.</p>
+      <p><b>Why Tier 2 rather than Tier 1.</b> It hijacks the meaning of a scroll gesture, which some people find disorienting, and it needs a tall wrapper (about 3 screens here) that inflates page height and confuses scroll-progress indicators. It also makes the pinned content harder to reach by keyboard.</p>
+      <p><b>If you use it, use it once</b> — as a category showcase on the homepage, not on a browse page where people are trying to get somewhere. And give it a visible progress indicator so the pin doesn't feel like a freeze.</p>
+    </div>
+  </div>
+</div>
+
+
+<h2 class="sec">Tier 2 <span>· worth it if the schedule holds, in this order</span></h2>
+
+<table class="t">
+<tr><th>Effect</th><th>Where</th><th>Why it earns its place</th><th>Cost</th></tr>
+<tr><td><b>Directional page slide</b><br>via view-transition types</td><td>Blog topic ↔ post, district ↔ district</td><td>Forward slides left, back slides right. Turns navigation into orientation — people stop losing their place in a taxonomy.</td><td>~half a day, on top of #07</td></tr>
+<tr><td><b>Sticky section headers</b><br>that hand off</td><td>Shop page: story → popular → all products</td><td>The current section label sticks and is pushed out by the next. Cheap orientation on a long page, and it makes a 34-product shop feel structured.</td><td>CSS only, ~2 hours</td></tr>
+<tr><td><b>Snap-linked index counter</b></td><td>Hero loop, district carousel</td><td><code>01/05</code> that updates with the swipe, plus a segmented progress bar. Makes the carousel feel finite — people swipe further when they can see the end.</td><td>Small JS (scroll listener on the snap container)</td></tr>
+<tr><td><b>Image reveal by mask</b></td><td>Shop covers, blog headers</td><td>A clip-path wipe as the image enters, rather than a fade. Reads as more considered and costs the same.</td><td>CSS only, ~2 hours</td></tr>
+<tr><td><b>Pull-to-refresh-style<br>drawer physics</b></td><td>Wishlist drawer, filter sheet, Hidden Gems</td><td>Drag-to-dismiss with velocity, not just a close button. This is the one place where a phone-native feel really shows, and your three drawers all share the component.</td><td>~1 day, needs real JS</td></tr>
+</table>
+
+
+<h2 class="sec">Tier 3 <span>· the awwwards look you should decline</span></h2>
+
+<div class="stop"><b>Smooth-scroll hijacking (Lenis, Locomotive)</b>
+This is the single most common ingredient in awwwards sites and the one I'd most strongly avoid here. It replaces the browser's native scroll with a JS-interpolated one, and that breaks four things you've already committed to: <code>scroll-snap</code> stops working reliably, your header hide/show fights the interpolation, the reveal footer's sticky positioning gets unpredictable, and native scroll performance on budget Android drops noticeably. It also degrades find-in-page and screen-reader navigation. The irony is that CSS scroll-driven animations already give you the smoothness people are chasing with these libraries, without taking the scroll away from the user.</div>
+
+<div class="stop"><b>Per-character text animation on Vietnamese</b>
+Splitting headlines into per-glyph spans with <code>overflow:hidden</code> masks is standard practice in these showcases — and it's a trap in Vietnamese. Stacked diacritics (ế, ộ, ữ) sit outside the nominal em box and get clipped by exactly the masks that make the effect work. You've already hit this once with line-height 0.88. If you want animated headlines, mask at <b>word</b> or <b>line</b> level with generous vertical padding, and test on <code>Tuyển chọn có "gu"</code> and <code>Nhà cửa</code> before committing.</div>
+
+<div class="stop"><b>WebGL image distortion, cursor-followers, custom cursors</b>
+Three.js hover-distortion and cursor trails are a large part of what makes those sites <em>look</em> like those sites. They're also desktop-only effects, and 87% of your traffic is mobile — so you'd be spending your scarcest resource on 13% of your visitors. Add the bundle size against your LCP target and it's a clear no for V1.</div>
+
+<div class="stop"><b>Scroll-triggered autoplay video and full-bleed video heroes</b>
+Heavy on roaming data, which is exactly Daniel's situation, and hostile to your LCP budget. If you want motion in the hero, the image loop you've already specified does the job at a fraction of the weight.</div>
+
+<div class="stop"><b>A page-load intro animation</b>
+The "TÍ" wordmark drawing itself before the site appears is tempting given your art direction. Don't: it delays LCP by design, it's infuriating on the second visit, and for a site whose growth channel is people arriving from Google on a specific product, an intro is a toll booth in front of the thing they came for.</div>
+
+
+<h2 class="sec">If you only do four things</h2>
+
+<div class="callout"><b>Recommended V1 scope, roughly a day and a half of work</b>
+<ol style="margin:6px 0 0;padding-left:20px">
+<li><b>Cross-document view transitions</b> (#07) — one at-rule plus per-product names. Biggest perceived-quality jump available to you, and it directly answers "SSR sites feel dated".</li>
+<li><b>Scroll-snap carousels</b> (#06) — replaces a carousel library you'd otherwise ship, on two features you're already committed to.</li>
+<li><b>Staggered reveal below the fold</b> (#02) — highest polish per line of CSS.</li>
+<li><b>Reveal footer with a scroll-linked wordmark</b> (#05) — you're building the footer anyway; the wordmark is about ten extra lines and it's where your art direction and your scroll behaviour meet.</li>
+</ol>
+<div style="margin-top:10px">Everything above degrades to a static page on unsupported browsers and to no motion under reduced-motion. None of it blocks server rendering, none of it touches your LCP path, and none of it requires a JavaScript animation library — which matters because a beginner developer debugging GSAP timelines nine days before launch is a schedule risk you don't need.</div></div>
+
+<div class="info"><b>One thing to test before committing</b>
+Scroll-snap, a hide-on-scroll header, a sticky ORDER NOW bar and a reveal footer all manipulate the same scroll surface. Individually each is fine. Together, on a real mid-range Android in Chrome, they can interact in ways that don't show up in a desktop browser — the classic symptom is the header flickering at a snap boundary. Build the product page first with all four active, and check it on a physical device before you extend the pattern to the rest of the site.</div>
+
+<div style="margin-top:34px;border-top:1px solid var(--ink);padding-top:12px" class="meta">
+  Tí Coolture · scroll &amp; swipe directions v0.1 · 18/08/2026 · pairs with wireframes v0.2
+</div>
+
+</div>
+<script>
+function goB(){
+  var a=document.getElementById('vtA'),b=document.getElementById('vtB');
+  var run=function(){a.classList.add('hidden');b.classList.remove('hidden');};
+  if(document.startViewTransition){document.startViewTransition(run);}else{run();}
+}
+function goA(){
+  var a=document.getElementById('vtA'),b=document.getElementById('vtB');
+  var run=function(){b.classList.add('hidden');a.classList.remove('hidden');};
+  if(document.startViewTransition){document.startViewTransition(run);}else{run();}
+}
+</script>
+</body>
+</html>

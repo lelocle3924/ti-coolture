@@ -22,6 +22,9 @@ import {
   MessageCircle
 } from "lucide-react";
 
+const formatPrice = (value: number) =>
+  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+
 export default function ShopDisplay() {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
@@ -40,7 +43,6 @@ export default function ShopDisplay() {
       if (storeData) {
         setStore(storeData);
         const storeProducts = await fetchProductsStore(storeId);
-        // Only show approved and unhidden products for public view
         const isOwnerOrAdmin = (user && storeData.userId === user.uid) || (profile && profile.role === "Admin");
         setProducts(storeProducts.filter(p => p.status === "Approved" && (!p.hidden || isOwnerOrAdmin)));
       }
@@ -59,7 +61,6 @@ export default function ShopDisplay() {
     const newFollowed = await toggleFollowShop(user.uid, store.id);
     await refreshProfile();
     
-    // Trigger simulated webhook
     triggerWebhook("SHOP_FOLLOWED_TOGGLE", {
       userId: user.uid,
       userEmail: user.email,
@@ -73,7 +74,6 @@ export default function ShopDisplay() {
   const handleSocialClick = (platform: string, url?: string) => {
     if (!url || !store) return;
 
-    // Trigger webhook telemetry
     triggerWebhook("SOCIAL_LINK_CLICKED", {
       userId: user?.uid || "anonymous",
       userEmail: user?.email || "anonymous",
@@ -87,7 +87,6 @@ export default function ShopDisplay() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  // Pricing filter logic
   const matchesPrice = (price: number) => {
     if (!selectedPriceRange) return true;
     switch (selectedPriceRange) {
@@ -103,7 +102,6 @@ export default function ShopDisplay() {
 
   const filteredProducts = products.filter(p => matchesPrice(p.price));
 
-  // "Popular Now" - highest clicked items (top 3)
   const popularProducts = [...products]
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 3);
@@ -113,19 +111,19 @@ export default function ShopDisplay() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center bg-neutral-100 font-mono text-xs">
-        <span className="animate-pulse text-neutral-500">SYNCHRONIZING ARTISAN REGISTRY...</span>
+      <div className="min-h-[70vh] flex justify-center items-center bg-paper-warm">
+        <span className="text-sm font-medium animate-pulse text-brand">Đang tải thông tin cửa hàng...</span>
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-100 p-8 text-center space-y-4">
-        <h2 className="font-display font-black text-lg uppercase">[ERROR: STORE NOT FOUND]</h2>
-        <p className="font-mono text-xs text-neutral-500">The store you are looking for may have expired or been unlinked.</p>
-        <Link to="/" className="px-4 py-2 border-2 border-black bg-black text-white hover:bg-white hover:text-black transition-all text-xs font-bold uppercase font-mono">
-          Return to Hub
+      <div className="min-h-[70vh] flex flex-col items-center justify-center bg-paper-warm p-8 text-center space-y-4">
+        <h2 className="display text-2xl normal-case text-ink">Không tìm thấy cửa hàng</h2>
+        <p className="text-sm text-ink/60">Cửa hàng này có thể đã dừng hoạt động hoặc chưa được kích hoạt.</p>
+        <Link to="/stores" className="inline-flex items-center rounded-full bg-brand px-6 py-2.5 text-paper label hover:bg-brand-deep transition-all">
+          Khám phá các shop khác
         </Link>
       </div>
     );
@@ -133,18 +131,18 @@ export default function ShopDisplay() {
 
   if (!isAuthorizedToView) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-100 p-8 text-center space-y-6">
-        <div className="bg-white border-4 border-black p-8 max-w-md mx-auto shadow-[6px_6px_0px_0px_#000000] space-y-4">
-          <div className="w-12 h-12 bg-amber-100 border-2 border-amber-500 rounded-full flex items-center justify-center mx-auto text-amber-600 text-lg">
+      <div className="min-h-[70vh] flex flex-col items-center justify-center bg-paper-warm p-8 text-center space-y-6">
+        <div className="bg-paper rounded-2xl border border-ink/10 p-8 max-w-md mx-auto shadow-sm space-y-4">
+          <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-600 text-lg">
             🔒
           </div>
-          <h2 className="font-display font-black text-sm uppercase text-black">Boutique Verification Pending</h2>
-          <p className="font-sans text-xs text-neutral-600 leading-relaxed">
-            The traditional craft boutique <span className="font-bold">"{store?.name}"</span> is currently undergoing verification or has been temporarily deactivated by the administrative team.
+          <h2 className="font-medium text-lg text-ink">Cửa hàng đang chờ xác duyệt</h2>
+          <p className="text-xs text-ink/70 leading-relaxed">
+            Thương hiệu thủ công <span className="font-semibold text-ink">"{store?.name}"</span> đang trong quá trình xét duyệt danh mục hoặc tạm thời đóng để cập nhật.
           </p>
           <div className="pt-2">
-            <Link to="/stores" className="inline-block px-4 py-2 bg-black text-white hover:bg-neutral-800 border-2 border-black transition-all text-[10px] font-bold uppercase font-mono tracking-wider">
-              Explore Active Boutiques
+            <Link to="/stores" className="inline-block rounded-full bg-brand px-6 py-2.5 text-paper text-xs font-semibold hover:bg-brand-deep transition-all">
+              Khám phá các boutique đang mở
             </Link>
           </div>
         </div>
@@ -153,35 +151,34 @@ export default function ShopDisplay() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-100 select-none p-4 md:p-8 max-w-7xl mx-auto space-y-12">
+    <div className="min-h-screen bg-paper-warm text-ink select-none p-4 md:p-8 pb-20 max-w-7xl mx-auto space-y-10">
       
       {/* 1. TOP HEADER NAVIGATION AND ACTION ROW */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-4 border-black pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink/10 pb-4">
         <Link 
-          to="/" 
-          className="inline-flex items-center space-x-2 text-xs font-mono font-bold text-neutral-500 hover:text-black uppercase underline"
+          to="/stores" 
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink/60 hover:text-brand transition-colors"
         >
-          <ArrowLeft className="w-3 h-3" />
-          <span>BACK TO HUB</span>
+          <ArrowLeft className="w-4 h-4" />
+          <span>Tất cả cửa hàng</span>
         </Link>
         
         <div className="flex items-center space-x-4">
           <button
             onClick={handleFollowToggle}
-            className={`px-6 py-1.5 border-2 border-black font-mono text-xs font-bold uppercase transition-all duration-100 flex items-center justify-center space-x-2 ${
-              isFollowing ? "bg-black text-white" : "bg-white text-black hover:bg-black hover:text-white"
+            className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-xs ${
+              isFollowing ? "bg-red-50 text-red-500 border border-red-200" : "bg-brand text-paper hover:bg-brand-deep hover:scale-105 active:scale-95"
             }`}
           >
-            <Heart className={`w-4 h-4 ${isFollowing ? "fill-white" : ""}`} />
-            <span>{isFollowing ? "FOLLOWED" : "FOLLOW STORE"}</span>
+            <Heart className={`w-4 h-4 ${isFollowing ? "fill-red-500" : ""}`} />
+            <span>{isFollowing ? "Đã theo dõi" : "Theo dõi shop"}</span>
           </button>
         </div>
       </div>
 
       {/* 2. SHOP HERO STORY INTRO */}
-      <section className="bg-white border-4 border-black shadow-[6px_6px_0px_0px_#000000] overflow-hidden grid grid-cols-1 md:grid-cols-12">
-        {/* Cover image left / top - fixed to 4:3 aspect ratio */}
-        <div className="md:col-span-5 aspect-[4/3] w-full border-b-4 md:border-b-0 md:border-r-4 border-black bg-neutral-100 flex items-center justify-center overflow-hidden">
+      <section className="bg-paper rounded-2xl border border-ink/10 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12">
+        <div className="md:col-span-5 aspect-[4/3] w-full bg-paper-warm flex items-center justify-center overflow-hidden">
           <img 
             src={store.coverUrl || "https://images.unsplash.com/photo-1565192647048-f997ded87958?w=500"} 
             alt={store.name} 
@@ -190,213 +187,196 @@ export default function ShopDisplay() {
           />
         </div>
 
-        {/* Description right */}
-        <div className="md:col-span-7 p-6 md:p-8 flex flex-col justify-between space-y-6 overflow-hidden">
-          <div className="space-y-4 w-full max-w-full">
-            <div className="flex items-start space-x-3 w-full">
+        <div className="md:col-span-7 p-6 md:p-8 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
               <img 
                 src={store.logoUrl || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=100"} 
                 alt={store.name}
                 referrerPolicy="no-referrer"
-                className="w-12 h-12 rounded-full border-2 border-black object-cover shrink-0" 
+                className="w-14 h-14 rounded-full border border-ink/10 object-cover shrink-0 shadow-sm" 
               />
-              <div className="w-full">
-                <h1 className="font-display font-black text-xl md:text-2xl uppercase text-black leading-tight">{store.name}</h1>
-                <p className="text-[10px] font-mono text-neutral-500 uppercase flex items-center space-x-1 mt-0.5">
-                  <MapPin className="w-3 h-3 text-neutral-400" />
+              <div className="flex-1">
+                <span className="label text-wave-ink font-semibold">
+                  {store.vibe || "Artisan Boutique"}
+                </span>
+                <h1 className="font-medium text-2xl md:text-3xl text-ink leading-tight mt-0.5">{store.name}</h1>
+                <p className="text-xs text-ink/60 flex items-center gap-1 mt-1">
+                  <MapPin className="w-3.5 h-3.5 text-brand shrink-0" />
                   <span>{store.address}</span>
                 </p>
 
-                {/* Social links directly underneath the shop name */}
+                {/* Social links */}
                 <div className="flex flex-wrap gap-2 mt-3">
                   {store.socials?.facebook && store.socialToggles?.facebook && (
                     <button
                       onClick={() => handleSocialClick("Facebook", store.socials.facebook)}
-                      className="border border-black bg-white hover:bg-black hover:text-white text-black p-1 md:p-1.5 transition-all text-[9px] font-bold font-mono flex items-center space-x-1 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-none"
+                      className="bg-paper-warm hover:bg-[#1877f2] text-ink hover:text-paper border border-ink/10 rounded-full px-3 py-1 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
                     >
-                      <Facebook className="w-3 h-3" />
-                      <span>FACEBOOK</span>
+                      <Facebook className="w-3.5 h-3.5" />
+                      <span>Facebook</span>
                     </button>
                   )}
                   {store.socials?.instagram && store.socialToggles?.instagram && (
                     <button
                       onClick={() => handleSocialClick("Instagram", store.socials.instagram)}
-                      className="border border-black bg-white hover:bg-black hover:text-white text-black p-1 md:p-1.5 transition-all text-[9px] font-bold font-mono flex items-center space-x-1 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-none"
+                      className="bg-paper-warm hover:bg-gradient-to-tr hover:from-[#f58529] hover:via-[#dd2a7b] hover:to-[#8134af] text-ink hover:text-paper border border-ink/10 rounded-full px-3 py-1 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
                     >
-                      <Instagram className="w-3 h-3" />
-                      <span>INSTAGRAM</span>
+                      <Instagram className="w-3.5 h-3.5" />
+                      <span>Instagram</span>
                     </button>
                   )}
                   {store.socials?.tiktok && store.socialToggles?.tiktok && (
                     <button
                       onClick={() => handleSocialClick("TikTok", store.socials.tiktok)}
-                      className="border border-black bg-white hover:bg-black hover:text-white text-black p-1 md:p-1.5 transition-all text-[9px] font-bold font-mono flex items-center space-x-1 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-none"
+                      className="bg-paper-warm hover:bg-ink text-ink hover:text-paper border border-ink/10 rounded-full px-3 py-1 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
                     >
-                      <span className="text-[9px] font-bold">TikTok</span>
+                      <span>TikTok</span>
                     </button>
                   )}
                   {store.socials?.threads && store.socialToggles?.threads && (
                     <button
                       onClick={() => handleSocialClick("Threads", store.socials.threads)}
-                      className="border border-black bg-white hover:bg-black hover:text-white text-black p-1 md:p-1.5 transition-all text-[9px] font-bold font-mono flex items-center space-x-1 shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[0.5px] hover:translate-y-[0.5px] hover:shadow-none"
+                      className="bg-paper-warm hover:bg-ink text-ink hover:text-paper border border-ink/10 rounded-full px-3 py-1 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs"
                     >
-                      <MessageCircle className="w-3 h-3" />
-                      <span>THREADS</span>
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>Threads</span>
                     </button>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Combined description text box with dynamic word wrap */}
-            <div className="border-t border-neutral-200 pt-3 w-full max-w-full">
-              <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-wrap break-words">
-                {store.description || [store.story, store.vibe].filter(Boolean).join("\n\n") || "A boutique dedicated to preserving local design aesthetics and material integrity."}
+            <div className="border-t border-ink/5 pt-4">
+              <p className="text-xs md:text-sm text-ink/75 leading-relaxed whitespace-pre-wrap">
+                {store.description || [store.story, store.vibe].filter(Boolean).join("\n\n") || "Không gian tuyển chọn các tác phẩm thủ công, thiết kế và văn hoá bản địa."}
               </p>
             </div>
           </div>
 
-          <div className="border-t-2 border-dashed border-neutral-300 pt-4 flex flex-wrap gap-4 text-xs font-mono">
-            <div className="flex items-center space-x-1">
-              <Mail className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="text-[10px] lowercase">{store.email}</span>
-            </div>
+          <div className="border-t border-ink/5 pt-3 flex items-center gap-2 text-xs text-ink/60">
+            <Mail className="w-3.5 h-3.5 text-brand" />
+            <span>{store.email}</span>
           </div>
         </div>
       </section>
 
-      {/* 4. POPULAR NOW SECTION */}
-      <section className="space-y-4">
-        <div className="border-b-2 border-black pb-2 flex items-center justify-between">
-          <h3 className="font-display font-black text-sm uppercase tracking-tight flex items-center space-x-1.5 text-black">
-            <TrendingUp className="w-4 h-4 text-black" />
-            <span>Popular Now</span>
-          </h3>
-          <span className="font-mono text-[10px] text-neutral-400 font-bold uppercase">
-            Most visited showcase pieces
-          </span>
-        </div>
+      {/* 3. POPULAR NOW SECTION */}
+      {popularProducts.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b border-ink/10 pb-2">
+            <h3 className="font-medium text-lg text-ink flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-brand" />
+              <span>Nổi bật nhất tiệm</span>
+            </h3>
+            <span className="label text-wave-ink font-semibold">
+              Được yêu thích
+            </span>
+          </div>
 
-        {popularProducts.length === 0 ? (
-          <p className="text-xs font-mono text-neutral-400 italic py-4 uppercase">No visitor logs recorded yet.</p>
-        ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {popularProducts.map((prod) => (
-              <div 
+              <Link 
                 key={prod.id} 
-                className="group bg-white border-2 border-black p-3 space-y-3 relative overflow-hidden hover:shadow-[4px_4px_0px_0px_#000000] transition-all"
+                to={`/products/${prod.id}`}
+                onClick={async () => {
+                  await incrementProductClick(prod.id);
+                }}
+                className="group bg-paper rounded-2xl border border-ink/10 p-3 space-y-3 relative overflow-hidden hover:border-brand/30 hover:shadow-[0_12px_32px_rgba(117,32,247,0.12)] hover:-translate-y-0.5 transition-all block"
               >
-                {/* Image overlay transitions on hover to second gallery image */}
-                <div className="aspect-video relative overflow-hidden border border-black">
+                <div className="aspect-video relative overflow-hidden rounded-xl bg-paper-warm">
                   <img 
                     src={prod.images[0]} 
                     alt={prod.name} 
                     referrerPolicy="no-referrer"
-                    className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
-                      prod.images[1] ? "group-hover:opacity-0" : ""
-                    }`} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                   />
-                  {prod.images[1] && (
-                    <img
-                      src={prod.images[1]}
-                      alt={`${prod.name} secondary view`}
-                      referrerPolicy="no-referrer"
-                      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-300"
-                    />
-                  )}
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-display font-bold text-xs uppercase line-clamp-1">{prod.name}</h4>
-                  <p className="font-mono text-[10px] text-neutral-400 uppercase">{prod.category}</p>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="font-mono text-xs font-bold">{prod.price.toLocaleString()} VND</span>
-                    <span className="font-mono text-[9px] bg-neutral-100 px-1 border border-neutral-300 uppercase">
-                      🔥 {prod.clicks} Clicks
+                  <h4 className="font-medium text-sm text-ink group-hover:text-brand transition-colors line-clamp-1">{prod.name}</h4>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-xs font-semibold text-brand">{formatPrice(prod.price)}</span>
+                    <span className="text-[11px] font-semibold text-wave-ink bg-wave/15 px-2 py-0.5 rounded-full">
+                      🔥 {prod.clicks} lượt xem
                     </span>
                   </div>
                 </div>
-                <Link 
-                  to={`/products/${prod.id}`}
-                  onClick={async () => {
-                    await incrementProductClick(prod.id);
-                  }}
-                  className="absolute inset-0 bg-transparent"
-                  title={`View ${prod.name}`}
-                />
-              </div>
+              </Link>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* 5. WHAT'S IN STORE GRID (With Filter right next to it) */}
+      {/* 4. CATALOG GRID WITH FILTERS */}
       <section className="space-y-6">
-        <div className="border-b-4 border-black pb-3 flex justify-between items-center">
-          <h3 className="font-display font-black text-lg uppercase text-black">
-            Catalog
+        <div className="border-b border-ink/10 pb-3 flex justify-between items-center">
+          <h3 className="font-medium text-xl text-ink">
+            Tất cả tác phẩm
           </h3>
-          <span className="font-mono text-xs bg-black text-white px-3 py-1 uppercase border border-black font-bold shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
-            {filteredProducts.length} Items Listed
+          <span className="label text-ink/60 font-semibold">
+            {filteredProducts.length} sản phẩm
           </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Filters Sidebar, only next to products display grid */}
-          <aside className="lg:col-span-3 bg-white border-4 border-black p-6 shadow-[4px_4px_0px_0px_#000000] space-y-4" id="shop-filter-sidebar">
-            <div className="border-b-2 border-black pb-2 flex items-center space-x-2">
-              <Filter className="w-3.5 h-3.5 text-black" />
-              <h4 className="font-display font-black text-xs uppercase tracking-wider text-black">
-                FILTERS
-              </h4>
+          {/* Filters Sidebar */}
+          <aside className="lg:col-span-3 bg-paper rounded-2xl border border-ink/10 p-6 shadow-sm space-y-4" id="shop-filter-sidebar">
+            <div className="border-b border-ink/10 pb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="w-3.5 h-3.5 text-brand" />
+                <h4 className="label text-ink font-semibold">
+                  Bộ lọc giá
+                </h4>
+              </div>
+              {selectedPriceRange && (
+                <button
+                  onClick={() => setSelectedPriceRange(null)}
+                  className="text-xs text-brand hover:text-brand-deep font-medium"
+                >
+                  Xoá lọc
+                </button>
+              )}
             </div>
             
             <div className="space-y-1.5">
               {[
-                { id: "under-100", label: "Under 100k VND" },
-                { id: "100-200", label: "100k - 200k VND" },
-                { id: "200-300", label: "200k - 300k VND" },
-                { id: "300-500", label: "300k - 500k VND" },
-                { id: "500-1m", label: "500k - 1M VND" },
-                { id: "over-1m", label: "Over 1M VND" }
+                { id: "under-100", label: "Dưới 100.000₫" },
+                { id: "100-200", label: "100.000₫ - 200.000₫" },
+                { id: "200-300", label: "200.000₫ - 300.000₫" },
+                { id: "300-500", label: "300.000₫ - 500.000₫" },
+                { id: "500-1m", label: "500.000₫ - 1.000.000₫" },
+                { id: "over-1m", label: "Trên 1.000.000₫" }
               ].map((range) => {
                 const isSelected = selectedPriceRange === range.id;
                 return (
                   <button
                     key={range.id}
                     onClick={() => setSelectedPriceRange(isSelected ? null : range.id)}
-                    className={`w-full text-left px-2.5 py-2 font-mono text-[10px] font-bold border-2 border-black uppercase flex items-center justify-between transition-all ${
-                      isSelected ? "bg-black text-white" : "bg-neutral-50 hover:bg-neutral-100 text-black"
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between ${
+                      isSelected ? "bg-brand text-paper shadow-sm" : "bg-paper-warm text-ink hover:bg-ink/5"
                     }`}
                   >
                     <span>{range.label}</span>
-                    {isSelected && <span className="font-mono text-xs">●</span>}
+                    {isSelected && <span className="text-wave">✓</span>}
                   </button>
                 );
               })}
             </div>
-            {selectedPriceRange && (
-              <button
-                onClick={() => setSelectedPriceRange(null)}
-                className="w-full text-center py-2 bg-neutral-100 hover:bg-neutral-200 text-[10px] font-mono uppercase font-bold border border-black mt-2"
-              >
-                RESET FILTERS [X]
-              </button>
-            )}
           </aside>
 
           {/* Product Listing */}
           <div className="lg:col-span-9">
             {filteredProducts.length === 0 ? (
-              <div className="border-4 border-black p-12 text-center bg-white shadow-[4px_4px_0px_0px_#000000]">
-                <p className="font-mono text-xs text-neutral-500 uppercase font-bold">
-                  No products found matching pricing filters
+              <div className="rounded-2xl border border-ink/10 p-12 text-center bg-paper shadow-sm space-y-3">
+                <p className="text-sm font-medium text-ink">
+                  Không tìm thấy sản phẩm trong tầm giá này
                 </p>
                 <button
                   onClick={() => setSelectedPriceRange(null)}
-                  className="mt-3 px-4 py-2 border-2 border-black bg-black text-white font-mono text-[10px] font-bold hover:bg-white hover:text-black uppercase"
+                  className="rounded-full bg-brand px-6 py-2 text-paper text-xs font-semibold hover:bg-brand-deep"
                 >
-                  Clear Filters
+                  Xoá bộ lọc
                 </button>
               </div>
             ) : (
@@ -408,46 +388,35 @@ export default function ShopDisplay() {
                     onClick={async () => {
                       await incrementProductClick(prod.id);
                     }}
-                    className="group bg-white border-2 border-black hover:shadow-[4px_4px_0px_0px_#000000] transition-all flex flex-col justify-between"
+                    className="group bg-paper rounded-2xl border border-ink/10 hover:border-brand/30 hover:shadow-[0_12px_32px_rgba(117,32,247,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-sm"
                   >
-                    {/* Square image switching on hover */}
-                    <div className="aspect-square bg-neutral-100 overflow-hidden relative border-b-2 border-black">
+                    <div className="aspect-square bg-paper-warm overflow-hidden relative">
                       <img 
                         src={prod.images[0]} 
                         alt={prod.name} 
                         referrerPolicy="no-referrer"
-                        className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
-                          prod.images[1] ? "group-hover:opacity-0" : ""
-                        }`} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                       />
-                      {prod.images[1] && (
-                        <img
-                          src={prod.images[1]}
-                          alt={`${prod.name} secondary view`}
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-300"
-                        />
-                      )}
-                      <span className="absolute top-2 left-2 bg-white text-black text-[9px] font-mono px-1.5 py-0.5 border border-black uppercase font-bold">
+                      <span className="absolute top-3 left-3 bg-paper/90 backdrop-blur-sm text-ink text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-ink/5 shadow-xs">
                         {prod.category}
                       </span>
                     </div>
 
-                    <div className="p-4 flex-grow flex flex-col justify-between space-y-3">
+                    <div className="p-5 flex-grow flex flex-col justify-between space-y-3">
                       <div>
-                        <h4 className="font-display font-black text-sm text-black group-hover:underline uppercase leading-snug line-clamp-2">
+                        <h4 className="font-medium text-base text-ink group-hover:text-brand transition-colors leading-snug line-clamp-2">
                           {prod.name}
                         </h4>
-                        <p className="text-[11px] text-neutral-500 line-clamp-2 leading-relaxed mt-1">{prod.description}</p>
+                        <p className="text-xs text-ink/65 line-clamp-2 leading-relaxed mt-1">{prod.description}</p>
                       </div>
-                      <div className="pt-2 border-t border-neutral-100 flex justify-between items-center">
-                        <span className="font-mono text-xs font-bold text-black">
-                          {prod.price.toLocaleString()} {prod.currency}
+                      <div className="pt-3 border-t border-ink/5 flex justify-between items-center">
+                        <span className="text-sm font-semibold text-brand">
+                          {formatPrice(prod.price)}
                         </span>
-                        <div className="flex items-center text-[10px] font-mono text-neutral-400 group-hover:text-black font-bold uppercase transition-colors">
-                          <span>EXPLORE</span>
-                          <ChevronRight className="w-3.5 h-3.5 ml-0.5 group-hover:translate-x-1 transition-transform" />
-                        </div>
+                        <span className="text-xs font-semibold text-ink/50 group-hover:text-brand flex items-center gap-0.5 transition-colors">
+                          Chi tiết
+                          <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
                       </div>
                     </div>
                   </Link>

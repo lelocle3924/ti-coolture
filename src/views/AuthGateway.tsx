@@ -59,24 +59,25 @@ export default function AuthGateway() {
       testEmail = "explorer@user.vn";
     }
 
-    const mockUid = "mock_" + testEmail.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_");
+    const mockUid = "mock_" + testEmail.replace(/[^a-zA-Z0-9]/g, "_");
 
     try {
-      // No auth backend yet (Supabase Auth per SRS §3.1) — local session only.
       if (loginAsMockUser) {
-        await loginAsMockUser(mockUid, testEmail);
+        await loginAsMockUser(mockUid, testEmail, "mockpassword");
       } else {
         await refreshProfile();
       }
 
-      if (role === "User" || role === "Admin") {
-        navigate("/user-profile");
-      } else {
+      if (role === "Shop") {
         navigate("/shop-dashboard");
+      } else if (role === "Admin") {
+        navigate("/shop-dashboard");
+      } else {
+        navigate("/user-profile");
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to log in with test credentials.");
+      console.error("Test login failed: ", err);
+      setError("Failed to execute quick login.");
     } finally {
       setLoading(false);
     }
@@ -84,30 +85,29 @@ export default function AuthGateway() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
+    setError(null);
 
     if (formType === "ForgotPassword") {
       if (!email) {
-        setError("Please enter your email address.");
+        setError("Vui lòng nhập địa chỉ email.");
         setLoading(false);
         return;
       }
+
       try {
         const existing = await findUserByEmail(email);
         if (!existing) {
-          setError("Account not found. Please sign up");
+          setError("Không tìm thấy tài khoản với email này.");
           setLoading(false);
           return;
         }
 
-        // No mail provider yet (Resend, per SRS §3.1). The reset link below is
-        // shown on screen instead of being emailed.
         setResetSent(true);
         setError(null);
       } catch (err: any) {
         console.error(err);
-        setError(err.message || "Failed to process forgot password request.");
+        setError(err.message || "Không thể xử lý yêu cầu đặt lại mật khẩu.");
       } finally {
         setLoading(false);
       }
@@ -116,12 +116,12 @@ export default function AuthGateway() {
 
     if (formType === "ResetPassword") {
       if (!password || !confirmPassword) {
-        setError("Please enter and confirm your new password.");
+        setError("Vui lòng nhập và xác nhận mật khẩu mới.");
         setLoading(false);
         return;
       }
       if (password !== confirmPassword) {
-        setError("Passwords do not match.");
+        setError("Mật khẩu xác nhận không khớp.");
         setLoading(false);
         return;
       }
@@ -131,7 +131,7 @@ export default function AuthGateway() {
         setError(null);
       } catch (err: any) {
         console.error(err);
-        setError(err.message || "Failed to reset password.");
+        setError(err.message || "Không thể đặt lại mật khẩu.");
       } finally {
         setLoading(false);
       }
@@ -139,7 +139,7 @@ export default function AuthGateway() {
     }
 
     if (!email || !password) {
-      setError("Please fill in all credentials.");
+      setError("Vui lòng điền đầy đủ thông tin đăng nhập.");
       setLoading(false);
       return;
     }
@@ -150,13 +150,13 @@ export default function AuthGateway() {
       if (formType === "Login") {
         const userData = await findUserByEmail(email);
         if (!userData) {
-          setError("Account not found. Please sign up");
+          setError("Không tìm thấy tài khoản. Vui lòng đăng ký.");
           setLoading(false);
           return;
         }
 
         if (userData.password && userData.password !== password) {
-          setError("Invalid email or password.");
+          setError("Email hoặc mật khẩu không chính xác.");
           setLoading(false);
           return;
         }
@@ -167,24 +167,22 @@ export default function AuthGateway() {
           await refreshProfile();
         }
 
-        // Redirect logic
         if (mode === "ShopForm" || userData.role === "Shop") {
           navigate("/shop-dashboard");
         } else {
           navigate("/user-profile");
         }
       } else {
-        // Sign Up Flow
         let registerEmail = email;
         if (mode === "ShopForm" && !email.endsWith("@shop.vn") && !email.includes("@")) {
-          setError("Shop accounts require a valid email.");
+          setError("Tài khoản shop yêu cầu email hợp lệ.");
           setLoading(false);
           return;
         }
 
         const existing = await findUserByEmail(registerEmail);
         if (existing) {
-          setError("This email is already registered. Please login instead.");
+          setError("Email này đã được đăng ký. Vui lòng đăng nhập.");
           setLoading(false);
           return;
         }
@@ -203,344 +201,283 @@ export default function AuthGateway() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === "auth/email-already-in-use") {
-        setError("This email is already registered. Please login instead.");
-      } else if (err.code === "auth/weak-password") {
-        setError("Password should be at least 6 characters.");
-      } else if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
-        setError("Invalid email or password.");
-      } else {
-        // If standard Firebase Auth operations are disabled, do not block the user! Show a helpful warning instead
-        if (err.code === "auth/operation-not-allowed") {
-          setError("Firebase Email/Password Auth is disabled in Firebase. Activating mock backup session...");
-          const fallbackEmail = email || "guest@user.vn";
-          const fallbackUid = "mock_" + fallbackEmail.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_");
-          if (loginAsMockUser) {
-            setTimeout(async () => {
-              await loginAsMockUser(fallbackUid, fallbackEmail, password);
-              if (mode === "ShopForm") {
-                navigate("/shop-dashboard");
-              } else {
-                navigate("/user-profile");
-              }
-            }, 1000);
-          }
-        } else {
-          setError(err.message || "Authentication failed.");
-        }
-      }
+      setError(err.message || "Xác thực thất bại.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 select-none">
-      <div className="w-full max-w-lg bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000000] p-6 md:p-8">
+    <div className="min-h-[80vh] bg-paper-warm flex items-center justify-center px-4 py-16 select-none">
+      <div className="w-full max-w-lg bg-paper rounded-3xl border border-ink/10 shadow-[0_20px_50px_rgba(117,32,247,0.08)] p-6 md:p-10 space-y-6">
         
         {/* Step 1: Mode Selection Gateway */}
         {mode === "Select" && (
           <div className="space-y-6">
-            <div className="text-center space-y-2 pb-4 border-b-2 border-black">
-              <h1 className="font-display font-black text-2xl uppercase tracking-tight text-black">
-                Gateway Portal
+            <div className="text-center space-y-2 pb-5 border-b border-ink/5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-wave/20 px-3 py-0.5 text-xs font-semibold text-wave-ink">
+                <Sparkles className="w-3 h-3" /> Cổng kết nối Tí Coolture
+              </span>
+              <h1 className="display text-2xl md:text-3xl normal-case text-ink mt-2">
+                Chọn vai trò của bạn
               </h1>
-              <p className="text-xs font-mono text-neutral-500 uppercase">
-                Choose your identity to enter Tí Coolture
+              <p className="text-xs text-ink/60">
+                Đăng nhập để lưu tác phẩm yêu thích hoặc quản lý boutique nghệ thuật
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {/* User Selector Option */}
+              {/* User Option */}
               <button
                 onClick={() => {
                   setMode("UserForm");
                   setFormType("Login");
                 }}
-                className="group border-2 border-black p-4 text-left hover:bg-black hover:text-white transition-all duration-150 flex items-start space-x-4"
+                className="group rounded-2xl border border-ink/10 p-5 text-left bg-paper-warm hover:bg-brand hover:text-paper transition-all duration-200 flex items-start gap-4 shadow-xs"
               >
-                <div className="p-2 border-2 border-black bg-neutral-100 group-hover:bg-neutral-800 text-black group-hover:text-white">
+                <div className="p-3 rounded-xl bg-paper text-brand group-hover:bg-white/20 group-hover:text-paper transition-colors shrink-0">
                   <Compass className="w-6 h-6" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm uppercase tracking-wide">
-                    Cultural Explorer
+                  <h3 className="font-semibold text-base">
+                    Người khám phá (Cultural Explorer)
                   </h3>
-                  <p className="text-[11px] text-neutral-500 group-hover:text-neutral-300 mt-1">
-                    Discover handcrafts, curated routes, save items to your wishlist, and track local stores.
+                  <p className="text-xs text-ink/65 group-hover:text-white/80 mt-1 leading-relaxed">
+                    Khám phá đồ thủ công, lưu danh sách wishlist, theo dõi lộ trình và ghi chú riêng.
                   </p>
                 </div>
-                <ArrowRight className="w-5 h-5 self-center transform group-hover:translate-x-2 transition-transform" />
+                <ArrowRight className="w-5 h-5 self-center text-ink/40 group-hover:text-paper group-hover:translate-x-1 transition-all" />
               </button>
 
-              {/* Shop Selector Option */}
+              {/* Shop Option */}
               <button
                 onClick={() => {
                   setMode("ShopForm");
                   setFormType("Login");
                 }}
-                className="group border-2 border-black p-4 text-left hover:bg-black hover:text-white transition-all duration-150 flex items-start space-x-4"
+                className="group rounded-2xl border border-ink/10 p-5 text-left bg-paper-warm hover:bg-brand hover:text-paper transition-all duration-200 flex items-start gap-4 shadow-xs"
               >
-                <div className="p-2 border-2 border-black bg-neutral-100 group-hover:bg-neutral-800 text-black group-hover:text-white">
+                <div className="p-3 rounded-xl bg-paper text-brand group-hover:bg-white/20 group-hover:text-paper transition-colors shrink-0">
                   <Store className="w-6 h-6" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-sm uppercase tracking-wide">
-                    Artisan or Local Shop
+                  <h3 className="font-semibold text-base">
+                    Nghệ nhân & Local Shop
                   </h3>
-                  <p className="text-[11px] text-neutral-500 group-hover:text-neutral-300 mt-1">
-                    Register your boutique brand, upload products, map socials, and check product approval statuses.
+                  <p className="text-xs text-ink/65 group-hover:text-white/80 mt-1 leading-relaxed">
+                    Đăng ký thương hiệu, quản lý tác phẩm trưng bày, kết nối kênh mạng xã hội.
                   </p>
                 </div>
-                <ArrowRight className="w-5 h-5 self-center transform group-hover:translate-x-2 transition-transform" />
+                <ArrowRight className="w-5 h-5 self-center text-ink/40 group-hover:text-paper group-hover:translate-x-1 transition-all" />
               </button>
             </div>
 
-            {/* Test Credentials Seeder Utility Panel */}
-            <div className="border-2 border-dashed border-neutral-400 p-4 bg-neutral-50 space-y-3">
-              <p className="font-mono text-[10px] text-neutral-500 uppercase font-bold tracking-wider text-center">
-                🛠️ Quick MVP Evaluation Credentials
+            {/* Test Credentials Utility */}
+            <div className="rounded-2xl border border-dashed border-ink/15 p-5 bg-paper-warm space-y-3">
+              <p className="label text-ink/60 font-semibold text-center">
+                ⚡ Đăng nhập nhanh để trải nghiệm (Demo)
               </p>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => handleTestLogin("User")}
                   disabled={loading}
-                  className="px-2 py-1.5 border-2 border-black font-mono text-[10px] font-bold text-black bg-white hover:bg-neutral-200 transition-all uppercase"
+                  className="px-3 py-2 rounded-xl border border-ink/10 text-xs font-semibold text-ink bg-paper hover:bg-wave hover:text-ink transition-all shadow-xs"
                 >
-                  {loading ? "..." : "TEST USER"}
+                  {loading ? "..." : "Khách xem"}
                 </button>
                 <button
                   onClick={() => handleTestLogin("Shop")}
                   disabled={loading}
-                  className="px-2 py-1.5 border-2 border-black font-mono text-[10px] font-bold text-black bg-white hover:bg-neutral-200 transition-all uppercase"
+                  className="px-3 py-2 rounded-xl border border-ink/10 text-xs font-semibold text-ink bg-paper hover:bg-wave hover:text-ink transition-all shadow-xs"
                 >
-                  {loading ? "..." : "TEST SHOP"}
+                  {loading ? "..." : "Chủ shop"}
                 </button>
                 <button
                   onClick={() => handleTestLogin("Admin")}
                   disabled={loading}
-                  className="px-2 py-1.5 border-2 border-black font-mono text-[10px] font-bold text-black bg-white hover:bg-neutral-200 transition-all uppercase"
+                  className="px-3 py-2 rounded-xl border border-ink/10 text-xs font-semibold text-ink bg-paper hover:bg-wave hover:text-ink transition-all shadow-xs"
                 >
-                  {loading ? "..." : "TEST ADMIN"}
+                  {loading ? "..." : "Quản trị"}
                 </button>
               </div>
-              <p className="font-mono text-[9px] text-neutral-400 text-center">
-                Clicks auto-generate and seed standard mock products inside Firebase.
-              </p>
             </div>
           </div>
         )}
 
-        {/* Step 2: Interactive Login/Signup Form */}
+        {/* Step 2: Form */}
         {mode !== "Select" && (
           <div className="space-y-6">
-            {/* Form Header */}
-            <div className="flex justify-between items-center pb-4 border-b-2 border-black">
+            <div className="flex justify-between items-center pb-4 border-b border-ink/5">
               <div>
                 <button
                   onClick={handleBackToSelect}
-                  className="text-xs font-mono text-neutral-500 hover:text-black uppercase underline"
+                  className="label text-ink/50 hover:text-brand transition-colors"
                 >
-                  ← BACK TO GATEWAY
+                  ← Quay lại
                 </button>
-                <h2 className="font-display font-black text-xl uppercase mt-1">
-                  {formType === "ForgotPassword" ? "Reset Request" : formType === "ResetPassword" ? "Update Security" : (mode === "ShopForm" ? "Store Portal" : "Explorer Portal")}
+                <h2 className="display text-xl normal-case text-ink mt-1">
+                  {formType === "ForgotPassword" ? "Đặt lại mật khẩu" : formType === "ResetPassword" ? "Mật khẩu mới" : (mode === "ShopForm" ? "Cổng thông tin Shop" : "Cổng thông tin Khách")}
                 </h2>
               </div>
               
-              {/* Form type switcher */}
               {(formType === "Login" || formType === "Signup") && (
-                <div className="flex border-2 border-black">
+                <div className="flex rounded-full bg-paper-warm p-1 border border-ink/5 text-xs font-semibold">
                   <button
                     onClick={() => { setFormType("Login"); setError(null); }}
-                    className={`px-3 py-1 font-mono text-xs font-bold uppercase transition-all ${
-                      formType === "Login" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                    className={`px-3 py-1 rounded-full transition-all ${
+                      formType === "Login" ? "bg-brand text-paper shadow-xs" : "text-ink/60 hover:text-ink"
                     }`}
                   >
-                    LOGIN
+                    Đăng nhập
                   </button>
                   <button
                     onClick={() => { setFormType("Signup"); setError(null); }}
-                    className={`px-3 py-1 font-mono text-xs font-bold uppercase transition-all ${
-                      formType === "Signup" ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-100"
+                    className={`px-3 py-1 rounded-full transition-all ${
+                      formType === "Signup" ? "bg-brand text-paper shadow-xs" : "text-ink/60 hover:text-ink"
                     }`}
                   >
-                    SIGN UP
+                    Đăng ký
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Error Display */}
             {error && (
-              <div className="border-2 border-black bg-red-100 text-black p-3 text-xs font-mono">
-                <span className="font-bold">[ERROR]:</span> {error}
+              <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 p-3 text-xs">
+                {error}
               </div>
             )}
 
-            {/* Form Inputs */}
             {formType === "ForgotPassword" ? (
               resetSent ? (
-                <div className="border-2 border-black bg-emerald-50 text-emerald-900 p-4 font-mono text-xs space-y-3">
-                  <p className="font-bold uppercase tracking-wider text-emerald-800">✓ Reset Request Initialized</p>
-                  <p>A verification request was triggered for <strong>{email}</strong>.</p>
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 p-5 text-xs space-y-3">
+                  <p className="font-semibold text-emerald-800">✓ Đã gửi yêu cầu đặt lại</p>
+                  <p>Yêu cầu đã được khởi tạo cho email <strong>{email}</strong>.</p>
                   
-                  <div className="bg-amber-50 border-2 border-amber-500 text-amber-950 p-3 space-y-2 mt-2">
-                    <p className="font-bold text-[10px] uppercase tracking-wider text-amber-800 flex items-center gap-1">
-                      📬 Simulated Inbox Notification
-                    </p>
-                    <p className="text-[10px]">
-                      Since email delivery is simulated, we have intercepted the secure link for your convenience. Click the link below to go to the "Set new password" page:
-                    </p>
-                    <button
-                      onClick={() => {
-                        setResetEmail(email);
-                        setFormType("ResetPassword");
-                        setResetSent(false);
-                      }}
-                      className="w-full text-left p-2 border border-amber-700 bg-white hover:bg-amber-50 text-amber-900 font-bold font-mono text-[9px] uppercase tracking-wider transition-all break-all"
-                    >
-                      Reset Link: http://localhost:3000/auth-gateway?mode=ResetPassword&email={encodeURIComponent(email)}
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setResetEmail(email);
+                      setFormType("ResetPassword");
+                      setResetSent(false);
+                    }}
+                    className="w-full text-center rounded-xl bg-emerald-600 text-white p-2.5 font-semibold text-xs hover:bg-emerald-700 transition-all shadow-xs"
+                  >
+                    Chuyển đến màn hình nhập mật khẩu mới
+                  </button>
 
                   <button
                     onClick={() => { setFormType("Login"); resetForm(); setResetSent(false); }}
-                    className="mt-2 block text-xs underline text-neutral-600 hover:text-black uppercase font-mono"
+                    className="mt-2 block text-xs underline text-ink/60 hover:text-ink text-center"
                   >
-                    ← Back to Login Portal
+                    ← Quay lại đăng nhập
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                   <div>
-                    <label className="block text-xs font-mono font-bold uppercase mb-1">
-                      Registered Email Address
+                    <label className="block label text-ink/70 font-semibold mb-1">
+                      Địa chỉ Email
                     </label>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="explorer@email.com"
-                      className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                      className="w-full rounded-xl border border-ink/10 p-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                       required
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                    className="w-full rounded-full bg-brand text-paper py-3 px-6 font-semibold text-xs hover:bg-brand-deep transition-all flex items-center justify-center gap-2 shadow-md shadow-brand/20"
                   >
-                    {loading ? (
-                      <span className="font-mono">INITIALIZING REQUEST...</span>
-                    ) : (
-                      <>
-                        <span>SEND PASSWORD RESET EMAIL</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setFormType("Login"); setError(null); }}
-                    className="block text-xs underline text-neutral-500 hover:text-black uppercase font-mono"
-                  >
-                    ← Back to Login
+                    {loading ? "Đang xử lý..." : "Gửi yêu cầu đặt lại mật khẩu"}
                   </button>
                 </form>
               )
             ) : formType === "ResetPassword" ? (
               resetSuccess ? (
-                <div className="border-2 border-black bg-emerald-50 text-emerald-900 p-4 font-mono text-xs space-y-3">
-                  <p className="font-bold uppercase tracking-wider text-emerald-800">✓ Security Saved</p>
-                  <p>Your security credentials for <strong>{resetEmail}</strong> have been successfully updated in our database.</p>
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 p-5 text-xs space-y-3">
+                  <p className="font-semibold text-emerald-800">✓ Đã cập nhật mật khẩu mới</p>
+                  <p>Mật khẩu của bạn đã được cập nhật thành công.</p>
                   <button
                     onClick={() => { setFormType("Login"); resetForm(); setResetSuccess(false); }}
-                    className="w-full text-center border-2 border-black bg-black text-white py-2 font-bold font-mono text-[10px] uppercase hover:bg-white hover:text-black transition-all"
+                    className="w-full rounded-full bg-brand text-paper py-2.5 font-semibold text-xs hover:bg-brand-deep transition-all"
                   >
-                    Log In with New Password
+                    Đăng nhập ngay
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="bg-neutral-50 p-2 border border-black font-mono text-[10px] text-neutral-500 mb-2">
-                    RE-SETTING PASSWORD FOR: <strong>{resetEmail}</strong>
-                  </div>
+                <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                   <div>
-                    <label className="block text-xs font-mono font-bold uppercase mb-1">
-                      New Security Password
+                    <label className="block label text-ink/70 font-semibold mb-1">
+                      Mật khẩu mới
                     </label>
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                      className="w-full rounded-xl border border-ink/10 p-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono font-bold uppercase mb-1">
-                      Confirm Security Password
+                    <label className="block label text-ink/70 font-semibold mb-1">
+                      Xác nhận mật khẩu
                     </label>
                     <input
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                      className="w-full rounded-xl border border-ink/10 p-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                       required
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                    className="w-full rounded-full bg-brand text-paper py-3 px-6 font-semibold text-xs hover:bg-brand-deep transition-all shadow-md shadow-brand/20"
                   >
-                    {loading ? (
-                      <span className="font-mono">UPDATING CREDENTIALS...</span>
-                    ) : (
-                      <>
-                        <span>SET NEW PASSWORD</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
+                    {loading ? "Đang lưu..." : "Xác nhận mật khẩu mới"}
                   </button>
                 </form>
               )
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-xs font-mono font-bold uppercase mb-1">
-                    Email Address
+                  <label className="block label text-ink/70 font-semibold mb-1">
+                    Email
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={mode === "ShopForm" ? "artisan@shop.vn" : "explorer@email.com"}
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                    className="w-full rounded-xl border border-ink/10 p-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                     required
                   />
                   {mode === "ShopForm" && formType === "Signup" && (
-                    <p className="text-[9px] text-neutral-500 font-mono mt-1">
-                      * Tip: Use an email ending with <code className="bg-neutral-200 px-1 font-bold">@shop.vn</code> for automatic registration status.
+                    <p className="text-[11px] text-ink/60 mt-1">
+                      * Mẹo: Dùng email có đuôi <code className="bg-paper-warm px-1 rounded font-semibold text-brand">@shop.vn</code> để tự động kích hoạt tài khoản shop.
                     </p>
                   )}
                 </div>
 
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="block text-xs font-mono font-bold uppercase">
-                      Security Password
+                    <label className="block label text-ink/70 font-semibold">
+                      Mật khẩu
                     </label>
                     {formType === "Login" && (
                       <button
                         type="button"
                         onClick={() => { setFormType("ForgotPassword"); setError(null); }}
-                        className="text-[10px] font-mono text-neutral-500 hover:text-black underline uppercase"
+                        className="text-[11px] text-brand hover:underline"
                       >
-                        Forgot Password?
+                        Quên mật khẩu?
                       </button>
                     )}
                   </div>
@@ -549,7 +486,7 @@ export default function AuthGateway() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full border-2 border-black p-2 font-mono text-xs focus:bg-neutral-50 focus:outline-none"
+                    className="w-full rounded-xl border border-ink/10 p-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                     required
                   />
                 </div>
@@ -557,26 +494,19 @@ export default function AuthGateway() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-black text-white border-2 border-black p-3 font-bold uppercase text-xs tracking-wider hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2 shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+                  className="w-full rounded-full bg-brand text-paper py-3 px-6 font-semibold text-xs hover:bg-brand-deep transition-all flex items-center justify-center gap-2 shadow-md shadow-brand/20 hover:scale-[1.02] active:scale-98"
                 >
                   {loading ? (
-                    <span className="font-mono">PROCESSSING TRANSACTION...</span>
+                    <span>Đang xác thực...</span>
                   ) : (
                     <>
-                      <span>SUBMIT ACCESS REQUEST</span>
+                      <span>{formType === "Login" ? "Đăng nhập" : "Đăng ký tài khoản"}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
               </form>
             )}
-
-            <div className="bg-neutral-50 border border-neutral-300 p-3 text-[10px] font-mono text-neutral-500 leading-relaxed">
-              <span className="font-bold text-black">// CREDENTIAL SYSTEM OVERVIEW</span>
-              <p className="mt-1">
-                Chưa có hệ thống đăng nhập thật. Dùng các nút đăng nhập thử ở màn hình chọn vai trò — phiên đăng nhập chỉ lưu trên máy này.
-              </p>
-            </div>
           </div>
         )}
 

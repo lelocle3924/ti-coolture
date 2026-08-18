@@ -151,39 +151,45 @@ export default function Homepage() {
       </section>
 
       {/* ============ WHAT'S IN STORE ============ */}
-      <section id="kho" className="bg-paper text-ink pb-16 pt-8 md:pb-24 md:pt-12 scroll-mt-20">
-        <h2 className="display m-0 text-center text-[2rem] md:text-[2.5rem] leading-tight normal-case">
-          Đang có trong kho
-        </h2>
+      <section id="kho" className="bg-paper text-ink pb-16 pt-10 md:pb-24 md:pt-16 scroll-mt-20">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 text-center">
+          <p className="m-0 label text-wave-ink font-semibold tracking-wider">Tuyển chọn thủ công & nghệ nhân</p>
+          <h2 className="display mt-2 text-center text-[2rem] md:text-[2.75rem] leading-tight text-ink normal-case">
+            Đang có trong kho
+          </h2>
+          <p className="mt-2 text-sm md:text-base text-ink/70 max-w-xl mx-auto leading-relaxed">
+            Kéo để xoay & khám phá từng món đồ đặc sắc từ các local brand và artist Việt.
+          </p>
+        </div>
 
-        {/* The strip: an infinitely looping reel of frames, paused on hover */}
-        <div className="mt-8 md:mt-10">
+        {/* The 3D Coverflow Carousel */}
+        <div className="mt-6 md:mt-8">
           {loading ? (
-            <div className="flex gap-4 overflow-hidden px-5 md:px-8" aria-busy="true">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="w-[210px] shrink-0 animate-pulse md:w-[240px]">
-                  <div className="aspect-square rounded-sm bg-paper-warm" />
-                  <div className="mt-3 h-3 w-2/5 bg-paper-warm" />
-                  <div className="mt-2 h-4 w-4/5 bg-paper-warm" />
+            <div className="flex justify-center gap-4 overflow-hidden px-5 py-12 md:px-8" aria-busy="true">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="w-[200px] shrink-0 animate-pulse md:w-[240px]">
+                  <div className="aspect-square rounded-2xl bg-paper-warm border border-ink/5" />
+                  <div className="mt-4 h-3 w-1/3 rounded bg-paper-warm" />
+                  <div className="mt-2 h-4 w-3/4 rounded bg-paper-warm" />
                 </div>
               ))}
             </div>
           ) : loadError ? (
-            <div className="px-5 py-6 md:px-8">
-              <p className="m-0 text-base font-medium">Không tải được danh sách.</p>
-              <p className="mt-1 text-sm text-ink/60">Thử lại sau vài giây.</p>
+            <div className="mx-auto max-w-md px-5 py-8 text-center">
+              <p className="m-0 text-base font-medium">Không tải được danh sách sản phẩm.</p>
+              <p className="mt-1 text-sm text-ink/60">Thử lại sau vài giây nhé.</p>
               <button
                 onClick={loadData}
-                className="mt-4 inline-flex items-center min-h-11 rounded-md bg-brand px-6 text-paper label transition-colors hover:bg-brand-deep"
+                className="mt-4 inline-flex items-center min-h-11 rounded-full bg-brand px-6 text-paper label transition-all hover:bg-brand-deep hover:scale-105 active:scale-95 shadow-md shadow-brand/20"
               >
                 Thử lại
               </button>
             </div>
           ) : railProducts.length === 0 ? (
-            <div className="px-5 py-6 md:px-8">
+            <div className="mx-auto max-w-md px-5 py-10 text-center">
               <p className="m-0 text-base font-medium">Kho đang trống.</p>
               <p className="mt-1 text-sm text-ink/60">
-                Chưa có sản phẩm nào được duyệt. Quay lại sau nhé.
+                Chưa có sản phẩm nào được duyệt. Hãy ghé lại sau nhé.
               </p>
             </div>
           ) : (
@@ -192,12 +198,12 @@ export default function Homepage() {
         </div>
 
         <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
-          <p className="m-0 max-w-[42ch] text-[0.8125rem] leading-normal text-ink/60">
-            Giá tham khảo · cập nhật 08/2026. Giá cuối do shop quyết định.
+          <p className="m-0 max-w-[44ch] text-[0.8125rem] leading-normal text-ink/60">
+            Giá tham khảo · cập nhật 08/2026. Mua trực tiếp từ trang chính thức của từng shop.
           </p>
           <Link
             to="/products"
-            className="inline-flex items-center justify-center min-h-11 rounded-md bg-brand px-6 text-paper label whitespace-nowrap transition-colors hover:bg-brand-deep"
+            className="inline-flex items-center justify-center min-h-11 rounded-full bg-brand px-7 text-paper label whitespace-nowrap transition-all hover:bg-brand-deep hover:scale-105 active:scale-95 shadow-md shadow-brand/25"
           >
             Xem tất cả sản phẩm
           </Link>

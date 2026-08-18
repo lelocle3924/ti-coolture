@@ -19,6 +19,7 @@ export default function FilmStrip({ products }: { products: Product[] }) {
     subtitle: prod.storeName,
     meta: [
       { label: "Giá", value: formatPrice(prod.price) },
+      { label: "Danh mục", value: prod.category },
     ],
   }));
 
@@ -31,11 +32,12 @@ export default function FilmStrip({ products }: { products: Product[] }) {
   };
 
   return (
-    <div className="w-full bg-[#14091f]">
+    <div className="w-full relative py-2">
       <CoverflowCarousel
         slides={slides}
         showCaption
         showNavigation
+        showPagination
         onSlideClick={handleSlideClick}
         cardClassName="cursor-pointer"
       />
