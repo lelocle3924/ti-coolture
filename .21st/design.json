@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "project": {
+    "name": "ti-coolture",
+    "productType": "curated catalogue (no cart, no checkout)",
+    "stack": [
+      "react",
+      "tailwind-v4",
+      "vite"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/index.css"
+    ],
+    "components": [
+      "src/components/ui"
+    ],
+    "assets": [
+      "src/assets",
+      "assets"
+    ],
+    "instructions": [
+      "PRODUCT.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-brand": {
+        "value": "#7520f7",
+        "source": "src/index.css"
+      },
+      "--color-brand-deep": {
+        "value": "#5a12c6",
+        "source": "src/index.css"
+      },
+      "--color-wave": {
+        "value": "#39d6cf",
+        "source": "src/index.css"
+      },
+      "--color-wave-ink": {
+        "value": "#0b7c77",
+        "source": "src/index.css"
+      },
+      "--color-ink": {
+        "value": "#12081f",
+        "source": "src/index.css"
+      },
+      "--color-paper": {
+        "value": "#ffffff",
+        "source": "src/index.css"
+      },
+      "--color-paper-warm": {
+        "value": "#faf8ff",
+        "source": "src/index.css"
+      },
+      "--ease-spring": {
+        "value": "cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+        "source": "src/index.css"
+      }
+    },
+    "typography": {
+      "--font-display": {
+        "value": "\"DFVN Some Time Later\", \"Alexandria\", system-ui, sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-sans": {
+        "value": "\"Alexandria\", system-ui, -apple-system, sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-mono": {
+        "value": "\"Alexandria\", system-ui, -apple-system, sans-serif",
+        "source": "src/index.css"
+      }
+    },
+    "spacing": {},
+    "radius": {
+      "--radius-none": {
+        "value": "0px",
+        "source": "src/index.css"
+      }
+    },
+    "shadows": {},
+    "motion": {
+      "--ease-brand": {
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "source": "src/index.css"
+      }
+    },
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "coverflow-carousel"
+    ],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [
+      "Two faces only: DFVN Some Time Later (display) + Alexandria (everything read)",
+      "Display type never set below 1.0 — Vietnamese diacritics need the headroom",
+      "Teal is surface/ornament only; --color-wave-ink is the only teal that carries text",
+      "Header hides on scroll down and returns on scroll up (8px threshold, held open while a drawer is open)",
+      "Hero loop opens on the Ti Coolture frame, then shop-submitted 16:9 landscape frames with attribution",
+      "Every shop image slot is landscape (16:9, >=1600px); an unfilled slot renders as a labelled block, never stock photography",
+      "District map is a carousel, one map per district; tapping a marked point lists the route starting there",
+      "For him / For her collections present on the homepage",
+      "Price note and the no-transaction disclaimer appear verbatim wherever they apply",
+      "prefers-reduced-motion stops every looping and scroll-driven animation",
+      "Only the six brand tokens in src/index.css; no new colours",
+      "Colour ratio 60% violet / 30% black and white / 10% teal (user confirmed 2026-08-19)"
+    ],
+    "avoid": [
+      "Stock photography of any kind",
+      "Cart, checkout, price-as-final, or any language implying Ti Coolture sells",
+      "Invented shop names, testimonials, press or user counts beyond the labelled seed data",
+      "Shadows outside modals — hairlines carry structure"
+    ]
+  },
+  "decisions": [
+    {
+      "id": "homepage-direction",
+      "status": "narrowing",
+      "date": "2026-08-19",
+      "question": "Which of the three homepage directions does the team take forward?",
+      "options": [
+        {
+          "slug": "a",
+          "name": "SAP / The Stall",
+          "reference": "partakefoods.com",
+          "route": "/lab/a",
+          "source": "src/lab/DirectionA.tsx",
+          "axes": {
+            "navigation": "floating capsule, spring landing",
+            "catalogue": "two counter-running marquee lanes",
+            "density": "high",
+            "emphasis": "product-first"
+          }
+        },
+        {
+          "slug": "b",
+          "name": "HO SO / The Archive",
+          "reference": "objectandarchive.com",
+          "route": "/lab/b",
+          "source": "src/lab/DirectionB.tsx",
+          "axes": {
+            "navigation": "chrome thins to a hairline index",
+            "catalogue": "numbered index rows, hover summons the plate",
+            "density": "highest text density, lowest chroma",
+            "emphasis": "editorial/typographic"
+          }
+        },
+        {
+          "slug": "c",
+          "name": "DONG / The Current",
+          "reference": "readymag.com · bangkokartcity.org · dontboardme.com",
+          "route": "/lab/c",
+          "source": "src/lab/DirectionC.tsx",
+          "axes": {
+            "navigation": "glass bar + left-edge spine index",
+            "catalogue": "two counter-running marquee lanes (from A), cardless",
+            "howItWorks": "four cards overlapping ~27%, revealing in sequence on scroll (after dontboardme.com)",
+            "collections": "four numbered placeholders on a pinned 60/30/10 sliding track",
+            "map": "single strip; island + pins + arrows, the map itself links to /kham-pha",
+            "footer": "MO-4 reveal — stationary underlay, wordmark scrubs 0.25 to 1",
+            "colour": "violet-dominant per the 60/30/10 guideline; one white section (How it works), one ink section (map), teal reserved for indices, the island and one collection panel",
+            "hiddenGems": "right-edge tab ported from the live homepage; hides on scroll-down with the rest of the chrome per UX-TASKS 2.3"
+          }
+        }
+      ],
+      "compare": "/lab",
+      "screenshots": "docs/directions/",
+      "onDecide": "Delete the two unchosen src/lab/Direction*.tsx files and their routes in src/App.tsx, fold the winner into src/views/Homepage.tsx, and set this decision to the chosen slug.",
+      "note": "19/08: team chose C as the base for its cardless feel, and asked for A's marquee and collection look to be brought across. A and B stay published for reference; C is now the working direction."
+    },
+    {
+      "id": "brand-ratio-conflict",
+      "status": "resolved",
+      "date": "2026-08-19",
+      "note": "PRODUCT.md records the guidelines ratio as 60% white / 30% violet / 10% teal; the header comment in src/index.css records it as violet 60% / white 30% / teal 10%. Direction B reads it the PRODUCT.md way (paper ground), A and C the index.css way (violet ground). Confirm against docs/BRAND-GUIDELINES-TI-COOLTURE.pdf before committing to a direction.",
+      "resolvedOn": "2026-08-19",
+      "resolution": "User confirmed: 60% violet, 30% black and white, 10% teal. Violet is the dominant ground. Direction C was retoned to match; measured across 2660 sample points over the full page: violet 52%, white 14%, ink 12%, teal 9%, photography 13% (the hero photo carries a violet multiply scrim, so perceived violet sits near 60%)."
+    },
+    {
+      "id": "collections-window-length",
+      "status": "open",
+      "date": "2026-08-19",
+      "question": "Should the pinned collections window run one step further so every collection gets its 60% moment?",
+      "note": "The brief described the window sliding from (C1 60, C2 30, C3 10) to (Cn-2 60, Cn-1 30, Xem them 10), which is what ships. With four collections that means Collection 4 peaks at 30% and never reaches 60%. One-line change in PinnedCollections: cursorMax = panelCount - 2 instead of panelCount - 3."
+    },
+    {
+      "id": "map-position-vs-wireframes",
+      "status": "open",
+      "date": "2026-08-19",
+      "note": "wireframes.html MO-7 says the collections pin 'releases directly into the footer reveal - the two are consecutive, never simultaneous'. The team's 19/08 note puts the map strip between collections and the footer, which ships. The two are still consecutive, just with the strip between them; confirm this supersedes the wireframe note."
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "src/components/ui"
+    },
+    {
+      "fact": "design.colorMode:light",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "project.instructions",
+      "source": "PRODUCT.md"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:vite",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-08-19T14:16:03.177Z"
+}

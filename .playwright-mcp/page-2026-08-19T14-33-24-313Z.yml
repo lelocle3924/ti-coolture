@@ -1,0 +1,62 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - generic [ref=f2e6]:
+      - link "Tí Coolture — trang chủ" [ref=f2e7] [cursor=pointer]:
+        - /url: /lab/c
+        - img "Tí Coolture" [ref=f2e8]
+      - navigation "Điều hướng chính" [ref=f2e20]:
+        - link "Sản phẩm" [ref=f2e21] [cursor=pointer]:
+          - /url: /products
+        - link "Shop" [ref=f2e22] [cursor=pointer]:
+          - /url: /stores
+        - link "Khám phá" [ref=f2e23] [cursor=pointer]:
+          - /url: /kham-pha
+        - link "Tụi mình" [ref=f2e24] [cursor=pointer]:
+          - /url: /tui-minh
+      - button "Tìm kiếm" [ref=f2e26]
+  - navigation "Vị trí trong trang":
+    - list:
+      - listitem:
+        - link "MỞ ĐẦU" [ref=f2e31] [cursor=pointer]:
+          - /url: "#dong-hero"
+      - listitem:
+        - link "TRONG KHO" [ref=f2e34] [cursor=pointer]:
+          - /url: "#dong-store"
+      - listitem:
+        - link "TẶNG AI" [ref=f2e37] [cursor=pointer]:
+          - /url: "#dong-gift"
+      - listitem:
+        - link "BẢN ĐỒ" [ref=f2e40] [cursor=pointer]:
+          - /url: "#dong-map"
+  - region "Ảnh của Tí Coolture và các shop" [ref=f2e43]:
+    - img "Tí Coolture — hình mở đầu" [ref=f2e45]
+    - generic [ref=f2e49]:
+      - generic [ref=f2e50]:
+        - paragraph [ref=f2e51]:
+          - generic [ref=f2e52]: TÍ COOLTURE
+        - heading "Mỗi người một TÍ chất riêng" [level=1] [ref=f2e53]
+        - paragraph [ref=f2e54]:
+          - generic [ref=f2e55]: Mỗi người một TÍ chất riêng
+        - link [ref=f2e57] [cursor=pointer]:
+          - /url: "#dong-store"
+      - 'button "Xem ảnh 1: Tí Coolture" [ref=f2e62]'
+  - generic [ref=f2e69]:
+    - generic [ref=f2e70]:
+      - heading "Tặng ai cũng có phần" [level=2] [ref=f2e71]
+      - paragraph [ref=f2e72]: Hai ngăn, cùng một gu. Cuộn tiếp — hai hàng chạy ngược nhau.
+    - generic [ref=f2e73]:
+      - generic [ref=f2e74]:
+        - generic [ref=f2e75]:
+          - generic [ref=f2e76]: For him
+          - generic [ref=f2e77]: Cho anh
+          - generic [ref=f2e78]: "00"
+        - paragraph [ref=f2e79]: Tí đang chọn những món đầu tiên cho ngăn này.
+      - generic [ref=f2e80]:
+        - generic [ref=f2e81]:
+          - generic [ref=f2e82]: For her
+          - generic [ref=f2e83]: Cho cô
+          - generic [ref=f2e84]: "00"
+        - paragraph [ref=f2e85]: Tí đang chọn những món đầu tiên cho ngăn này.
+  - contentinfo [ref=f2e86]:
+    - paragraph [ref=f2e87]: Tí Coolture
+    - paragraph [ref=f2e88]: Tí Coolture không bán hàng và không xử lý giao dịch. Mọi trao đổi diễn ra trực tiếp giữa bạn và thương hiệu.

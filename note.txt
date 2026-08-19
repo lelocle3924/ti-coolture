@@ -12,3 +12,34 @@ Ví dụ:
 - Đã biết muốn mua gì chưa? -> Search để tìm đúng sp mình muốn
 - Chưa biết muốn mua gì? -> Browse what's in store/curated collections
 - Map chắc để cuối cùng
+
+
+I have a few feedback
+
+
+
+
+
+the map carousel should copy the look of the "Discover Bangkok Art City" of this page: https://www.bangkokartcity.org/
+The map is now a single strip between Collections and the footer, linking to `/kham-pha`. The homepage would only show the map SVG and the pins, and nothing else. The user can click the arrows on either sides to switch to another map. But, the moment they click on the map itself, they get directed to /kham-pha, where the map with the full stop list will be.
+
+
+between What's in store and Collections, there should be a "How it works" Section. take inspiration from the "How it works" section of this website: https://dontboardme.com/. The copywriting is listed in the attached file.
+
+
+
+the footer isn't following the scroll reveal spec in wireframes
+
+
+
+I like the cardless feel of option c. However, there are a few elements from option a that you should bring over.
+
+
+
+remove the pinned horizontal scroll for the What's in store in option c and use the 2 way carousel from option a instead.
+
+
+
+I also like the look of the collections from option a. However, change the name of the collections from "For him" and "For her" to placeholder "Collection 1","Collection 2","Collection 3","Collection 4". Apply the pinned horizontal scroll that you did for "What's in store" of option c here. The user scrolls down, and Collection 1 takes up 60% of the horizontal space, Collection 2 takes up 30% of the space, then 10% showing the Collection 3. The user scrolls some more and the ratio of Collection 1 gradually reduces, while Collection 2 and 3 increases, until Collection 2 takes up 60% of the horizontal space, Collection 3 takes up 30%, and the last 10% for "See more"/"Xem thêm". After that, it goes down to the map section.
+
+

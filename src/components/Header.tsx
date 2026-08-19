@@ -11,7 +11,7 @@ import Brandmark from "./Brandmark";
  * violet ground rather than the mockup's white bar.
  */
 const NAV_LINKS = [
-  { to: "/", label: "Trang chủ", end: true },
+  
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
   { to: "/kham-pha", label: "Khám phá" },
@@ -121,14 +121,14 @@ export default function Header() {
             <span title="Chưa có bản tiếng Anh">EN</span>
           </span>
 
-          <button
+          {/* <button
             onClick={handleUserClick}
             className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
             aria-label={user ? "Tài khoản của bạn" : "Đăng nhập hoặc đăng ký"}
             title={user ? user.email : "Đăng nhập / Đăng ký"}
           >
             <UserIcon className="w-[18px] h-[18px]" />
-          </button>
+          </button> */}
 
           {user && (
             <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-white/20">

@@ -1,0 +1,99 @@
+- generic [ref=f11e4]:
+  - banner [ref=f11e5]:
+    - img "Tí Coolture" [ref=f11e6]
+    - heading "Ba hướng đi" [level=1] [ref=f11e18]
+    - paragraph [ref=f11e19]: "Ba hướng thiết kế cho trang chủ, dựng thật trên cùng dữ liệu và cùng bộ token. Tất cả đều đã có phản hồi của team: nav tự ẩn, hero loop ảnh shop gửi, For him / For her, thumbnail ngang, và bản đồ quận dạng carousel."
+  - generic [ref=f11e20]:
+    - heading "Giữ nguyên ở cả ba" [level=2] [ref=f11e21]
+    - list [ref=f11e22]:
+      - listitem [ref=f11e23]: React 19 + Vite + Tailwind 4, same build
+      - listitem [ref=f11e25]: Tokens from src/index.css — no new colours, no new faces
+      - listitem [ref=f11e27]: Data through src/lib/dbService.ts (same products, shops, routes)
+      - listitem [ref=f11e29]: Nav hides on scroll down, returns on scroll up (8px threshold)
+      - listitem [ref=f11e31]: Hero loop opens on the Tí frame, then shop-submitted 16:9 frames
+      - listitem [ref=f11e33]: Landscape thumbnails everywhere a shop image appears
+      - listitem [ref=f11e35]: For him / For her present in all three
+      - listitem [ref=f11e37]: District map carousel; tapping a marked point lists the route from it
+      - listitem [ref=f11e39]: Price note + no-transaction stance kept verbatim
+      - listitem [ref=f11e41]: prefers-reduced-motion stops every scroll-driven and looping animation
+  - generic [ref=f11e43]:
+    - article [ref=f11e44]:
+      - generic [ref=f11e45]:
+        - generic [ref=f11e46]:
+          - paragraph [ref=f11e51]: SẠP
+          - paragraph [ref=f11e52]: The Stall · tham chiếu partakefoods.com
+          - paragraph [ref=f11e53]: A joyful street stall. Everything is present at once, everything answers back when touched. Loud violet, chunky rounded forms, spring physics.
+          - paragraph [ref=f11e54]:
+            - strong [ref=f11e55]: "Hiệu quả mong muốn:"
+            - text: Visitor feels invited in and starts tapping immediately.
+          - link "Xem bản dựng A" [ref=f11e56] [cursor=pointer]:
+            - /url: /lab/a
+        - generic [ref=f11e60]:
+          - paragraph [ref=f11e61]: Khác biệt có chủ đích
+          - list [ref=f11e62]:
+            - listitem [ref=f11e63]: "Navigation: floating capsule that lands with a spring overshoot"
+            - listitem [ref=f11e65]: "Catalogue: two counter-running marquee lanes that never stop"
+            - listitem [ref=f11e67]: "Gifts: split panels that push each other on hover (1.6 / 0.7 flex)"
+            - listitem [ref=f11e69]: "Map: board-game beads; the picked bead becomes stop 01"
+            - listitem [ref=f11e71]: "Density: high — three surfaces visible per screen"
+          - paragraph [ref=f11e73]: Rủi ro
+          - paragraph [ref=f11e74]: Continuous marquee motion is the biggest attention tax of the three; it pauses on hover and stops under reduced motion, but it is always running otherwise.
+          - paragraph [ref=f11e75]: Hợp nhất khi
+          - paragraph [ref=f11e76]: Instagram traffic landing mid-scroll, wanting to see many things fast.
+    - article [ref=f11e77]:
+      - generic [ref=f11e78]:
+        - generic [ref=f11e79]:
+          - paragraph [ref=f11e84]: HỒ SƠ
+          - paragraph [ref=f11e85]: The Archive · tham chiếu objectandarchive.com
+          - paragraph [ref=f11e86]: A curator's archive. Paper ground, hairline rules, running index numbers, museum captions. The catalogue is a table of contents, not a grid.
+          - paragraph [ref=f11e87]:
+            - strong [ref=f11e88]: "Hiệu quả mong muốn:"
+            - text: Visitor reads the selection as authored and trustworthy.
+          - link "Xem bản dựng B" [ref=f11e89] [cursor=pointer]:
+            - /url: /lab/b
+        - generic [ref=f11e93]:
+          - paragraph [ref=f11e94]: Khác biệt có chủ đích
+          - list [ref=f11e95]:
+            - listitem [ref=f11e96]: "Navigation: chrome thins to a hairline index; the rule is the progress bar"
+            - listitem [ref=f11e98]: "Catalogue: numbered index rows with leader dots; hover summons the plate"
+            - listitem [ref=f11e100]: "Gifts: two labelled cabinet drawers as caption-led filmstrips"
+            - listitem [ref=f11e102]: "Map: survey plan paged by district; route prints as a contents list"
+            - listitem [ref=f11e104]: "Density: highest text density, lowest chroma — violet used once, as punctuation"
+          - paragraph [ref=f11e106]: Rủi ro
+          - paragraph [ref=f11e107]: Leans on reading. Small type and low-contrast hairlines need a size audit before it ships; the index row is the only route to a product on desktop.
+          - paragraph [ref=f11e108]: Hợp nhất khi
+          - paragraph [ref=f11e109]: Making curation itself the argument — press, partner shops, the 'why we exist' case.
+    - article [ref=f11e110]:
+      - generic [ref=f11e111]:
+        - generic [ref=f11e112]:
+          - paragraph [ref=f11e117]: DÒNG
+          - paragraph [ref=f11e118]: The Current · tham chiếu readymag.com
+          - paragraph [ref=f11e119]: "One continuous motion. Scroll is the only instrument: it drives the hero, pulls the catalogue sideways, and draws the route on the map."
+          - paragraph [ref=f11e120]:
+            - strong [ref=f11e121]: "Hiệu quả mong muốn:"
+            - text: Visitor keeps scrolling because the page keeps turning itself.
+          - link "Xem bản dựng C" [ref=f11e122] [cursor=pointer]:
+            - /url: /lab/c
+        - generic [ref=f11e126]:
+          - paragraph [ref=f11e127]: Khác biệt có chủ đích
+          - list [ref=f11e128]:
+            - listitem [ref=f11e129]: "Navigation: glass bar + a spine index on the left edge tracking position"
+            - listitem [ref=f11e131]: "Catalogue: vertical scroll drives a pinned horizontal rail (desktop only)"
+            - listitem [ref=f11e133]: "Gifts: two lanes counter-scrolling against each other, bound to scroll"
+            - listitem [ref=f11e135]: "Map: picking a start point draws the polyline stop by stop"
+            - listitem [ref=f11e137]: "Density: lowest per screen, highest per scroll-distance"
+          - paragraph [ref=f11e139]: Rủi ro
+          - paragraph [ref=f11e140]: The pinned rail takes over scroll on desktop — it is disabled below 1024px and under reduced motion, but it is still the most opinionated interaction here.
+          - paragraph [ref=f11e141]: Hợp nhất khi
+          - paragraph [ref=f11e142]: A launch moment / awards submission where the first ten seconds matter most.
+  - contentinfo [ref=f11e143]:
+    - paragraph [ref=f11e144]:
+      - text: Dữ liệu vẫn là dữ liệu giả trong
+      - code [ref=f11e145]: src/lib/mock/seed.ts
+      - text: . Ảnh ngang của shop hiện là ô trống có ghi rõ tỷ lệ cần nộp — đúng như yêu cầu team đặt ra cho các shop.
+    - paragraph [ref=f11e146]:
+      - text: Chọn xong một hướng, hai hướng còn lại sẽ được gỡ khỏi
+      - code [ref=f11e147]: src/lab/
+      - text: và quyết định được ghi vào
+      - code [ref=f11e148]: .21st/design.json
+      - text: .

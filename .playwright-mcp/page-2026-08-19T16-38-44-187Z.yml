@@ -1,0 +1,151 @@
+- generic [ref=f15e3]:
+  - banner [ref=f15e4]:
+    - generic [ref=f15e6]:
+      - link "Tí Coolture — trang chủ" [ref=f15e7] [cursor=pointer]:
+        - /url: /lab/c
+        - img "Tí Coolture" [ref=f15e8]
+      - navigation "Điều hướng chính" [ref=f15e20]:
+        - link "Sản phẩm" [ref=f15e21] [cursor=pointer]:
+          - /url: /products
+        - link "Shop" [ref=f15e22] [cursor=pointer]:
+          - /url: /stores
+        - link "Khám phá" [ref=f15e23] [cursor=pointer]:
+          - /url: /kham-pha
+        - link "Tụi mình" [ref=f15e24] [cursor=pointer]:
+          - /url: /tui-minh
+      - button "Tìm kiếm" [ref=f15e26]
+  - navigation "Vị trí trong trang":
+    - list:
+      - listitem:
+        - link "MỞ ĐẦU" [ref=f15e31] [cursor=pointer]:
+          - /url: "#dong-hero"
+      - listitem:
+        - link "TRONG KHO" [ref=f15e34] [cursor=pointer]:
+          - /url: "#dong-store"
+      - listitem:
+        - link "CÁCH ĐẶT" [ref=f15e37] [cursor=pointer]:
+          - /url: "#dong-how"
+      - listitem:
+        - link "BỘ SƯU TẬP" [ref=f15e40] [cursor=pointer]:
+          - /url: "#dong-collections"
+      - listitem:
+        - link "BẢN ĐỒ" [ref=f15e43] [cursor=pointer]:
+          - /url: "#dong-map"
+  - contentinfo "Chân trang" [ref=f15e46]:
+    - generic [ref=f15e47]:
+      - generic [ref=f15e48]:
+        - paragraph [ref=f15e49]: Nơi tuyển chọn local brand và artist Việt.
+        - link "hello@ticoolture.vn" [ref=f15e50] [cursor=pointer]:
+          - /url: mailto:hello@ticoolture.vn
+      - navigation "Sơ đồ trang" [ref=f15e51]:
+        - list [ref=f15e52]:
+          - listitem [ref=f15e53]:
+            - link "Sản phẩm" [ref=f15e54] [cursor=pointer]:
+              - /url: /products
+          - listitem [ref=f15e55]:
+            - link "Shop" [ref=f15e56] [cursor=pointer]:
+              - /url: /stores
+          - listitem [ref=f15e57]:
+            - link "Khám phá" [ref=f15e58] [cursor=pointer]:
+              - /url: /kham-pha
+          - listitem [ref=f15e59]:
+            - link "Tạp chí" [ref=f15e60] [cursor=pointer]:
+              - /url: /tui-minh
+          - listitem [ref=f15e61]:
+            - link "Về Tí" [ref=f15e62] [cursor=pointer]:
+              - /url: /gioi-thieu
+          - listitem [ref=f15e63]:
+            - link "Hợp tác" [ref=f15e64] [cursor=pointer]:
+              - /url: /hop-tac
+          - listitem [ref=f15e65]:
+            - link "FAQ" [ref=f15e66] [cursor=pointer]:
+              - /url: /faq
+          - listitem [ref=f15e67]:
+            - link "Điều khoản" [ref=f15e68] [cursor=pointer]:
+              - /url: /dieu-khoan
+          - listitem [ref=f15e69]:
+            - link "Bảo mật" [ref=f15e70] [cursor=pointer]:
+              - /url: /bao-mat
+    - img "Tí Coolture" [ref=f15e72]
+    - generic [ref=f15e84]:
+      - paragraph [ref=f15e85]: © 2026 Tí Coolture
+      - paragraph [ref=f15e86]: Tí Coolture không bán hàng và không xử lý giao dịch.
+      - paragraph [ref=f15e87]: VI / EN
+  - generic [ref=f15e88]:
+    - region "Ảnh của Tí Coolture và các shop" [ref=f15e89]:
+      - img "Tí Coolture — hình mở đầu" [ref=f15e91]
+      - generic [ref=f15e95]:
+        - generic [ref=f15e96]:
+          - paragraph [ref=f15e97]:
+            - generic [ref=f15e98]: TÍ COOLTURE
+          - heading "Mỗi người một TÍ chất riêng" [level=1] [ref=f15e99]
+          - paragraph [ref=f15e100]:
+            - generic [ref=f15e101]: Mỗi người một TÍ chất riêng
+          - link [ref=f15e103] [cursor=pointer]:
+            - /url: "#dong-store"
+        - 'button "Xem ảnh 1: Tí Coolture" [ref=f15e108]'
+    - generic [ref=f15e116]:
+      - paragraph [ref=f15e117]: CÁCH ĐẶT HÀNG
+      - list [ref=f15e118]:
+        - listitem [ref=f15e119]:
+          - heading "Chọn món bạn ưng" [level=3] [ref=f15e120]
+          - paragraph [ref=f15e121]: "01."
+          - paragraph [ref=f15e122]: Lướt qua sản phẩm từ các local brand Tí tuyển chọn. Thấy món hợp gu thì mở ra xem kỹ hơn.
+        - listitem [ref=f15e123]:
+          - heading "Bấm ORDER NOW, chọn kênh" [level=3] [ref=f15e124]
+          - paragraph [ref=f15e125]: "02."
+          - paragraph [ref=f15e126]: Mỗi shop bán trên kênh riêng — Instagram, TikTok hay Facebook. Chọn kênh bạn hay dùng.
+        - listitem [ref=f15e127]:
+          - heading "Dán tin nhắn có sẵn" [level=3] [ref=f15e128]
+          - paragraph [ref=f15e129]: "03."
+          - paragraph [ref=f15e130]: Tí soạn sẵn tên món kèm link và copy vào máy bạn. Qua shop chỉ việc dán rồi gửi.
+        - listitem [ref=f15e131]:
+          - heading "Shop nhắn lại cho bạn" [level=3] [ref=f15e132]
+          - paragraph [ref=f15e133]: "04."
+          - paragraph [ref=f15e134]: Giá, còn hàng hay không, ship thế nào — bạn chốt trực tiếp với shop. Tí không giữ tiền, không qua trung gian.
+      - generic [ref=f15e135]:
+        - generic [ref=f15e136]:
+          - heading "Chưa biết mua gì?" [level=3] [ref=f15e137]
+          - paragraph [ref=f15e138]: Ngó thử mấy bộ sưu tập này xem, biết đâu lại đúng gu bạn.
+        - link [ref=f15e139] [cursor=pointer]:
+          - /url: "#dong-collections"
+    - generic [ref=f15e143]:
+      - generic [ref=f15e145]:
+        - heading "Bộ sưu tập" [level=2] [ref=f15e146]
+        - paragraph [ref=f15e147]: Tên bộ sưu tập là placeholder — chờ ban biên tập đặt tên thật.
+      - generic [ref=f15e150]:
+        - generic [ref=f15e151]:
+          - generic [ref=f15e152]:
+            - generic [ref=f15e153]: "01"
+            - generic [ref=f15e154]: COLLECTION 1
+          - generic [ref=f15e158]:
+            - heading "Collection 1" [level=3] [ref=f15e159]
+            - generic [ref=f15e160]: 00 MÓN
+        - generic [ref=f15e162]:
+          - generic [ref=f15e163]:
+            - generic [ref=f15e164]: "02"
+            - generic [ref=f15e165]: COLLECTION 2
+          - generic [ref=f15e169]:
+            - heading "Collection 2" [level=3] [ref=f15e170]
+            - generic [ref=f15e171]: 00 MÓN
+        - generic [ref=f15e173]:
+          - generic [ref=f15e174]:
+            - generic [ref=f15e175]: "03"
+            - generic [ref=f15e176]: COLLECTION 3
+          - generic [ref=f15e180]:
+            - heading [level=3] [ref=f15e181]: Collection 3
+            - generic [ref=f15e182]: 00 MÓN
+        - generic:
+          - generic [ref=f15e184]:
+            - generic [ref=f15e185]: "04"
+            - generic [ref=f15e186]: COLLECTION 4
+          - generic [ref=f15e188]:
+            - heading [level=3] [ref=f15e189]: Collection 4
+            - generic [ref=f15e190]: 00 MÓN
+        - generic:
+          - generic [ref=f15e191]:
+            - generic [ref=f15e192]: →
+            - generic [ref=f15e193]: XEM THÊM
+          - link [ref=f15e196] [cursor=pointer]:
+            - /url: /products
+            - text: Xem thêm

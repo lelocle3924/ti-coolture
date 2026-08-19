@@ -1,0 +1,41 @@
+- generic [ref=f9e3]:
+  - banner [ref=f9e4]:
+    - generic [ref=f9e6]:
+      - link "Tí Coolture — trang chủ" [ref=f9e7] [cursor=pointer]:
+        - /url: /lab/c
+        - img "Tí Coolture" [ref=f9e8]
+      - generic [ref=f9e20]:
+        - button "Tìm kiếm" [ref=f9e21]
+        - button "Mở menu" [ref=f9e25]
+  - region "Ảnh của Tí Coolture và các shop" [ref=f9e28]:
+    - img "Tí Coolture — hình mở đầu" [ref=f9e30]
+    - generic [ref=f9e34]:
+      - generic [ref=f9e35]:
+        - paragraph [ref=f9e36]:
+          - generic [ref=f9e37]: TÍ COOLTURE
+        - heading "Mỗi người một TÍ chất riêng" [level=1] [ref=f9e38]
+        - paragraph [ref=f9e39]:
+          - generic [ref=f9e40]: Mỗi người một TÍ chất riêng
+        - link [ref=f9e42] [cursor=pointer]:
+          - /url: "#dong-store"
+      - 'button "Xem ảnh 1: Tí Coolture" [ref=f9e47]'
+  - generic [ref=f9e54]:
+    - generic [ref=f9e55]:
+      - heading "Tặng ai cũng có phần" [level=2] [ref=f9e56]
+      - paragraph [ref=f9e57]: Hai ngăn, cùng một gu. Cuộn tiếp — hai hàng chạy ngược nhau.
+    - generic [ref=f9e58]:
+      - generic [ref=f9e59]:
+        - generic [ref=f9e60]:
+          - generic [ref=f9e61]: For him
+          - generic [ref=f9e62]: Cho anh
+          - generic [ref=f9e63]: "00"
+        - paragraph [ref=f9e64]: Tí đang chọn những món đầu tiên cho ngăn này.
+      - generic [ref=f9e65]:
+        - generic [ref=f9e66]:
+          - generic [ref=f9e67]: For her
+          - generic [ref=f9e68]: Cho cô
+          - generic [ref=f9e69]: "00"
+        - paragraph [ref=f9e70]: Tí đang chọn những món đầu tiên cho ngăn này.
+  - contentinfo [ref=f9e71]:
+    - paragraph [ref=f9e72]: Tí Coolture
+    - paragraph [ref=f9e73]: Tí Coolture không bán hàng và không xử lý giao dịch. Mọi trao đổi diễn ra trực tiếp giữa bạn và thương hiệu.

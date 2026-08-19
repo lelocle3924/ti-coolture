@@ -1,0 +1,315 @@
+- generic [ref=f21e3]:
+  - main [ref=f21e4]:
+    - generic [ref=f21e5]:
+      - navigation [ref=f21e14]:
+        - link [ref=f21e15] [cursor=pointer]:
+          - /url: /pricing
+        - link [ref=f21e34] [cursor=pointer]:
+          - /url: /about-us
+        - link [ref=f21e53] [cursor=pointer]:
+          - /url: /services
+        - link [ref=f21e72] [cursor=pointer]:
+          - /url: /blog
+        - link [ref=f21e91] [cursor=pointer]:
+          - /url: /contacts
+        - generic [ref=f21e110]:
+          - link [ref=f21e111] [cursor=pointer]:
+            - /url: https://www.instagram.com/dontboardme/
+          - link [ref=f21e115] [cursor=pointer]:
+            - /url: https://tik-tok.com/dontboardme/
+          - link [ref=f21e119] [cursor=pointer]:
+            - /url: https://wa.me/+18584492691
+      - link [ref=f21e125] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=f21e149]:
+        - link [ref=f21e150] [cursor=pointer]:
+          - /url: /pricing
+          - paragraph [ref=f21e152]: pricing
+        - link [ref=f21e153] [cursor=pointer]:
+          - /url: /about-us
+          - paragraph [ref=f21e155]: about us
+        - link [ref=f21e156] [cursor=pointer]:
+          - /url: /services
+          - paragraph [ref=f21e158]: services
+        - link [ref=f21e159] [cursor=pointer]:
+          - /url: /blog
+          - paragraph [ref=f21e161]: blog
+        - link [ref=f21e162] [cursor=pointer]:
+          - /url: /contacts
+          - paragraph [ref=f21e164]: contacts
+      - navigation [ref=f21e165]:
+        - link "book now" [ref=f21e166] [cursor=pointer]:
+          - /url: /book-now
+    - generic [ref=f21e171]:
+      - generic [ref=f21e172]:
+        - generic [ref=f21e173]:
+          - generic [ref=f21e174]:
+            - heading "A tired dog is a happy d o g! Your Trusted In-Home Pet Care Companions!" [level=1] [ref=f21e175]:
+              - paragraph [ref=f21e176]: A tired dog is
+              - paragraph [ref=f21e177]:
+                - text: a happy d
+                - generic [ref=f21e178]: o
+                - text: g!
+              - paragraph [ref=f21e179]: Your Trusted In-Home Pet Care Companions!
+            - paragraph [ref=f21e180]: Your Trusted In-Home Pet Care Companions!
+            - generic [ref=f21e181]:
+              - link [ref=f21e182] [cursor=pointer]:
+                - /url: https://www.instagram.com/dontboardme/
+              - link [ref=f21e186] [cursor=pointer]:
+                - /url: https://tik-tok.com/dontboardme/
+              - link [ref=f21e190] [cursor=pointer]:
+                - /url: https://Facebook.com/dontboardme/
+              - link [ref=f21e195] [cursor=pointer]:
+                - /url: "+18584492691"
+          - paragraph [ref=f21e197]: Here at Don't Board Me Pet Sitting, we understand that your pets are just as much a member of your family as, well, you are!
+          - link [ref=f21e225] [cursor=pointer]:
+            - /url: /about-us
+            - paragraph [ref=f21e226]: about us
+        - generic [ref=f21e237]:
+          - heading "our services" [level=2] [ref=f21e247]
+          - generic [ref=f21e255]:
+            - paragraph [ref=f21e256]:
+              - generic [ref=f21e257]: "0"
+              - generic [ref=f21e258]: "1"
+            - generic [ref=f21e263]:
+              - button [ref=f21e264] [cursor=pointer]
+              - button [ref=f21e276] [cursor=pointer]
+              - button [ref=f21e281] [cursor=pointer]
+              - button [ref=f21e291] [cursor=pointer]
+            - generic [ref=f21e301]:
+              - img "our dog" [ref=f21e302]
+              - img "our dog" [ref=f21e303]
+              - img "our dog" [ref=f21e304]
+            - link [ref=f21e305] [cursor=pointer]:
+              - /url: /book-now
+              - paragraph [ref=f21e310]: book now
+            - paragraph [ref=f21e318]: dog walking
+      - generic [ref=f21e321]:
+        - paragraph [ref=f21e324]: "2"
+        - paragraph [ref=f21e326]: "4"
+        - paragraph [ref=f21e328]: "3"
+        - paragraph [ref=f21e330]: "1"
+        - link [ref=f21e331] [cursor=pointer]:
+          - /url: /book-now
+          - paragraph [ref=f21e335]: book now
+        - generic [ref=f21e338]:
+          - paragraph [ref=f21e339]: how it works?
+          - paragraph [ref=f21e340]: Just fill out the form, and we'll be happy to assist you with your pet.
+        - generic [ref=f21e342]:
+          - paragraph [ref=f21e346]: process
+          - paragraph [ref=f21e348]:
+            - generic [ref=f21e349]: Fill out the form
+          - generic [ref=f21e350]:
+            - paragraph [ref=f21e351]: "01."
+            - paragraph [ref=f21e352]: Fill out information, upload your photo and become a basic member.
+            - img "<span>Fill out <br/> the form</span>" [ref=f21e354]
+        - generic [ref=f21e356]:
+          - paragraph [ref=f21e358]: You are being contacted
+          - generic [ref=f21e359]:
+            - paragraph [ref=f21e360]: "02."
+            - paragraph [ref=f21e361]: Based on your profile we’ll show you the members that are near you.
+            - img "You are being contacted" [ref=f21e363]
+        - generic [ref=f21e365]:
+          - paragraph [ref=f21e367]:
+            - generic [ref=f21e368]: First meeting
+          - generic [ref=f21e369]:
+            - paragraph [ref=f21e370]: "03."
+            - paragraph [ref=f21e371]: Before you can message and arrange a ‘Welcome Woof’ you’ll need to become a Premium member
+            - img "<span>First <br/> meeting</span>" [ref=f21e373]
+        - generic [ref=f21e375]:
+          - paragraph [ref=f21e377]: You receive quality service
+          - generic [ref=f21e378]:
+            - paragraph [ref=f21e379]: "04."
+            - paragraph [ref=f21e380]: We recommend members get to know each other really well before a dog is taken care of by another dog lover.
+            - img "You receive quality service" [ref=f21e382]
+      - generic [ref=f21e415]:
+        - paragraph [ref=f21e434]: The personalized in- home care your pet deserves!
+        - heading "The care your pet deserves!" [level=2] [ref=f21e439]
+        - generic [ref=f21e440]:
+          - paragraph [ref=f21e441]: testimonials
+          - generic [ref=f21e444]:
+            - generic [ref=f21e445] [cursor=pointer]:
+              - paragraph [ref=f21e448]: "06"
+              - paragraph [ref=f21e449]: Torry
+            - generic [ref=f21e450] [cursor=pointer]:
+              - paragraph [ref=f21e453]: "07"
+              - paragraph [ref=f21e454]: Flo
+            - generic [ref=f21e455] [cursor=pointer]:
+              - paragraph [ref=f21e458]: "08"
+              - paragraph [ref=f21e459]: Tom
+            - generic [ref=f21e460] [cursor=pointer]:
+              - paragraph [ref=f21e463]: "09"
+              - paragraph [ref=f21e464]: Sofi
+            - generic [ref=f21e465] [cursor=pointer]:
+              - paragraph [ref=f21e468]: "10"
+              - paragraph [ref=f21e469]: Nik
+            - generic [ref=f21e470] [cursor=pointer]:
+              - paragraph [ref=f21e473]: "01"
+              - paragraph [ref=f21e474]: JaneDoe
+            - generic [ref=f21e475] [cursor=pointer]:
+              - paragraph [ref=f21e478]: "02"
+              - paragraph [ref=f21e479]: HappyPF
+            - generic [ref=f21e480] [cursor=pointer]:
+              - paragraph [ref=f21e483]: "03"
+              - paragraph [ref=f21e484]: Mike
+            - generic [ref=f21e485] [cursor=pointer]:
+              - paragraph [ref=f21e488]: "04"
+              - paragraph [ref=f21e489]: Joe
+            - generic [ref=f21e490] [cursor=pointer]:
+              - paragraph [ref=f21e493]: "05"
+              - paragraph [ref=f21e494]: Clara
+            - generic [ref=f21e495] [cursor=pointer]:
+              - paragraph [ref=f21e498]: "06"
+              - paragraph [ref=f21e499]: Torry
+            - generic [ref=f21e500] [cursor=pointer]:
+              - paragraph [ref=f21e503]: "07"
+              - paragraph [ref=f21e504]: Flo
+            - generic [ref=f21e505] [cursor=pointer]:
+              - paragraph [ref=f21e508]: "08"
+              - paragraph [ref=f21e509]: Tom
+            - generic [ref=f21e510] [cursor=pointer]:
+              - paragraph [ref=f21e513]: "09"
+              - paragraph [ref=f21e514]: Sofi
+            - generic [ref=f21e515] [cursor=pointer]:
+              - paragraph [ref=f21e518]: "10"
+              - paragraph [ref=f21e519]: Nik
+            - generic [ref=f21e520] [cursor=pointer]:
+              - paragraph [ref=f21e523]: "01"
+              - paragraph [ref=f21e524]: JaneDoe
+            - generic [ref=f21e525] [cursor=pointer]:
+              - paragraph [ref=f21e528]: "02"
+              - paragraph [ref=f21e529]: HappyPF
+            - generic [ref=f21e530] [cursor=pointer]:
+              - paragraph [ref=f21e533]: "03"
+              - paragraph [ref=f21e534]: Mike
+            - generic [ref=f21e535] [cursor=pointer]:
+              - paragraph [ref=f21e538]: "04"
+              - paragraph [ref=f21e539]: Joe
+            - generic [ref=f21e540] [cursor=pointer]:
+              - paragraph [ref=f21e543]: "05"
+              - paragraph [ref=f21e544]: Clara
+        - generic [ref=f21e545]:
+          - button [ref=f21e546] [cursor=pointer]
+          - button [ref=f21e550] [cursor=pointer]
+          - paragraph:
+            - generic: r
+            - generic: e
+            - generic: a
+            - generic: d
+            - generic: a
+            - generic: s
+            - generic: t
+            - generic: o
+            - generic: r
+            - generic: "y"
+          - paragraph [ref=f21e555] [cursor=pointer]: I recently used the dog care service, and I couldn't be happier! The team took excellent care of...
+      - generic [ref=f21e574]:
+        - heading "Have questions?" [level=3] [ref=f21e575]
+        - paragraph [ref=f21e576]:
+          - text: Contact us at
+          - link "858-449-2691" [ref=f21e577] [cursor=pointer]:
+            - /url: tel:858-449-2691
+          - text: .
+        - link [ref=f21e578] [cursor=pointer]:
+          - /url: /book-now
+          - paragraph [ref=f21e582]: book now
+      - generic [ref=f21e588]:
+        - heading "cost of walking" [level=4] [ref=f21e592]
+        - generic [ref=f21e593]:
+          - generic [ref=f21e595]:
+            - generic [ref=f21e596] [cursor=pointer]:
+              - paragraph [ref=f21e597]: Singular walks (30 min)
+              - generic [ref=f21e598]:
+                - paragraph [ref=f21e599]: from
+                - paragraph [ref=f21e600]: $30
+              - paragraph [ref=f21e601]: To just test the service
+            - link [ref=f21e602] [cursor=pointer]:
+              - /url: /book-now
+              - paragraph [ref=f21e606]: try it
+          - generic [ref=f21e610]:
+            - generic [ref=f21e611] [cursor=pointer]:
+              - paragraph [ref=f21e612]: Twice a week
+              - generic [ref=f21e613]:
+                - paragraph [ref=f21e614]: from
+                - paragraph [ref=f21e615]: $224\mo.
+              - paragraph [ref=f21e616]: Breaks down to $28 per walk
+            - link [ref=f21e617] [cursor=pointer]:
+              - /url: /book-now
+              - paragraph [ref=f21e621]: try it
+          - generic [ref=f21e625]:
+            - generic [ref=f21e626] [cursor=pointer]:
+              - paragraph [ref=f21e627]: Three times a week
+              - generic [ref=f21e628]:
+                - paragraph [ref=f21e629]: from
+                - paragraph [ref=f21e630]: $312\mo.
+              - paragraph [ref=f21e631]: Breaks down to $26 per walk
+              - paragraph [ref=f21e633]: most popular
+            - link [ref=f21e634] [cursor=pointer]:
+              - /url: /book-now
+              - paragraph [ref=f21e638]: try it
+          - link [ref=f21e642] [cursor=pointer]:
+            - /url: /pricing
+            - paragraph [ref=f21e643]: pricing page
+      - generic [ref=f21e649]:
+        - generic [ref=f21e650]:
+          - paragraph [ref=f21e651]: share the love
+          - paragraph [ref=f21e652]: of your dog
+          - link [ref=f21e653] [cursor=pointer]:
+            - /url: https://www.instagram.com/dontboardme/
+          - img "dog-ass" [ref=f21e669]
+        - link "@don’tboardme" [ref=f21e671] [cursor=pointer]:
+          - /url: https://www.instagram.com/dontboardme/
+        - generic [ref=f21e681]:
+          - generic [ref=f21e682]:
+            - generic [ref=f21e683]:
+              - link [ref=f21e684] [cursor=pointer]:
+                - /url: /
+              - generic [ref=f21e705]:
+                - paragraph [ref=f21e706]: San Diego-Carlsbad, CA Metropolitan Area
+                - link "ayvamail@gmail.com" [ref=f21e707] [cursor=pointer]:
+                  - /url: mailto:ayvamail@gmail.com
+            - generic [ref=f21e708]:
+              - generic [ref=f21e709]:
+                - link [ref=f21e710] [cursor=pointer]:
+                  - /url: /pricing
+                  - paragraph [ref=f21e712]: pricing
+                - link [ref=f21e713] [cursor=pointer]:
+                  - /url: /about-us
+                  - paragraph [ref=f21e715]: about us
+                - link [ref=f21e716] [cursor=pointer]:
+                  - /url: /services
+                  - paragraph [ref=f21e718]: services
+                - link [ref=f21e719] [cursor=pointer]:
+                  - /url: /blog
+                  - paragraph [ref=f21e721]: blog
+                - link [ref=f21e722] [cursor=pointer]:
+                  - /url: /contacts
+                  - paragraph [ref=f21e724]: contacts
+              - generic [ref=f21e725]:
+                - link [ref=f21e726] [cursor=pointer]:
+                  - /url: /privacy-policy
+                  - paragraph [ref=f21e728]: privacy policy
+                - link [ref=f21e729] [cursor=pointer]:
+                  - /url: /terms-of-use
+                  - paragraph [ref=f21e731]: terms of use
+                - link [ref=f21e732] [cursor=pointer]:
+                  - /url: /faq
+                  - paragraph [ref=f21e734]: faq
+                - link [ref=f21e735] [cursor=pointer]:
+                  - /url: https://www.instagram.com/dontboardme/
+                  - paragraph [ref=f21e737]: instagram
+                - link [ref=f21e738] [cursor=pointer]:
+                  - /url: https://tik-tok.com/dontboardme/
+                  - paragraph [ref=f21e740]: tik-tok
+          - generic [ref=f21e741]:
+            - paragraph [ref=f21e742]: © 2026 don’t board me. All rights reserved
+            - generic [ref=f21e743]:
+              - paragraph [ref=f21e744]: made by
+              - link "the first the last" [ref=f21e745] [cursor=pointer]:
+                - /url: https://thefirstthelast.agency/
+  - generic [ref=f21e746] [cursor=pointer]:
+    - button
+    - generic [ref=f21e749]:
+      - paragraph [ref=f21e750]: bounce a ball to get to the site
+      - paragraph [ref=f21e751]: loading 0%
+      - paragraph [ref=f21e752]: You've landed on a dog walking site. Follow our rules to keep your dog happy

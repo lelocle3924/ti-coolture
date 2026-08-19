@@ -12,6 +12,10 @@ import Stores from "./views/Stores";
 import Blog from "./views/Blog";
 import Discovery from "./views/Discovery";
 import Footer from "./components/Footer";
+import LabIndex from "./lab/LabIndex";
+import DirectionA from "./lab/DirectionA";
+import DirectionB from "./lab/DirectionB";
+import DirectionC from "./lab/DirectionC";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
@@ -102,32 +106,49 @@ function ButtonClickTracker() {
   return null;
 }
 
+/** The public site, with the shared header and footer around it. */
+function SiteShell() {
+  return (
+    <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
+      <Header />
+      <div className="flex-grow">
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/stores" element={<Stores />} />
+          <Route path="/tui-minh" element={<Blog />} />
+          <Route path="/kham-pha" element={<Discovery />} />
+          <Route path="/kham-pha/:routeId" element={<Discovery />} />
+          <Route path="/stores/:storeId" element={<ShopDisplay />} />
+          <Route path="/products/:productId" element={<ProductDetail />} />
+          <Route path="/shop-dashboard" element={<ShopDashboard />} />
+          <Route path="/user-profile" element={<UserProfile />} />
+          <Route path="/auth-gateway" element={<AuthGateway />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
         <ButtonClickTracker />
-        <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
-          <Header />
-          <div className="flex-grow">
-            <Routes>
-              <Route path="/" element={<Homepage />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/stores" element={<Stores />} />
-              <Route path="/tui-minh" element={<Blog />} />
-              <Route path="/kham-pha" element={<Discovery />} />
-              <Route path="/kham-pha/:routeId" element={<Discovery />} />
-              <Route path="/stores/:storeId" element={<ShopDisplay />} />
-              <Route path="/products/:productId" element={<ProductDetail />} />
-              <Route path="/shop-dashboard" element={<ShopDashboard />} />
-              <Route path="/user-profile" element={<UserProfile />} />
-              <Route path="/auth-gateway" element={<AuthGateway />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-          <Footer />
-        </div>
+        <Routes>
+          {/* Design exploration — each direction ships its own chrome, so these
+              routes render outside the shared Header/Footer shell. Delete
+              src/lab/ and these four routes once a direction is chosen. */}
+          <Route path="/lab" element={<LabIndex />} />
+          <Route path="/lab/a" element={<DirectionA />} />
+          <Route path="/lab/b" element={<DirectionB />} />
+          <Route path="/lab/c" element={<DirectionC />} />
+
+          <Route path="*" element={<SiteShell />} />
+        </Routes>
       </BrowserRouter>
     </AuthProvider>
   );
