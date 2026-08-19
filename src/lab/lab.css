@@ -94,6 +94,14 @@
 }
 .lab-drift { animation: lab-drift 13s ease-in-out infinite alternate; }
 
+/* Scroll hint. Small travel and a long cycle — it should read as a nudge, not
+   as something demanding attention while the visitor is reading. */
+@keyframes lab-bob {
+  0%, 100% { transform: translateY(-4px); }
+  50%      { transform: translateY(4px); }
+}
+.lab-bob { animation: lab-bob 2.2s ease-in-out infinite; }
+
 .lab-no-scrollbar { scrollbar-width: none; }
 .lab-no-scrollbar::-webkit-scrollbar { display: none; }
 
@@ -117,6 +125,7 @@
   .lab-marquee--right,
   .lab-drift,
   .lab-bead-live,
+  .lab-bob,
   .lab-pop,
   .lab-wipe > span,
   .lab-plate-in {

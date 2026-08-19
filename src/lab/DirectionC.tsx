@@ -46,13 +46,6 @@ const NAV = [
   { to: "/tui-minh", label: "Tụi mình" },
 ];
 
-const SPINE = [
-  { id: "dong-hero", label: "Mở đầu" },
-  { id: "dong-store", label: "Trong kho" },
-  { id: "dong-how", label: "Cách đặt" },
-  { id: "dong-collections", label: "Bộ sưu tập" },
-  { id: "dong-map", label: "Bản đồ" },
-];
 
 /* Copy per copy-how-it-works.md. EN is carried but not rendered — the language
    switch is not wired in the lab, and VI is primary. */
@@ -84,159 +77,306 @@ const HOW_TURN = {
   en: { title: "Nothing in mind yet?", body: "Have a look through these collections — something might land." },
 };
 
-/* ── chrome: glass bar + the spine ──────────────────────────────────────── */
+/* ── chrome ─────────────────────────────────────────────────────────────
+   The progress rail is deliberately *not* part of the header: the header
+   hides on scroll-down, and a progress bar that disappears exactly while you
+   are making progress is worse than none. It lives on its own fixed layer
+   above everything. */
 
-function CurrentNav() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { hidden, atTop, progress } = useAutoHideChrome({ locked: menuOpen });
-
+function ScrollProgress() {
+  const { progress } = useAutoHideChrome();
   return (
-    <header
-      className="fixed inset-x-0 top-0 z-50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      style={{ transform: hidden ? "translateY(-102%)" : "translateY(0)" }}
+    <div
+      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[3px] bg-white/15"
+      role="presentation"
     >
       <div
-        className={`transition-colors duration-500 ${
-          atTop ? "bg-transparent" : "bg-brand-deep/70 backdrop-blur-xl"
-        }`}
-      >
-        <div className="mx-auto flex max-w-[110rem] items-center gap-6 px-5 py-4 md:px-10">
-          <Link to="/lab/c" aria-label="Tí Coolture — trang chủ" className="shrink-0">
-            <Brandmark className="h-auto w-[74px]" body="var(--color-paper)" />
-          </Link>
+        className="h-full bg-wave transition-[width] duration-150"
+        style={{ width: `${progress * 100}%` }}
+      />
+    </div>
+  );
+}
 
-          <nav className="mx-auto hidden items-center gap-8 md:flex" aria-label="Điều hướng chính">
+/* Persistent scroll hint. An arrow rather than a pill, bobbing to point the
+   way, and it stays until the visitor is past the collections — the point at
+   which the page has clearly been understood as scrollable. */
+function ScrollHint() {
+  const [visible, setVisible] = useState(true);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const collections = document.getElementById("dong-collections");
+        if (!collections) return;
+        const passed = collections.getBoundingClientRect().bottom <= window.innerHeight;
+        setVisible(!passed);
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  return (
+    <a
+      href="#dong-store"
+      aria-label="Cuộn xuống để xem tiếp"
+      className="fixed bottom-7 left-1/2 z-40 grid h-12 w-12 -translate-x-1/2 place-items-center rounded-full bg-ink/70 text-paper backdrop-blur-sm transition-[opacity,background-color] duration-500 hover:bg-ink"
+      style={{
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? "auto" : "none",
+      }}
+    >
+      <ArrowRight className={`h-7 w-7 rotate-90 ${reduced ? "" : "lab-bob"}`} />
+    </a>
+  );
+}
+
+function SearchOverlay({
+  products,
+  onClose,
+}: {
+  products: Product[];
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  /* Diacritic-insensitive, so "ao dai" finds "áo dài" — UX-TASKS 3.1. */
+  const fold = (s: string) =>
+    s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
+
+  const results = useMemo(() => {
+    const q = fold(query.trim());
+    if (!q) return [];
+    return products
+      .filter((p) => [p.name, p.storeName, p.category].some((f) => fold(f || "").includes(q)))
+      .slice(0, 6);
+  }, [query, products]);
+
+  const open = (p: Product) => {
+    onClose();
+    navigate(`/products/${p.id}`, { viewTransition: true });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-ink/75 backdrop-blur-md" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Tìm kiếm"
+        onClick={(e) => e.stopPropagation()}
+        className="mx-auto mt-[12vh] w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] bg-paper text-ink shadow-[0_40px_90px_rgba(18,8,31,0.5)]"
+      >
+        <form
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (query.trim()) {
+              onClose();
+              navigate(`/products?q=${encodeURIComponent(query.trim())}`);
+            }
+          }}
+          className="flex items-center gap-3 border-b border-ink/12 px-5 py-4"
+        >
+          <Search className="h-5 w-5 shrink-0 text-ink/45" aria-hidden="true" />
+          <input
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Tìm sản phẩm, shop…"
+            aria-label="Tìm sản phẩm hoặc shop"
+            className="w-full bg-transparent py-1 text-lg outline-none placeholder:text-ink/40 [&::-webkit-search-cancel-button]:appearance-none"
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng tìm kiếm"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-ink/60 hover:bg-ink/5 hover:text-ink"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </form>
+
+        <div className="max-h-[52vh] overflow-y-auto">
+          {query.trim() === "" ? (
+            <p className="px-5 py-8 text-center text-sm text-ink/50">
+              Gõ tên món, tên shop hoặc danh mục.
+            </p>
+          ) : results.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm font-medium">Không tìm thấy &ldquo;{query}&rdquo;.</p>
+              <p className="mt-1 text-sm text-ink/55">
+                Tí sẽ ghi nhận — biết đâu tháng sau có.
+              </p>
+            </div>
+          ) : (
+            <ul>
+              {results.map((p) => (
+                <li key={p.id}>
+                  <button
+                    onClick={() => open(p)}
+                    className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors hover:bg-paper-warm"
+                  >
+                    <span className="aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-paper-warm">
+                      <img src={p.images[0]} alt="" className="h-full w-full object-cover" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[11px] tracking-[0.14em] text-brand">
+                        {p.storeName.toUpperCase()}
+                      </span>
+                      <span className="block truncate text-sm font-medium">{p.name}</span>
+                    </span>
+                    <span className="shrink-0 text-sm tabular-nums text-ink/65">
+                      {formatPrice(p.price)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CurrentNav({ products }: { products: Product[] }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const { hidden, atTop } = useAutoHideChrome({ locked: menuOpen || searchOpen });
+
+  return (
+    <>
+      <header
+        className="fixed inset-x-0 top-0 z-50 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{ transform: hidden ? "translateY(-102%)" : "translateY(0)" }}
+      >
+        <div
+          className={`transition-colors duration-500 ${
+            atTop ? "bg-transparent" : "bg-brand-deep/70 backdrop-blur-xl"
+          }`}
+        >
+          <div className="mx-auto flex max-w-[110rem] items-center gap-6 px-5 py-4 md:px-10">
+            <Link to="/lab/c" aria-label="Tí Coolture — trang chủ" className="shrink-0">
+              <Brandmark className="h-auto w-[74px]" body="var(--color-paper)" />
+            </Link>
+
+            <nav className="mx-auto hidden items-center gap-8 md:flex" aria-label="Điều hướng chính">
+              {NAV.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="group relative overflow-hidden py-1 text-sm text-white/70 transition-colors hover:text-paper"
+                >
+                  {link.label}
+                  <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-wave transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-x-100" />
+                </Link>
+              ))}
+            </nav>
+
+            <div className="ml-auto flex items-center gap-2 md:ml-0">
+              <Link
+                to="/tui-minh"
+                className="hidden rounded-full border border-white/35 px-4 py-2 text-xs font-semibold text-paper transition-colors hover:border-wave hover:text-wave lg:inline-flex"
+              >
+                Hợp tác với tụi mình
+              </Link>
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="Tìm kiếm"
+                aria-haspopup="dialog"
+                className="grid h-11 w-11 place-items-center text-paper/80 hover:text-wave"
+              >
+                <Search className="h-[18px] w-[18px]" />
+              </button>
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-expanded={menuOpen}
+                aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+                className="grid h-11 w-11 place-items-center text-paper md:hidden"
+              >
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {menuOpen && (
+          <div className="bg-brand-deep/95 px-5 pb-6 backdrop-blur-xl md:hidden">
             {NAV.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="group relative overflow-hidden py-1 text-sm text-white/70 transition-colors hover:text-paper"
+                onClick={() => setMenuOpen(false)}
+                className="flex min-h-16 items-center justify-between border-b border-white/12 text-paper"
               >
-                {link.label}
-                <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-wave transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-x-100" />
+                <span className="display text-3xl normal-case">{link.label}</span>
+                <ArrowUpRight className="h-5 w-5 text-wave" />
               </Link>
             ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <button aria-label="Tìm kiếm" className="grid h-11 w-11 place-items-center text-paper/80 hover:text-wave">
-              <Search className="h-[18px] w-[18px]" />
-            </button>
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-expanded={menuOpen}
-              aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-              className="grid h-11 w-11 place-items-center text-paper md:hidden"
-            >
-              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-
-        <div className="relative h-px w-full bg-white/15">
-          <div
-            className="absolute inset-y-0 left-0 bg-wave transition-[width] duration-150"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {menuOpen && (
-        <div className="bg-brand-deep/95 px-5 pb-6 backdrop-blur-xl md:hidden">
-          {NAV.map((link) => (
             <Link
-              key={link.to}
-              to={link.to}
+              to="/tui-minh"
               onClick={() => setMenuOpen(false)}
-              className="flex min-h-16 items-center justify-between border-b border-white/12 text-paper"
+              className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full border border-white/35 px-5 text-sm font-semibold text-paper"
             >
-              <span className="display text-3xl normal-case">{link.label}</span>
-              <ArrowUpRight className="h-5 w-5 text-wave" />
+              Hợp tác với tụi mình
+              <ArrowUpRight className="h-4 w-4 text-wave" />
             </Link>
-          ))}
-        </div>
-      )}
-    </header>
+          </div>
+        )}
+      </header>
+
+      {searchOpen && <SearchOverlay products={products} onClose={() => setSearchOpen(false)} />}
+    </>
   );
 }
 
-/**
- * `ready` re-runs the observer once the data-dependent sections exist. Store,
- * collections and map all render null until their data lands, so an observer
- * set up on mount alone would only ever see the hero.
- */
-function Spine({ ready, muted }: { ready: boolean; muted: boolean }) {
-  const [active, setActive] = useState(SPINE[0].id);
-  /* The one section on a paper ground — the rail has to flip to ink there. */
-  const light = active === "dong-how";
+/* ── collaborate ────────────────────────────────────────────────────────
+   The shops are the other half of the audience, and the map is where a shop
+   owner is most likely to have just seen their own neighbourhood. */
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActive(visible.target.id);
-      },
-      { rootMargin: "-45% 0px -45% 0px", threshold: [0, 0.25, 0.5, 1] }
-    );
-    SPINE.forEach((s) => {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, [ready]);
-
+function Collaborate() {
   return (
-    <nav
-      aria-label="Vị trí trong trang"
-      className="pointer-events-none fixed left-5 top-1/2 z-40 hidden -translate-y-1/2 transition-opacity duration-300 xl:block"
-      style={{
-        // The collections track is full-bleed and can be light, and the
-        // revealed footer sits under the whole viewport; both carry their own
-        // sense of place, so the spine steps aside rather than drawing over them.
-        opacity: muted || active === "dong-collections" ? 0 : 1,
-        visibility: muted || active === "dong-collections" ? "hidden" : "visible",
-      }}
-    >
-      <ul className="space-y-4">
-        {SPINE.map((s) => {
-          const on = active === s.id;
-          return (
-            <li key={s.id}>
-              <a
-                href={`#${s.id}`}
-                className="pointer-events-auto flex items-center gap-3 py-1"
-                aria-current={on ? "true" : undefined}
-              >
-                <span
-                  className={`block h-px transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                    on
-                      ? light
-                        ? "w-10 bg-wave-ink"
-                        : "w-10 bg-wave"
-                      : light
-                      ? "w-4 bg-ink/30"
-                      : "w-4 bg-white/35"
-                  }`}
-                />
-                <span
-                  className={`text-[11px] tracking-[0.16em] transition-all duration-500 ${
-                    on
-                      ? light
-                        ? "text-wave-ink opacity-100"
-                        : "text-wave opacity-100"
-                      : "opacity-0"
-                  }`}
-                >
-                  {s.label.toUpperCase()}
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <section className="border-t border-white/20 bg-brand-deep px-5 py-16 text-center text-paper md:px-10 md:py-20">
+      <p className="text-[11px] tracking-[0.22em] text-white/75">DÀNH CHO CÁC SHOP</p>
+      <h2 className="display mx-auto mt-4 max-w-[18ch] text-[clamp(1.9rem,4.6vw,3.5rem)] normal-case leading-[1.05]">
+        Bạn làm đồ đẹp? Kể Tí nghe
+      </h2>
+      <p className="mx-auto mt-4 max-w-[48ch] text-sm leading-relaxed text-white/70">
+        Tí không bán hàng và không lấy hoa hồng. Tụi mình chọn, viết, và đưa shop lên trang chủ.
+      </p>
+      <Link
+        to="/tui-minh"
+        className="group mt-8 inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-6 pr-2 text-sm font-semibold text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
+      >
+        Hợp tác với tụi mình
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-brand text-paper transition-transform duration-500 group-hover:translate-x-0.5">
+          <ArrowUpRight className="h-4 w-4" />
+        </span>
+      </Link>
+    </section>
   );
 }
 
@@ -287,7 +427,8 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
         </div>
       ))}
 
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-brand via-brand/35 to-brand/0 mix-blend-multiply" />
+      <div aria-hidden="true" className="absolute inset-0 bg-brand/60 mix-blend-multiply" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-brand via-brand/45 to-brand/15" />
 
       {/* the wave signature, used once, as the mask edge between frame and page */}
       <svg
@@ -299,34 +440,28 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
         <path d="M0,64 C240,10 420,110 720,66 C1020,22 1220,104 1440,54 L1440,120 L0,120 Z" fill="var(--color-brand)" />
       </svg>
 
-      <div className="relative z-10 flex h-full flex-col justify-end px-5 pb-[16vh] md:px-10 xl:px-24">
+      <div className="relative z-10 flex h-full flex-col items-center justify-end px-5 pb-[18vh] text-center md:px-10 xl:px-24">
         <div className="max-w-5xl">
           <p key={`c-${frame.id}`} className="lab-wipe overflow-hidden">
-            <span className="text-[11px] tracking-[0.22em] text-wave">
+            <span className="text-[11px] tracking-[0.22em] text-white/85">
               {frame.shopId ? `SHOP GỬI · ${frame.shopName.toUpperCase()}` : "TÍ COOLTURE"}
             </span>
           </p>
 
-          <h1 className="display mt-4 text-[clamp(2.75rem,8.4vw,7.5rem)] normal-case leading-[0.92] text-paper">
-            Mỗi người một <span className="text-wave">TÍ</span> chất riêng
+          {/* three lines, stacked and centred */}
+          <h1 className="display mt-4 text-[clamp(2.5rem,7.6vw,6.75rem)] normal-case leading-[0.94] text-paper">
+            <span className="block">Mỗi người</span>
+            <span className="block">một <span className="text-wave">TÍ</span></span>
+            <span className="block">chất riêng</span>
           </h1>
 
-          <p key={`s-${frame.id}`} className="lab-wipe mt-5 max-w-xl overflow-hidden">
+          <p key={`s-${frame.id}`} className="lab-wipe mx-auto mt-5 max-w-xl overflow-hidden">
             <span className="text-base leading-relaxed text-white/75 md:text-lg">
               {frame.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC} từ ${frame.shopName}` : frame.caption}
             </span>
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <a
-              href="#dong-store"
-              className="group inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-6 pr-2 text-sm font-semibold text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
-            >
-              Cuộn để xem
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-brand text-wave transition-transform duration-500 group-hover:translate-y-0.5">
-                <ArrowRight className="h-4 w-4 rotate-90" />
-              </span>
-            </a>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
             {frame.shopId && (
               <Link
                 to={`/stores/${frame.shopId}`}
@@ -339,7 +474,7 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
           </div>
         </div>
 
-        <div className="mt-10 flex items-center gap-3">
+        <div className="mt-9 flex w-full max-w-2xl items-center gap-3">
           {frames.map((f, i) => (
             <button
               key={f.id}
@@ -380,7 +515,7 @@ function StoreTile({ product, onOpen }: { key?: string; product: Product; onOpen
       </div>
       <div className="mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3">
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11px] tracking-[0.16em] text-wave">
+          <span className="block truncate text-[11px] tracking-[0.16em] text-white/70">
             {product.storeName.toUpperCase()}
           </span>
           <span className="mt-1 block truncate text-lg font-medium text-paper">{product.name}</span>
@@ -440,105 +575,103 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   const half = Math.ceil(products.length / 2);
 
   return (
-    <section id="dong-store" className="bg-brand py-20 text-paper md:py-28">
-      <div className="px-5 md:px-10 xl:px-24">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none">
+    <section id="dong-store" className="bg-brand py-16 text-paper md:py-24">
+      {/* the title *is* the link through to the catalogue */}
+      <div className="px-5 text-center md:px-10">
+        <Link
+          to="/products"
+          className="group inline-flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
+        >
+          <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none transition-colors group-hover:text-wave">
             What&rsquo;s in store
           </h2>
-          <Link
-            to="/products"
-            className="inline-flex items-center gap-2 border-b border-white/40 pb-1 text-sm transition-colors hover:border-wave hover:text-wave"
-          >
-            Xem tất cả
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        </div>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/35 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-wave group-hover:bg-wave group-hover:text-ink">
+            <ArrowUpRight className="h-5 w-5" />
+          </span>
+        </Link>
+        <p className="mt-3 text-sm text-white/60">Xem tất cả sản phẩm Tí tuyển chọn</p>
       </div>
 
-      <div className="mt-12 space-y-8">
+      <div className="mt-10 space-y-6">
         <StoreLane products={products.slice(0, half)} direction="left" duration="58s" onOpen={onOpen} />
         <StoreLane products={products.slice(half)} direction="right" duration="70s" onOpen={onOpen} />
       </div>
 
-      <p className="mt-10 px-5 text-xs text-white/50 md:px-10 xl:px-24">{PRICE_NOTE}</p>
+      <p className="mt-8 px-5 text-center text-xs text-white/50 md:px-10">{PRICE_NOTE}</p>
     </section>
   );
 }
 
 /* ── how it works ───────────────────────────────────────────────────────
-   After dontboardme.com, measured off the live page: four cards ~450×520 in a
-   row, each overlapping the previous by roughly 30%, revealing one after
-   another as the section enters. The step title and its index are set at the
-   same size with the caption tiny beneath.
+   Motion taken frame by frame off the reference clip (dontboardme.com):
+   the section pins, and each scroll step lifts one more card up from below
+   into the fan, left to right. Scrolling back lowers them again in reverse.
+   Because the whole thing is driven by scroll *position* rather than a
+   one-shot trigger, it is symmetric for free — there is no "played already"
+   state to get stuck in.
 
-   This is the page's one white section — the 30% of the 60/30/10 ratio — with
-   violet cards on it and the index in teal. */
+   Card i is revealed by t = clamp(cursor − i, 0, 1): it rises from 55% below
+   its slot, untilts, and fades in. */
 
 function HowItWorks() {
-  const [revealed, setRevealed] = useState(false);
-  const sectionRef = useRef<HTMLElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [cursor, setCursor] = useState(0);
+  const wide = useMediaQuery("(min-width: 768px)");
   const reduced = useReducedMotion();
+  const pinned = wide && !reduced;
+  const steps = HOW_STEPS.length;
 
   useEffect(() => {
-    if (reduced) {
-      setRevealed(true);
+    if (!pinned) {
+      setCursor(steps); // every card down, no pin, nothing hidden
       return;
     }
-    const el = sectionRef.current;
-    if (!el) return;
-
-    // The copy must never be gated on an animation firing, so anything that
-    // stops the observer reaching us still ends with the cards on screen.
-    if (typeof IntersectionObserver === "undefined") {
-      setRevealed(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setRevealed(true);
-          observer.disconnect();
-        }
-      },
-      // Fire as soon as the fan starts to appear, or the first card is on
-      // screen and still blank while the visitor waits for it.
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.04 }
-    );
-    observer.observe(el);
-
-    // Safety net: long enough that a normal scroll always wins the race.
-    const failsafe = window.setTimeout(() => setRevealed(true), 6000);
-
-    return () => {
-      observer.disconnect();
-      window.clearTimeout(failsafe);
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const wrap = wrapRef.current;
+        if (!wrap) return;
+        const rect = wrap.getBoundingClientRect();
+        const distance = rect.height - window.innerHeight;
+        const p = distance > 0 ? Math.min(1, Math.max(0, -rect.top / distance)) : 0;
+        // A little lead-in and a hold at the end, so the last card gets a beat
+        // on screen before the pin releases.
+        setCursor(Math.min(steps, p * (steps + 0.35)));
+      });
     };
-  }, [reduced]);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [pinned, steps]);
 
-  return (
-    <section ref={sectionRef} id="dong-how" className="bg-paper py-20 text-ink md:py-28">
-      <div className="px-5 md:px-10 xl:px-24">
-        <p className="text-[11px] tracking-[0.22em] text-wave-ink">CÁCH ĐẶT HÀNG</p>
-      </div>
+  /* Roughly one comfortable scroll gesture per card. */
+  const runHeight = pinned ? `${100 + steps * 55}vh` : undefined;
 
-      {/* the fan: cards overlap, later ones on top */}
-      <ol className="mt-12 flex flex-col items-stretch px-5 md:mt-16 md:flex-row md:justify-center md:px-6">
-        {HOW_STEPS.map((step, i) => (
+  const fan = (
+    <ol className="flex flex-col items-stretch px-5 md:flex-row md:justify-center md:px-6">
+      {HOW_STEPS.map((step, i) => {
+        const t = Math.min(1, Math.max(0, cursor - i));
+        const tilt = i % 2 === 0 ? -5 : 5;
+        return (
           <li
             key={step.n}
             className={`relative ${i > 0 ? "-mt-5 md:mt-0 md:-ml-[7vw]" : ""} md:w-[26vw] md:max-w-[27rem]`}
             style={{
               zIndex: i + 1,
-              opacity: revealed ? 1 : 0,
-              transform: revealed ? "translateY(0)" : "translateY(42px)",
-              transition: reduced
-                ? "none"
-                : `opacity 620ms cubic-bezier(0.16,1,0.3,1) ${i * 130}ms, transform 620ms cubic-bezier(0.16,1,0.3,1) ${i * 130}ms`,
+              opacity: pinned ? t : 1,
+              transform: pinned
+                ? `translateY(${(1 - t) * 55}%) rotate(${(1 - t) * tilt}deg)`
+                : undefined,
+              transformOrigin: "50% 100%",
+              willChange: pinned ? "transform, opacity" : undefined,
             }}
+            aria-hidden={pinned && t < 0.05}
           >
-            {/* the paper ring is what makes the overlap legible */}
             <div
               className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[22rem] md:p-8 ${
                 i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
@@ -558,29 +691,51 @@ function HowItWorks() {
               </p>
             </div>
           </li>
-        ))}
-      </ol>
+        );
+      })}
+    </ol>
+  );
 
-      {/* the turn into collections */}
-      <div className="mt-16 px-5 md:px-10 xl:px-24">
-        <div className="flex flex-wrap items-end justify-between gap-6 border-t border-ink/15 pt-8">
-          <div>
-            <h3 className="display text-[clamp(1.75rem,4vw,3rem)] normal-case leading-[1.05]">
-              {HOW_TURN.vi.title}
-            </h3>
-            <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-ink/65">
-              {HOW_TURN.vi.body}
-            </p>
+  const header = (
+    <div className="px-5 text-center md:px-10">
+      <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none text-ink">
+        Cách đặt hàng
+      </h2>
+    </div>
+  );
+
+  if (!pinned) {
+    return (
+      <section id="dong-how" className="bg-paper py-16 text-ink md:py-24">
+        {header}
+        <div className="mt-10">{fan}</div>
+      </section>
+    );
+  }
+
+  return (
+    <section id="dong-how" className="bg-paper text-ink">
+      <div ref={wrapRef} style={{ height: runHeight }}>
+        <div className="sticky top-0 flex h-[100dvh] flex-col justify-center overflow-hidden pt-16">
+          {header}
+          {/* the fan tucks under the heading as it fills, the way the
+              reference layers its cards over the title */}
+          <div className="-mt-2">{fan}</div>
+
+          {/* step counter, so the pin always says where you are */}
+          <div className="mt-8 flex justify-center gap-2" aria-hidden="true">
+            {HOW_STEPS.map((step, i) => (
+              <span
+                key={step.n}
+                className="h-px w-10 bg-ink/15"
+              >
+                <span
+                  className="block h-full bg-wave-ink transition-[width] duration-200"
+                  style={{ width: `${Math.min(1, Math.max(0, cursor - i)) * 100}%` }}
+                />
+              </span>
+            ))}
           </div>
-          <a
-            href="#dong-collections"
-            className="group inline-flex items-center gap-3 rounded-full bg-brand py-2 pl-6 pr-2 text-sm font-semibold text-paper transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
-          >
-            Xem bộ sưu tập
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-paper text-brand transition-transform duration-500 group-hover:translate-y-0.5">
-              <ArrowRight className="h-4 w-4 rotate-90" />
-            </span>
-          </a>
         </div>
       </div>
     </section>
@@ -595,7 +750,9 @@ function HowItWorks() {
 function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const { hidden } = useAutoHideChrome({ locked: true });
+  // Held open while the card is showing; otherwise it rides the chrome and
+  // slides off on scroll-down, per UX-TASKS 2.3.
+  const { hidden } = useAutoHideChrome({ locked: open });
   const gem = gems[0];
 
   if (!gem) return null;
@@ -843,19 +1000,20 @@ function PinnedCollections({
 
   return (
     <section id="dong-collections" className="border-t border-white/20 bg-brand text-paper">
-      <div className="px-5 pt-20 md:px-10 md:pt-28 xl:px-24">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none">
-            Bộ sưu tập
-          </h2>
-          <p className="text-xs text-white/50">
-            Tên bộ sưu tập là placeholder — chờ ban biên tập đặt tên thật.
-          </p>
-        </div>
+      <div className="px-5 pt-16 text-center md:px-10 md:pt-24">
+        <h2 className="display mx-auto text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none">
+          Chưa biết mua gì?
+        </h2>
+        <p className="mx-auto mt-4 max-w-[46ch] text-base leading-relaxed text-white/70">
+          Ngó thử mấy bộ sưu tập này xem, biết đâu lại đúng gu bạn.
+        </p>
+        <p className="mt-3 text-xs text-white/45">
+          Tên bộ sưu tập là placeholder — chờ ban biên tập đặt tên thật.
+        </p>
       </div>
 
       {pinned ? (
-        <div ref={wrapRef} style={{ height: runHeight }} className="mt-10">
+        <div ref={wrapRef} style={{ height: runHeight }} className="mt-6">
           <div className="sticky top-0 flex h-[100dvh] flex-col justify-center">
             <div className="flex h-[68vh] w-full overflow-hidden">
               {weights.map((w, i) => renderPanel(i, w / 100, false))}
@@ -878,7 +1036,7 @@ function PinnedCollections({
           </div>
         </div>
       ) : (
-        <div className="mt-10 space-y-4 px-5 pb-4 md:px-10 xl:px-24">
+        <div className="mt-8 space-y-4 px-5 pb-4 md:px-10 xl:px-24">
           {Array.from({ length: panelCount }, (_, i) => renderPanel(i, 1, true))}
         </div>
       )}
@@ -906,7 +1064,7 @@ function MapStrip({ routes }: { routes: TouristRoute[] }) {
   const openDistrict = () => navigate(`/kham-pha/${route.id}`, { viewTransition: true });
 
   return (
-    <section id="dong-map" className="border-t border-white/20 bg-ink py-20 text-paper md:py-28">
+    <section id="dong-map" className="border-t border-white/20 bg-ink py-16 text-paper md:py-24">
       <div className="px-5 text-center md:px-10">
         <h2 className="display text-[clamp(2.25rem,6.4vw,5rem)] normal-case leading-none text-wave">
           Khám phá Sài Gòn
@@ -1082,7 +1240,7 @@ function RevealFooter({ reveal }: { reveal: number }) {
           </p>
           <a
             href="mailto:hello@ticoolture.vn"
-            className="mt-4 inline-flex min-h-11 items-center text-sm text-wave hover:underline"
+            className="mt-4 inline-flex min-h-11 items-center text-sm text-paper underline underline-offset-4 decoration-white/40 hover:decoration-paper"
           >
             hello@ticoolture.vn
           </a>
@@ -1162,8 +1320,9 @@ export default function DirectionC() {
 
   return (
     <div className="bg-brand font-sans text-paper">
-      <CurrentNav />
-      <Spine ready={!loading && !error} muted={reveal > 0.02} />
+      <CurrentNav products={popular} />
+      <ScrollProgress />
+      <ScrollHint />
       <HiddenGems gems={gems} />
       <RevealFooter reveal={reveal} />
 
@@ -1180,7 +1339,7 @@ export default function DirectionC() {
         ) : error ? (
           <div className="mx-auto max-w-md px-5 py-24 text-center">
             <p className="text-base font-medium">Không tải được danh sách sản phẩm.</p>
-            <button onClick={reload} className="mt-4 min-h-11 text-sm text-wave underline underline-offset-4">
+            <button onClick={reload} className="mt-4 min-h-11 text-sm text-paper underline underline-offset-4">
               Thử lại
             </button>
           </div>
@@ -1191,6 +1350,7 @@ export default function DirectionC() {
         <HowItWorks />
         <PinnedCollections collections={collections} onOpen={open} />
         <MapStrip routes={routes} />
+        <Collaborate />
       </div>
     </div>
   );
