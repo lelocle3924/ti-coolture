@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { fetchStores, fetchProducts } from "../lib/dbService";
 import { StoreProfile, Product } from "../types";
-import { ArcTopRight, WaveStores, RibbonLoop } from "../components/BrandShapes";
+import { ArcTopRight, RibbonLoop, ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
 import { vtShopLogo, vtShopCover, vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
 
 const DISTRICT_HUBS = [
@@ -69,10 +69,14 @@ export default function Stores() {
   });
 
   return (
-    <div className="min-h-[100dvh] bg-paper-warm text-ink pb-28 select-none relative">
-      
+    <div className="min-h-[100dvh] bg-brand text-ink pb-28 select-none relative overflow-x-hidden w-full">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <ContinuousWave pageIndex={2} />
+        <PaperBackgroundExtender />
+      </div>
+
       {/* ============ HERO SECTION ============ */}
-      <section className="bg-brand text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden">
+      <section className="bg-transparent text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden z-10">
         <ArcTopRight
           className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-15"
           style={{ width: "clamp(18rem, 40vw, 32rem)" }}
@@ -101,15 +105,10 @@ export default function Stores() {
           </div>
         </div>
 
-        {/* Negative Transition Seam */}
-        <WaveStores
-          className="absolute bottom-0 left-0 right-0 w-full z-10 pointer-events-none"
-          fill="var(--color-paper-warm)"
-        />
+        {/* Negative Transition Seam removed */}
       </section>
 
-      {/* ============ DIRECTORY INTERFACE ============ */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
 
         {/* Breadcrumbs */}
         <nav className="text-[11px] text-ink/60 flex items-center gap-1.5 font-medium">

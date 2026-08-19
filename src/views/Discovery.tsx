@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from "react-router-dom";
 import { fetchTouristRoutes } from "../lib/dbService";
 import { TouristRoute, RouteStop } from "../types";
 import { ArrowLeft, Compass, ArrowUpRight, MapPin } from "lucide-react";
+import { ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
 
 export default function Discovery() {
   const { routeId } = useParams();
@@ -56,33 +57,38 @@ export default function Discovery() {
   }
 
   return (
-    <div className="bg-paper text-ink min-h-[100dvh]">
-      <div className="bg-paper-warm border-b border-ink/10 pt-8 pb-12">
+    <div className="min-h-[100dvh] bg-brand text-ink pb-0 select-none relative overflow-x-hidden w-full">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <ContinuousWave pageIndex={3} />
+        <PaperBackgroundExtender />
+      </div>
+
+      <div className="bg-transparent pt-10 md:pt-14 pb-12 md:pb-16 relative z-10 text-paper">
         <div className="mx-auto max-w-3xl px-5 md:px-8">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-ink/60 hover:text-brand transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white transition-colors mb-6"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Quay lại Bản đồ chính</span>
           </Link>
           
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand mb-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-wave mb-4 backdrop-blur-md border border-white/15">
             <Compass className="w-3.5 h-3.5" />
-            <span>LỘ TRÌNH KHÁM PHÁ</span>
+            <span className="tracking-wider uppercase">LỘ TRÌNH KHÁM PHÁ</span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-medium leading-tight text-ink display normal-case mb-4">
+          <h1 className="text-4xl md:text-5xl font-medium leading-tight text-paper display normal-case mb-4">
             {route.name}
           </h1>
           
-          <p className="text-lg text-ink/80 leading-relaxed">
+          <p className="text-lg text-white/80 leading-relaxed">
             {route.description || "Khám phá những xưởng thủ công và địa điểm văn hoá đặc sắc trên tuyến đường này."}
           </p>
         </div>
       </div>
 
-      <div className="py-12 md:py-20">
+      <div className="py-12 md:py-20 relative z-10">
         <div className="mx-auto max-w-3xl px-5 md:px-8 space-y-8 relative">
           
           {/* Vertical connecting line */}

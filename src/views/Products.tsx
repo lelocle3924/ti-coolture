@@ -4,7 +4,7 @@ import { Sparkles, Heart, Check, ArrowRight, Search, X, SlidersHorizontal } from
 import { fetchProducts, toggleWishlist, triggerWebhook } from "../lib/dbService";
 import { Product } from "../types";
 import { useAuth } from "../lib/useAuth";
-import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
+import { ArcTopRight, ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
 import { vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
 
 const CANONICAL_CATEGORIES = [
@@ -179,7 +179,11 @@ export default function Products() {
     (searchQuery ? 1 : 0);
 
   return (
-    <div className="min-h-[100dvh] bg-paper-warm text-ink pb-28 select-none relative">
+    <div className="min-h-[100dvh] bg-brand text-ink pb-28 select-none relative overflow-x-hidden w-full">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <ContinuousWave pageIndex={1} />
+        <PaperBackgroundExtender />
+      </div>
       
       {/* Toast Notification (Flow E) */}
       {wishlistToast && (
@@ -195,7 +199,7 @@ export default function Products() {
       )}
 
       {/* ============ BRAND HERO BANNER WITH CURIOUS TOUCHES ============ */}
-      <section className="bg-brand text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden">
+      <section className="bg-transparent text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden z-10">
         <ArcTopRight
           className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-15"
           style={{ width: "clamp(18rem, 40vw, 32rem)" }}
@@ -224,15 +228,11 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Negative Transition Seam */}
-        <WaveProducts
-          className="absolute bottom-0 left-0 right-0 w-full z-10 pointer-events-none"
-          fill="var(--color-paper-warm)"
-        />
+        {/* Negative Transition Seam removed */}
       </section>
 
       {/* ============ MAIN CATALOG INTERFACE ============ */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-4 relative z-10">
 
         {/* Breadcrumbs */}
         <nav className="text-[11px] text-ink/60 flex items-center gap-1.5 font-medium">

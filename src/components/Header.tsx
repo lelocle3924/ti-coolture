@@ -15,7 +15,7 @@ const NAV_LINKS = [
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
   { to: "/kham-pha", label: "Khám phá" },
-  { to: "/blog", label: "Tạp chí" },
+  { to: "/tui-minh", label: "Tụi mình" },
 ];
 
 export default function Header() {
@@ -83,7 +83,7 @@ export default function Header() {
     `relative py-1 label transition-colors ${isActive ? "text-paper" : "text-white/70 hover:text-wave"}`;
 
   return (
-    <header className="sticky top-0 z-40 bg-brand text-paper border-b border-white/20 select-none">
+    <header className="fixed top-0 w-full z-50 bg-brand text-paper border-b border-white/20 select-none">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3 md:px-8 md:py-4">
         <Link to="/" viewTransition className="shrink-0" aria-label="Tí Coolture — trang chủ">
           <Brandmark className="w-[72px] md:w-[80px] h-auto" body="var(--color-paper)" />

@@ -10,7 +10,7 @@ import {
   type Collection,
 } from "../lib/dbService";
 import { Product, TouristRoute, RouteStop } from "../types";
-import { WaveBottomExtended, RibbonLoop, ArcTopRight } from "../components/BrandShapes";
+import { RibbonLoop, ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
 import FilmStrip from "../components/FilmStrip";
 import heroBackground from "../assets/background-hero.png";
 import { vtProductImage, vtShopLogo, withDirectionalTransition } from "../lib/viewTransitions";
@@ -70,7 +70,7 @@ export default function Homepage() {
   }, []);
 
   return (
-    <div className="bg-brand text-paper min-h-[100dvh] select-none">
+    <div className="bg-brand text-paper min-h-[100dvh] select-none overflow-x-hidden w-full relative">
       
       {/* ============ HERO SECTION ============ */}
       <section className="relative overflow-hidden bg-brand">
@@ -85,12 +85,9 @@ export default function Homepage() {
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-ink/70 mix-blend-multiply grayscale"
+          className="pointer-events-none absolute inset-0 bg-ink/50 mix-blend-multiply grayscale"
         />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/70 to-ink/50"
-        />
+        
 
         <div
           style={{ paddingBottom: "calc(14vw + 2rem)" }}
@@ -124,7 +121,7 @@ export default function Homepage() {
           </div>
         </div>
 
-        {/* Brand Horizon Transition with RibbonLoop & WaveBottomExtended */}
+        {/* Brand Horizon Transition with RibbonLoop & ContinuousWave */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]">
           <RibbonLoop
             className="absolute bottom-0 right-0 z-0 translate-x-[16%]"
@@ -132,10 +129,16 @@ export default function Homepage() {
             ribbon="var(--color-wave)"
             dot="var(--color-paper)"
           />
-          <WaveBottomExtended className="relative z-10" fill="var(--color-paper)" />
         </div>
       </section>
+      
+      {/* Background Layer for the rest of the page */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <ContinuousWave pageIndex={0} />
+        <PaperBackgroundExtender />
+      </div>
 
+      <div className="relative z-10">
       {/* ============ HOW IT WORKS ============ */}
       <section className="bg-paper text-ink pb-8 pt-8 md:pb-12 md:pt-12 scroll-mt-10 relative border-b border-ink/5">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
@@ -166,18 +169,11 @@ export default function Homepage() {
       {/* ============ WHAT'S IN STORE (CURATED SHOWCASE) ============ */}
       <section id="kho" className="bg-paper text-ink pb-12 pt-8 md:pb-16 md:pt-12 scroll-mt-20 relative">
         <div className="mx-auto max-w-7xl px-5 md:px-8 text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3.5 py-1 text-xs font-semibold text-brand">
-            <Sparkles className="w-3.5 h-3.5 text-brand" />
-            <span>KHO TÁC PHẨM ĐỘC BẢN</span>
-          </div>
+          
           
           <h2 className="display text-center text-3xl md:text-5xl leading-tight text-ink normal-case">
-            Đang có trong kho
+            <span className="text-brand">What's in store</span>
           </h2>
-          
-          <p className="text-sm text-ink/75 max-w-xl mx-auto leading-relaxed">
-            Kéo hoặc vuốt ngang để xoay 3D & chiêm ngưỡng từng tác phẩm được chế tác tỉ mỉ từ các nghệ nhân Việt.
-          </p>
         </div>
 
         {/* DOUBLE-BEZEL CONTAINER FOR 3D CAROUSEL */}
@@ -223,7 +219,7 @@ export default function Homepage() {
         <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
           <div className="flex items-center gap-2 text-xs text-ink/60">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Giá minh bạch từ xưởng · Cập nhật 08/2026 · Mua trực tiếp không phụ phí</span>
+            <span>Cập nhật lần cuối: 08/2026</span>
           </div>
 
           <Link
@@ -240,21 +236,12 @@ export default function Homepage() {
       </section>
 
       {/* ============ DISCOVERY ROUTE (CULTURAL MAP TERMINAL) ============ */}
-      <section id="lotrinh" className="relative overflow-hidden bg-paper py-12 md:py-16 scroll-mt-20 border-t border-ink/5">
+      <section id="lotrinh" className="relative overflow-hidden bg-paper py-12 md:py-16 scroll-mt-20">
         <div className="relative z-10 mx-auto max-w-7xl px-5 md:px-8 space-y-8">
           <div className="space-y-2 text-center max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
-              <Compass className="w-3.5 h-3.5" />
-              <span>BẢN ĐỒ VĂN HOÁ THỦ CÔNG</span>
-            </div>
-            
             <h2 className="text-3xl md:text-5xl font-medium leading-tight text-ink display normal-case">
               Hành trình khám phá
             </h2>
-            
-            <p className="text-sm md:text-base leading-relaxed text-ink/70">
-              Chọn một quận để bắt đầu. Nhấp vào các điểm trên bản đồ để xem lộ trình chi tiết các xưởng chế tác và không gian sáng tạo.
-            </p>
           </div>
 
           {loadError ? (
@@ -440,7 +427,7 @@ export default function Homepage() {
           )}
         </>
       )}
-
+      </div>
     </div>
   );
 }

@@ -167,3 +167,47 @@ export function RibbonLoop({
     </svg>
   );
 }
+
+export function ContinuousWave({ pageIndex, className = "" }: { pageIndex: number; className?: string }) {
+  return (
+    <div
+      className={`absolute top-0 h-[100dvh] pointer-events-none z-0 ${className}`}
+      style={{
+        width: "500vw",
+        left: `-${pageIndex * 100}vw`,
+      }}
+    >
+      <svg
+        viewBox="0 0 5000 1000"
+        className="w-full h-full"
+        preserveAspectRatio="none"
+      >
+        <path
+          fill="var(--color-paper)"
+          d="M 0 750 
+             C 50 748, 250 672, 400 790 
+             C 550 850, 580 737, 700 739 
+             C 815 741, 825 778, 880 791 
+             C 920 802, 815 438, 1000 400 
+             C 1185 362, 1300 450, 1500 400 
+             C 1700 350, 1800 400, 2000 400 
+             C 2200 400, 2300 450, 2500 450 
+             C 2700 450, 2800 400, 3000 400 
+             C 3200 400, 3300 350, 3500 400 
+             C 3700 450, 3800 400, 4000 400 
+             C 4200 400, 4300 450, 4500 450 
+             C 4700 450, 4800 900, 5000 900 
+             L 5000 1000 
+             L 0 1000 
+             Z"
+        />
+      </svg>
+    </div>
+  );
+}
+
+export function PaperBackgroundExtender() {
+  return (
+    <div className="absolute top-[100dvh] bottom-0 left-0 w-full bg-paper pointer-events-none z-0" />
+  );
+}

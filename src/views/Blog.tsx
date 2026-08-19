@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Clock, Calendar, ArrowRight, BookOpen, Sparkles } from "lucide-react";
 import { fetchBlogPosts, BlogPost } from "../lib/dbService";
-import { ArcTopRight, WaveBlog } from "../components/BrandShapes";
+import { ArcTopRight, ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
 import { vtBlogCover, withDirectionalTransition } from "../lib/viewTransitions";
 
 const TOPICS = [
@@ -47,13 +47,17 @@ export default function Blog() {
   const secondaryPosts = filteredBlogs.slice(1);
 
   return (
-    <div className="min-h-[100dvh] bg-paper-warm text-ink pb-28 select-none relative">
-      
+    <div className="min-h-[100dvh] bg-brand text-ink pb-28 select-none relative overflow-x-hidden w-full">
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <ContinuousWave pageIndex={4} />
+        <PaperBackgroundExtender />
+      </div>
+
       {/* Scroll Reading Progress Bar (§D1 Wireframe Spec) */}
-      <div className="scroll-prog" />
+      <div className="scroll-prog relative z-10" />
 
       {/* ============ EDITORIAL MAGAZINE HERO BANNER ============ */}
-      <section className="bg-brand text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden">
+      <section className="bg-transparent text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden z-10">
         <ArcTopRight
           className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-15"
           style={{ width: "clamp(18rem, 38vw, 30rem)" }}
@@ -63,7 +67,7 @@ export default function Blog() {
         <div className="max-w-7xl mx-auto relative z-10 space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1 text-[11px] font-semibold text-wave backdrop-blur-md border border-white/15">
             <BookOpen className="w-3.5 h-3.5" />
-            <span className="tracking-wider uppercase">TẠP CHÍ CHUYỆN NGHỀ & VĂN HOÁ BẢN ĐỊA</span>
+            <span className="tracking-wider uppercase">TỤI MÌNH & CỘNG ĐỒNG</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -82,21 +86,17 @@ export default function Blog() {
           </div>
         </div>
 
-        {/* Negative transition seam */}
-        <WaveBlog
-          className="absolute bottom-0 left-0 right-0 w-full z-10 pointer-events-none"
-          fill="var(--color-paper-warm)"
-        />
+        {/* Negative transition seam removed */}
       </section>
 
       {/* ============ MAIN CONTENT AREA ============ */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
         
         {/* Breadcrumbs */}
         <nav className="text-[11px] text-ink/60 flex items-center gap-1.5 font-medium">
           <Link to="/" viewTransition className="hover:text-brand transition-colors">Trang chủ</Link>
           <span>›</span>
-          <span className="text-ink font-semibold">Tạp chí Tí</span>
+          <span className="text-ink font-semibold">Tụi mình</span>
         </nav>
 
         {/* DOUBLE-BEZEL TOPIC TAXONOMY FILTER STRIP */}

@@ -115,7 +115,7 @@ export default function App() {
               <Route path="/" element={<Homepage />} />
               <Route path="/products" element={<Products />} />
               <Route path="/stores" element={<Stores />} />
-              <Route path="/blog" element={<Blog />} />
+              <Route path="/tui-minh" element={<Blog />} />
               <Route path="/kham-pha" element={<Discovery />} />
               <Route path="/kham-pha/:routeId" element={<Discovery />} />
               <Route path="/stores/:storeId" element={<ShopDisplay />} />

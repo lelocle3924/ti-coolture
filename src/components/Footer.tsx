@@ -13,10 +13,9 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-20">
         <div className="grid gap-10 md:grid-cols-4 md:gap-8">
           <div className="md:col-span-2 md:max-w-sm">
-            <Brandmark className="w-[104px] h-auto" body="var(--color-paper)" />
+            <Brandmark className="w-[104px] h-auto"  />
             <p className="mt-5 text-sm leading-relaxed text-white/80">
-              Nơi tuyển chọn local brand và artist Việt. Không phải nơi bán hàng — nơi tìm ra thứ
-              đáng mua.
+              Nơi tuyển chọn local brand và artist Việt.
             </p>
             <a
               href="mailto:hello@ticoolture.vn"
@@ -72,12 +71,7 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* Monumental Scroll-Linked Wordmark (§D5 Wireframe Spec) */}
-        <div className="pt-10 overflow-hidden">
-          <div className="footer-wordmark">
-            TÍ
-          </div>
-        </div>
+        
       </div>
     </footer>
   );
