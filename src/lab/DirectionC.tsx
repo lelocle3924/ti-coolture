@@ -14,6 +14,17 @@ import {
 } from "./labData";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
+import {
+  BrandArcCorner,
+  BrandContext,
+  BrandRibbonEyeDefs,
+  BrandRibbonMark,
+  BrandTideProgress,
+  BrandWaveSeam,
+  RIBBON_EYE_CLIP_ID,
+  useBrand,
+  type BrandVariant,
+} from "./brandLayers";
 import "./lab.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -382,6 +393,75 @@ function Collaborate() {
 
 /* ── hero: a full-viewport current of shop frames ──────────────────────── */
 
+function BrandEyePorthole({
+  frames,
+  active,
+}: {
+  frames: ReturnType<typeof useLabData>["heroFrames"];
+  active: number;
+}) {
+  const variant = useBrand();
+  const reduced = useReducedMotion();
+  if (variant !== "c3" || frames.length < 2) return null;
+
+  const next = frames[(active + 1) % frames.length];
+
+  return (
+    <figure
+      className="pointer-events-none absolute left-[6vw] top-[22vh] z-[6] m-0 hidden lg:block"
+      style={{ width: "clamp(11rem, 17vw, 17rem)" }}
+    >
+      <div
+        className="relative aspect-[16/10] overflow-hidden"
+        style={{ clipPath: `url(#${RIBBON_EYE_CLIP_ID})` }}
+      >
+        <img
+          key={next.id}
+          src={next.src}
+          alt=""
+          className="h-full w-full object-cover"
+          style={{ animation: reduced ? undefined : "lab-plate-in 700ms ease both" }}
+        />
+      </div>
+      <figcaption className="mt-3 text-[10px] tracking-[0.2em] text-white/70">
+        TIẾP THEO · {next.shopName.toUpperCase()}
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Frame-to-page seam. The brand variants swap the house curve for the real
+    brand-wave-bottom path and hang the ribbon across it. */
+function HeroSeam() {
+  const variant = useBrand();
+
+  if (variant === "none") {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 1440 120"
+        preserveAspectRatio="none"
+        className="absolute inset-x-0 bottom-0 h-[12vh] w-full"
+      >
+        <path
+          d="M0,64 C240,10 420,110 720,66 C1020,22 1220,104 1440,54 L1440,120 L0,120 Z"
+          fill="var(--color-brand)"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]">
+      <BrandRibbonMark
+        className="bottom-[4vh] right-[6vw] md:right-[10vw]"
+        dot="var(--color-brand)"
+      />
+      <BrandWaveSeam to="brand" height="14vh" crest />
+    </div>
+  );
+}
+
 function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFrames"] }) {
   const [active, setActive] = useState(0);
   const reduced = useReducedMotion();
@@ -430,15 +510,15 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
       <div aria-hidden="true" className="absolute inset-0 bg-brand/60 mix-blend-multiply" />
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-brand via-brand/45 to-brand/15" />
 
-      {/* the wave signature, used once, as the mask edge between frame and page */}
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 1440 120"
-        preserveAspectRatio="none"
-        className="absolute inset-x-0 bottom-0 h-[12vh] w-full"
-      >
-        <path d="M0,64 C240,10 420,110 720,66 C1020,22 1220,104 1440,54 L1440,120 L0,120 Z" fill="var(--color-brand)" />
-      </svg>
+      {/* p15: the curve is the mark for connection, bled off the corner the way
+          the guidelines cover does — small enough not to crowd the wordmark. */}
+      <BrandArcCorner />
+      <BrandEyePorthole frames={frames} active={active} />
+
+      {/* The seam between frame and page. Without a brand variant this is the
+          house curve; with one, the real brand-wave-bottom asset takes over and
+          the ribbon sits astride it, as the guidelines compose their cover. */}
+      <HeroSeam />
 
       <div className="relative z-10 flex h-full flex-col items-center justify-end px-5 pb-[18vh] text-center md:px-10 xl:px-24">
         <div className="max-w-5xl">
@@ -498,11 +578,27 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
 
 /* ── what's in store: two lanes running against each other ─────────────── */
 
-function StoreTile({ product, onOpen }: { key?: string; product: Product; onOpen: (p: Product) => void }) {
+function StoreTile({
+  product,
+  onOpen,
+  index = 0,
+}: {
+  key?: string;
+  product: Product;
+  onOpen: (p: Product) => void;
+  index?: number;
+}) {
+  const variant = useBrand();
+  const reduced = useReducedMotion();
+  /* C3 only: ride the crest. Amplitude stays small so the row still reads as
+     a row and the landscape ratio is never distorted. */
+  const lift = variant === "c3" && !reduced ? Math.sin(index * 0.9) * 2.6 : 0;
+
   return (
     <button
       onClick={() => onOpen(product)}
       className="lab-snap-item group mr-6 w-[78vw] shrink-0 text-left sm:w-[26rem] lg:mr-10 lg:w-[30rem]"
+      style={lift ? { transform: `translateY(${lift}rem)` } : undefined}
     >
       {/* landscape thumbnail — the ratio every shop must supply */}
       <div className="relative aspect-video overflow-hidden bg-white/5">
@@ -546,23 +642,26 @@ function StoreLane({
   if (reduced) {
     return (
       <div className="lab-snap-x lab-no-scrollbar flex overflow-x-auto px-5 md:px-10">
-        {products.map((p) => (
-          <StoreTile key={p.id} product={p} onOpen={onOpen} />
+        {products.map((p, i) => (
+          <StoreTile key={p.id} product={p} onOpen={onOpen} index={i} />
         ))}
       </div>
     );
   }
 
+  const variant = useBrand();
+  const riding = variant === "c3";
+
   return (
-    <div className="lab-marquee-track overflow-hidden">
+    <div className={`lab-marquee-track overflow-hidden ${riding ? "py-12" : ""}`}>
       <div
         className={`lab-marquee lab-marquee--${direction}`}
         style={{ ["--lab-marquee-duration" as string]: duration }}
       >
         {[0, 1].map((copy) => (
           <div key={copy} className="flex" aria-hidden={copy === 1}>
-            {products.map((p) => (
-              <StoreTile key={`${copy}-${p.id}`} product={p} onOpen={onOpen} />
+            {products.map((p, i) => (
+              <StoreTile key={`${copy}-${p.id}`} product={p} onOpen={onOpen} index={i} />
             ))}
           </div>
         ))}
@@ -573,6 +672,7 @@ function StoreLane({
 
 function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
   const half = Math.ceil(products.length / 2);
+  const brand = useBrand();
 
   return (
     <section id="dong-store" className="bg-brand py-16 text-paper md:py-24">
@@ -592,7 +692,7 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
         <p className="mt-3 text-sm text-white/60">Xem tất cả sản phẩm Tí tuyển chọn</p>
       </div>
 
-      <div className="mt-10 space-y-6">
+      <div className={`mt-10 ${brand === "c3" ? "space-y-0" : "space-y-6"}`}>
         <StoreLane products={products.slice(0, half)} direction="left" duration="58s" onOpen={onOpen} />
         <StoreLane products={products.slice(half)} direction="right" duration="70s" onOpen={onOpen} />
       </div>
@@ -1298,7 +1398,7 @@ function RevealFooter({ reveal }: { reveal: number }) {
 
 /* ── page ───────────────────────────────────────────────────────────────── */
 
-export default function DirectionC() {
+export default function DirectionC({ brand = "none" }: { brand?: BrandVariant }) {
   const navigate = useNavigate();
   const { loading, error, reload, heroFrames, popular, collections, routes, gems } = useLabData();
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -1319,7 +1419,10 @@ export default function DirectionC() {
   }, []);
 
   return (
+    <BrandContext.Provider value={brand}>
     <div className="bg-brand font-sans text-paper">
+      <BrandRibbonEyeDefs />
+      <BrandTideProgress progress={reveal} />
       <CurrentNav products={popular} />
       <ScrollProgress />
       <ScrollHint />
@@ -1347,11 +1450,22 @@ export default function DirectionC() {
           <StoreMarquee products={popular} onOpen={open} />
         )}
 
+        {/* violet → white: the wave carries the eye into the light band */}
+        <BrandWaveSeam to="paper" height="6vw" />
         <HowItWorks />
+
+        {/* white → violet. The guidelines also offer a chapter-front device
+            (flat field + ribbon, see BrandChapterDivider) but using it here
+            would put a "Bộ sưu tập" title back above a section whose whole
+            point is that it opens on "Chưa biết mua gì?" — so the wave, which
+            is the book's transition device, carries the change of ground. */}
+        <BrandWaveSeam to="brand" height="6vw" />
         <PinnedCollections collections={collections} onOpen={open} />
+        <BrandWaveSeam to="ink" height="6vw" />
         <MapStrip routes={routes} />
         <Collaborate />
       </div>
     </div>
+    </BrandContext.Provider>
   );
 }

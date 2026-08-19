@@ -91,6 +91,54 @@ const DIRECTIONS = [
   },
 ];
 
+/* Brand-device studies. Same page as C; what differs is how much of the
+   identity system in src/assets/brand is doing structural work, and how much
+   invention sits on top of it. */
+const BRAND_STUDIES = [
+  {
+    slug: "c1",
+    name: "C1 · ĐÚNG SÁCH",
+    en: "By the book",
+    invention: "0%",
+    idea:
+      "The three marks placed exactly as the guidelines compose them: arc bled off the top-right, the wave as every change of ground, the ribbon astride the hero seam. Nothing moves.",
+    differences: [
+      "brand-arc-top-right bleeds off the hero corner, held clear of the wordmark (p17)",
+      "brand-wave-bottom replaces the house curve at every seam, with a teal crest line",
+      "brand-ribbon-loop sits across the hero seam, exactly as on the cover",
+    ],
+    risk: "Most faithful and least surprising. The marks are decoration here — they carry no information.",
+  },
+  {
+    slug: "c2",
+    name: "C2 · DÒNG CHẢY",
+    en: "The current",
+    invention: "25%",
+    idea:
+      "The same three marks, but the book says the wave is a current and that art is never rigid — so the devices answer to scroll instead of sitting still.",
+    differences: [
+      "The wave crest drifts as the section passes, so the seam reads as water",
+      "The arc rotates with scroll — it is the mark for connection, so it reports progress",
+      "The ribbon draws itself in on first sight rather than simply being there",
+    ],
+    risk: "Motion on decorative marks competes with the page's own scroll-driven sections; it stops entirely under reduced motion.",
+  },
+  {
+    slug: "c3",
+    name: "C3 · BỆ PHÓNG",
+    en: "The launchpad",
+    invention: "75%",
+    idea:
+      "Built from what the marks mean rather than how they look. The wave is a launchpad that lifts makers up (p16) and the ribbon's negative-space eye is where the emblem's meaning sits (p15) — so both are promoted from ornament to structure.",
+    differences: [
+      "The catalogue rides the wave — tiles sit on a crest instead of a straight row",
+      "The ribbon's eye becomes an aperture: the next shop in the hero loop is seen through it",
+      "The page's progress is a rising tide rather than a bar",
+    ],
+    risk: "The furthest from the book's literal compositions; the eye aperture is a new shape derived from the mark, not one of its drawings. Worth a check with whoever owns the identity.",
+  },
+];
+
 export default function LabIndex() {
   return (
     <div className="min-h-[100dvh] bg-paper-warm px-5 py-12 font-sans text-ink md:px-10 md:py-16">
@@ -184,6 +232,68 @@ export default function LabIndex() {
               </div>
             </article>
           ))}
+        </section>
+
+        <section className="mt-16">
+          <div className="border-b border-ink/12 pb-4">
+            <h2 className="display text-[clamp(1.5rem,4vw,2.5rem)] normal-case leading-none">
+              Nhận diện thương hiệu trên bản C
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/70">
+              Cùng một trang C, ba cách đưa ba dấu hiệu trong{" "}
+              <code className="text-ink">src/assets/brand</code> vào giao diện — ribbon, arc và
+              wave. Khác nhau ở chỗ dấu hiệu chỉ để trang trí, hay thật sự gánh việc.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            {BRAND_STUDIES.map((b) => (
+              <article
+                key={b.slug}
+                className="flex flex-col rounded-2xl bg-paper p-6 ring-1 ring-ink/12"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="display text-[clamp(1.1rem,2.2vw,1.5rem)] normal-case leading-none">
+                    {b.name}
+                  </p>
+                  <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand">
+                    {b.invention}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-ink/50">{b.en}</p>
+                <p className="mt-4 text-sm leading-relaxed text-ink/80">{b.idea}</p>
+
+                <ul className="mt-4 space-y-1.5">
+                  {b.differences.map((d) => (
+                    <li key={d} className="flex gap-2.5 text-[13px] leading-relaxed text-ink/70">
+                      <span
+                        aria-hidden="true"
+                        className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-wave-ink"
+                      />
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="mt-4 text-[13px] leading-relaxed text-ink/55">{b.risk}</p>
+
+                <Link
+                  to={`/lab/${b.slug}`}
+                  className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-ink/25 px-5 text-sm font-semibold transition-colors hover:border-ink"
+                >
+                  Xem {b.slug.toUpperCase()}
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </article>
+            ))}
+          </div>
+
+          <p className="mt-5 text-sm leading-relaxed text-ink/60">
+            Tỷ lệ màu trong sách là <strong className="text-ink">60% tím · 30% trắng · 10% teal</strong>{" "}
+            (trang 13) — không có màu đen trong tỷ lệ. Cả ba bản trên vẫn giữ nguyên nền của bản C
+            để so sánh đúng phần dấu hiệu; nếu team muốn bám sát sách hơn nữa thì phần nền đen hiện
+            tại nên đổi sang trắng.
+          </p>
         </section>
 
         <footer className="mt-14 border-t border-ink/12 pt-6 text-sm text-ink/60">

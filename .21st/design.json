@@ -195,6 +195,58 @@
       "status": "open",
       "date": "2026-08-19",
       "note": "wireframes.html MO-7 says the collections pin 'releases directly into the footer reveal - the two are consecutive, never simultaneous'. The team's 19/08 note puts the map strip between collections and the footer, which ships. The two are still consecutive, just with the strip between them; confirm this supersedes the wireframe note."
+    },
+    {
+      "id": "brand-device-treatment",
+      "status": "open",
+      "date": "2026-08-20",
+      "question": "How much structural work should the identity marks do on the homepage?",
+      "sharedBase": "Direction C. All three studies are the same page; only the device layer differs (src/lab/brandLayers.tsx).",
+      "source": "docs/BRAND-GUIDELINES-TI-COOLTURE.pdf p13 (ratio), p15 (ribbon + arc), p16 (wave), p17 (restraint)",
+      "options": [
+        {
+          "slug": "c1",
+          "name": "DUNG SACH / By the book",
+          "route": "/lab/c1",
+          "invention": "0%",
+          "axes": {
+            "arc": "static, bled off the hero corner, clear of the wordmark",
+            "wave": "the real brand-wave-bottom at every seam, teal crest line",
+            "ribbon": "static, astride the hero seam as on the cover"
+          }
+        },
+        {
+          "slug": "c2",
+          "name": "DONG CHAY / The current",
+          "route": "/lab/c2",
+          "invention": "25%",
+          "axes": {
+            "arc": "rotates with scroll - the mark for connection reports progress",
+            "wave": "crest drifts as the section passes",
+            "ribbon": "draws itself in on first sight"
+          }
+        },
+        {
+          "slug": "c3",
+          "name": "BE PHONG / The launchpad",
+          "route": "/lab/c3",
+          "invention": "75%",
+          "axes": {
+            "wave": "the catalogue rides the crest; page progress is a rising tide",
+            "ribbon": "the negative-space eye becomes an aperture onto the next hero frame",
+            "note": "derived from what the book says the marks mean, not from its drawings"
+          }
+        }
+      ],
+      "compare": "/lab",
+      "screenshots": "docs/directions/c1-*.png, c3-*.png, brand-studies-index.png",
+      "onDecide": "Keep the chosen variant's layer, delete the other two branches in src/lab/brandLayers.tsx, and fold it into DirectionC as the default."
+    },
+    {
+      "id": "ratio-30-percent-is-white",
+      "status": "open",
+      "date": "2026-08-20",
+      "note": "Guidelines p13 states the ratio as 60% violet #7520F7 / 30% white #FFFFFF / 10% teal #39D6CF. There is no black in the ratio. Direction C currently spends part of its 30% on ink grounds (the map strip, one collection panel). The brand studies deliberately leave those alone so the comparison isolates the device layer. Decide whether the ink grounds should become white to match the book."
     }
   ],
   "evidence": [

@@ -147,6 +147,12 @@ export default function App() {
           <Route path="/lab/b" element={<DirectionB />} />
           <Route path="/lab/c" element={<DirectionC />} />
 
+          {/* Brand-device studies on top of C — same page, three readings of
+              the marks in src/assets/brand. See src/lab/brandLayers.tsx. */}
+          <Route path="/lab/c1" element={<DirectionC brand="c1" />} />
+          <Route path="/lab/c2" element={<DirectionC brand="c2" />} />
+          <Route path="/lab/c3" element={<DirectionC brand="c3" />} />
+
           <Route path="*" element={<SiteShell />} />
         </Routes>
       </BrowserRouter>
