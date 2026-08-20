@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, Menu, Search, StarIcon, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, Menu, Search, StarIcon, X } from "lucide-react";
 import Brandmark from "../components/Brandmark";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "./useAutoHideChrome";
+import { useDragTrack } from "./useDragTrack";
 import {
   formatPrice,
   islandBlobs,
@@ -148,7 +149,7 @@ function ScrollHint() {
         pointerEvents: visible ? "auto" : "none",
       }}
     >
-      <ArrowRight className={`h-7 w-7 rotate-90 ${reduced ? "" : "lab-bob"}`} />
+      <ArrowDown className={`h-7 w-7 ${reduced ? "" : "lab-bob"}`} />
     </a>
   );
 }
@@ -286,7 +287,9 @@ function CurrentNav({ products }: { products: Product[] }) {
       >
         <div
           className={`transition-colors duration-500 ${
-            atTop ? "bg-transparent" : "bg-brand-deep/70 backdrop-blur-xl"
+            atTop
+              ? "bg-ink/70 backdrop-blur-md"
+              : "bg-ink/85 backdrop-blur-xl"
           }`}
         >
           <div className="mx-auto flex max-w-[110rem] items-center gap-6 px-5 py-4 md:px-10">
@@ -370,7 +373,7 @@ function CurrentNav({ products }: { products: Product[] }) {
 
 function Collaborate() {
   return (
-    <section className="border-t border-white/20 bg-brand-deep px-5 py-16 text-center text-paper md:px-10 md:py-20">
+    <section className="bg-brand-deep px-5 pb-16 pt-6 text-center text-paper md:px-10 md:pb-20">
       <p className="text-[11px] tracking-[0.22em] text-white/75">DÀNH CHO CÁC SHOP</p>
       <h2 className="display mx-auto mt-4 max-w-[18ch] text-[clamp(1.9rem,4.6vw,3.5rem)] normal-case leading-[1.05]">
         Bạn làm đồ đẹp? Kể Tí nghe
@@ -507,8 +510,17 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
         </div>
       ))}
 
-      <div aria-hidden="true" className="absolute inset-0 bg-brand/60 mix-blend-multiply" />
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-brand via-brand/45 to-brand/15" />
+      {/* Team 20/08: white at the head, violet at the foot. The frame opens as
+          daylight and is already the page's violet by the time it reaches the
+          seam, so the hero hands over without an edge. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.42) 11%, rgba(255,255,255,0.04) 22%, rgba(117,32,247,0.38) 38%, rgba(117,32,247,0.82) 58%, rgba(117,32,247,0.97) 78%, var(--color-brand) 94%)",
+        }}
+      />
 
       {/* p15: the curve is the mark for connection, bled off the corner the way
           the guidelines cover does — small enough not to crowd the wordmark. */}
@@ -520,7 +532,7 @@ function CurrentHero({ frames }: { frames: ReturnType<typeof useLabData>["heroFr
           the ribbon sits astride it, as the guidelines compose their cover. */}
       <HeroSeam />
 
-      <div className="relative z-10 flex h-full flex-col items-center justify-end px-5 pb-[18vh] text-center md:px-10 xl:px-24">
+      <div className="relative z-10 flex h-full flex-col items-center justify-end px-5 pb-[11vh] text-center md:px-10 xl:px-24">
         <div className="max-w-5xl">
           <p key={`c-${frame.id}`} className="lab-wipe overflow-hidden">
             <span className="text-[11px] tracking-[0.22em] text-white/85">
@@ -673,6 +685,9 @@ function StoreLane({
 function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
   const half = Math.ceil(products.length / 2);
   const brand = useBrand();
+  /* Team 20/08: one lane is enough on a phone — two stacked marquees eat the
+     screen and neither can be read while both are moving. */
+  const twoLanes = useMediaQuery("(min-width: 768px)");
 
   return (
     <section id="dong-store" className="bg-brand py-16 text-paper md:py-24">
@@ -685,16 +700,22 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
           <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none transition-colors group-hover:text-wave">
             What&rsquo;s in store
           </h2>
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/35 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-wave group-hover:bg-wave group-hover:text-ink">
+          {/* <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/35 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-wave group-hover:bg-wave group-hover:text-ink">
             <ArrowUpRight className="h-5 w-5" />
-          </span>
+          </span> */}
         </Link>
-        <p className="mt-3 text-sm text-white/60">Xem tất cả sản phẩm Tí tuyển chọn</p>
       </div>
 
       <div className={`mt-10 ${brand === "c3" ? "space-y-0" : "space-y-6"}`}>
-        <StoreLane products={products.slice(0, half)} direction="left" duration="58s" onOpen={onOpen} />
-        <StoreLane products={products.slice(half)} direction="right" duration="70s" onOpen={onOpen} />
+        <StoreLane
+          products={twoLanes ? products.slice(0, half) : products}
+          direction="left"
+          duration={twoLanes ? "58s" : "72s"}
+          onOpen={onOpen}
+        />
+        {twoLanes && (
+          <StoreLane products={products.slice(half)} direction="right" duration="70s" onOpen={onOpen} />
+        )}
       </div>
 
       <p className="mt-8 px-5 text-center text-xs text-white/50 md:px-10">{PRICE_NOTE}</p>
@@ -797,7 +818,7 @@ function HowItWorks() {
   );
 
   const header = (
-    <div className="px-5 text-center md:px-10">
+    <div className="px-5 text-center md:px-0">
       <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none text-ink">
         Cách đặt hàng
       </h2>
@@ -1010,6 +1031,7 @@ function PinnedCollections({
     const tone = PANEL_TONES[i % PANEL_TONES.length];
     const isSeeMore = i === seeMoreIndex;
     const collection = isSeeMore ? null : collections[i];
+    const lead = collection?.items[0] ?? null;
 
     /* Below ~14% only the vertical rail is legible, so the body fades out
        rather than squeezing into an unreadable column. */
@@ -1056,38 +1078,45 @@ function PinnedCollections({
               </Link>
             </div>
           ) : (
+            /* Team 20/08: one lead piece per collection, and the name never
+               wraps. A strip of six thumbnails made the panel read as another
+               product row; a single object reads as a choice someone made. */
             <div className="flex h-full flex-col">
               <div className="flex items-baseline justify-between gap-4">
-                <h3 className="display text-[clamp(2rem,3.6vw,3.25rem)] normal-case leading-[1.02]">
+                <h3
+                  className="display truncate text-[clamp(1.5rem,2.6vw,2.5rem)] normal-case leading-[1.02]"
+                  title={collection!.name}
+                >
                   {collection!.name}
                 </h3>
-                <span className={`shrink-0 text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}>
+                <span
+                  className={`shrink-0 whitespace-nowrap text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}
+                >
                   {String(collection!.items.length).padStart(2, "0")} MÓN
                 </span>
               </div>
 
-              {/* Strip centres in the room the title leaves, so a 68vh panel
-                  does not sit with two thirds of itself empty. */}
-              <div className="lab-snap-x lab-no-scrollbar mt-6 flex flex-1 items-center gap-4 overflow-x-auto">
-                {collection!.items.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => onOpen(p)}
-                    className="lab-snap-item group w-[60vw] shrink-0 text-left sm:w-[17rem] lg:w-[19rem]"
-                  >
-                    <div className="aspect-video overflow-hidden bg-current/10">
-                      <img
-                        src={p.images[0]}
-                        alt={p.name}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
-                      />
-                    </div>
-                    <p className="mt-2 truncate text-sm font-medium">{p.name}</p>
-                    <p className={`mt-0.5 truncate text-xs ${tone.muted}`}>{formatPrice(p.price)}</p>
-                  </button>
-                ))}
-              </div>
+              {lead && (
+                <button
+                  onClick={() => onOpen(lead)}
+                  className="group mt-6 flex min-h-0 flex-1 flex-col text-left"
+                >
+                  <span className="relative block min-h-0 flex-1 overflow-hidden bg-current/10">
+                    <img
+                      src={lead.images[0]}
+                      alt={lead.name}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+                    />
+                  </span>
+                  <span className="mt-3 flex items-baseline justify-between gap-4">
+                    <span className="truncate text-base font-medium">{lead.name}</span>
+                    <span className={`shrink-0 whitespace-nowrap text-sm ${tone.muted}`}>
+                      {formatPrice(lead.price)}
+                    </span>
+                  </span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1144,130 +1173,230 @@ function PinnedCollections({
   );
 }
 
+/* ── ground blend ───────────────────────────────────────────────────────
+   Team 20/08: "NEVER allow abrupt transitions, always aim for CONTINUITY."
+
+   Every place two section grounds meet used to be a hard 1px edge. This is a
+   band of the two colours ramping into each other, so the page changes ground
+   the way the hero already does — by arriving somewhere, not by cutting. The
+   brand variants layer their wave on top of the same seams. */
+
+const GROUND: Record<string, string> = {
+  brand: "var(--color-brand)",
+  "brand-deep": "var(--color-brand-deep)",
+  paper: "var(--color-paper)",
+  ink: "var(--color-ink)",
+};
+
+function GroundBlend({
+  from,
+  to,
+  height = "10vh",
+}: {
+  from: keyof typeof GROUND;
+  to: keyof typeof GROUND;
+  height?: string;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none w-full"
+      style={{
+        height,
+        marginBottom: -1,
+        background: `linear-gradient(to bottom, ${GROUND[from]} 0%, ${GROUND[to]} 100%)`,
+      }}
+    />
+  );
+}
+
 /* ── map strip ──────────────────────────────────────────────────────────
    After bangkokartcity.org's "Discover Bangkok Art City": flat illustrated
-   island on a dark ground, teardrop pins, nothing else. Arrows page between
-   districts; the map itself is the link into /kham-pha, where the route and
-   the full stop list live. */
+   island on a dark ground, teardrop pins, nothing else.
+
+   Team 20/08: the districts must be reachable by dragging with a mouse,
+   swiping, or pressing the buttons — and all three must move the same way.
+   So all districts live on one track and every input drives the same spring
+   (see useDragTrack): 1:1 while held, released at the pointer's own velocity,
+   landing on the district the flick was heading for. */
+
+function DistrictSlide({
+  route,
+  plan,
+  onOpen,
+}: {
+  key?: string;
+  route: TouristRoute;
+  plan: ReturnType<typeof planFor>;
+  onOpen: () => void;
+}) {
+  const island = islandBlobs(route.stops);
+  const clipId = `lab-island-clip-${route.id}`;
+
+  return (
+    <div className="w-full shrink-0 px-2 md:px-6">
+      <button
+        onClick={onOpen}
+        aria-label={`Mở bản đồ ${plan.district} và danh sách điểm dừng`}
+        className="group block w-full cursor-pointer"
+      >
+        <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl md:aspect-[16/9]">
+          <svg
+            viewBox="0 0 800 600"
+            className="h-full w-full overflow-visible transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
+            aria-hidden="true"
+          >
+            <defs>
+              <clipPath id={clipId}>
+                {island.map((b, i) => (
+                  <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
+                ))}
+              </clipPath>
+            </defs>
+            {/* One landmass derived from the stops, so every pin stands on
+                land. The blobs share a fill, so they merge into a single
+                silhouette instead of stacking edges. */}
+            <g fill="var(--color-wave)">
+              {island.map((b, i) => (
+                <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
+              ))}
+            </g>
+            <g clipPath={`url(#${clipId})`}>
+              {plan.shapes.map((d, i) => (
+                <path key={i} d={d} fill="var(--color-wave-ink)" fillOpacity={0.16 + i * 0.05} />
+              ))}
+            </g>
+            <path
+              d={plan.axis}
+              fill="none"
+              stroke="var(--color-brand)"
+              strokeWidth="20"
+              strokeLinecap="round"
+              opacity="0.85"
+            />
+          </svg>
+
+          {/* teardrop pins, tip on the coordinate */}
+          {route.stops.map((stop, i) => (
+            <span
+              key={stop.id}
+              style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
+              className="pointer-events-none absolute block -translate-x-1/2 -translate-y-full"
+            >
+              <span className="relative block h-11 w-8 md:h-14 md:w-10">
+                <svg
+                  viewBox="0 0 40 52"
+                  className="h-full w-full drop-shadow-[0_6px_10px_rgba(18,8,31,0.45)]"
+                >
+                  <path
+                    d="M20 0C31 0 40 9 40 20c0 12-13 24-18 31a2.5 2.5 0 0 1-4 0C13 44 0 32 0 20 0 9 9 0 20 0Z"
+                    fill="var(--color-paper)"
+                  />
+                </svg>
+                <span className="absolute inset-x-0 top-[14%] text-center text-sm font-bold text-ink md:text-base">
+                  {i + 1}
+                </span>
+              </span>
+            </span>
+          ))}
+        </div>
+      </button>
+    </div>
+  );
+}
 
 function MapStrip({ routes }: { routes: TouristRoute[] }) {
   const navigate = useNavigate();
-  const [page, setPage] = useState(0);
-  const reduced = useReducedMotion();
+  const track = useDragTrack(routes.length);
 
-  const route = routes[page];
+  const route = routes[track.page];
   const plan = route ? planFor(route.id) : null;
   if (!route || !plan) return null;
 
-  const island = islandBlobs(route.stops);
-  const turn = (delta: number) => setPage((p) => (p + delta + routes.length) % routes.length);
-  const openDistrict = () => navigate(`/kham-pha/${route.id}`, { viewTransition: true });
-
   return (
-    <section id="dong-map" className="border-t border-white/20 bg-ink py-16 text-paper md:py-24">
+    <section id="dong-map" className="bg-ink py-16 text-paper md:py-24">
       <div className="px-5 text-center md:px-10">
         <h2 className="display text-[clamp(2.25rem,6.4vw,5rem)] normal-case leading-none text-wave">
           Khám phá Sài Gòn
         </h2>
-        <p className="mt-4 text-[13px] tracking-[0.16em] text-white/60">
+        {/* the label crossfades on the key, so the district name never cuts */}
+        <p
+          key={route.id}
+          className="lab-plate-in mt-4 text-[13px] tracking-[0.16em] text-white/60"
+        >
           {plan.district.toUpperCase()} · {route.stops.length} ĐIỂM · {plan.walk}
         </p>
       </div>
 
       <div className="relative mt-10 flex items-center gap-2 px-2 md:gap-6 md:px-10">
         <button
-          onClick={() => turn(-1)}
+          onClick={track.prev}
+          disabled={track.page === 0}
           aria-label="Quận trước"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave md:h-14 md:w-14"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-14 md:w-14"
         >
           <ArrowRight className="h-5 w-5 rotate-180" />
         </button>
 
-        {/* the whole island is the link into /kham-pha */}
-        <button
-          onClick={openDistrict}
-          aria-label={`Mở bản đồ ${plan.district} và danh sách điểm dừng`}
-          className="group relative min-w-0 flex-1 cursor-pointer"
+        <div
+          ref={track.setViewport}
+          {...track.handlers}
+          className={`min-w-0 flex-1 overflow-hidden touch-pan-y ${
+            track.dragging ? "cursor-grabbing" : "cursor-grab"
+          }`}
+          role="group"
+          aria-roledescription="carousel"
+          aria-label="Bản đồ các quận"
         >
-          <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl md:aspect-[16/9]">
-            <svg
-              viewBox="0 0 800 600"
-              className="h-full w-full overflow-visible transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
-              aria-hidden="true"
-            >
-              <defs>
-                <clipPath id="lab-island-clip">
-                  {island.map((b, i) => (
-                    <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
-                  ))}
-                </clipPath>
-              </defs>
-              {/* One landmass derived from the stops, so every pin stands on
-                  land. The blobs share a fill and a group opacity, so they
-                  merge into a single silhouette instead of stacking edges. */}
-              <g fill="var(--color-wave)">
-                {island.map((b, i) => (
-                  <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
-                ))}
-              </g>
-              {/* hand-drawn blocks as internal texture, clipped to the island */}
-              <g clipPath="url(#lab-island-clip)">
-                {plan.shapes.map((d, i) => (
-                  <path key={i} d={d} fill="var(--color-wave-ink)" fillOpacity={0.16 + i * 0.05} />
-                ))}
-              </g>
-              {/* the waterway */}
-              <path
-                d={plan.axis}
-                fill="none"
-                stroke="var(--color-brand)"
-                strokeWidth="20"
-                strokeLinecap="round"
-                opacity="0.85"
+          <div
+            className="flex"
+            style={{
+              transform: `translate3d(${track.x}px, 0, 0)`,
+              willChange: "transform",
+            }}
+          >
+            {routes.map((r) => (
+              <DistrictSlide
+                key={r.id}
+                route={r}
+                plan={planFor(r.id)}
+                onOpen={() => {
+                  // a flick that ends over the island must not also open it
+                  if (track.didDrag()) return;
+                  navigate(`/kham-pha/${r.id}`, { viewTransition: true });
+                }}
               />
-            </svg>
-
-            {/* teardrop pins, tip on the coordinate */}
-            {route.stops.map((stop, i) => (
-              <span
-                key={stop.id}
-                style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-                className="pointer-events-none absolute block -translate-x-1/2 -translate-y-full"
-              >
-                <span
-                  className="relative block h-11 w-8 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:h-14 md:w-10"
-                  style={{
-                    transform: reduced ? undefined : undefined,
-                  }}
-                >
-                  <svg viewBox="0 0 40 52" className="h-full w-full drop-shadow-[0_6px_10px_rgba(18,8,31,0.45)]">
-                    <path
-                      d="M20 0C31 0 40 9 40 20c0 12-13 24-18 31a2.5 2.5 0 0 1-4 0C13 44 0 32 0 20 0 9 9 0 20 0Z"
-                      fill="var(--color-paper)"
-                    />
-                  </svg>
-                  <span className="absolute inset-x-0 top-[14%] text-center text-sm font-bold text-ink md:text-base">
-                    {i + 1}
-                  </span>
-                </span>
-              </span>
             ))}
           </div>
-
-          <span className="mt-6 inline-flex items-center gap-2 border-b border-transparent pb-1 text-sm text-white/70 transition-colors group-hover:border-wave group-hover:text-wave">
-            Mở lộ trình
-            <ArrowUpRight className="h-4 w-4" />
-          </span>
-        </button>
+        </div>
 
         <button
-          onClick={() => turn(1)}
+          onClick={track.next}
+          disabled={track.page === routes.length - 1}
           aria-label="Quận sau"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave md:h-14 md:w-14"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-14 md:w-14"
         >
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
+
+      <div className="mt-8 flex items-center justify-center gap-3">
+        {routes.map((r, i) => (
+          <button
+            key={r.id}
+            onClick={() => track.goTo(i)}
+            aria-label={`Xem ${planFor(r.id).district}`}
+            aria-current={i === track.page}
+            className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              i === track.page ? "w-10 bg-wave" : "w-1.5 bg-white/30 hover:bg-white/60"
+            }`}
+          />
+        ))}
+      </div>
+
+      <p className="mt-6 text-center text-xs text-white/45">
+        Kéo, vuốt hoặc bấm mũi tên để đổi quận · chạm vào bản đồ để mở lộ trình
+      </p>
     </section>
   );
 }
@@ -1450,7 +1579,8 @@ export default function DirectionC({ brand = "none" }: { brand?: BrandVariant })
           <StoreMarquee products={popular} onOpen={open} />
         )}
 
-        {/* violet → white: the wave carries the eye into the light band */}
+        {/* violet → white */}
+        <GroundBlend from="brand" to="paper" />
         <BrandWaveSeam to="paper" height="6vw" />
         <HowItWorks />
 
@@ -1459,10 +1589,18 @@ export default function DirectionC({ brand = "none" }: { brand?: BrandVariant })
             would put a "Bộ sưu tập" title back above a section whose whole
             point is that it opens on "Chưa biết mua gì?" — so the wave, which
             is the book's transition device, carries the change of ground. */}
+        {/* white → violet */}
+        <GroundBlend from="paper" to="brand" />
         <BrandWaveSeam to="brand" height="6vw" />
         <PinnedCollections collections={collections} onOpen={open} />
+
+        {/* violet → ink */}
+        <GroundBlend from="brand" to="ink" />
         <BrandWaveSeam to="ink" height="6vw" />
         <MapStrip routes={routes} />
+
+        {/* ink → the deeper violet the collaborate band sits on */}
+        <GroundBlend from="ink" to="brand-deep" />
         <Collaborate />
       </div>
     </div>
