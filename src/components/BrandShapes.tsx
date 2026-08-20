@@ -144,6 +144,9 @@ export function RibbonLoop({
   ribbon = "var(--color-wave)",
   dot = "var(--color-paper)",
 }: {
+  /* declared because the project has no @types/react, so TS checks key as an
+     ordinary prop rather than a reserved one */
+  key?: string;
   className?: string;
   style?: React.CSSProperties;
   ribbon?: string;

@@ -16,6 +16,7 @@ import LabIndex from "./lab/LabIndex";
 import DirectionA from "./lab/DirectionA";
 import DirectionB from "./lab/DirectionB";
 import DirectionC from "./lab/DirectionC";
+import DirectionC4 from "./lab/DirectionC4";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
@@ -152,6 +153,10 @@ export default function App() {
           <Route path="/lab/c1" element={<DirectionC brand="c1" />} />
           <Route path="/lab/c2" element={<DirectionC brand="c2" />} />
           <Route path="/lab/c3" element={<DirectionC brand="c3" />} />
+
+          {/* C4 — the page as a single travelled line. Not a variant of C:
+              a different structure entirely. */}
+          <Route path="/lab/c4" element={<DirectionC4 />} />
 
           <Route path="*" element={<SiteShell />} />
         </Routes>
