@@ -17,6 +17,10 @@ import DirectionA from "./lab/DirectionA";
 import DirectionB from "./lab/DirectionB";
 import DirectionC from "./lab/DirectionC";
 import DirectionC4 from "./lab/DirectionC4";
+import { CatalogueOne, CatalogueTwo, CatalogueThree } from "./lab/subpages/CatalogueStudies";
+import { ProductOne, ProductTwo, ProductThree } from "./lab/subpages/ProductStudies";
+import { ShopsOne, ShopsTwo, ShopsThree } from "./lab/subpages/ShopStudies";
+import { OpenOne, OpenTwo, OpenThree } from "./lab/subpages/OpenStudies";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
@@ -157,6 +161,22 @@ export default function App() {
           {/* C4 — the page as a single travelled line. Not a variant of C:
               a different structure entirely. */}
           <Route path="/lab/c4" element={<DirectionC4 />} />
+
+          {/* Subpage studies — three directions each for the catalogue, the
+              product page, the shop directory and the open-a-workshop form.
+              See src/lab/subpages/. */}
+          <Route path="/lab/catalog/1" element={<CatalogueOne />} />
+          <Route path="/lab/catalog/2" element={<CatalogueTwo />} />
+          <Route path="/lab/catalog/3" element={<CatalogueThree />} />
+          <Route path="/lab/product/1/:productId" element={<ProductOne />} />
+          <Route path="/lab/product/2/:productId" element={<ProductTwo />} />
+          <Route path="/lab/product/3/:productId" element={<ProductThree />} />
+          <Route path="/lab/shops/1" element={<ShopsOne />} />
+          <Route path="/lab/shops/2" element={<ShopsTwo />} />
+          <Route path="/lab/shops/3" element={<ShopsThree />} />
+          <Route path="/lab/open/1" element={<OpenOne />} />
+          <Route path="/lab/open/2" element={<OpenTwo />} />
+          <Route path="/lab/open/3" element={<OpenThree />} />
 
           <Route path="*" element={<SiteShell />} />
         </Routes>

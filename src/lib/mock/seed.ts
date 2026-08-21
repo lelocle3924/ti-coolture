@@ -11,22 +11,18 @@
  */
 
 import type { Database } from "./schema";
+import { placeholderImage } from "./placeholder";
+import {
+  buildExtraImages,
+  buildExtraMaterials,
+  buildExtraProducts,
+  buildFillerImages,
+  describe as describeProduct,
+  dimensionFor,
+} from "./catalogue";
 
 const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
 const NOW = "2026-08-14T00:00:00.000Z";
-
-/** Labelled placeholder block, per content pack Part C. */
-function placeholderImage(label: string, ratio: "1:1" | "21:9" | "3:2" = "1:1"): string {
-  const [w, h] = ratio === "1:1" ? [1200, 1200] : ratio === "21:9" ? [2100, 900] : [1600, 1067];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">
-<rect width="${w}" height="${h}" fill="#FAF8FF"/>
-<rect x="1" y="1" width="${w - 2}" height="${h - 2}" fill="none" stroke="#12081F" stroke-opacity=".12" stroke-width="2"/>
-<path d="M0 ${h * 0.62}c${w * 0.18} -${h * 0.09} ${w * 0.3} ${h * 0.07} ${w * 0.47} ${h * 0.02}s${w * 0.28} -${h * 0.09} ${w * 0.53} -${h * 0.02}" fill="none" stroke="#39D6CF" stroke-width="${Math.round(w / 90)}"/>
-<text x="50%" y="46%" text-anchor="middle" fill="#12081F" fill-opacity=".55" font-family="Alexandria, sans-serif" font-size="${Math.round(w / 26)}" letter-spacing="${w / 300}">${label}</text>
-<text x="50%" y="53%" text-anchor="middle" fill="#12081F" fill-opacity=".35" font-family="Alexandria, sans-serif" font-size="${Math.round(w / 38)}">${w}×${h}</text>
-</svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
 
 const cat = (slug: string, vi: string, en: string, order: number) => ({
   id: `cat-${slug}`,
@@ -400,5 +396,24 @@ export const seed: Database = {
 
   click_events: [],
 };
+
+/* ── catalogue-scale extension (2026-08-21) ───────────────────────────────
+   The original twelve rows stay exactly as written; everything below is
+   appended so the catalogue can be judged at real scale. See
+   src/lib/mock/catalogue.ts for why, and for the same INVENTED warning. */
+
+const baseCount = seed.products.length;
+
+seed.products.forEach((row, i) => {
+  if (!row.short_desc_vi) {
+    row.short_desc_vi = describeProduct(row.name_vi, row.shop_id, row.category_id, i);
+  }
+  if (!row.dimensions) row.dimensions = dimensionFor(row.category_id, i);
+});
+
+seed.products.push(...buildExtraProducts(baseCount));
+seed.product_images.push(...buildExtraImages());
+seed.product_images.push(...buildFillerImages(seed.products.slice(0, baseCount).map((p) => p.id)));
+seed.product_materials.push(...buildExtraMaterials());
 
 export { placeholderImage };

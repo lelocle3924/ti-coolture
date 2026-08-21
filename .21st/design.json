@@ -273,6 +273,201 @@
       "status": "done",
       "date": "2026-08-20",
       "note": "Team feedback folded into Direction C: hero gradient runs white to violet with a dark nav material over it; collections show one lead piece with a non-wrapping name; the district map is one track driven by mouse drag, touch swipe and buttons through a single spring (src/lab/useDragTrack.ts, built to Apple's fluid-interface rules - 1:1 tracking, velocity handoff, momentum projection, rubber-banding); every change of ground is a gradient band so no abrupt transitions remain; What's in store runs one lane on mobile."
+    },
+    {
+      "id": "catalogue-page-direction",
+      "status": "open",
+      "date": "2026-08-21",
+      "question": "How should /products carry its filters, its paging and its density?",
+      "source": "src/lab/subpages/CatalogueStudies.tsx",
+      "sharedAcrossOptions": [
+        "The hardcoded category chip strip is gone; every facet is derived from the data with live counts",
+        "No view transition on a filter or a sort — results swap in place",
+        "Filters and sort drawn in the Direction C language: hairlines, label caps, violet as the only fill",
+        "The card hands its image to the product page (shared.tsx handoff)"
+      ],
+      "options": [
+        {
+          "slug": "catalog/1",
+          "name": "QUẦY",
+          "en": "The Counter",
+          "route": "/lab/catalog/1",
+          "axes": {
+            "filters": "open sidebar rail, desktop; bottom sheet with live count, mobile",
+            "paging": "24 per page, numbered pager",
+            "density": "4-up, highest"
+          }
+        },
+        {
+          "slug": "catalog/2",
+          "name": "RÁP",
+          "en": "The Rail",
+          "route": "/lab/catalog/2",
+          "axes": {
+            "filters": "one hairline rail, facets behind a disclosure panel",
+            "paging": "load-more in steps of 24",
+            "density": "3-up with a two-line description, lowest"
+          }
+        },
+        {
+          "slug": "catalog/3",
+          "name": "MỤC LỤC",
+          "en": "The Index",
+          "route": "/lab/catalog/3",
+          "axes": {
+            "filters": "a sentence with inline dropdowns instead of controls",
+            "paging": "36 per page as an index, 24 as a grid",
+            "density": "index rows or grid, lowest chroma"
+          }
+        }
+      ],
+      "compare": "/lab",
+      "screenshots": "docs/directions/sub-catalog-*.png"
+    },
+    {
+      "id": "product-page-direction",
+      "status": "open",
+      "date": "2026-08-21",
+      "question": "What does a visitor meet first on a product page, and where does the order action live?",
+      "source": "src/lab/subpages/ProductStudies.tsx",
+      "sharedAcrossOptions": [
+        "The description is on the page and collapses behind a measured \"… Xem thêm\"",
+        "The hero renders on the first paint from the catalogue handoff, so the morph has a target",
+        "Price note and the no-transaction line verbatim; no double bezels, no shadows outside the modal"
+      ],
+      "options": [
+        {
+          "slug": "product/1",
+          "name": "TRƯNG BÀY",
+          "en": "The Plate",
+          "route": "/lab/product/1",
+          "axes": {
+            "gallery": "sticky square plate with a vertical thumb rail",
+            "reading": "right-hand column",
+            "order": "in the reading column"
+          }
+        },
+        {
+          "slug": "product/2",
+          "name": "MỞ RA",
+          "en": "The Unfold",
+          "route": "/lab/product/2",
+          "axes": {
+            "gallery": "full-bleed 21:9 opener plus a scrub strip",
+            "reading": "wide body under a violet band",
+            "order": "docked rail at every width"
+          }
+        },
+        {
+          "slug": "product/3",
+          "name": "PHIẾU",
+          "en": "The Tag",
+          "route": "/lab/product/3",
+          "axes": {
+            "gallery": "two plates shown at once, nothing to operate",
+            "reading": "spec table as the spine, description to 8 lines",
+            "order": "an inquiry slip at the end"
+          }
+        }
+      ],
+      "compare": "/lab",
+      "screenshots": "docs/directions/sub-product-*.png"
+    },
+    {
+      "id": "shop-directory-direction",
+      "status": "open",
+      "date": "2026-08-21",
+      "question": "Is area a filter, the spine of the page, or absent?",
+      "source": "src/lab/subpages/ShopStudies.tsx",
+      "note": "The live /stores chips are nine hand-written districts; the six shops sit in six other areas, so every chip returns nothing. All three options derive area from the data or drop it.",
+      "options": [
+        {
+          "slug": "shops/1",
+          "name": "DANH BẠ",
+          "en": "The Directory",
+          "route": "/lab/shops/1",
+          "axes": {
+            "area": "one derived select that hides itself when there is nothing to choose",
+            "layout": "full-width rows, 21:9 cover"
+          }
+        },
+        {
+          "slug": "shops/2",
+          "name": "THEO KHU",
+          "en": "By area",
+          "route": "/lab/shops/2",
+          "axes": {
+            "area": "a standing index — the spine of the page, linking on to /kham-pha",
+            "layout": "two-up grid per area"
+          }
+        },
+        {
+          "slug": "shops/3",
+          "name": "TỦ",
+          "en": "The Cabinet",
+          "route": "/lab/shops/3",
+          "axes": {
+            "area": "no control at all, search only",
+            "layout": "two-up, each shop already showing four products"
+          }
+        }
+      ],
+      "compare": "/lab",
+      "screenshots": "docs/directions/sub-shops-*.png"
+    },
+    {
+      "id": "open-a-workshop-direction",
+      "status": "open",
+      "date": "2026-08-21",
+      "question": "How much is asked of a workshop before they can start, and how much can they see of where it goes?",
+      "source": "src/lab/subpages/OpenStudies.tsx",
+      "note": "Replaces the /auth-gateway redirect behind \"Đăng ký mở xưởng\". Registering interest is not signing in: no account, no password. Same fields and same close in all three.",
+      "options": [
+        {
+          "slug": "open/1",
+          "name": "MỘT TRANG",
+          "en": "One page",
+          "route": "/lab/open/1",
+          "axes": {
+            "shape": "everything at once",
+            "extra": "live preview of the shop card the answers become, plus what Tí looks for"
+          }
+        },
+        {
+          "slug": "open/2",
+          "name": "BA BƯỚC",
+          "en": "Three steps",
+          "route": "/lab/open/2",
+          "axes": {
+            "shape": "three short screens with a review before sending",
+            "extra": "least on screen at any moment"
+          }
+        },
+        {
+          "slug": "open/3",
+          "name": "LÁ THƯ",
+          "en": "The Letter",
+          "route": "/lab/open/3",
+          "axes": {
+            "shape": "blanks inside sentences",
+            "extra": "fewest visible controls; labels are aria-only"
+          }
+        }
+      ],
+      "compare": "/lab",
+      "screenshots": "docs/directions/sub-open-*.png"
+    },
+    {
+      "id": "view-transitions-are-inert",
+      "status": "open",
+      "date": "2026-08-21",
+      "note": "Every <Link viewTransition> in src/views does nothing: React Router only honours the prop under a data router, and src/App.tsx mounts <BrowserRouter> + <Routes>. Verified by patching document.startViewTransition and clicking a product card — it was never called. So the product-image continuity the SPEC asks for has never run, and the only transition that does fire is withDirectionalTransition() on a filter chip, which slides and scales the whole page (1.06 → 1) on a spring that overshoots — the jerky zoom the team reported. The lab studies drive the transition explicitly (src/lab/subpages/shared.tsx › ContinuityLink) and name only the clicked image, so exactly one pair morphs. Whichever directions are chosen, the fix belongs in src/views too."
+    },
+    {
+      "id": "catalogue-scale-data",
+      "status": "done",
+      "date": "2026-08-21",
+      "note": "Seed extended from 12 to 77 placeholder products across the same six shops (src/lib/mock/catalogue.ts), with shops crossing categories so filter combinations mean something, three NULL prices for the Liên hệ path, three image slots per product, and a short_desc_vi for every product including the original twelve, which had none. Publication dates use a coprime stride so \"mới nhất\" interleaves the shops. Still INVENTED placeholder content — it must not ship to a public demo."
     }
   ],
   "evidence": [

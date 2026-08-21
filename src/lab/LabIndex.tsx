@@ -161,6 +161,187 @@ const BRAND_STUDIES = [
   },
 ];
 
+/* Subpage studies — 21/08. Four pages the team gave notes on, three
+   directions each. Unlike the homepage set these are independent choices:
+   picking catalogue 1 does not commit you to product 1. */
+const SUBPAGE_STUDIES = [
+  {
+    page: "Trang sản phẩm",
+    route: "/products",
+    path: "catalog",
+    notes:
+      "Chip đầu trang là placeholder và không khớp sản phẩm nào — mọi chip đều ra 0 kết quả. Ấn chip thì cả trang giật và phóng to thu nhỏ. Bộ lọc và sắp xếp chưa đúng ngôn ngữ thiết kế. 77 sản phẩm để xem một trang hiển thị bao nhiêu.",
+    options: [
+      {
+        n: 1,
+        name: "QUẦY",
+        en: "The Counter",
+        idea: "Bộ lọc mở sẵn trong một cột bên trái, đếm số thật. 24 sản phẩm một trang, phân trang số.",
+        differences: [
+          "Bộ lọc luôn hiện — không phải mở ra mới thấy",
+          "Phân trang có số, có thể chia sẻ và index được",
+          "Mật độ cao nhất: 4 cột trên desktop",
+        ],
+        risk: "Cột bộ lọc lấy mất chiều ngang của hàng sản phẩm; trên mobile phải nằm trong bottom sheet.",
+      },
+      {
+        n: 2,
+        name: "RÁP",
+        en: "The Rail",
+        idea: "Một thanh mảnh duy nhất, bộ lọc mở ra bên dưới khi cần. Bấm “Xem thêm 24” thay vì đổi trang.",
+        differences: [
+          "Không có cột bên — sản phẩm giữ trọn chiều ngang",
+          "Danh sách dài thêm, không mất vị trí đang xem",
+          "Mật độ thấp nhất: 3 cột, ảnh lớn, có mô tả ngắn",
+        ],
+        risk: "Danh sách nối dài khó quay lại đúng chỗ và khó cho SEO hơn phân trang số.",
+      },
+      {
+        n: 3,
+        name: "MỤC LỤC",
+        en: "The Index",
+        idea: "Bộ lọc viết thành một câu. Xem được ở dạng mục lục đánh số hoặc dạng lưới.",
+        differences: [
+          "Không còn nút bấm dạng hộp — mỗi lựa chọn là một từ gạch chân trong câu",
+          "Hai kiểu xem: mục lục 36 dòng/trang, hoặc lưới 24 ô/trang",
+          "Ít màu nhất, chữ nhiều nhất",
+        ],
+        risk: "Câu lọc chỉ chọn được một giá trị mỗi loại; mục lục chỉ hợp khi người xem đã biết mình tìm gì.",
+      },
+    ],
+  },
+  {
+    page: "Trang chi tiết sản phẩm",
+    route: "/products/[slug]",
+    path: "product",
+    sample: "/prod-dia-men-ran-song-nuoc",
+    notes:
+      "Trang chưa có mô tả sản phẩm (dữ liệu cũng chưa có). Cần overhaul, và ảnh từ trang danh mục phải phóng vào đúng khung ảnh của trang này.",
+    options: [
+      {
+        n: 1,
+        name: "TRƯNG BÀY",
+        en: "The Plate",
+        idea: "Ảnh đứng yên bên trái, phần đọc chạy bên phải theo thứ tự: xưởng, tên, giá, mô tả, thông số, cách đặt.",
+        differences: [
+          "Ảnh dính (sticky) — luôn thấy khi đọc",
+          "Mô tả gấp ở 4 dòng, có “… Xem thêm”",
+          "Nút đặt nằm trong cột đọc, không nổi",
+        ],
+        risk: "Cột phải khá dài trên màn nhỏ; ảnh chiếm 7/12 chiều ngang nên chữ hẹp hơn hai bản kia.",
+      },
+      {
+        n: 2,
+        name: "MỞ RA",
+        en: "The Unfold",
+        idea: "Ảnh mở tràn màn thành khung 21:9, tên sản phẩm nằm trên ảnh. Thanh đặt hàng dính đáy ở mọi khổ màn.",
+        differences: [
+          "Ảnh là thứ đầu tiên và lớn nhất — hợp với continuity transition nhất",
+          "Mô tả là phần thân trang, cỡ chữ lớn hơn",
+          "Thanh đặt hàng luôn hiện, cả trên desktop",
+        ],
+        risk: "Ảnh 1:1 của xưởng bị cắt mạnh khi ép 21:9; chữ trên ảnh cần scrim đủ đậm.",
+      },
+      {
+        n: 3,
+        name: "PHIẾU",
+        en: "The Tag",
+        idea: "Thông số là xương sống. Hai ảnh hiện cùng lúc, không có gì để bấm qua lại.",
+        differences: [
+          "Không carousel, không thumbnail — ảnh bày sẵn",
+          "Mô tả mở rộng tới 8 dòng mới gấp",
+          "Phần đặt hàng là một “phiếu hỏi xưởng” ở cuối",
+        ],
+        risk: "Ảnh nhỏ hơn hai bản kia; trang đọc như hồ sơ lưu trữ hơn là trang bán.",
+      },
+    ],
+  },
+  {
+    page: "Trang shop",
+    route: "/stores",
+    path: "shops",
+    notes:
+      "Chip khu vực đầu trang là placeholder — 9 chip viết tay, không chip nào khớp với 6 xưởng trong dữ liệu. Nút đăng ký mở xưởng không được đẩy sang auth gateway nữa.",
+    options: [
+      {
+        n: 1,
+        name: "DANH BẠ",
+        en: "The Directory",
+        idea: "Mỗi xưởng một hàng ngang, ảnh bìa 21:9 làm chính. Khu vực là một ô chọn lấy từ dữ liệu, tự ẩn khi không có gì để chọn.",
+        differences: [
+          "Không còn dải chip; chỉ một ô chọn + ô tìm",
+          "Mỗi hàng kèm 3 ảnh sản phẩm gần nhất",
+        ],
+        risk: "Hàng ngang tốn chiều dọc — 6 xưởng đã dài gần hai màn hình.",
+      },
+      {
+        n: 2,
+        name: "THEO KHU",
+        en: "By area",
+        idea: "Khu vực là trục chính: một mục lục khu vực đứng yên bên trái, xưởng của khu bên phải, và lối ra là bản đồ lộ trình.",
+        differences: [
+          "Khu vực là cách đọc trang, không phải bộ lọc phụ",
+          "Nối thẳng sang /kham-pha",
+        ],
+        risk: "Hiện mỗi khu chỉ có đúng một xưởng, nên mục lục chưa phát huy; chỉ đáng khi có 30+ xưởng.",
+      },
+      {
+        n: 3,
+        name: "TỦ",
+        en: "The Cabinet",
+        idea: "Hai xưởng một hàng, mỗi xưởng đã bày sẵn 4 món. Bỏ hẳn bộ lọc khu vực, chỉ giữ ô tìm.",
+        differences: [
+          "Thấy hàng của xưởng ngay, không cần mở trang xưởng",
+          "Nền đen, ít điều khiển nhất",
+        ],
+        risk: "Không lọc được theo khu vực; nền đen làm ảnh placeholder xám đi.",
+      },
+    ],
+  },
+  {
+    page: "Đăng ký mở xưởng",
+    route: "/mo-xuong",
+    path: "open",
+    notes:
+      "Trang mới. Không đẩy sang auth gateway, không tạo tài khoản, không mật khẩu — chỉ tên, email, số điện thoại, khu vực, kênh bán và mô tả.",
+    options: [
+      {
+        n: 1,
+        name: "MỘT TRANG",
+        en: "One page",
+        idea: "Toàn bộ câu hỏi hiện cùng lúc, bên cạnh là thẻ hồ sơ xưởng tự dựng theo những gì vừa điền.",
+        differences: [
+          "Thấy hết việc phải làm ngay từ đầu",
+          "Có xem trước kết quả + phần “Tí tìm gì”",
+        ],
+        risk: "Nhìn dài, dễ làm người ngại điền bỏ giữa chừng.",
+      },
+      {
+        n: 2,
+        name: "BA BƯỚC",
+        en: "Three steps",
+        idea: "Ba màn ngắn — liên hệ, xưởng, sản phẩm — rồi xem lại toàn bộ trước khi gửi.",
+        differences: [
+          "Mỗi lúc chỉ hỏi 2–3 câu",
+          "Có bước xem lại và sửa trước khi gửi",
+        ],
+        risk: "Nhiều lần bấm hơn; không thấy trước tổng khối lượng phải điền.",
+      },
+      {
+        n: 3,
+        name: "LÁ THƯ",
+        en: "The Letter",
+        idea: "Biểu mẫu viết thành đoạn văn có chỗ trống điền vào giữa câu.",
+        differences: [
+          "Ít điều khiển nhìn thấy nhất — đọc như một lời tự giới thiệu",
+          "Giọng gần với thương hiệu nhất",
+        ],
+        risk: "Câu văn xuống dòng nhiều ở 390px; trình đọc màn hình phải dựa vào aria-label vì nhãn không hiện.",
+      },
+    ],
+  },
+];
+
 export default function LabIndex() {
   return (
     <div className="min-h-[100dvh] bg-paper-warm px-5 py-12 font-sans text-ink md:px-10 md:py-16">
@@ -316,6 +497,77 @@ export default function LabIndex() {
             để so sánh đúng phần dấu hiệu; nếu team muốn bám sát sách hơn nữa thì phần nền đen hiện
             tại nên đổi sang trắng.
           </p>
+        </section>
+
+        <section className="mt-16">
+          <div className="border-b border-ink/12 pb-4">
+            <h2 className="display text-[clamp(1.5rem,4vw,2.5rem)] normal-case leading-none">
+              Các trang còn lại
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink/70">
+              Bốn trang team đã góp ý, mỗi trang ba hướng. Đây là bốn lựa chọn độc lập — chọn
+              hướng 1 cho danh mục không buộc phải chọn hướng 1 cho trang chi tiết. Cả mười hai
+              bản dùng chung dữ liệu đã mở rộng lên{" "}
+              <strong className="text-ink">77 sản phẩm</strong>, bỏ hẳn hiệu ứng phóng to toàn
+              trang khi bấm bộ lọc, và dùng chung một transition ảnh nối từ danh mục sang trang
+              sản phẩm.
+            </p>
+          </div>
+
+          <div className="mt-8 space-y-10">
+            {SUBPAGE_STUDIES.map((study) => (
+              <article key={study.path}>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h3 className="display text-[clamp(1.2rem,2.6vw,1.75rem)] normal-case leading-none">
+                    {study.page}
+                  </h3>
+                  <code className="text-xs text-ink/45">{study.route}</code>
+                </div>
+                <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-ink/60">
+                  <strong className="font-semibold text-ink/80">Góp ý:</strong> {study.notes}
+                </p>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                  {study.options.map((o) => (
+                    <div
+                      key={o.n}
+                      className="flex flex-col rounded-2xl bg-paper p-5 ring-1 ring-ink/12"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="display text-[1.15rem] normal-case leading-none">
+                          {o.n} · {o.name}
+                        </p>
+                        <span className="shrink-0 text-[11px] text-ink/45">{o.en}</span>
+                      </div>
+                      <p className="mt-3 text-[13px] leading-relaxed text-ink/80">{o.idea}</p>
+
+                      <ul className="mt-3 space-y-1">
+                        {o.differences.map((d) => (
+                          <li key={d} className="flex gap-2 text-[13px] leading-relaxed text-ink/65">
+                            <span
+                              aria-hidden="true"
+                              className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-wave-ink"
+                            />
+                            {d}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <p className="mt-3 text-[13px] leading-relaxed text-ink/50">{o.risk}</p>
+
+                      <Link
+                        to={`/lab/${study.path}/${o.n}${study.sample ?? ""}`}
+                        className="mt-5 inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-ink/25 px-5 text-sm font-semibold transition-colors hover:border-ink"
+                      >
+                        Xem bản {o.n}
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
 
         <footer className="mt-14 border-t border-ink/12 pt-6 text-sm text-ink/60">

@@ -68,6 +68,7 @@ function toProduct(row: ProductRow): Product {
     category: category?.name_vi ?? "",
     variants: row.variants.flatMap((v) => v.values.map((val) => val.vi)),
     material: material?.name_vi,
+    size: row.dimensions ?? undefined,
     story: row.story_vi ?? undefined,
     clicks: clicksFor(row.id),
     views: 0,
