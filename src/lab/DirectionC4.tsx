@@ -227,9 +227,15 @@ export default function DirectionC4() {
     [navigate]
   );
 
+  /* A phone has no room to hang a card beside the road: at 390px a card
+     offset sideways from the centre runs straight off the edge. There the
+     card centres on the road instead and sits below the bead, which keeps the
+     traveller visible and the text on screen. */
+  const narrow = size.w < 768;
+
   /* the viewfinder sits a little above centre, so what is ahead has room */
   const anchorX = size.w / 2;
-  const anchorY = size.h * 0.52;
+  const anchorY = size.h * (narrow ? 0.3 : 0.52);
   const drawn = progress * roadLength;
 
   const active = placed.reduce(
@@ -313,13 +319,19 @@ export default function DirectionC4() {
             const near = Math.abs(s.at - progress);
             const shown = near < 0.075;
             const t = Math.max(0, 1 - near / 0.075);
+            /* On a phone the card rides the camera's own column rather than
+               its stop's point on the road. The wave swings wider than a 390px
+               screen, so a neighbouring stop's x is often half a viewport away
+               and the card would sit half off the edge. Pinning x to the camera
+               keeps every visible card centred; the road still carries it
+               vertically. */
             const style = {
-              left: s.x,
+              left: narrow ? camera.x : s.x,
               top: s.y,
               opacity: reduced ? 1 : t,
-              transform: `translate(calc(-50% + ${s.side * 17}vw), calc(-50% + ${
-                (1 - t) * 26
-              }px))`,
+              transform: `translate(calc(-50% + ${narrow ? 0 : s.side * 17}vw), calc(-50% + ${
+                narrow ? 16 : 0
+              }vh + ${(1 - t) * 26}px))`,
               transition: reduced ? "none" : "opacity 260ms linear",
             } as const;
 

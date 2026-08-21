@@ -4,11 +4,12 @@ import Brandmark from "../components/Brandmark";
 import "./lab.css";
 
 /**
- * Comparison sheet for the three exploration directions.
+ * Comparison sheet for the exploration directions.
  *
- * Everything below the fixed constraints is what the team is choosing between.
- * Once a direction is picked, the other two folders come out and the decision
- * gets recorded in .21st/design.json.
+ * Everything below the fixed constraints is what the team is choosing between:
+ * four homepage directions, plus three readings of the brand marks laid over
+ * C. Once one is picked, the rest come out of src/lab/ and the decision gets
+ * recorded in .21st/design.json.
  */
 
 const FIXED = [
@@ -89,6 +90,27 @@ const DIRECTIONS = [
     swatch: ["#12081f", "#39d6cf", "#7520f7"],
     tone: "bg-ink text-paper",
   },
+  {
+    slug: "c4",
+    name: "MỘT NÉT",
+    en: "One stroke",
+    reference: "the brand's own wave and knot",
+    idea:
+      "Keep the colour, keep waves and loops central, change everything else — so what goes is the page. One line is drawn across a world larger than the screen and everything the site says is pinned to a point on it. Scrolling moves you along the line while the world slides under a fixed viewfinder.",
+    effect: "Visitor is travelling somewhere rather than reading down a page.",
+    differences: [
+      "No sections, no bands, no rows, no grid, no nav bar",
+      "The wave is the road and the ribbon's knot is the landmark — both structural, not decorative",
+      "Navigation is a position on a line; the chrome is a mark, a chapter and a distance",
+      "The camera is a critically damped follow, so arrival is soft and reversal blends",
+      "Cards hang off whichever side of the road has room",
+      "Density: one stop at a time — the lowest of any direction",
+    ],
+    risk: "The furthest from anything the team has approved, and the least conventional to navigate: there is no nav bar and no way to jump to a section. Desktop-verified only so far.",
+    bestFor: "A launch moment or an awards entry, where being unlike other sites is the point.",
+    swatch: ["#7520f7", "#39d6cf", "#ffffff"],
+    tone: "bg-brand text-paper",
+  },
 ];
 
 /* Brand-device studies. Same page as C; what differs is how much of the
@@ -146,10 +168,10 @@ export default function LabIndex() {
         <header className="border-b border-ink/12 pb-6">
           <Brandmark className="h-auto w-[96px]" body="var(--color-ink)" wave="var(--color-wave-ink)" />
           <h1 className="display mt-6 text-[clamp(2rem,6vw,4rem)] normal-case leading-none">
-            Ba hướng đi
+            Bốn hướng đi
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink/70">
-            Ba hướng thiết kế cho trang chủ, dựng thật trên cùng dữ liệu và cùng bộ token. Tất cả
+            Bốn hướng thiết kế cho trang chủ, dựng thật trên cùng dữ liệu và cùng bộ token. Tất cả
             đều đã có phản hồi của team: nav tự ẩn, hero loop ảnh shop gửi, bộ sưu tập, thumbnail
             ngang, và bản đồ quận dạng carousel. Bản C đã sửa theo góp ý 19/08 — lấy thêm marquee
             và cách trình bày bộ sưu tập từ bản A, thêm phần &ldquo;Cách đặt hàng&rdquo;, đổi bản
@@ -303,7 +325,7 @@ export default function LabIndex() {
             ra cho các shop.
           </p>
           <p className="mt-3">
-            Chọn xong một hướng, hai hướng còn lại sẽ được gỡ khỏi{" "}
+            Chọn xong một hướng, những hướng còn lại sẽ được gỡ khỏi{" "}
             <code className="text-ink">src/lab/</code> và quyết định được ghi vào{" "}
             <code className="text-ink">.21st/design.json</code>.
           </p>

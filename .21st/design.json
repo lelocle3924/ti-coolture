@@ -168,12 +168,32 @@
             "colour": "violet-dominant per the 60/30/10 guideline; one white section (How it works), one ink section (map), teal reserved for indices, the island and one collection panel",
             "hiddenGems": "right-edge tab ported from the live homepage; hides on scroll-down with the rest of the chrome per UX-TASKS 2.3"
           }
+        },
+        {
+          "slug": "c4",
+          "name": "MOT NET / One stroke",
+          "reference": "the brand's own wave and knot",
+          "route": "/lab/c4",
+          "source": "src/lab/DirectionC4.tsx",
+          "brief": "Keep the colour and keep waves and loops central; change everything else. Added 2026-08-20.",
+          "axes": {
+            "structure": "no sections, bands, rows, grid or nav bar",
+            "navigation": "a position on one continuous line; chrome is a mark, a chapter and a distance",
+            "wave": "the road itself, generated so amplitude follows the viewport",
+            "loop": "the ribbon knot marks each stop worth making",
+            "camera": "critically damped follow rather than a hard bind to scrollTop",
+            "density": "one stop at a time - the lowest of any direction"
+          },
+          "openRisks": [
+            "Desktop-verified only; not yet checked at 390px",
+            "No nav bar and no way to jump to a section"
+          ]
         }
       ],
       "compare": "/lab",
       "screenshots": "docs/directions/",
       "onDecide": "Delete the two unchosen src/lab/Direction*.tsx files and their routes in src/App.tsx, fold the winner into src/views/Homepage.tsx, and set this decision to the chosen slug.",
-      "note": "19/08: team chose C as the base for its cardless feel, and asked for A's marquee and collection look to be brought across. A and B stay published for reference; C is now the working direction."
+      "note": "19/08: team chose C as the base for its cardless feel, and asked for A's marquee and collection look to be brought across. A and B stay published for reference; C is now the working direction. 20/08: C4 added as a fourth direction — not a variant of C but a different structure, built to the brief of keeping only the colour and the wave/loop motif."
     },
     {
       "id": "brand-ratio-conflict",
@@ -247,6 +267,12 @@
       "status": "open",
       "date": "2026-08-20",
       "note": "Guidelines p13 states the ratio as 60% violet #7520F7 / 30% white #FFFFFF / 10% teal #39D6CF. There is no black in the ratio. Direction C currently spends part of its 30% on ink grounds (the map strip, one collection panel). The brand studies deliberately leave those alone so the comparison isolates the device layer. Decide whether the ink grounds should become white to match the book."
+    },
+    {
+      "id": "direction-c-team-revisions",
+      "status": "done",
+      "date": "2026-08-20",
+      "note": "Team feedback folded into Direction C: hero gradient runs white to violet with a dark nav material over it; collections show one lead piece with a non-wrapping name; the district map is one track driven by mouse drag, touch swipe and buttons through a single spring (src/lab/useDragTrack.ts, built to Apple's fluid-interface rules - 1:1 tracking, velocity handoff, momentum projection, rubber-banding); every change of ground is a gradient band so no abrupt transitions remain; What's in store runs one lane on mobile."
     }
   ],
   "evidence": [
