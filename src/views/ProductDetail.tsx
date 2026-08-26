@@ -1,622 +1,434 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { 
-  Heart, Sparkles, MapPin, Check, Copy, ExternalLink, 
-  ChevronRight, ArrowLeft, MessageCircle, AlertCircle, Maximize2, X, ShieldCheck
-} from "lucide-react";
-import { 
-  fetchProductById, fetchStoreById, fetchProductsStore, 
-  incrementProductClick, toggleWishlist, saveWishlistNote, triggerWebhook
+/**
+ * Trang chi tiết sản phẩm — three directions.
+ *
+ * Shared by all three:
+ *
+ *   · the product description is on the page. It was missing entirely; the
+ *     data had no short_desc_vi at all until the catalogue extension wrote
+ *     one. Long copy collapses behind a measured "… Xem thêm" — measured, so
+ *     a short description never shows a control that expands nothing.
+ *   · the hero renders on the FIRST paint, from the catalogue's handoff, so
+ *     the clicked thumbnail has something to morph into. Without that the
+ *     browser snapshots a loading spinner and all you get is the page-level
+ *     zoom the team reported.
+ *   · price note and the no-transaction line appear verbatim.
+ *   · no double bezels, no drop shadows outside the modal — hairlines carry
+ *     the structure, as on Direction C.
+ *
+ * What differs: what the visitor meets first (a plate, a full-bleed opening
+ * frame, or a specification), where the order action lives, and how much of
+ * the page is reading versus looking.
+ */
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronRight, Copy, Check, ExternalLink, Heart, X } from "lucide-react";
+import {
+  fetchProductById,
+  fetchProductsStore,
+  fetchStoreById,
+  incrementProductClick,
+  triggerWebhook,
 } from "../lib/dbService";
-import { Product, StoreProfile } from "../types";
-import { useAuth } from "../lib/useAuth";
-import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
-import { vtProductImage, vtShopLogo } from "../lib/viewTransitions";
+import type { Product, StoreProfile } from "../types";
+import {
+  Clamp,
+  ContinuityLink,
+  HERO_NAME,
+  NO_TRANSACTION,
+  PRICE_NOTE,
+  formatPrice,
+  readHandoff,
+} from "../lib/continuity";
 
-const formatPrice = (value: number) =>
-  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+/* ── data ───────────────────────────────────────────────────────────────── */
 
-export default function ProductDetail() {
-  const { productId } = useParams<{ productId: string }>();
-  const { user, profile, refreshProfile } = useAuth();
-  
-  const [product, setProduct] = useState<Product | null>(null);
+function useProductPage(productId: string | undefined) {
+  // Painted immediately if the visitor came from a catalogue card.
+  const [product, setProduct] = useState<Product | null>(() => readHandoff(productId));
   const [store, setStore] = useState<StoreProfile | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Gallery state
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-
-  // Wishlist & Note state (Flow E §4.3)
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [wishlistToast, setWishlistToast] = useState(false);
-  const [customNote, setCustomNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-
-  // Social Inquiry & Auto-Copy Modal (Flow A & §2.1 & wireframe M7)
-  const [copyModalOpen, setCopyModalOpen] = useState(false);
-  const [selectedSocial, setSelectedSocial] = useState<{ platform: string; url: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [siblings, setSiblings] = useState<Product[]>([]);
+  const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      if (!productId) return;
-      setLoading(true);
-      const prod = await fetchProductById(productId);
-      if (prod) {
-        setProduct(prod);
+    let alive = true;
+    setProduct(readHandoff(productId));
+    setResolved(false);
+    if (!productId) return;
 
-        const storeData = await fetchStoreById(prod.storeId);
-        setStore(storeData);
+    fetchProductById(productId).then(async (p) => {
+      if (!alive) return;
+      setProduct(p);
+      setResolved(true);
+      if (!p) return;
+      const [s, all] = await Promise.all([
+        fetchStoreById(p.storeId),
+        fetchProductsStore(p.storeId),
+      ]);
+      if (!alive) return;
+      setStore(s);
+      setSiblings(all.filter((x) => x.id !== p.id).slice(0, 4));
+    });
 
-        const storeProds = await fetchProductsStore(prod.storeId);
-        setRelatedProducts(storeProds.filter(p => p.id !== prod.id).slice(0, 4));
-      }
-      setLoading(false);
-    }
-    loadData();
+    return () => {
+      alive = false;
+    };
   }, [productId]);
 
-  useEffect(() => {
-    if (product && profile) {
-      setIsWishlisted(profile.wishlist.includes(product.id));
-      setCustomNote(profile.wishlistNotes?.[product.id] || "");
-    }
-  }, [product, profile]);
+  return { product, store, siblings, resolved };
+}
 
-  const handleToggleWishlist = async () => {
-    if (!product) return;
-    const effectiveUserId = user?.uid || "guest_user";
-    const nextList = await toggleWishlist(effectiveUserId, product.id);
-    await refreshProfile();
-    const isNow = nextList.includes(product.id);
-    setIsWishlisted(isNow);
-    if (isNow) {
-      setWishlistToast(true);
-      setTimeout(() => setWishlistToast(false), 3000);
-    }
-  };
+/* ── the order moment, identical in all three ───────────────────────────── */
 
-  const handleSaveNote = async () => {
-    if (!product) return;
-    const effectiveUserId = user?.uid || "guest_user";
-    setSavingNote(true);
-    await saveWishlistNote(effectiveUserId, product.id, customNote);
-    await refreshProfile();
-    setSavingNote(false);
-    setWishlistToast(true);
-    setTimeout(() => setWishlistToast(false), 2500);
-  };
+function useInquiry(product: Product | null, store: StoreProfile | null) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const generateInquiryMessage = (prod: Product, storeName: string) => {
-    return `Chào ${storeName}! Mình thấy tác phẩm "${prod.name}" (mã: ${prod.id}) trên nền tảng Tí Coolture (https://ticoolture.vn/products/${prod.id}) và rất ấn tượng. Sản phẩm này hiện còn sẵn không ạ? Mình muốn được tư vấn thêm về đặt hàng. Cảm ơn shop!`;
-  };
+  const channels = useMemo(() => {
+    const s = store?.socials ?? {};
+    return (
+      [
+        ["Instagram", s.instagram],
+        ["TikTok", s.tiktok],
+        ["Facebook", s.facebook],
+        ["Threads", s.threads],
+      ] as const
+    )
+      .filter(([, url]) => !!url)
+      .map(([platform, url]) => ({ platform, url: url as string }));
+  }, [store]);
 
-  const handleOpenSocialInquiry = (platform: string, rawUrl: string) => {
+  const message = product
+    ? `Chào ${store?.name ?? "shop"}! Mình thấy "${product.name}" trên Tí Coolture ` +
+      `(https://ticoolture.vn/products/${product.id}) và muốn hỏi thêm ạ. ` +
+      `Sản phẩm còn không, và mình đặt như thế nào ạ? Cảm ơn shop!`
+    : "";
+
+  const launch = (channel: { platform: string; url: string }) => {
     if (!product) return;
     incrementProductClick(product.id);
     triggerWebhook("SOCIAL_OUTBOUND_CLICK", {
       productId: product.id,
-      productName: product.name,
-      storeId: product.storeId,
-      platform,
-      timestamp: new Date().toISOString()
+      platform: channel.platform,
+      timestamp: new Date().toISOString(),
     });
-
-    let targetUrl = rawUrl;
-    if (!targetUrl.startsWith("http")) {
-      targetUrl = `https://${targetUrl}`;
-    }
-    const utmParam = targetUrl.includes("?") ? `&utm_source=ticoolture&utm_medium=product_detail` : `?utm_source=ticoolture&utm_medium=product_detail`;
-    targetUrl = `${targetUrl}${utmParam}`;
-
-    setSelectedSocial({ platform, url: targetUrl });
-    setCopied(false);
-    setCopyModalOpen(true);
+    const base = channel.url.startsWith("http") ? channel.url : `https://${channel.url}`;
+    const url = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=product`;
+    navigator.clipboard
+      ?.writeText(message)
+      .then(() => setCopied(true))
+      .finally(() => window.open(url, "_blank", "noopener,noreferrer"));
   };
 
-  const handleCopyAndLaunch = () => {
-    if (!product || !selectedSocial) return;
-    const msg = generateInquiryMessage(product, store?.name || "shop");
-    navigator.clipboard.writeText(msg).then(() => {
-      setCopied(true);
-      setTimeout(() => {
-        window.open(selectedSocial.url, "_blank", "noopener,noreferrer");
-        setCopyModalOpen(false);
-      }, 600);
-    }).catch(() => {
-      window.open(selectedSocial.url, "_blank", "noopener,noreferrer");
-      setCopyModalOpen(false);
-    });
-  };
+  return { open, setOpen, copied, setCopied, channels, message, launch };
+}
 
-  if (loading) {
-    return (
-      <div className="min-h-[100dvh] bg-paper-warm text-ink p-8 flex items-center justify-center">
-        <div className="space-y-4 text-center">
-          <div className="w-12 h-12 border-3 border-brand border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-ink/60">Đang chuẩn bị không gian tác phẩm...</p>
-        </div>
-      </div>
-    );
-  }
+type Inquiry = ReturnType<typeof useInquiry>;
 
-  if (!product) {
-    return (
-      <div className="min-h-[100dvh] bg-paper-warm text-ink p-8 flex items-center justify-center">
-        <div className="max-w-md bg-paper p-8 rounded-3xl border border-ink/10 text-center space-y-4 shadow-sm">
-          <AlertCircle className="w-10 h-10 text-brand mx-auto" />
-          <h2 className="display text-xl font-medium">Không tìm thấy tác phẩm</h2>
-          <p className="text-xs text-ink/60">Tác phẩm này có thể đã được gỡ hoặc đường dẫn không còn chính xác.</p>
-          <Link to="/products" viewTransition className="inline-block px-5 py-2.5 rounded-full bg-brand text-paper text-xs font-semibold">
-            Về danh mục tác phẩm
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const images = product.images && product.images.length > 0
-    ? product.images
-    : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800"];
-
-  const activeImage = images[activeImageIndex] || images[0];
-
+function InquiryModal({ inquiry, storeName }: { inquiry: Inquiry; storeName: string }) {
+  if (!inquiry.open) return null;
   return (
-    <div className="min-h-[100dvh] bg-paper-warm text-ink pb-36 select-none relative">
-      
-      {/* Scroll Reading Progress Bar (§D1 Wireframe Spec) */}
-      <div className="scroll-prog" />
-
-      {/* ============ FLOW E: WISHLIST TOAST ============ */}
-      {wishlistToast && (
-        <div className="fixed bottom-24 md:bottom-8 right-6 z-50 bg-brand text-paper px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in backdrop-blur-md">
-          <div className="w-7 h-7 rounded-full bg-wave text-ink grid place-items-center shrink-0 font-bold">
-            <Check className="w-4 h-4 stroke-[3]" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold">Đã cập nhật Wishlist!</p>
-            <p className="text-[11px] text-white/80">Lưu trữ trên thiết bị này.</p>
-          </div>
-        </div>
-      )}
-
-      {/* ============ LIGHTBOX MODAL ============ */}
-      {lightboxOpen && (
-        <div 
-          onClick={() => setLightboxOpen(false)}
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
-        >
-          <button 
-            onClick={() => setLightboxOpen(false)}
-            className="absolute top-6 right-6 text-paper hover:text-wave transition-colors"
-          >
-            <X className="w-8 h-8" />
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-ink/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg space-y-5 border border-ink/10 bg-paper p-6 shadow-2xl md:p-8">
+        <div className="flex items-start justify-between gap-4 border-b border-ink/12 pb-3">
+          <h2 className="text-sm font-semibold">Tin nhắn soạn sẵn gửi {storeName}</h2>
+          <button onClick={() => inquiry.setOpen(false)} aria-label="Đóng">
+            <X className="h-4 w-4 text-ink/50" />
           </button>
-          <img
-            src={activeImage}
-            alt={product.name}
-            referrerPolicy="no-referrer"
-            className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
-          />
         </div>
-      )}
-
-      {/* ============ AUTO-COPY MESSAGE MODAL ============ */}
-      {copyModalOpen && selectedSocial && (
-        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="p-2 rounded-[2.5rem] bg-black/10 ring-1 ring-black/10 max-w-lg w-full">
-            <div className="bg-paper rounded-[2.125rem] border border-ink/10 p-6 md:p-8 shadow-2xl space-y-5 animate-scale-up">
-              
-              <div className="flex items-center justify-between border-b border-ink/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="w-5 h-5 text-brand" />
-                  <h3 className="font-semibold text-sm text-ink">Tin nhắn soạn sẵn cho {store?.name}</h3>
-                </div>
-                <button 
-                  onClick={() => setCopyModalOpen(false)}
-                  className="text-ink/50 hover:text-ink transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <p className="text-xs text-ink/70 leading-relaxed">
-                Tí đã chuẩn bị sẵn mẫu tin nhắn kèm link sản phẩm để bạn gửi trực tiếp qua <strong>{selectedSocial.platform}</strong>:
-              </p>
-
-              <div className="bg-paper-warm border border-ink/10 rounded-2xl p-4 text-xs font-mono text-ink/80 leading-relaxed max-h-40 overflow-y-auto">
-                {generateInquiryMessage(product, store?.name || "shop")}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-                <button
-                  onClick={handleCopyAndLaunch}
-                  className="flex-1 py-3 px-5 rounded-full bg-brand text-paper text-xs font-semibold hover:bg-brand-deep transition-all duration-300 flex items-center justify-center gap-2 shadow-md shadow-brand/20"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4 text-wave stroke-[3]" />
-                      <span>Đã chép! Đang mở {selectedSocial.platform}...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Sao chép & Mở {selectedSocial.platform} ↗</span>
-                    </>
-                  )}
-                </button>
-                
-                <button
-                  onClick={() => {
-                    window.open(selectedSocial.url, "_blank", "noopener,noreferrer");
-                    setCopyModalOpen(false);
-                  }}
-                  className="py-3 px-4 rounded-full bg-paper-warm text-ink/70 hover:text-ink text-xs font-medium transition-colors"
-                >
-                  Mở không cần chép
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============ BREADCRUMB TRAIL ============ */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6">
-        <nav className="text-[11px] text-ink/60 flex flex-wrap items-center gap-1.5 font-medium">
-          <Link to="/" viewTransition className="hover:text-brand transition-colors">Trang chủ</Link>
-          <span>›</span>
-          <Link to="/products" viewTransition className="hover:text-brand transition-colors">Tác phẩm</Link>
-          <span>›</span>
-          <Link to={`/products?category=${encodeURIComponent(product.category)}`} viewTransition className="hover:text-brand transition-colors">{product.category}</Link>
-          <span>›</span>
-          <span className="text-ink font-semibold truncate max-w-[200px]">{product.name}</span>
-        </nav>
-      </div>
-
-      {/* ============ EXHIBITION WORKSPACE ============ */}
-      <main className="max-w-7xl mx-auto px-4 md:px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        
-        {/* LEFT COLUMN: DOUBLE-BEZEL MULTI-IMAGE VIEWPORT */}
-        <section className="lg:col-span-7 space-y-4">
-          
-          <div className="p-2 rounded-[2.5rem] bg-black/5 ring-1 ring-black/5 shadow-inner">
-            <div className="relative aspect-square bg-paper rounded-[2.125rem] border border-ink/5 overflow-hidden group shadow-sm">
-              <img
-                src={activeImage}
-                alt={product.name}
-                referrerPolicy="no-referrer"
-                style={{ viewTransitionName: vtProductImage(product.id) }}
-                className="zoomout w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-105"
-              />
-
-              <button
-                onClick={() => setLightboxOpen(true)}
-                aria-label="Phóng to ảnh"
-                className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-paper/90 backdrop-blur-md text-ink grid place-items-center shadow-lg hover:bg-brand hover:text-paper transition-all opacity-0 group-hover:opacity-100"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-
-              <div className="absolute top-4 left-4 bg-paper/90 backdrop-blur-md text-ink text-xs font-semibold px-3.5 py-1.5 rounded-full border border-ink/5 shadow-xs">
-                {product.category}
-              </div>
-            </div>
-          </div>
-
-          {/* Thumbnail Strip */}
-          {images.length > 1 && (
-            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-              {images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={`w-18 h-18 rounded-2xl overflow-hidden border-2 transition-all shrink-0 ${
-                    activeImageIndex === idx 
-                      ? "border-brand shadow-md scale-105" 
-                      : "border-ink/10 opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <img
-                    src={img}
-                    alt={`${product.name} thumbnail ${idx + 1}`}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+        <p className="border border-ink/12 bg-paper-warm p-4 text-xs leading-relaxed text-ink/75">
+          {inquiry.message}
+        </p>
+        <div className="space-y-2">
+          {inquiry.channels.length === 0 && (
+            <p className="text-xs text-ink/55">Xưởng chưa khai báo kênh liên hệ nào.</p>
           )}
-
-          {/* Double-Bezel Story & Philosophy Quote Block */}
-          {product.story && (
-            <div className="p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5 mt-6">
-              <div className="bg-paper rounded-[1.625rem] p-6 md:p-8 relative overflow-hidden space-y-3">
-                <RibbonLoop
-                  className="pointer-events-none absolute -right-6 -bottom-6 z-0 opacity-10"
-                  style={{ width: "12rem" }}
-                  ribbon="var(--color-wave)"
-                  dot="var(--color-paper)"
-                />
-                <span className="label text-wave-ink font-semibold text-xs block">
-                  ✦ CÂU CHUYỆN SÁNG TÁC
-                </span>
-                <blockquote className="text-xs md:text-sm text-ink/80 italic leading-relaxed relative z-10">
-                  "{product.story}"
-                </blockquote>
-              </div>
-            </div>
-          )}
-
-        </section>
-
-        {/* RIGHT COLUMN: ARTWORK DETAILS & SOCIAL ORDERING */}
-        <section className="lg:col-span-5 space-y-6">
-          
-          <div className="p-2 rounded-[2.5rem] bg-black/5 ring-1 ring-black/5">
-            <div className="bg-paper rounded-[2.125rem] p-6 md:p-8 space-y-6 shadow-sm border border-ink/5">
-              
-              {/* Atelier Link & Identity */}
-              <div className="flex items-center justify-between border-b border-ink/10 pb-4">
-                <Link 
-                  to={`/stores/${product.storeId}`}
-                  viewTransition
-                  className="group flex items-center gap-3 hover:opacity-85 transition-opacity"
-                >
-                  <img
-                    src={product.storeLogo || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=80"}
-                    alt={product.storeName}
-                    referrerPolicy="no-referrer"
-                    style={{ viewTransitionName: vtShopLogo(product.storeId) }}
-                    className="w-11 h-11 rounded-full border border-ink/10 object-cover shadow-xs"
-                  />
-                  <div>
-                    <span className="label text-wave-ink text-[10px] font-semibold block">XƯỞNG CHẾ TÁC</span>
-                    <p className="font-semibold text-sm text-ink group-hover:text-brand transition-colors flex items-center gap-1">
-                      <span>{product.storeName}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-ink/40 group-hover:translate-x-0.5 transition-transform" />
-                    </p>
-                  </div>
-                </Link>
-
-                {/* Wishlist toggle */}
-                <button
-                  onClick={handleToggleWishlist}
-                  aria-label="Lưu vào wishlist"
-                  className={`w-11 h-11 rounded-full grid place-items-center transition-all duration-300 ${
-                    isWishlisted 
-                      ? "bg-brand text-wave shadow-md scale-105" 
-                      : "bg-paper-warm text-ink/60 hover:text-brand hover:scale-105"
-                  }`}
-                >
-                  <Heart className={`w-5 h-5 ${isWishlisted ? "fill-wave stroke-wave" : ""}`} />
-                </button>
-              </div>
-
-              {/* Title & Price */}
-              <div className="space-y-2">
-                <h1 className="display text-2xl md:text-3xl normal-case font-medium text-ink leading-snug">
-                  {product.name}
-                </h1>
-                
-                <div className="flex items-baseline gap-3">
-                  <span className="font-bold text-2xl md:text-3xl text-brand">
-                    {formatPrice(product.price)}
-                  </span>
-                  <span className="text-xs text-ink/60 font-medium">
-                    (Giá tham khảo trực tiếp từ xưởng)
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="text-xs md:text-sm text-ink/75 leading-relaxed space-y-2">
-                <p>{product.description || "Tác phẩm thủ công độc bản được hoàn thiện tinh xảo bởi nghệ nhân địa phương."}</p>
-              </div>
-
-              {/* Curious Specs Matrix */}
-              <div className="bg-paper-warm rounded-2xl p-4 space-y-2.5 text-xs border border-ink/5">
-                <div className="flex items-center justify-between border-b border-ink/5 pb-1.5">
-                  <span className="text-ink/60">Chất liệu:</span>
-                  <span className="font-semibold text-ink">{product.material || "Chế tác thủ công"}</span>
-                </div>
-                <div className="flex items-center justify-between border-b border-ink/5 pb-1.5">
-                  <span className="text-ink/60">Kích thước:</span>
-                  <span className="font-semibold text-ink">{product.size || "Tiêu chuẩn xưởng"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-ink/60">Xuất xứ xưởng:</span>
-                  <span className="font-semibold text-ink">{store?.address || "Việt Nam"}</span>
-                </div>
-              </div>
-
-              {/* DESKTOP BUTTON-IN-BUTTON SOCIAL ORDERING */}
-              <div className="pt-2 space-y-3">
-                <span className="label text-ink/70 text-[10px] block font-semibold uppercase tracking-wider">
-                  ĐẶT HÀNG TRỰC TIẾP QUA KÊNH CỦA XƯỞNG:
-                </span>
-
-                {store?.socials && Object.values(store.socials).some(Boolean) ? (
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {store.socials.instagram && (
-                      <button
-                        onClick={() => handleOpenSocialInquiry("Instagram", store.socials.instagram!)}
-                        className="group w-full py-3 px-4 rounded-full bg-paper-warm hover:bg-brand hover:text-paper text-ink text-xs font-semibold transition-all duration-300 border border-ink/10 flex items-center justify-between shadow-xs"
-                      >
-                        <span>Instagram</span>
-                        <div className="w-6 h-6 rounded-full bg-black/5 group-hover:bg-white/20 flex items-center justify-center transition-transform group-hover:scale-110">
-                          <ExternalLink className="w-3 h-3" />
-                        </div>
-                      </button>
-                    )}
-                    {store.socials.tiktok && (
-                      <button
-                        onClick={() => handleOpenSocialInquiry("TikTok", store.socials.tiktok!)}
-                        className="group w-full py-3 px-4 rounded-full bg-paper-warm hover:bg-brand hover:text-paper text-ink text-xs font-semibold transition-all duration-300 border border-ink/10 flex items-center justify-between shadow-xs"
-                      >
-                        <span>TikTok</span>
-                        <div className="w-6 h-6 rounded-full bg-black/5 group-hover:bg-white/20 flex items-center justify-center transition-transform group-hover:scale-110">
-                          <ExternalLink className="w-3 h-3" />
-                        </div>
-                      </button>
-                    )}
-                    {store.socials.facebook && (
-                      <button
-                        onClick={() => handleOpenSocialInquiry("Facebook", store.socials.facebook!)}
-                        className="group w-full py-3 px-4 rounded-full bg-paper-warm hover:bg-brand hover:text-paper text-ink text-xs font-semibold transition-all duration-300 border border-ink/10 flex items-center justify-between shadow-xs"
-                      >
-                        <span>Facebook</span>
-                        <div className="w-6 h-6 rounded-full bg-black/5 group-hover:bg-white/20 flex items-center justify-center transition-transform group-hover:scale-110">
-                          <ExternalLink className="w-3 h-3" />
-                        </div>
-                      </button>
-                    )}
-                    {store.socials.threads && (
-                      <button
-                        onClick={() => handleOpenSocialInquiry("Threads", store.socials.threads!)}
-                        className="group w-full py-3 px-4 rounded-full bg-paper-warm hover:bg-brand hover:text-paper text-ink text-xs font-semibold transition-all duration-300 border border-ink/10 flex items-center justify-between shadow-xs"
-                      >
-                        <span>Threads</span>
-                        <div className="w-6 h-6 rounded-full bg-black/5 group-hover:bg-white/20 flex items-center justify-center transition-transform group-hover:scale-110">
-                          <ExternalLink className="w-3 h-3" />
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => handleOpenSocialInquiry("Instagram", "https://instagram.com")}
-                    className="w-full py-3.5 rounded-full bg-brand text-paper text-xs font-semibold hover:bg-brand-deep transition-all duration-300 flex items-center justify-center gap-2 shadow-md shadow-brand/20"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Liên hệ xưởng chế tác để đặt hàng</span>
-                  </button>
-                )}
-
-                <p className="text-[11px] text-ink/50 text-center">
-                  ⓘ Tí Coolture không can thiệp thanh toán. Toàn bộ tiền về trực tiếp nghệ nhân.
-                </p>
-              </div>
-
-              {/* Custom Notes Section (Flow E) */}
-              <div className="pt-4 border-t border-ink/10 space-y-2">
-                <label className="label text-ink/70 text-[10px] block font-semibold">
-                  📝 Ghi chú cá nhân cho tác phẩm này (chỉ lưu trên máy bạn):
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customNote}
-                    onChange={(e) => setCustomNote(e.target.value)}
-                    placeholder="VD: Mua tặng sinh nhật An vào tháng 9..."
-                    className="flex-1 bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink focus:outline-none focus:border-brand"
-                  />
-                  <button
-                    onClick={handleSaveNote}
-                    disabled={savingNote}
-                    className="px-5 py-2 rounded-full bg-brand text-paper text-xs font-semibold hover:bg-brand-deep transition-all shrink-0 shadow-sm"
-                  >
-                    {savingNote ? "..." : "Lưu"}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </section>
-
-      </main>
-
-      {/* ============ RELATED ARTWORKS SECTION ============ */}
-      {relatedProducts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 md:px-8 mt-20 space-y-6">
-          <div className="flex items-center justify-between border-b border-ink/10 pb-3">
-            <div>
-              <span className="label text-wave-ink text-[10px] font-semibold block">CÙNG KHÔNG GIAN SÁNG TẠO</span>
-              <h2 className="display text-2xl font-medium text-ink normal-case">
-                Tác phẩm khác của xưởng {store?.name}
-              </h2>
-            </div>
-            <Link
-              to={`/stores/${product.storeId}`}
-              viewTransition
-              className="text-xs text-brand font-semibold hover:underline flex items-center gap-1"
+          {inquiry.channels.map((c) => (
+            <button
+              key={c.platform}
+              onClick={() => inquiry.launch(c)}
+              className="flex w-full items-center justify-between border border-ink/15 px-4 py-3 text-xs font-semibold text-ink transition-colors hover:border-brand hover:bg-brand hover:text-paper"
             >
-              <span>Xem tất cả</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {relatedProducts.map(rel => (
-              <div key={rel.id} className="rev hover-elastic p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5 hover:ring-brand/40 cursor-pointer">
-                <Link
-                  to={`/products/${rel.id}`}
-                  viewTransition
-                  className="group bg-paper rounded-[1.625rem] overflow-hidden flex flex-col justify-between h-full border border-ink/5"
-                >
-                  <div className="aspect-square bg-paper-warm overflow-hidden">
-                    <img
-                      src={rel.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=400"}
-                      alt={rel.name}
-                      referrerPolicy="no-referrer"
-                      style={{ viewTransitionName: vtProductImage(rel.id) }}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-4 space-y-1">
-                    <h4 className="font-medium text-xs text-ink group-hover:text-brand transition-colors truncate">
-                      {rel.name}
-                    </h4>
-                    <p className="font-bold text-xs text-brand">
-                      {formatPrice(rel.price)}
-                    </p>
-                  </div>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ============ MOBILE STICKY ORDER NOW BAR ============ */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-paper/95 backdrop-blur-md border-t border-ink/10 p-3 px-4 flex items-center justify-between gap-3 shadow-[0_-8px_25px_rgba(0,0,0,0.1)]">
-        
-        <button
-          onClick={handleToggleWishlist}
-          aria-label="Lưu vào wishlist"
-          className={`w-12 h-12 rounded-full grid place-items-center shrink-0 border transition-all ${
-            isWishlisted 
-              ? "bg-brand text-wave border-brand shadow-md" 
-              : "bg-paper-warm text-ink/70 border-ink/10"
-          }`}
-        >
-          <Heart className={`w-5 h-5 ${isWishlisted ? "fill-wave stroke-wave" : ""}`} />
-        </button>
-
-        <button
-          onClick={() => {
-            const firstSocial = store?.socials?.instagram 
-              ? { platform: "Instagram", url: store.socials.instagram }
-              : store?.socials?.tiktok 
-              ? { platform: "TikTok", url: store.socials.tiktok }
-              : store?.socials?.facebook 
-              ? { platform: "Facebook", url: store.socials.facebook }
-              : { platform: "Instagram", url: "https://instagram.com" };
-            handleOpenSocialInquiry(firstSocial.platform, firstSocial.url);
-          }}
-          className="flex-1 min-h-12 rounded-full bg-brand text-paper text-xs font-semibold label hover:bg-brand-deep transition-all shadow-md shadow-brand/20 flex items-center justify-center gap-2"
-        >
-          <span>ORDER NOW ▸ Nhắn xưởng {formatPrice(product.price)}</span>
-        </button>
-
+              <span>
+                {inquiry.copied ? "Đã chép — mở" : "Chép tin nhắn & mở"} {c.platform}
+              </span>
+              {inquiry.copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] leading-relaxed text-ink/50">{NO_TRANSACTION}</p>
       </div>
-
     </div>
   );
 }
+
+/* ── small shared parts ─────────────────────────────────────────────────── */
+
+function Crumbs({ product, index }: { product: Product; index: 1 | 2 | 3 }) {
+  return (
+    <nav className="flex flex-wrap items-center gap-1.5 text-[11px] text-current opacity-60">
+      <Link to={`/products`} viewTransition className="hover:opacity-100">
+        Sản phẩm
+      </Link>
+      <span>›</span>
+      <span>{product.category}</span>
+      <span>›</span>
+      <span className="opacity-80">{product.name}</span>
+    </nav>
+  );
+}
+
+function SpecTable({
+  product,
+  store,
+  tone = "ink",
+}: {
+  product: Product;
+  store: StoreProfile | null;
+  tone?: "ink" | "paper";
+}) {
+  const rows: Array<[string, string]> = [
+    ["Chất liệu", product.material || "—"],
+    ["Kích thước", product.size || "—"],
+    ["Danh mục", product.category],
+    ["Xưởng", product.storeName],
+    ["Khu vực", store?.address || "—"],
+    ["Mã sản phẩm", product.id.replace(/^prod-/, "")],
+  ];
+  const line = tone === "paper" ? "border-white/15" : "border-ink/12";
+  const key = tone === "paper" ? "text-white/55" : "text-ink/50";
+
+  return (
+    <dl className={`border-t ${line}`}>
+      {rows.map(([k, v]) => (
+        <div key={k} className={`flex items-baseline justify-between gap-4 border-b ${line} py-2.5`}>
+          <dt className={`label ${key}`}>{k}</dt>
+          <dd className="text-right text-xs font-medium">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Siblings({
+  siblings,
+  storeName,
+  index,
+}: {
+  siblings: Product[];
+  storeName: string;
+  index: 1 | 2 | 3;
+}) {
+  if (!siblings.length) return null;
+  return (
+    <section className="space-y-5">
+      <div className="flex items-baseline justify-between gap-4 border-b border-current/15 pb-3">
+        <h2 className="display text-xl normal-case">Cũng từ {storeName}</h2>
+        <Link
+          to={`/products`}
+          viewTransition
+          className="flex items-center gap-1 text-[11px] font-semibold opacity-70 hover:opacity-100"
+        >
+          Xem tất cả <ChevronRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4">
+        {siblings.map((s) => (
+          <div key={s.id}>
+            <SiblingCard product={s} index={index} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SiblingCard({ product, index }: { product: Product; index: 1 | 2 | 3 }) {
+  const ref = useRef<HTMLImageElement>(null);
+  return (
+    <ContinuityLink
+      product={product}
+      to={`/products/${product.id}`}
+      imgRef={ref}
+      className="group block"
+    >
+      <div className="aspect-square overflow-hidden rounded-[1.25rem] bg-current/5">
+        <img
+          ref={ref}
+          src={product.images?.[0]}
+          alt={product.name}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+      </div>
+      <h3 className="pt-2 text-xs leading-snug">{product.name}</h3>
+      <p className="pt-0.5 text-xs font-semibold opacity-70">{formatPrice(product.price)}</p>
+    </ContinuityLink>
+  );
+}
+
+function NotFound({ index }: { index: 1 | 2 | 3 }) {
+  return (
+    <div className="grid min-h-[60dvh] place-items-center bg-paper px-6 text-center text-ink">
+      <div className="space-y-4">
+        <h1 className="display text-2xl normal-case">Không tìm thấy sản phẩm</h1>
+        <Link
+          to={`/products`}
+          viewTransition
+          className="inline-block border border-brand bg-brand px-5 py-2.5 text-xs font-semibold text-paper"
+        >
+          Về danh mục
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   1 · TRƯNG BÀY — The Plate
+   The image holds still while the text scrolls past it. Reading column on
+   the right, in one order: who made it, what it is, what it costs, what it
+   is made of, how to ask for it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export default function ProductDetail() {
+  const { productId } = useParams();
+  const { product, store, siblings, resolved } = useProductPage(productId);
+  const inquiry = useInquiry(product, store);
+  const [active, setActive] = useState(0);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => setActive(0), [productId]);
+
+  if (!product) return resolved ? <NotFound index={1} /> : <div className="min-h-[60dvh] bg-paper" />;
+  const images = product.images?.length ? product.images : [""];
+
+  return (
+    <div className="min-h-[100dvh] bg-paper text-ink">
+      <InquiryModal inquiry={inquiry} storeName={store?.name ?? product.storeName} />
+
+      <div className="mx-auto max-w-6xl px-5 py-6 md:px-8">
+        <Crumbs product={product} index={1} />
+      </div>
+
+      <main className="mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:px-8 lg:grid-cols-12 lg:gap-14">
+        {/* the plate */}
+        <section className="lg:col-span-7">
+          <div className="lg:sticky lg:top-14">
+            <div className="flex gap-3">
+              {images.length > 1 && (
+                <div className="hidden w-16 shrink-0 flex-col gap-2 md:flex">
+                  {images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActive(i)}
+                      aria-label={`Ảnh ${i + 1}`}
+                      className={`aspect-square overflow-hidden rounded-xl border transition-colors ${
+                        active === i ? "border-brand" : "border-ink/12 opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={img} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <figure className="min-w-0 flex-1">
+                <div className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm">
+                  <img
+                    key={active}
+                    src={images[active]}
+                    alt={product.name}
+                    data-ti-hero={active === 0 ? "" : undefined}
+                    style={active === 0 ? { viewTransitionName: HERO_NAME } : undefined}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <figcaption className="pt-2 text-[11px] text-ink/45">
+                  Ảnh {active + 1}/{images.length} · ảnh mẫu, chưa có ảnh thật
+                </figcaption>
+              </figure>
+            </div>
+
+            {images.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto md:hidden">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActive(i)}
+                    className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border ${
+                      active === i ? "border-brand" : "border-ink/12"
+                    }`}
+                  >
+                    <img src={img} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* the reading column */}
+        <section className="space-y-8 lg:col-span-5">
+          <div className="flex items-center justify-between gap-4 border-b border-ink/12 pb-4">
+            <Link to={`/stores/${product.storeId}`} viewTransition className="group flex items-center gap-3">
+              <img
+                src={product.storeLogo}
+                alt=""
+                className="h-10 w-10 border border-ink/10 object-cover"
+              />
+              <span>
+                <span className="label block text-wave-ink">Xưởng chế tác</span>
+                <span className="text-sm font-semibold group-hover:text-brand">
+                  {product.storeName}
+                </span>
+              </span>
+            </Link>
+            <button
+              onClick={() => setSaved((v) => !v)}
+              aria-pressed={saved}
+              aria-label="Lưu sản phẩm"
+              className={`grid h-10 w-10 place-items-center border transition-colors ${
+                saved ? "border-brand bg-brand text-wave" : "border-ink/15 text-ink/50 hover:border-brand hover:text-brand"
+              }`}
+            >
+              <Heart className={`h-4 w-4 ${saved ? "fill-wave stroke-wave" : ""}`} />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="display text-3xl leading-tight normal-case md:text-4xl">{product.name}</h1>
+            <p className="text-2xl font-semibold text-brand">{formatPrice(product.price)}</p>
+            <p className="text-[11px] text-ink/50">{PRICE_NOTE}</p>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="label text-ink/45">Mô tả</h2>
+            <Clamp
+              text={product.description}
+              lines={4}
+              className="text-sm leading-relaxed text-ink/80"
+            />
+          </div>
+
+          <SpecTable product={product} store={store} />
+
+          <div className="space-y-3">
+            <button
+              onClick={() => inquiry.setOpen(true)}
+              className="flex w-full items-center justify-between border border-brand bg-brand px-5 py-3.5 text-xs font-semibold text-paper transition-colors hover:bg-brand-deep"
+            >
+              <span>Nhắn xưởng để đặt</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+            <p className="text-[11px] leading-relaxed text-ink/50">{NO_TRANSACTION}</p>
+          </div>
+        </section>
+      </main>
+
+      <div className="mx-auto max-w-6xl px-5 pb-24 md:px-8">
+        <Siblings siblings={siblings} storeName={product.storeName} index={1} />
+      </div>
+    </div>
+  );
+}
+

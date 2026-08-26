@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { fetchTouristRoutes } from "../lib/dbService";
 import { TouristRoute, RouteStop } from "../types";
 import { ArrowLeft, Compass, ArrowUpRight, MapPin } from "lucide-react";
 import { ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
+import DistrictMap from "../home/DistrictMap";
 
 export default function Discovery() {
+  const navigate = useNavigate();
   const { routeId } = useParams();
   const [searchParams] = useSearchParams();
   const startStopId = searchParams.get("start");
@@ -86,6 +88,28 @@ export default function Discovery() {
             {route.description || "Khám phá những xưởng thủ công và địa điểm văn hoá đặc sắc trên tuyến đường này."}
           </p>
         </div>
+      </div>
+
+      {/* The same district map the homepage carries (26/08). Here a pin does
+          not navigate — the stop it names is already on this page, so it
+          scrolls to it and flashes it, the way arriving with ?start= does. */}
+      <div className="relative z-10">
+        <DistrictMap
+          routes={routes}
+          heading="Chọn quận"
+          onOpenRoute={(id) => navigate(`/discover/${id}`)}
+          onPin={(id, stopId) => {
+            if (id !== route.id) {
+              navigate(`/discover/${id}?start=${stopId}`);
+              return;
+            }
+            const el = document.getElementById(`stop-${stopId}`);
+            if (!el) return;
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("ring-4", "ring-brand", "ring-offset-4");
+            setTimeout(() => el.classList.remove("ring-4", "ring-brand", "ring-offset-4"), 2000);
+          }}
+        />
       </div>
 
       <div className="py-12 md:py-20 relative z-10">

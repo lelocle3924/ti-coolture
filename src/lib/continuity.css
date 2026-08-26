@@ -1,70 +1,11 @@
 /* ---------------------------------------------------------------------------
-   Exploration-only stylesheet for the subpage studies. Imported by
-   src/lab/subpages/* and nothing else. Every colour resolves to a token from
-   src/index.css — no new palette.
+   Continuity transition + reading helpers. Imported by src/lib/continuity.tsx.
+   Every colour resolves to a token from src/index.css — no new palette.
    --------------------------------------------------------------------------- */
-
-/* ── study chrome ───────────────────────────────────────────────────────── */
-
-.lab-bar {
-  position: sticky;
-  top: 0;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  background: var(--color-ink);
-  color: rgba(255, 255, 255, 0.75);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.lab-bar::-webkit-scrollbar {
-  display: none;
-}
-.lab-bar__home {
-  color: var(--color-wave);
-  white-space: nowrap;
-}
-.lab-bar__page {
-  white-space: nowrap;
-  text-transform: uppercase;
-}
-.lab-bar__route {
-  opacity: 0.45;
-  text-transform: none;
-  font-family: var(--font-mono);
-}
-.lab-bar__spacer {
-  flex: 1 1 auto;
-  min-width: 0.5rem;
-}
-.lab-bar__opt {
-  white-space: nowrap;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-}
-.lab-bar__opt b {
-  color: var(--color-wave);
-  font-weight: 600;
-}
-.lab-bar__opt.is-on {
-  background: var(--color-brand);
-  border-color: var(--color-brand);
-  color: var(--color-paper);
-}
-.lab-bar__opt.is-on b {
-  color: var(--color-paper);
-}
 
 /* ── clamped body copy ──────────────────────────────────────────────────── */
 
-.lab-clamp {
+.ti-clamp {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -72,7 +13,7 @@
 }
 
 /* ── continuity transition ──────────────────────────────────────────────────
-   The clicked image is renamed `lab-hero` for the length of one navigation,
+   The clicked image is renamed `ti-hero` for the length of one navigation,
    so exactly one pair morphs and it can be targeted by name. Everything else
    about the default transition in src/index.css is overridden inside this
    scope:
@@ -87,15 +28,15 @@
      wide plate crops rather than stretches.
    ------------------------------------------------------------------------- */
 
-::view-transition-group(lab-hero) {
+::view-transition-group(ti-hero) {
   animation-duration: 520ms;
   animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
-::view-transition-image-pair(lab-hero) {
+::view-transition-image-pair(ti-hero) {
   isolation: auto;
 }
-::view-transition-old(lab-hero),
-::view-transition-new(lab-hero) {
+::view-transition-old(ti-hero),
+::view-transition-new(ti-hero) {
   animation: none;
   mix-blend-mode: normal;
   height: 100%;
@@ -103,41 +44,41 @@
 }
 
 html[data-vt-kind="continuity"]::view-transition-old(root) {
-  animation: 200ms ease both lab-vt-out;
+  animation: 200ms ease both ti-vt-out;
 }
 html[data-vt-kind="continuity"]::view-transition-new(root) {
-  animation: 320ms 60ms ease both lab-vt-in;
+  animation: 320ms 60ms ease both ti-vt-in;
 }
-@keyframes lab-vt-out {
+@keyframes ti-vt-out {
   from { opacity: 1; }
   to { opacity: 0; }
 }
-@keyframes lab-vt-in {
+@keyframes ti-vt-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 /* ── shared page furniture ──────────────────────────────────────────────── */
 
-.lab-hair {
+.ti-hair {
   border-color: rgba(18, 8, 31, 0.14);
 }
-.lab-hair-light {
+.ti-hair-light {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
 /* Grid items settle once on arrival — a short, non-springing rise, capped at
    the first row and a bit, so a page change is not 24 elements bouncing. */
-@keyframes lab-settle {
+@keyframes ti-settle {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
-.lab-settle {
-  animation: lab-settle 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+.ti-settle {
+  animation: ti-settle 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 /* The index row's leader dots (direction 3). */
-.lab-dots {
+.ti-dots {
   flex: 1 1 auto;
   align-self: end;
   height: 0.75em;
@@ -145,7 +86,7 @@ html[data-vt-kind="continuity"]::view-transition-new(root) {
   margin: 0 0.5rem;
 }
 
-.lab-field {
+.ti-field {
   width: 100%;
   background: var(--color-paper);
   border: 1px solid rgba(18, 8, 31, 0.18);
@@ -154,16 +95,16 @@ html[data-vt-kind="continuity"]::view-transition-new(root) {
   color: var(--color-ink);
   transition: border-color 0.2s ease;
 }
-.lab-field:focus {
+.ti-field:focus {
   outline: none;
   border-color: var(--color-brand);
 }
-.lab-field::placeholder {
+.ti-field::placeholder {
   color: rgba(18, 8, 31, 0.34);
 }
 
 /* The letter's inline blanks (direction 3 of the sign-up study). */
-.lab-blank {
+.ti-blank {
   display: inline-block;
   min-width: 8ch;
   background: transparent;
@@ -177,22 +118,22 @@ html[data-vt-kind="continuity"]::view-transition-new(root) {
   color: var(--color-brand-deep);
   text-align: center;
 }
-.lab-blank:focus {
+.ti-blank:focus {
   outline: none;
   background: rgba(117, 32, 247, 0.07);
 }
-.lab-blank::placeholder {
+.ti-blank::placeholder {
   color: rgba(18, 8, 31, 0.3);
   font-style: italic;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lab-settle {
+  .ti-settle {
     animation: none;
   }
-  ::view-transition-group(lab-hero),
-  ::view-transition-old(lab-hero),
-  ::view-transition-new(lab-hero) {
+  ::view-transition-group(ti-hero),
+  ::view-transition-old(ti-hero),
+  ::view-transition-new(ti-hero) {
     animation-duration: 1ms;
   }
 }

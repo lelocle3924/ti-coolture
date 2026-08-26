@@ -3,7 +3,7 @@ import { fetchHiddenGems, fetchProducts, fetchStores, fetchTouristRoutes } from 
 import type { Product, StoreProfile, TouristRoute } from "../types";
 
 /**
- * Data shaping shared by the three exploration directions.
+ * Data shaping for the homepage.
  *
  * Everything here reads through src/lib/dbService.ts — the same adapter the
  * production views use — so the directions are compared on design, not on
@@ -171,7 +171,7 @@ export function islandBlobs(stops: Array<{ x: number; y: number }>): IslandBlob[
    be judged with realistic tiles in it, and must be replaced by editor-curated
    `collections` rows before any public demo. */
 
-export interface LabCollection {
+export interface HomeCollection {
   id: string;
   /** Placeholder name; the editors replace this. */
   name: string;
@@ -186,7 +186,7 @@ const COLLECTION_COUNT = 4;
 const FOR_HIM_CATEGORIES = ["Art Toy & Sưu tầm", "Nghệ thuật & Ấn phẩm", "Ẩm thực & Đặc sản"];
 const FOR_HER_CATEGORIES = ["Chăm sóc cá nhân", "Thời trang & Phụ kiện", "Thủ công & Trang trí"];
 
-export interface LabData {
+export interface HomeData {
   loading: boolean;
   error: boolean;
   reload: () => void;
@@ -197,12 +197,12 @@ export interface LabData {
   popular: Product[];
   forHim: Product[];
   forHer: Product[];
-  collections: LabCollection[];
+  collections: HomeCollection[];
   /** Editor's picks behind the persistent right-edge tab (UX-TASKS 2.3). */
   gems: Array<{ product: Product; note: string }>;
 }
 
-export function useLabData(): LabData {
+export function useHomeData(): HomeData {
   const [products, setProducts] = useState<Product[]>([]);
   const [stores, setStores] = useState<StoreProfile[]>([]);
   const [routes, setRoutes] = useState<TouristRoute[]>([]);
@@ -274,7 +274,7 @@ export function useLabData(): LabData {
 
   /* Round-robin so every collection gets a spread of categories rather than
      four buckets of the same thing. */
-  const collections = useMemo<LabCollection[]>(
+  const collections = useMemo<HomeCollection[]>(
     () =>
       Array.from({ length: COLLECTION_COUNT }, (_, i) => ({
         id: `coll-placeholder-${i + 1}`,

@@ -1,282 +1,235 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Link, useNavigate, useLocation, NavLink } from "react-router-dom";
-import { User as UserIcon, LogOut, Shield, Search, Heart, Menu, X } from "lucide-react";
-import { useAuth } from "../lib/useAuth";
-import { fetchProducts } from "../lib/dbService";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { ArrowUpRight, Menu, Search, X } from "lucide-react";
 import Brandmark from "./Brandmark";
+import { useAutoHideChrome } from "../lib/useAutoHideChrome";
+import { fetchProducts } from "../lib/dbService";
+import type { Product } from "../types";
 
 /**
- * Navigation structure follows the Lovable mockup: centred primary links with
- * an icon cluster (search, wishlist, language) on the right. Rendered on the
- * violet ground rather than the mockup's white bar.
+ * The site's navigation — one component, every page.
+ *
+ * Shape is Direction A's floating capsule: the bar does not span the window,
+ * it is a pill that sits over whatever the page's own ground happens to be.
+ * That is why it carries its own dark material rather than relying on a
+ * violet header band: /products and /stores run on paper, the homepage opens
+ * on a photograph, and the pill has to read on both.
+ *
+ * Behaviour is the settled one from docs/UX-TASKS.md 1.1 and the team's
+ * 19/08 note: hides on scroll-down, returns on scroll-up, 8px threshold,
+ * never hides in the top zone, held open while a drawer or the search
+ * overlay is open.
  */
-const NAV_LINKS = [
-  
+
+const NAV = [
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
-  { to: "/kham-pha", label: "Khám phá" },
-  { to: "/tui-minh", label: "Tụi mình" },
+  { to: "/discover", label: "Khám phá" },
+  { to: "/about", label: "Tụi mình" },
 ];
 
-export default function Header() {
-  const { user, profile, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+/**
+ * The chrome's scroll state, published for anything that has to move with it
+ * or against it. The Hidden Gems tab reads this and does the opposite: the
+ * team asked for the tab to appear exactly when the nav goes away.
+ */
+export function useChromeHidden(locked = false) {
+  return useAutoHideChrome({ locked });
+}
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [previousSearches, setPreviousSearches] = useState<string[]>(() => {
-    const saved = sessionStorage.getItem("t_coolture_searches");
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [products, setProducts] = useState<any[]>([]);
+function SearchOverlay({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProducts("Approved")
-      .then(setProducts)
-      .catch((err) => console.error("Error loading search suggestions:", err));
-  }, []);
+    fetchProducts("Approved").then(setProducts).catch(() => setProducts([]));
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Diacritic-insensitive, per UX-TASKS 3.1 — "ao dai" has to find "áo dài".
+  const norm = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
+
+  const hits = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = norm(query);
+    return products
+      .filter((p) => norm(`${p.name} ${p.storeName} ${p.category}`).includes(q))
+      .slice(0, 8);
+  }, [query, products]);
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Tìm kiếm"
+      className="fixed inset-0 z-[70] bg-ink/80 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="mx-auto mt-[12vh] w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] bg-paper text-ink shadow-[0_40px_90px_rgba(18,8,31,0.5)]"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!query.trim()) return;
+            navigate(`/products?q=${encodeURIComponent(query.trim())}`);
+            onClose();
+          }}
+          className="flex items-center gap-3 border-b border-ink/12 px-5 py-4"
+        >
+          <Search className="h-4 w-4 shrink-0 text-ink/40" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Tìm sản phẩm, shop…"
+            className="w-full bg-transparent text-base outline-none placeholder:text-ink/35"
+          />
+          <button type="button" onClick={onClose} aria-label="Đóng tìm kiếm">
+            <X className="h-4 w-4 text-ink/45" />
+          </button>
+        </form>
+
+        {hits.length > 0 && (
+          <ul className="max-h-[52vh] overflow-y-auto">
+            {hits.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={`/products/${p.id}`}
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-paper-warm"
+                >
+                  <img src={p.images?.[0]} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm">{p.name}</span>
+                    <span className="block text-[11px] text-ink/50">{p.storeName}</span>
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-brand" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {query.trim() && hits.length === 0 && (
+          <p className="px-5 py-6 text-sm text-ink/55">Chưa tìm thấy gì khớp với “{query}”.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const { hidden, atTop } = useAutoHideChrome({ locked: menuOpen || searchOpen });
+  const location = useLocation();
 
   useEffect(() => {
     setMenuOpen(false);
     setSearchOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus();
-  }, [searchOpen]);
-
-  const suggestions = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return products
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q) ||
-          p.storeName.toLowerCase().includes(q)
-      )
-      .slice(0, 5);
-  }, [searchQuery, products]);
-
-  const rememberSearch = (term: string) => {
-    if (previousSearches.includes(term)) return;
-    const updated = [term, ...previousSearches].slice(0, 5);
-    setPreviousSearches(updated);
-    sessionStorage.setItem("t_coolture_searches", JSON.stringify(updated));
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    if (!query) return;
-    rememberSearch(query);
-    navigate(`/products?q=${encodeURIComponent(query)}`);
-  };
-
-  const handleUserClick = () =>
-    navigate(user ? (profile?.role === "Shop" ? "/shop-dashboard" : "/user-profile") : "/auth-gateway");
-
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `relative py-1 label transition-colors ${isActive ? "text-paper" : "text-white/70 hover:text-wave"}`;
-
   return (
-    <header className="fixed top-0 w-full z-50 bg-brand text-paper border-b border-white/20 select-none">
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3 md:px-8 md:py-4">
-        <Link to="/" viewTransition className="shrink-0" aria-label="Tí Coolture — trang chủ">
-          <Brandmark className="w-[72px] md:w-[80px] h-auto" body="var(--color-paper)" />
-        </Link>
-
-        <nav className="hidden md:flex items-center gap-8 mx-auto" aria-label="Điều hướng chính">
-          {NAV_LINKS.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end} viewTransition className={linkClass}>
-              {link.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-1 ml-auto md:ml-0">
-          <button
-            onClick={() => setSearchOpen((v) => !v)}
-            className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
-            aria-label={searchOpen ? "Đóng tìm kiếm" : "Tìm kiếm"}
-            aria-expanded={searchOpen}
+    <>
+      <header
+        className="fixed inset-x-0 top-0 z-50 px-3 pt-3 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:px-6 md:pt-5"
+        style={{ transform: hidden ? "translateY(-140%)" : "translateY(0)" }}
+      >
+        <div
+          className={`mx-auto flex max-w-6xl items-center gap-2 rounded-full px-2 py-2 transition-all duration-500 md:gap-4 md:px-3 ${
+            atTop
+              ? "bg-ink/55 backdrop-blur-md"
+              : "bg-ink/85 shadow-[0_18px_40px_-18px_rgba(18,8,31,0.9)] backdrop-blur-xl"
+          }`}
+        >
+          <Link
+            to="/"
+            aria-label="Tí Coolture — trang chủ"
+            className="shrink-0 rounded-full px-3 py-1.5 transition-transform duration-300 hover:scale-105"
           >
-            {searchOpen ? <X className="w-[18px] h-[18px]" /> : <Search className="w-[18px] h-[18px]" />}
-          </button>
+            <Brandmark className="h-auto w-[68px] md:w-[74px]" body="var(--color-paper)" />
+          </Link>
 
-          <button
-            onClick={() => navigate(user ? "/user-profile" : "/auth-gateway")}
-            className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
-            aria-label="Sản phẩm đã lưu"
-          >
-            <Heart className="w-[18px] h-[18px]" />
-          </button>
-
-          <span className="hidden sm:flex items-center gap-1.5 label pl-2 pr-1 text-white/70">
-            <span className="text-paper">VI</span>
-            <span aria-hidden="true">/</span>
-            <span title="Chưa có bản tiếng Anh">EN</span>
-          </span>
-
-          {/* <button
-            onClick={handleUserClick}
-            className="w-10 h-10 grid place-items-center hover:text-wave transition-colors"
-            aria-label={user ? "Tài khoản của bạn" : "Đăng nhập hoặc đăng ký"}
-            title={user ? user.email : "Đăng nhập / Đăng ký"}
-          >
-            <UserIcon className="w-[18px] h-[18px]" />
-          </button> */}
-
-          {user && (
-            <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-white/20">
-              <span className="label text-white/80 flex items-center gap-1">
-                {profile?.role === "Admin" && <Shield className="w-3 h-3" aria-hidden="true" />}
-                {profile?.role || "User"}
-              </span>
-              <button
-                onClick={async () => {
-                  await logout();
-                  navigate("/");
-                }}
-                className="w-9 h-9 grid place-items-center hover:text-wave transition-colors"
-                aria-label="Đăng xuất"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="md:hidden w-10 h-10 grid place-items-center"
-            aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Search drawer — the mockup hides search behind the icon */}
-      {searchOpen && (
-        <div className="border-t border-white/20 bg-brand">
-          <form
-            onSubmit={handleSearchSubmit}
-            role="search"
-            className="mx-auto max-w-7xl px-5 py-4 md:px-8"
-          >
-            <div className="flex items-center gap-3 border-b border-white/30 pb-2 focus-within:border-wave transition-colors">
-              <Search className="w-5 h-5 shrink-0 text-white/80" aria-hidden="true" />
-              <input
-                ref={searchInputRef}
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm sản phẩm, shop…"
-                aria-label="Tìm sản phẩm hoặc shop"
-                className="w-full bg-transparent py-2 text-lg text-paper placeholder:text-white/80 focus:outline-none"
-              />
-            </div>
-
-            <div className="mt-4">
-              {searchQuery.trim() === "" ? (
-                previousSearches.length > 0 && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="label text-white/80">Tìm gần đây</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPreviousSearches([]);
-                          sessionStorage.removeItem("t_coolture_searches");
-                        }}
-                        className="label text-white/80 hover:text-wave transition-colors"
-                      >
-                        Xoá hết
-                      </button>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {previousSearches.map((term) => (
-                        <button
-                          key={term}
-                          type="button"
-                          onClick={() => navigate(`/products?q=${encodeURIComponent(term)}`)}
-                          className="min-h-11 px-4 border border-white/30 text-sm hover:border-paper hover:bg-white/10 transition-colors"
-                        >
-                          {term}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )
-              ) : suggestions.length === 0 ? (
-                <p className="text-sm text-white/80">
-                  Không tìm thấy “{searchQuery}”. Tí sẽ ghi nhận — biết đâu tháng sau có.
-                </p>
-              ) : (
-                <ul className="space-y-1">
-                  {suggestions.map((prod) => (
-                    <li key={prod.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          rememberSearch(prod.name);
-                          setSearchQuery("");
-                          navigate(`/products/${prod.id}`);
-                        }}
-                        className="w-full flex items-center gap-3 p-2 text-left hover:bg-white/10 transition-colors"
-                      >
-                        <img
-                          src={prod.images[0]}
-                          alt=""
-                          className="w-10 h-10 object-cover shrink-0 bg-paper-warm"
-                        />
-                        <span className="overflow-hidden">
-                          <span className="block text-sm truncate">{prod.name}</span>
-                          <span className="block label text-wave truncate">{prod.storeName}</span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Mobile drawer */}
-      {menuOpen && (
-        <div className="md:hidden border-t border-white/20 px-5 py-5">
-          <nav className="flex flex-col" aria-label="Điều hướng chính">
-            {NAV_LINKS.map((link) => (
+          <nav className="mx-auto hidden items-center gap-1 md:flex" aria-label="Điều hướng chính">
+            {NAV.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
-                end={link.end}
-                className="display text-2xl py-2.5 border-b border-white/12"
+                className={({ isActive }) =>
+                  `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${
+                    isActive
+                      ? "bg-paper text-ink"
+                      : "text-white/75 hover:bg-white/10 hover:text-paper"
+                  }`
+                }
               >
                 {link.label}
               </NavLink>
             ))}
           </nav>
-          {user && (
+
+          <div className="ml-auto flex items-center gap-1 md:ml-0">
             <button
-              onClick={async () => {
-                await logout();
-                navigate("/");
-              }}
-              className="label mt-5 flex items-center gap-2 text-white/80"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Tìm kiếm"
+              aria-haspopup="dialog"
+              className="grid h-11 w-11 place-items-center rounded-full text-paper/85 transition-colors hover:bg-white/10 hover:text-wave"
             >
-              <LogOut className="w-4 h-4" aria-hidden="true" />
-              Đăng xuất
+              <Search className="h-[18px] w-[18px]" />
             </button>
-          )}
+
+            <Link
+              to="/open-shop"
+              className="hidden items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-paper transition-transform duration-300 hover:scale-105 sm:inline-flex"
+            >
+              Mở shop
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+              className="grid h-11 w-11 place-items-center rounded-full text-paper transition-colors hover:bg-white/10 md:hidden"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
-      )}
-    </header>
+
+        {menuOpen && (
+          <div className="mx-auto mt-2 max-w-6xl rounded-[1.75rem] bg-brand-deep/95 px-5 py-3 backdrop-blur-xl md:hidden">
+            {NAV.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setMenuOpen(false)}
+                className="flex min-h-16 items-center justify-between border-b border-white/12 text-paper last:border-b-0"
+              >
+                <span className="display text-3xl normal-case">{link.label}</span>
+                <ArrowUpRight className="h-5 w-5 text-wave" />
+              </Link>
+            ))}
+            <Link
+              to="/open-shop"
+              onClick={() => setMenuOpen(false)}
+              className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-full bg-paper px-5 text-sm font-bold text-ink"
+            >
+              Mở shop trên Tí
+              <ArrowUpRight className="h-4 w-4 text-brand" />
+            </Link>
+          </div>
+        )}
+      </header>
+
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+    </>
   );
 }

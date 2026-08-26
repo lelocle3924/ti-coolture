@@ -9,18 +9,10 @@ import UserProfile from "./views/UserProfile";
 import AuthGateway from "./views/AuthGateway";
 import Products from "./views/Products";
 import Stores from "./views/Stores";
-import Blog from "./views/Blog";
+import About from "./views/About";
 import Discovery from "./views/Discovery";
+import OpenShop from "./views/OpenShop";
 import Footer from "./components/Footer";
-import LabIndex from "./lab/LabIndex";
-import DirectionA from "./lab/DirectionA";
-import DirectionB from "./lab/DirectionB";
-import DirectionC from "./lab/DirectionC";
-import DirectionC4 from "./lab/DirectionC4";
-import { CatalogueOne, CatalogueTwo, CatalogueThree } from "./lab/subpages/CatalogueStudies";
-import { ProductOne, ProductTwo, ProductThree } from "./lab/subpages/ProductStudies";
-import { ShopsOne, ShopsTwo, ShopsThree } from "./lab/subpages/ShopStudies";
-import { OpenOne, OpenTwo, OpenThree } from "./lab/subpages/OpenStudies";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
@@ -39,16 +31,16 @@ function ButtonClickTracker() {
     const handleGlobalClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       const button = target.closest("button");
-      
+
       if (button) {
         // Extract direct text
         let text = button.innerText.trim();
 
         // If no direct text, try standard attributes
         if (!text) {
-          text = button.getAttribute("aria-label") || 
-                 button.getAttribute("title") || 
-                 button.getAttribute("name") || 
+          text = button.getAttribute("aria-label") ||
+                 button.getAttribute("title") ||
+                 button.getAttribute("name") ||
                  "";
         }
 
@@ -111,30 +103,61 @@ function ButtonClickTracker() {
   return null;
 }
 
-/** The public site, with the shared header and footer around it. */
+/**
+ * The public site.
+ *
+ * The header is outside <Routes> because it is now one pill shared by every
+ * page (26/08) — the homepage used to ship its own chrome and no longer does.
+ *
+ * The homepage renders its own reveal footer (the MO-4 treatment that is part
+ * of the direction that was chosen), so the shared footer is suppressed there
+ * and there only.
+ */
 function SiteShell() {
+  const { pathname } = useLocation();
+  const isHome = pathname === "/";
+
   return (
     <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
       <Header />
-      <div className="flex-grow">
+      {/* The nav is a floating pill, so it sits over the page rather than
+          pushing it down. Every page therefore needs the pill's height cleared
+          at the top — except the homepage, whose hero owns that space and puts
+          the deck under the pill on purpose. */}
+      <div className={`flex-grow ${isHome ? "" : "pt-24 md:pt-28"}`}>
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/products" element={<Products />} />
           <Route path="/stores" element={<Stores />} />
-          <Route path="/tui-minh" element={<Blog />} />
-          <Route path="/kham-pha" element={<Discovery />} />
-          <Route path="/kham-pha/:routeId" element={<Discovery />} />
           <Route path="/stores/:storeId" element={<ShopDisplay />} />
           <Route path="/products/:productId" element={<ProductDetail />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/open-shop" element={<OpenShop />} />
+          <Route path="/discover" element={<Discovery />} />
+          <Route path="/discover/:routeId" element={<Discovery />} />
           <Route path="/shop-dashboard" element={<ShopDashboard />} />
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/auth-gateway" element={<AuthGateway />} />
+
+          {/* Renamed 26/08. Kept as redirects so anything already shared or
+              bookmarked still lands, rather than bouncing to the homepage. */}
+          <Route path="/kham-pha" element={<Navigate to="/discover" replace />} />
+          <Route path="/kham-pha/:routeId" element={<RedirectRoute to="/discover" />} />
+          <Route path="/tui-minh" element={<Navigate to="/about" replace />} />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <Footer />
+      {!isHome && <Footer />}
     </div>
   );
+}
+
+/** Carries the :routeId across a rename so a deep link keeps its district. */
+function RedirectRoute({ to }: { to: string }) {
+  const { pathname, search } = useLocation();
+  const tail = pathname.split("/").filter(Boolean).slice(1).join("/");
+  return <Navigate to={`${to}${tail ? `/${tail}` : ""}${search}`} replace />;
 }
 
 export default function App() {
@@ -143,43 +166,7 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <ButtonClickTracker />
-        <Routes>
-          {/* Design exploration — each direction ships its own chrome, so these
-              routes render outside the shared Header/Footer shell. Delete
-              src/lab/ and these four routes once a direction is chosen. */}
-          <Route path="/lab" element={<LabIndex />} />
-          <Route path="/lab/a" element={<DirectionA />} />
-          <Route path="/lab/b" element={<DirectionB />} />
-          <Route path="/lab/c" element={<DirectionC />} />
-
-          {/* Brand-device studies on top of C — same page, three readings of
-              the marks in src/assets/brand. See src/lab/brandLayers.tsx. */}
-          <Route path="/lab/c1" element={<DirectionC brand="c1" />} />
-          <Route path="/lab/c2" element={<DirectionC brand="c2" />} />
-          <Route path="/lab/c3" element={<DirectionC brand="c3" />} />
-
-          {/* C4 — the page as a single travelled line. Not a variant of C:
-              a different structure entirely. */}
-          <Route path="/lab/c4" element={<DirectionC4 />} />
-
-          {/* Subpage studies — three directions each for the catalogue, the
-              product page, the shop directory and the open-a-workshop form.
-              See src/lab/subpages/. */}
-          <Route path="/lab/catalog/1" element={<CatalogueOne />} />
-          <Route path="/lab/catalog/2" element={<CatalogueTwo />} />
-          <Route path="/lab/catalog/3" element={<CatalogueThree />} />
-          <Route path="/lab/product/1/:productId" element={<ProductOne />} />
-          <Route path="/lab/product/2/:productId" element={<ProductTwo />} />
-          <Route path="/lab/product/3/:productId" element={<ProductThree />} />
-          <Route path="/lab/shops/1" element={<ShopsOne />} />
-          <Route path="/lab/shops/2" element={<ShopsTwo />} />
-          <Route path="/lab/shops/3" element={<ShopsThree />} />
-          <Route path="/lab/open/1" element={<OpenOne />} />
-          <Route path="/lab/open/2" element={<OpenTwo />} />
-          <Route path="/lab/open/3" element={<OpenThree />} />
-
-          <Route path="*" element={<SiteShell />} />
-        </Routes>
+        <SiteShell />
       </BrowserRouter>
     </AuthProvider>
   );
