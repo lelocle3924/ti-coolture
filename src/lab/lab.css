@@ -1,0 +1,118 @@
+/* ---------------------------------------------------------------------------
+   Lab-only styles. Nothing here is loaded by the site — labShared.tsx is the
+   only importer, and only src/lab imports that.
+
+   Every colour resolves to a token from src/index.css. No new palette.
+   --------------------------------------------------------------------------- */
+
+.lab-no-scrollbar {
+  scrollbar-width: none;
+}
+.lab-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── spring tabs (Collections, direction 2) ───────────────────────────────
+   The sketch on page 1 of the 26/08 feedback: collections as a horizontal
+   accordion, closed ones standing as narrow spines with the name set
+   vertically, the open one springing wide.
+
+   flex-grow rather than width, because the panels have to share one row
+   exactly — animating widths independently lets rounding put a hairline of
+   ground between them mid-transition. The spring is the brand ease, which
+   overshoots slightly on the way open: that overshoot is the "spring" the
+   sketch is naming. */
+
+.lab-spring-panel {
+  flex-grow: var(--lab-grow, 1);
+  flex-basis: 0;
+  min-width: 3.25rem;
+  transition:
+    flex-grow 620ms var(--ease-brand),
+    background-color 420ms ease;
+  will-change: flex-grow;
+}
+
+/* The vertical name on a closed spine. Reads bottom-to-top, like a book on a
+   shelf, so a row of closed collections scans as a row of spines. */
+.lab-spine-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
+/* The open panel's contents arrive after the panel has most of its width —
+   otherwise the tiles reflow while the flex-grow is still running and the
+   whole thing looks like it is struggling. */
+@keyframes lab-spring-contents {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lab-spring-contents {
+  animation: lab-spring-contents 380ms var(--ease-brand) 180ms both;
+}
+
+/* ── motion studies ──────────────────────────────────────────────────────── */
+
+/* Before/after demos replay on demand; restarting an animation needs the node
+   to be re-created, which the React `key` does. These are the paired classes. */
+
+@keyframes lab-demo-linear {
+  from { transform: translateY(28px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.lab-demo-before {
+  animation: lab-demo-linear 620ms linear both;
+}
+.lab-demo-after {
+  animation: lab-demo-linear 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered children, for the "arrive as a group, not as a queue" study. */
+.lab-stagger > * {
+  animation: lab-demo-linear 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lab-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.lab-stagger > *:nth-child(2) { animation-delay: 45ms; }
+.lab-stagger > *:nth-child(3) { animation-delay: 90ms; }
+.lab-stagger > *:nth-child(4) { animation-delay: 135ms; }
+
+.lab-stagger--slow > *:nth-child(1) { animation-delay: 0ms; }
+.lab-stagger--slow > *:nth-child(2) { animation-delay: 180ms; }
+.lab-stagger--slow > *:nth-child(3) { animation-delay: 360ms; }
+.lab-stagger--slow > *:nth-child(4) { animation-delay: 540ms; }
+
+/* The pin drop the map does not currently do. */
+@keyframes lab-pin-drop {
+  0%   { transform: translateY(-18px) scale(0.9); opacity: 0; }
+  70%  { transform: translateY(2px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.lab-pin-drop {
+  animation: lab-pin-drop 480ms var(--ease-brand) both;
+}
+.lab-pin-drop:nth-of-type(1) { animation-delay: 0ms; }
+.lab-pin-drop:nth-of-type(2) { animation-delay: 70ms; }
+.lab-pin-drop:nth-of-type(3) { animation-delay: 140ms; }
+.lab-pin-drop:nth-of-type(4) { animation-delay: 210ms; }
+
+/* ── motion budget ────────────────────────────────────────────────────────
+   docs/01-ART-DIRECTION-BRIEF.md: everything scroll- or entrance-driven stops
+   when the visitor asks for reduced motion. The spring tabs keep working —
+   they just arrive instead of springing, because the panel is the content and
+   hiding it would break the page rather than calm it. */
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-spring-panel {
+    transition: none;
+  }
+  .lab-spring-contents,
+  .lab-demo-before,
+  .lab-demo-after,
+  .lab-stagger > *,
+  .lab-pin-drop {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
