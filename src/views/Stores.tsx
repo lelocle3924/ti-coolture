@@ -1,32 +1,17 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { 
-  MapPin, ExternalLink, ChevronRight, Store, 
-  Sparkles, ArrowRight, ArrowUpRight, ShieldCheck, Heart, Search 
-} from "lucide-react";
+import { MapPin, Store, ArrowRight, ArrowUpRight, Search } from "lucide-react";
 import { fetchStores, fetchProducts } from "../lib/dbService";
 import { StoreProfile, Product } from "../types";
-import { ArcTopRight, RibbonLoop, ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
-import { vtShopLogo, vtShopCover, vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
-
-const DISTRICT_HUBS = [
-  "Tất cả khu vực",
-  "Quận 1",
-  "Quận 3",
-  "Thảo Điền / TP. Thủ Đức",
-  "Phố cổ Hà Nội",
-  "Tây Hồ, Hà Nội",
-  "Đà Nẵng & Hội An",
-  "Đà Lạt",
-  "Bát Tràng"
-];
+import { ArcTopRight, RibbonLoop, WaveStores } from "../components/BrandShapes";
+import Breadcrumbs from "../components/Breadcrumbs";
+import { vtShopLogo, vtShopCover, vtProductImage } from "../lib/viewTransitions";
 
 export default function Stores() {
   const [stores, setStores] = useState<StoreProfile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedHub, setSelectedHub] = useState("Tất cả khu vực");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -43,21 +28,7 @@ export default function Stores() {
     loadData();
   }, []);
 
-  const handleHubSelect = (hub: string) => {
-    const currentIdx = DISTRICT_HUBS.indexOf(selectedHub);
-    const nextIdx = DISTRICT_HUBS.indexOf(hub);
-    const dir = nextIdx >= currentIdx ? "forward" : "backward";
-
-    withDirectionalTransition(dir, () => {
-      setSelectedHub(hub);
-    });
-  };
-
   const filteredStores = stores.filter(store => {
-    if (selectedHub !== "Tất cả khu vực") {
-      const matchDistrict = (store.address || "").toLowerCase().includes(selectedHub.toLowerCase());
-      if (!matchDistrict) return false;
-    }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchName = store.name.toLowerCase().includes(query);
@@ -69,79 +40,60 @@ export default function Stores() {
   });
 
   return (
-    <div className="min-h-[100dvh] bg-brand text-ink pb-28 select-none relative overflow-x-hidden w-full">
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <ContinuousWave pageIndex={2} />
-        <PaperBackgroundExtender />
-      </div>
+    /* Same reason as /products: the negative margin belongs on the clipping
+       element, so the violet reaches y=0 and the header pill floats on it
+       instead of on the shell's ink. */
+    <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
 
-      {/* ============ HERO SECTION ============ */}
-      <section className="bg-transparent text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden z-10">
+      {/* ============ HERO ============
+          Team 26/08: "distinct from /products, yet still united in design
+          language. Use the brand identity elements more heavily."
+
+          United: violet band from y=0, one title, a wave seam into paper,
+          breadcrumb below it on the paper.
+
+          Distinct: /products is centred and quiet with a single arc. This one
+          is off-axis — the title sits left and the marks do the composing.
+          The ribbon (the boat's line, the mark the guidelines call the
+          brand's own gesture) runs large off the right edge, the arc closes
+          the bottom-left, and the seam is WaveStores' double ripple rather
+          than the products swell. */}
+      <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
+        <RibbonLoop
+          className="pointer-events-none absolute -right-24 -top-16 z-0 opacity-20"
+          style={{ width: "clamp(20rem, 44vw, 38rem)" }}
+          ribbon="var(--color-wave)"
+          dot="var(--color-paper)"
+        />
         <ArcTopRight
-          className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-15"
-          style={{ width: "clamp(18rem, 40vw, 32rem)" }}
-          fill="var(--color-wave)"
+          className="pointer-events-none absolute -left-24 -bottom-24 z-0 rotate-180 opacity-15"
+          style={{ width: "clamp(14rem, 28vw, 22rem)" }}
+          fill="var(--color-paper)"
         />
 
-        <div className="max-w-7xl mx-auto relative z-10 space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1 text-[11px] font-semibold text-wave backdrop-blur-md border border-white/15">
-            <Store className="w-3.5 h-3.5 text-wave" />
-            <span className="tracking-wider uppercase">DANH BẠ XƯỞNG CHẾ TÁC VIỆT</span>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="max-w-2xl space-y-2">
-              <h1 className="display text-3xl md:text-5xl normal-case font-medium leading-tight text-paper">
-                Không gian nghệ nhân & Local Brand
-              </h1>
-              <p className="text-xs md:text-sm text-white/85 max-w-xl leading-relaxed">
-                Khám phá những xưởng gốm, xưởng may thủ công, studio thiết kế và xưởng trang sức độc lập khắp các thành phố.
-              </p>
-            </div>
-
-            <div className="text-xs text-white/75 bg-black/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shrink-0">
-              Hiện có <strong className="text-wave font-bold text-base">{stores.length}</strong> xưởng đăng ký hoạt động
-            </div>
-          </div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 pt-24 pb-4 md:px-8 md:pt-28 md:pb-6">
+          {/* leading-[1.25] rather than .display's 1.02 — see index.css on
+              how far Vietnamese uppercase reaches in DFVN. */}
+          <h1 className="display max-w-3xl text-4xl normal-case font-medium leading-[1.25] text-paper md:text-6xl">
+            Các bạn đồng hành
+          </h1>
         </div>
 
-        {/* Negative Transition Seam removed */}
+        <div className="relative z-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden">
+          <WaveStores className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
+        </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
+      <div data-surface="light" className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
 
-        {/* Breadcrumbs */}
-        <nav className="text-[11px] text-ink/60 flex items-center gap-1.5 font-medium">
-          <Link to="/" viewTransition className="hover:text-brand transition-colors">Trang chủ</Link>
-          <span>›</span>
-          <span className="text-ink font-semibold">Danh bạ xưởng</span>
-        </nav>
+        <Breadcrumbs
+          trail={[{ label: "Trang chủ", to: "/" }, { label: "Các bạn đồng hành" }]}
+        />
 
-        {/* DOUBLE-BEZEL DISTRICT HUBS FILTER (§4.3) */}
-        <div className="p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5">
-          <div className="rounded-[1.625rem] bg-paper p-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
-            {DISTRICT_HUBS.map((hub) => {
-              const isActive = selectedHub === hub;
-              return (
-                <button
-                  key={hub}
-                  onClick={() => handleHubSelect(hub)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center gap-1.5 ${
-                    isActive
-                      ? "bg-brand text-paper shadow-md shadow-brand/20 scale-[1.02]"
-                      : "text-ink/75 hover:text-ink hover:bg-black/5"
-                  }`}
-                >
-                  <MapPin className="w-3 h-3 opacity-60" />
-                  <span>{hub}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Search & Counter Strip */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+        {/* Search only. The district-hub filter strip came out on 26/08
+            ("Remove filters for stores"); search stays, because it is how you
+            find a shop by name rather than how you narrow a list. */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <span className="text-xs text-ink/60 font-medium">
             Hiển thị <strong className="text-ink font-bold">{filteredStores.length}</strong> xưởng thủ công
           </span>
@@ -162,28 +114,27 @@ export default function Stores() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="p-2 rounded-[2.5rem] bg-black/5">
-                <div className="rounded-[2.125rem] bg-paper p-5 space-y-4 animate-pulse">
-                  <div className="aspect-[16/9] rounded-2xl bg-paper-warm" />
-                  <div className="h-4 w-1/2 bg-paper-warm rounded" />
-                  <div className="h-3 w-3/4 bg-paper-warm rounded" />
-                </div>
+              <div
+                key={i}
+                className="rounded-[1.875rem] border border-ink/10 bg-paper p-5 space-y-4 animate-pulse"
+              >
+                <div className="aspect-[16/9] rounded-2xl bg-paper-warm" />
+                <div className="h-4 w-1/2 bg-paper-warm rounded" />
+                <div className="h-3 w-3/4 bg-paper-warm rounded" />
               </div>
             ))}
           </div>
         ) : filteredStores.length === 0 ? (
-          <div className="max-w-md mx-auto my-12 p-2 rounded-[2.5rem] bg-black/5">
-            <div className="bg-paper rounded-[2.125rem] p-8 text-center space-y-3">
-              <Store className="w-10 h-10 text-brand mx-auto opacity-40" />
-              <h3 className="display text-xl font-medium">Không tìm thấy xưởng phù hợp</h3>
-              <p className="text-xs text-ink/60">Thử tìm kiếm với khu vực hoặc từ khoá khác nhé.</p>
-              <button
-                onClick={() => { setSelectedHub("Tất cả khu vực"); setSearchQuery(""); }}
-                className="px-5 py-2 rounded-full bg-brand text-paper text-xs font-semibold"
-              >
-                Đặt lại bộ lọc
-              </button>
-            </div>
+          <div className="max-w-md mx-auto my-12 rounded-[1.875rem] border border-ink/10 bg-paper p-8 text-center space-y-3">
+            <Store className="w-10 h-10 text-brand mx-auto opacity-40" />
+            <h3 className="display text-xl font-medium">Không tìm thấy xưởng phù hợp</h3>
+            <p className="text-xs text-ink/60">Thử tìm với từ khoá khác nhé.</p>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="px-5 py-2 rounded-full bg-brand text-paper text-xs font-semibold"
+            >
+              Xoá tìm kiếm
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
@@ -196,12 +147,14 @@ export default function Stores() {
                 : null;
 
               return (
+                /* One border, not two (26/08). Was a bg-black/5 bezel with a
+                   ring wrapped around a card that also had its own border —
+                   three edges reading as two. */
                 <div
                   key={store.id}
-                  className="rev hover-elastic p-1.5 rounded-[2.25rem] bg-black/5 ring-1 ring-black/5 hover:ring-brand/40 group flex flex-col cursor-pointer"
+                  className="rev hover-elastic rounded-[1.875rem] bg-paper p-5 flex flex-col justify-between h-full space-y-4 border border-ink/10 hover:border-brand/40 group cursor-pointer overflow-hidden"
                 >
-                  <div className="rounded-[1.875rem] bg-paper p-5 flex flex-col justify-between h-full space-y-4 border border-ink/5 overflow-hidden">
-                    
+
                     {/* Atelier Cover Banner Viewport with Shared View Transition Name */}
                     <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-paper-warm">
                       <img
@@ -223,11 +176,9 @@ export default function Stores() {
                         />
                       </div>
 
-                      {/* Verification Badge */}
-                      <div className="absolute top-3 right-3 bg-brand/90 backdrop-blur-md text-paper text-[10px] font-semibold px-2.5 py-1 rounded-full border border-white/15 shadow-xs flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-wave" />
-                        <span>Tí Verified</span>
-                      </div>
+                      {/* "Tí Verified" badge removed 26/08 — every shop on the
+                          page is vetted, so a badge on all of them said
+                          nothing and only crowded the cover. */}
                     </div>
 
                     {/* Atelier Identity & Story */}
@@ -307,7 +258,6 @@ export default function Stores() {
                       </Link>
                     </div>
 
-                  </div>
                 </div>
               );
             })}
