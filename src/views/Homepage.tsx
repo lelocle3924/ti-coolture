@@ -1123,16 +1123,18 @@ export default function Homepage() {
         <GroundBlend from="paper" to="brand" />
         <PinnedCollections collections={collections} onOpen={open} />
 
-        {/* violet → ink */}
-        <GroundBlend from="brand" to="ink" />
+        {/* violet → the deeper violet the map now sits on. The map used to be
+            bg-ink and the team asked for that black to go (26/08), so the two
+            seams either side of it move with it. */}
+        <GroundBlend from="brand" to="brand-deep" />
         <DistrictMap
           routes={routes}
           onOpenRoute={(routeId) => navigate(`/discover/${routeId}`)}
           onPin={(routeId, stopId) => navigate(`/discover/${routeId}?start=${stopId}`)}
         />
 
-        {/* ink → the deeper violet the collaborate band sits on */}
-        <GroundBlend from="ink" to="brand-deep" />
+        {/* No blend below it any more: the map and the collaborate band are
+            both brand-deep, so there is no ground change left to ramp. */}
         <Collaborate />
       </div>
     </div>
