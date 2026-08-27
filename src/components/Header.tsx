@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight, Menu, Search, X } from "lucide-react";
 import Brandmark from "./Brandmark";
 import { useAutoHideChrome } from "../lib/useAutoHideChrome";
+import { useSurfaceTone } from "../lib/useSurfaceTone";
 import { fetchProducts } from "../lib/dbService";
 import type { Product } from "../types";
 
@@ -19,6 +20,9 @@ import type { Product } from "../types";
  * 19/08 note: hides on scroll-down, returns on scroll-up, 8px threshold,
  * never hides in the top zone, held open while a drawer or the search
  * overlay is open.
+ *
+ * Colour is not fixed (26/08 feedback). The pill takes its material and its
+ * marks from whatever ground it happens to be over — see useSurfaceTone.
  */
 
 const NAV = [
@@ -27,6 +31,31 @@ const NAV = [
   { to: "/discover", label: "Khám phá" },
   { to: "/about", label: "Tụi mình" },
 ];
+
+/* The two materials the pill can wear. Both stay translucent so the blur is
+   still doing the work — the ground reads through either one. */
+const TONE = {
+  dark: {
+    /* Lighter than the old solid slab (26/08): the bar should look like the
+       ground it covers, not like a black bar laid on top of it. */
+    pill: "bg-ink/50 ring-1 ring-white/12 shadow-[0_18px_40px_-22px_rgba(18,8,31,0.9)]",
+    pillTop: "bg-ink/55 ring-1 ring-white/10",
+    body: "var(--color-paper)",
+    idle: "text-wave/80 hover:bg-white/10 hover:text-wave",
+    active: "bg-paper text-ink",
+    icon: "text-paper/85 hover:bg-white/10 hover:text-wave",
+    burger: "text-paper hover:bg-white/10",
+  },
+  light: {
+    pill: "bg-paper/70 ring-1 ring-ink/10 shadow-[0_18px_40px_-24px_rgba(18,8,31,0.45)]",
+    pillTop: "bg-paper/60 ring-1 ring-ink/8",
+    body: "var(--color-brand)",
+    idle: "text-brand/85 hover:bg-brand/10 hover:text-brand",
+    active: "bg-brand text-paper",
+    icon: "text-ink/65 hover:bg-brand/10 hover:text-brand",
+    burger: "text-ink/80 hover:bg-brand/10",
+  },
+} as const;
 
 /**
  * The chrome's scroll state, published for anything that has to move with it
@@ -131,6 +160,9 @@ export default function Header() {
   const { hidden, atTop } = useAutoHideChrome({ locked: menuOpen || searchOpen });
   const location = useLocation();
 
+  const pillRef = useRef<HTMLDivElement>(null);
+  const tone = TONE[useSurfaceTone(pillRef)];
+
   useEffect(() => {
     setMenuOpen(false);
     setSearchOpen(false);
@@ -143,10 +175,9 @@ export default function Header() {
         style={{ transform: hidden ? "translateY(-140%)" : "translateY(0)" }}
       >
         <div
+          ref={pillRef}
           className={`mx-auto flex max-w-6xl items-center gap-2 rounded-full px-2 py-2 transition-all duration-500 md:gap-4 md:px-3 ${
-            atTop
-              ? "bg-ink/55 backdrop-blur-md"
-              : "bg-ink/85 shadow-[0_18px_40px_-18px_rgba(18,8,31,0.9)] backdrop-blur-xl"
+            atTop ? `${tone.pillTop} backdrop-blur-md` : `${tone.pill} backdrop-blur-xl`
           }`}
         >
           <Link
@@ -154,7 +185,10 @@ export default function Header() {
             aria-label="Tí Coolture — trang chủ"
             className="shrink-0 rounded-full px-3 py-1.5 transition-transform duration-300 hover:scale-105"
           >
-            <Brandmark className="h-auto w-[68px] md:w-[74px]" body="var(--color-paper)" />
+            {/* The teal group never moves. Only the COOLTURE lettering swaps:
+                white so it survives a dark ground, the mark's own violet once
+                there is a light one to sit on. */}
+            <Brandmark className="h-auto w-[68px] md:w-[74px]" body={tone.body} />
           </Link>
 
           <nav className="mx-auto hidden items-center gap-1 md:flex" aria-label="Điều hướng chính">
@@ -163,10 +197,8 @@ export default function Header() {
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
-                  `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${
-                    isActive
-                      ? "bg-paper text-ink"
-                      : "text-white/75 hover:bg-white/10 hover:text-paper"
+                  `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-500 ${
+                    isActive ? tone.active : tone.idle
                   }`
                 }
               >
@@ -180,7 +212,7 @@ export default function Header() {
               onClick={() => setSearchOpen(true)}
               aria-label="Tìm kiếm"
               aria-haspopup="dialog"
-              className="grid h-11 w-11 place-items-center rounded-full text-paper/85 transition-colors hover:bg-white/10 hover:text-wave"
+              className={`grid h-11 w-11 place-items-center rounded-full transition-colors duration-500 ${tone.icon}`}
             >
               <Search className="h-[18px] w-[18px]" />
             </button>
@@ -197,7 +229,7 @@ export default function Header() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
               aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-              className="grid h-11 w-11 place-items-center rounded-full text-paper transition-colors hover:bg-white/10 md:hidden"
+              className={`grid h-11 w-11 place-items-center rounded-full transition-colors duration-500 md:hidden ${tone.burger}`}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
