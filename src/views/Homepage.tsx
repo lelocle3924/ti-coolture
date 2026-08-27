@@ -204,7 +204,7 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
   return (
     <section
       id="dong-hero"
-      className="relative overflow-hidden bg-brand px-5 pb-16 pt-[6.5rem] md:px-16 md:pb-24 md:pt-32 lg:px-24"
+      className="relative overflow-hidden bg-brand px-5 pb-7 pt-[6.5rem] md:px-10 md:pt-32 lg:px-12"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
@@ -213,11 +213,38 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
       {/* identity marks in the violet around the deck */}
       <BrandSurround />
 
-      <div className="relative z-10 mx-auto max-w-[82rem]">
-        {/* The deck. 4:5 on phones, 16:10 on tablets, 21:9 on desktop — and
-            capped in vh so a short laptop viewport never has to scroll to see
-            the whole card. */}
-        <div className="relative aspect-[4/5] max-h-[calc(100dvh-15rem)] w-full sm:aspect-[16/10] lg:aspect-[16/9]">
+      {/* No max-width here any more. It used to cap the deck at 82rem, which
+          on any desktop was a tighter bound than the viewport height — so the
+          card stopped short of the arrow no matter how much room was below it.
+          The two bounds that remain are the real ones: the column's width, and
+          the height the card is allowed (--hero-reserve). Height wins at
+          ordinary desktop shapes, which is what puts the card's bottom edge on
+          the arrow. */}
+      <div className="relative z-10 w-full">
+        {/* The deck. 4:5 on phones, 16:10 on tablets, 16:9 on desktop — the
+            ratio the shop photographs are actually shot at (LANDSCAPE_SPEC).
+
+            The ratio is now exact at every size, which it was not (28/08).
+            The old rule paired `aspect-[16/9]` with `max-h-[calc(100dvh-15rem)]`
+            and those two cannot both hold: once the cap bit — which it did on
+            any laptop viewport, and at any zoom level that made the viewport
+            short in CSS pixels — the width stayed at 100% while the height
+            was clamped, so the card silently rendered at ~2:1 instead. Nothing
+            said so; it just looked slightly wrong.
+
+            Constraining the *width* instead keeps aspect-ratio in charge:
+            width is the smaller of the column and (available height × ratio),
+            and the height follows from it. The card therefore fits the
+            viewport without ever leaving its ratio.
+
+            --hero-reserve is the vertical space the card must not eat: the
+            top clearance for the header pill, plus 1.75rem at the bottom so
+            the card's bottom edge lands on the bottom of the scroll arrow's
+            circle (ScrollHint is fixed at bottom-7). */}
+        <div
+          className="relative mx-auto aspect-[4/5] w-full [--hero-ar:0.8] [--hero-reserve:8.25rem] sm:aspect-[16/10] sm:[--hero-ar:1.6] md:[--hero-reserve:9.75rem] lg:aspect-[16/9] lg:[--hero-ar:1.7778]"
+          style={{ maxWidth: "calc((100dvh - var(--hero-reserve)) * var(--hero-ar))" }}
+        >
           {frames.map((f, i) => {
             const rel = (i - active + count) % count;
             const style =
