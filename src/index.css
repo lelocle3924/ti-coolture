@@ -112,6 +112,17 @@ body {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
+/* Views have been asking for this class since the catalogue was built, but it
+   was only ever defined in home.css as .lab-no-scrollbar — which /products and
+   /stores do not import. So the global 10px ink-and-violet bar below was
+   painting under every "no-scrollbar" filter strip. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
