@@ -25,12 +25,18 @@ import type { Product } from "../types";
  * marks from whatever ground it happens to be over — see useSurfaceTone.
  */
 
+/* `hidden` keeps a link routable but off the bar. /about is hidden at the
+   team's request (26/08) until that page is past its rough state; deleting
+   the entry instead would lose the label and the ordering, and /about is
+   still reachable — the footer links it and /tui-minh still redirects. */
 const NAV = [
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
   { to: "/discover", label: "Khám phá" },
-  { to: "/about", label: "Tụi mình" },
+  { to: "/about", label: "Tụi mình", hidden: true },
 ];
+
+const VISIBLE_NAV = NAV.filter((link) => !link.hidden);
 
 /* The two materials the pill can wear. Both stay translucent so the blur is
    still doing the work — the ground reads through either one. */
@@ -192,7 +198,7 @@ export default function Header() {
           </Link>
 
           <nav className="mx-auto hidden items-center gap-1 md:flex" aria-label="Điều hướng chính">
-            {NAV.map((link) => (
+            {VISIBLE_NAV.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -238,7 +244,7 @@ export default function Header() {
 
         {menuOpen && (
           <div className="mx-auto mt-2 max-w-6xl rounded-[1.75rem] bg-brand-deep/95 px-5 py-3 backdrop-blur-xl md:hidden">
-            {NAV.map((link) => (
+            {VISIBLE_NAV.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
