@@ -108,7 +108,7 @@ export default function Stores() {
         {/* Negative Transition Seam removed */}
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
+      <div data-surface="light" className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
 
         {/* Breadcrumbs */}
         <nav className="text-[11px] text-ink/60 flex items-center gap-1.5 font-medium">

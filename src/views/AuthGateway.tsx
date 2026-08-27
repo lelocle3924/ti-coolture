@@ -201,7 +201,7 @@ export default function AuthGateway() {
   };
 
   return (
-    <div className="min-h-[90dvh] bg-paper-warm flex items-center justify-center p-4 md:p-8 relative overflow-hidden select-none">
+    <div data-surface="light" className="min-h-[90dvh] bg-paper-warm flex items-center justify-center p-4 md:p-8 relative overflow-hidden select-none">
       
       {/* Brand Shapes background decoration */}
       <ArcTopRight

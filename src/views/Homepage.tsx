@@ -540,7 +540,7 @@ function HowItWorks() {
 
   if (!pinned) {
     return (
-      <section id="dong-how" className="bg-paper py-16 text-ink md:py-24">
+      <section id="dong-how" data-surface="light" className="bg-paper py-16 text-ink md:py-24">
         {header}
         <div className="mt-10">{fan}</div>
       </section>
@@ -548,7 +548,7 @@ function HowItWorks() {
   }
 
   return (
-    <section id="dong-how" className="bg-paper text-ink">
+    <section id="dong-how" data-surface="light" className="bg-paper text-ink">
       <div ref={wrapRef} style={{ height: runHeight }}>
         {/* Everything in this pane is sized from dvh, not rem. Pinned to the
             viewport height with rem-sized content, it fitted a 900px MacBook

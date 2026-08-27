@@ -304,7 +304,7 @@ export default function ProductDetail() {
   const images = product.images?.length ? product.images : [""];
 
   return (
-    <div className="min-h-[100dvh] bg-paper text-ink">
+    <div data-surface="light" className="min-h-[100dvh] bg-paper text-ink">
       <InquiryModal inquiry={inquiry} storeName={store?.name ?? product.storeName} />
 
       <div className="mx-auto max-w-6xl px-5 py-6 md:px-8">

@@ -112,7 +112,7 @@ export default function Discovery() {
         />
       </div>
 
-      <div className="py-12 md:py-20 relative z-10">
+      <div data-surface="light" className="py-12 md:py-20 relative z-10">
         <div className="mx-auto max-w-3xl px-5 md:px-8 space-y-8 relative">
           
           {/* Vertical connecting line */}
