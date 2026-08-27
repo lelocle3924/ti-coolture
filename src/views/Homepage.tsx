@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUpRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
+import { useDragTrack } from "../lib/useDragTrack";
 import {
   formatPrice,
   PRICE_NOTE,
@@ -32,7 +33,8 @@ import "../home/home.css";
        the identity marks in the violet around it (BrandSurround).
      · What's in store — two counter-running marquee lanes, square tiles.
      · How it works — four cards overlapping, revealing in sequence on scroll.
-     · Collections — a pinned track whose 60/30/10 window slides forward.
+     · Collections — a draggable track of whole cards, paged, with the
+       segment bar under it. Was a pinned scroll run until 26/08.
      · Map — one strip; the island opens /discover, each pin opens its own stop.
      · Footer — MO-4 reveal: stationary underlay, sheet scrolling over it.
 
@@ -666,188 +668,152 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   );
 }
 
-/* ── collections: a pinned track whose 60/30/10 window slides forward ────
-   wireframes.html MO-7 — used once per site, wrapper roughly three screens,
-   track completes before the pin releases, segmented indicator.
+/* ── collections: a draggable track, and a bar that says how far it runs ──
+   Team 26/08: "Remove scroll interaction on 'Collections' section… 1st one
+   simply replace scroll with click and drag and a bar below to signal there's
+   more."
 
-   The window is a falloff over the panel list: the panel under the cursor
-   takes 60%, the next 30%, the one after 10%, everything else nothing. Moving
-   the cursor forward by one slot per step slides the whole window, so the last
-   collection hands over to the "Xem thêm" panel exactly as the pin ends. */
+   What went — the pinned run (MO-7). The section was ~3 viewports tall and
+   drove a 60/30/10 window across the panels from the document's own scroll
+   position: the only way to reach collection 3 was to keep scrolling the
+   page, and the only way back was to scroll up through it again. Panels
+   squeezed to 10% of their width on the way past, which is why each one
+   needed a vertical rail to stay legible while it was a sliver.
 
-/* Panel rotation carries the 60/30/10 ratio through the biggest band on the
-   page: violet leads, teal gets one real 60% moment rather than only the
-   closing sliver, white and ink split the rest. */
+   What replaced it — one screen, whole cards, and the same drag physics the
+   district map already runs on (useDragTrack: 1:1 while held, released at the
+   pointer's own velocity, landing where the flick was going, rubber-banding
+   at the ends). The bar below is the one in the sketch: the page you are on
+   is a wide teal pill, the others are dots.
+
+   The second direction the team asked for — the spring tabs from the sketch
+   on page 1 — is in the lab at /lab/collections/2, so the two can be looked
+   at side by side before one is chosen. */
+
+/* Panel rotation still carries the 60/30/10 ratio, but the roles have moved.
+   In the pinned version the panels butted edge to edge and filled the whole
+   band, so one of them could be bg-brand and still read — its neighbours drew
+   its edges. Cards with gaps between them have no neighbours to do that, and
+   a violet card on the violet ground simply disappears. So the violet is the
+   field now (the 60), and the panels are what sits on it. */
 const PANEL_TONES = [
-  { fill: "bg-brand", text: "text-paper", rule: "border-white/25", muted: "text-white/65" },
-  { fill: "bg-wave", text: "text-ink", rule: "border-ink/25", muted: "text-ink/65" },
-  { fill: "bg-paper", text: "text-ink", rule: "border-ink/15", muted: "text-ink/60" },
-  { fill: "bg-brand-deep", text: "text-paper", rule: "border-white/25", muted: "text-white/65" },
-  { fill: "bg-ink", text: "text-paper", rule: "border-white/20", muted: "text-white/60" },
+  { fill: "bg-wave", text: "text-ink", muted: "text-ink/65" },
+  { fill: "bg-paper", text: "text-ink", muted: "text-ink/60" },
+  { fill: "bg-brand-deep", text: "text-paper", muted: "text-white/65" },
+  { fill: "bg-ink", text: "text-paper", muted: "text-white/60" },
 ];
 
-/** 60 / 30 / 10 falloff, continuous in `d` so intermediate scroll positions interpolate. */
-function slotWeight(d: number): number {
-  if (d <= -1 || d > 3) return 0;
-  if (d < 0) return 60 * (1 + d);
-  if (d <= 1) return 60 - 30 * d;
-  if (d <= 2) return 30 - 20 * (d - 1);
-  return 10 - 10 * (d - 2);
-}
-
-function PinnedCollections({
+function CollectionsTrack({
   collections,
   onOpen,
 }: {
   collections: HomeCollection[];
   onOpen: (p: Product) => void;
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
+  /* How many whole cards fit before one has to be cut in half. The track
+     pages by viewport width, so this also decides how many pages there are
+     and therefore how many segments the bar below carries. */
   const wide = useMediaQuery("(min-width: 1024px)");
-  const reduced = useReducedMotion();
-  const pinned = wide && !reduced && collections.length > 0;
+  const medium = useMediaQuery("(min-width: 640px)");
+  const perPage = wide ? 3 : medium ? 2 : 1;
 
   /* panels = every collection plus the closing "Xem thêm" card */
   const panelCount = collections.length + 1;
-  const cursorMax = Math.max(0, panelCount - 3);
-
-  useEffect(() => {
-    if (!pinned) {
-      setProgress(0);
-      return;
-    }
-    let frame = 0;
-    const onScroll = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        const wrap = wrapRef.current;
-        if (!wrap) return;
-        const rect = wrap.getBoundingClientRect();
-        const distance = rect.height - window.innerHeight;
-        setProgress(distance > 0 ? Math.min(1, Math.max(0, -rect.top / distance)) : 0);
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [pinned]);
-
-  const cursor = progress * cursorMax;
-
-  const weights = useMemo(() => {
-    const raw = Array.from({ length: panelCount }, (_, i) => slotWeight(i - cursor));
-    const total = raw.reduce((a, b) => a + b, 0) || 1;
-    return raw.map((w) => (w / total) * 100);
-  }, [panelCount, cursor]);
+  const pageCount = Math.max(1, Math.ceil(panelCount / perPage));
+  const track = useDragTrack(pageCount);
 
   if (collections.length === 0) return null;
 
   const seeMoreIndex = panelCount - 1;
 
-  const renderPanel = (i: number, frac: number, stacked: boolean) => {
+  const renderPanel = (i: number) => {
     const tone = PANEL_TONES[i % PANEL_TONES.length];
     const isSeeMore = i === seeMoreIndex;
     const collection = isSeeMore ? null : collections[i];
     const lead = collection?.items[0] ?? null;
 
-    /* Below ~14% only the vertical rail is legible, so the body fades out
-       rather than squeezing into an unreadable column. */
-    const bodyOpacity = stacked ? 1 : Math.min(1, Math.max(0, (frac - 0.14) / 0.12));
+    if (isSeeMore) {
+      return (
+        <div
+          key="panel-see-more"
+          className={`flex min-h-[20rem] flex-col justify-between p-6 lg:p-8 ${tone.fill} ${tone.text}`}
+        >
+          <span className="text-[11px] tabular-nums tracking-[0.16em] opacity-60">→</span>
+          <div>
+            <h3 className="display text-[clamp(1.5rem,2.4vw,2.25rem)] normal-case leading-[1.15]">
+              Còn nhiều bộ sưu tập khác
+            </h3>
+            <Link
+              to="/products"
+              className="mt-5 inline-flex w-fit items-center gap-3 border-b border-current pb-1 text-sm font-semibold"
+            >
+              Xem thêm
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div
-        key={isSeeMore ? "panel-see-more" : collection!.id}
-        className={`relative flex overflow-hidden ${tone.fill} ${tone.text} ${
-          stacked ? "min-h-[22rem] w-full" : "h-full shrink-0"
-        }`}
-        style={stacked ? undefined : { width: `${frac * 100}%`, transition: "none" }}
+        key={collection!.id}
+        className={`flex min-h-[20rem] flex-col p-6 lg:p-8 ${tone.fill} ${tone.text}`}
       >
-        {/* always-legible rail, so a 10% panel still says what it is */}
-        <div className={`flex shrink-0 flex-col items-center justify-between border-r ${tone.rule} px-3 py-6`}>
+        <div className="flex items-baseline justify-between gap-4">
           <span className="text-[11px] tabular-nums tracking-[0.16em] opacity-60">
-            {isSeeMore ? "→" : collection!.index}
+            {collection!.index}
           </span>
           <span
-            className="text-[11px] tracking-[0.24em] opacity-80"
-            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+            className={`shrink-0 whitespace-nowrap text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}
           >
-            {isSeeMore ? "XEM THÊM" : collection!.name.toUpperCase()}
+            {String(collection!.items.length).padStart(2, "0")} MÓN
           </span>
-          <span aria-hidden="true" className="h-6 w-px bg-current opacity-25" />
         </div>
 
-        <div
-          className="min-w-0 flex-1 overflow-hidden p-6 lg:p-10"
-          style={{ opacity: bodyOpacity, transition: "opacity 220ms linear" }}
-          aria-hidden={bodyOpacity === 0}
+        {/* Team 20/08: one lead piece per collection, and the name never
+            wraps. A strip of six thumbnails made the panel read as another
+            product row; a single object reads as a choice someone made. */}
+        <h3
+          className="display mt-3 truncate text-[clamp(1.35rem,2.2vw,2rem)] normal-case leading-[1.15]"
+          title={collection!.name}
         >
-          {isSeeMore ? (
-            <div className="flex h-full flex-col justify-between">
-              <h3 className="display text-[clamp(2rem,3.6vw,3.25rem)] normal-case leading-[1.02]">
-                Còn nhiều bộ sưu tập khác
-              </h3>
-              <Link
-                to="/products"
-                className="mt-6 inline-flex w-fit items-center gap-3 border-b border-current pb-1 text-sm font-semibold"
-              >
-                Xem thêm
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-            </div>
-          ) : (
-            /* Team 20/08: one lead piece per collection, and the name never
-               wraps. A strip of six thumbnails made the panel read as another
-               product row; a single object reads as a choice someone made. */
-            <div className="flex h-full flex-col">
-              <div className="flex items-baseline justify-between gap-4">
-                <h3
-                  className="display truncate text-[clamp(1.5rem,2.6vw,2.5rem)] normal-case leading-[1.02]"
-                  title={collection!.name}
-                >
-                  {collection!.name}
-                </h3>
-                <span
-                  className={`shrink-0 whitespace-nowrap text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}
-                >
-                  {String(collection!.items.length).padStart(2, "0")} MÓN
-                </span>
-              </div>
+          {collection!.name}
+        </h3>
 
-              {lead && (
-                <button
-                  onClick={() => onOpen(lead)}
-                  className="group mt-6 flex min-h-0 flex-1 flex-col text-left"
-                >
-                  <span className="relative block min-h-0 flex-1 overflow-hidden bg-current/10">
-                    <img
-                      src={lead.images[0]}
-                      alt={lead.name}
-                      loading="lazy"
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-                    />
-                  </span>
-                  <span className="mt-3 flex items-baseline justify-between gap-4">
-                    <span className="truncate text-base font-medium">{lead.name}</span>
-                    <span className={`shrink-0 whitespace-nowrap text-sm ${tone.muted}`}>
-                      {formatPrice(lead.price)}
-                    </span>
-                  </span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        {lead && (
+          <button
+            onClick={() => {
+              // a flick that ends over a card must not also open it
+              if (track.didDrag()) return;
+              onOpen(lead);
+            }}
+            className="group mt-5 flex min-h-0 flex-1 flex-col text-left"
+          >
+            <span className="relative block min-h-0 flex-1 overflow-hidden bg-current/10">
+              <img
+                src={lead.images[0]}
+                alt={lead.name}
+                loading="lazy"
+                draggable={false}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+              />
+            </span>
+            <span className="mt-3 flex items-baseline justify-between gap-4">
+              <span className="truncate text-base font-medium">{lead.name}</span>
+              <span className={`shrink-0 whitespace-nowrap text-sm ${tone.muted}`}>
+                {formatPrice(lead.price)}
+              </span>
+            </span>
+          </button>
+        )}
       </div>
     );
   };
 
-  /* Wrapper is ~one viewport per cursor step plus one to hold the pin. */
-  const runHeight = pinned ? `${100 + cursorMax * 90}vh` : undefined;
+  const pages = Array.from({ length: pageCount }, (_, p) =>
+    Array.from({ length: perPage }, (_, k) => p * perPage + k).filter((i) => i < panelCount)
+  );
 
   return (
     <section id="dong-collections" className="border-t border-white/20 bg-brand text-paper">
@@ -863,32 +829,49 @@ function PinnedCollections({
         </p>
       </div>
 
-      {pinned ? (
-        <div ref={wrapRef} style={{ height: runHeight }} className="mt-6">
-          <div className="sticky top-0 flex h-[100dvh] flex-col justify-center">
-            <div className="flex h-[68vh] w-full overflow-hidden">
-              {weights.map((w, i) => renderPanel(i, w / 100, false))}
+      <div
+        ref={track.setViewport}
+        {...track.handlers}
+        role="group"
+        aria-roledescription="carousel"
+        aria-label="Bộ sưu tập"
+        className={`mt-10 overflow-hidden touch-pan-y ${
+          track.dragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+      >
+        <div
+          className="flex"
+          style={{ transform: `translate3d(${track.x}px, 0, 0)`, willChange: "transform" }}
+        >
+          {pages.map((indices, p) => (
+            <div key={p} className="w-full shrink-0 px-5 md:px-10">
+              <div
+                className="grid gap-4"
+                style={{ gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))` }}
+              >
+                {indices.map(renderPanel)}
+              </div>
             </div>
-
-            {/* segmented indicator, one segment per collection (MO-7) */}
-            <div className="mt-6 flex gap-2 px-5 md:px-10 xl:px-24" aria-hidden="true">
-              {collections.map((c, i) => {
-                const fill = Math.min(1, Math.max(0, progress * collections.length - i));
-                return (
-                  <span key={c.id} className="relative h-px flex-1 bg-white/20">
-                    <span
-                      className="absolute inset-y-0 left-0 bg-wave"
-                      style={{ width: `${fill * 100}%` }}
-                    />
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          ))}
         </div>
-      ) : (
-        <div className="mt-8 space-y-4 px-5 pb-4 md:px-10 xl:px-24">
-          {Array.from({ length: panelCount }, (_, i) => renderPanel(i, 1, true))}
+      </div>
+
+      {/* The bar from the sketch: current page is a wide teal pill, the rest
+          are dots. Same indicator the district map carries, so "there is more
+          sideways" reads the same way twice on one page. */}
+      {pageCount > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-3 pb-4">
+          {pages.map((_, p) => (
+            <button
+              key={p}
+              onClick={() => track.goTo(p)}
+              aria-label={`Trang ${p + 1} trên ${pageCount}`}
+              aria-current={p === track.page}
+              className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                p === track.page ? "w-10 bg-wave" : "w-1.5 bg-white/30 hover:bg-white/60"
+              }`}
+            />
+          ))}
         </div>
       )}
     </section>
@@ -1121,7 +1104,7 @@ export default function Homepage() {
             is the book's transition device, carries the change of ground. */}
         {/* white → violet */}
         <GroundBlend from="paper" to="brand" />
-        <PinnedCollections collections={collections} onOpen={open} />
+        <CollectionsTrack collections={collections} onOpen={open} />
 
         {/* violet → ink */}
         <GroundBlend from="brand" to="ink" />
