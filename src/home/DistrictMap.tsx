@@ -51,9 +51,14 @@ function DistrictSlide({
         aria-hidden="true"
         className="group block w-full cursor-pointer"
       >
-        <div className="relative mx-auto aspect-[4/3] w-full max-w-4xl md:aspect-[16/9]">
+        {/* Sized by height, not by width (26/08: "everything should fit
+            neatly on the page" at 100% zoom). The old box was width-led —
+            max-w-4xl at 16/9 came out 896×504 on a laptop, which is over half
+            the viewport before the heading and the arrows are counted. */}
+        <div className="relative mx-auto aspect-[16/9] h-[clamp(12rem,38vh,21rem)] max-w-full">
           <svg
             viewBox="0 0 800 600"
+            preserveAspectRatio="none"
             className="h-full w-full overflow-visible transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
             aria-hidden="true"
           >
@@ -90,7 +95,13 @@ function DistrictSlide({
           {/* Teardrop pins, tip on the coordinate. Each pin is its own control
               (26/08): tapping one goes to /discover and opens that stop, not
               just the district. They sit above the island button, so a pin
-              press never falls through to the whole-map link. */}
+              press never falls through to the whole-map link.
+
+              A pin is positioned as a percentage of this box while the island
+              is drawn in an 800×600 viewBox, so the two only agree when the
+              SVG fills the box exactly — hence preserveAspectRatio="none"
+              above. With the default "meet" the 4:3 artwork letterboxed inside
+              the 16/9 box and every pin drifted outward from its stop. */}
           {route.stops.map((stop, i) => (
             <span
               key={stop.id}
@@ -127,7 +138,7 @@ function DistrictSlide({
       </div>
 
       {/* the keyboard route into the district, and the one screen readers get */}
-      <div className="mt-5 text-center">
+      <div className="mt-4 text-center">
         <button
           onClick={onOpen}
           className="inline-flex items-center gap-2 border-b border-white/40 pb-1 text-sm text-paper transition-colors hover:border-wave hover:text-wave"
@@ -160,26 +171,36 @@ export default function DistrictMap({
   if (!route || !plan) return null;
 
   return (
-    <section id="dong-map" className="bg-ink py-16 text-paper md:py-24">
+    /* Ground is brand-deep, not ink (26/08: "DO NOT use black background,
+       especially for this section"). It stays dark on purpose — the pins are
+       white teardrops and the island is teal, and both need a dark field to
+       read on — but it is now the deeper violet from the palette rather than
+       near-black, which also separates it from the violet section above.
+
+       Vertical rhythm is roughly halved throughout: py-16/24 → py-10/14, the
+       heading clamp tops out at 3.5rem instead of 5rem, and the gaps between
+       heading, label, map and dots go from 4/10/8 to 2/5/5. That plus the
+       height-led island is what brings the section under one screen. */
+    <section id="dong-map" className="bg-brand-deep py-10 text-paper md:py-14">
       <div className="px-5 text-center md:px-10">
-        <h2 className="display text-[clamp(2.25rem,6.4vw,5rem)] normal-case leading-none text-wave">
+        <h2 className="display text-[clamp(1.75rem,4.6vw,3.5rem)] normal-case leading-[1.15] text-wave">
           {heading}
         </h2>
         {/* the label crossfades on the key, so the district name never cuts */}
         <p
           key={route.id}
-          className="lab-plate-in mt-4 text-[13px] tracking-[0.16em] text-white/60"
+          className="lab-plate-in mt-2 text-[12px] tracking-[0.16em] text-white/60"
         >
           {plan.district.toUpperCase()} · {route.stops.length} ĐIỂM · {plan.walk}
         </p>
       </div>
 
-      <div className="relative mt-10 flex items-center gap-2 px-2 md:gap-6 md:px-10">
+      <div className="relative mt-5 flex items-center gap-2 px-2 md:gap-5 md:px-8">
         <button
           onClick={track.prev}
           disabled={track.page === 0}
           aria-label="Quận trước"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-14 md:w-14"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-12 md:w-12"
         >
           <ArrowRight className="h-5 w-5 rotate-180" />
         </button>
@@ -224,13 +245,13 @@ export default function DistrictMap({
           onClick={track.next}
           disabled={track.page === routes.length - 1}
           aria-label="Quận sau"
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-14 md:w-14"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-12 md:w-12"
         >
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
 
-      <div className="mt-8 flex items-center justify-center gap-3">
+      <div className="mt-5 flex items-center justify-center gap-3">
         {routes.map((r, i) => (
           <button
             key={r.id}
@@ -244,9 +265,10 @@ export default function DistrictMap({
         ))}
       </div>
 
-      <p className="mt-6 text-center text-xs text-white/45">
-        Kéo, vuốt hoặc bấm mũi tên để đổi quận · chạm vào bản đồ để mở lộ trình
-      </p>
+      {/* No caption. Team 26/08: "Show don't tell. Remove 'kéo vuốt hoặc bấm
+          mũi tên…' The user can see for themselves." The arrows, the dots and
+          the grab cursor are the affordance; the sentence was describing
+          controls that are already on screen. */}
     </section>
   );
 }

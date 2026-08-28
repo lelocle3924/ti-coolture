@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { fetchTouristRoutes } from "../lib/dbService";
 import { TouristRoute, RouteStop } from "../types";
-import { ArrowLeft, Compass, ArrowUpRight, MapPin } from "lucide-react";
-import { ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
+import { Compass, ArrowUpRight, MapPin } from "lucide-react";
+import { ArcTopRight, RibbonLoop, WaveBlog } from "../components/BrandShapes";
+import Breadcrumbs from "../components/Breadcrumbs";
 import DistrictMap from "../home/DistrictMap";
 
 export default function Discovery() {
@@ -59,41 +60,66 @@ export default function Discovery() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-brand text-ink pb-0 select-none relative overflow-x-hidden w-full">
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <ContinuousWave pageIndex={3} />
-        <PaperBackgroundExtender />
-      </div>
+    /* Same move as /products and /stores: the negative margin cancels the
+       shell's pt-24 pill clearance on the element that clips, so the violet
+       runs to y=0 and the header stops sitting on the shell's ink — the black
+       band at the top of the 26/08 screenshot. */
+    <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-0 select-none relative overflow-x-hidden w-full md:-mt-28">
 
-      <div className="bg-transparent pt-10 md:pt-14 pb-12 md:pb-16 relative z-10 text-paper">
-        <div className="mx-auto max-w-3xl px-5 md:px-8">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white transition-colors mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại Bản đồ chính</span>
-          </Link>
-          
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-wave mb-4 backdrop-blur-md border border-white/15">
-            <Compass className="w-3.5 h-3.5" />
-            <span className="tracking-wider uppercase">LỘ TRÌNH KHÁM PHÁ</span>
-          </div>
-          
-          <h1 className="text-4xl md:text-5xl font-medium leading-tight text-paper display normal-case mb-4">
+      {/* ============ HERO ============
+          Third variation on the one language: violet from y=0, one title, a
+          wave seam into paper, breadcrumb underneath on the paper. /products
+          is centred behind an arc, /stores is off-axis behind the ribbon;
+          this one keeps the route's own name wide and centre-left with both
+          marks low and quiet, and closes on WaveBlog's asymmetric ascent —
+          the third of the three curves BrandShapes already carries. */}
+      <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
+        <ArcTopRight
+          className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-15"
+          style={{ width: "clamp(16rem, 34vw, 28rem)" }}
+          fill="var(--color-wave)"
+        />
+        <RibbonLoop
+          className="pointer-events-none absolute -left-28 bottom-0 z-0 opacity-[0.12]"
+          style={{ width: "clamp(16rem, 30vw, 24rem)" }}
+          ribbon="var(--color-paper)"
+          dot="var(--color-wave)"
+        />
+
+        <div className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-5 md:px-8 md:pt-28 md:pb-7">
+          {/* leading-[1.25] rather than .display's 1.02 — see index.css on how
+              far Vietnamese uppercase reaches in DFVN. */}
+          <h1 className="display text-4xl font-medium leading-[1.25] text-paper normal-case md:text-6xl">
             {route.name}
           </h1>
-          
-          <p className="text-lg text-white/80 leading-relaxed">
+
+          <p className="mt-3 text-base leading-relaxed text-white/80 md:text-lg">
             {route.description || "Khám phá những xưởng thủ công và địa điểm văn hoá đặc sắc trên tuyến đường này."}
           </p>
         </div>
+
+        <div className="relative z-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden">
+          <WaveBlog className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
+        </div>
+      </section>
+
+      {/* The trail replaces both the "Quay lại Bản đồ chính" back link and the
+          "LỘ TRÌNH KHÁM PHÁ" pill (26/08): the crumb already says where you
+          are and gives you the way back, in the style the other subpages use. */}
+      <div data-surface="light" className="relative z-10 mx-auto mt-2 max-w-3xl px-5 md:px-8">
+        <Breadcrumbs
+          trail={[
+            { label: "Trang chủ", to: "/" },
+            { label: "Khám phá", to: "/discover" },
+            { label: route.name },
+          ]}
+        />
       </div>
 
       {/* The same district map the homepage carries (26/08). Here a pin does
           not navigate — the stop it names is already on this page, so it
           scrolls to it and flashes it, the way arriving with ?start= does. */}
-      <div className="relative z-10">
+      <div className="relative z-10 mt-6">
         <DistrictMap
           routes={routes}
           heading="Chọn quận"
@@ -112,7 +138,7 @@ export default function Discovery() {
         />
       </div>
 
-      <div className="py-12 md:py-20 relative z-10">
+      <div data-surface="light" className="py-12 md:py-20 relative z-10">
         <div className="mx-auto max-w-3xl px-5 md:px-8 space-y-8 relative">
           
           {/* Vertical connecting line */}

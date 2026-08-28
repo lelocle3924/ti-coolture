@@ -418,7 +418,7 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-100 p-4 md:p-8 select-none space-y-8 font-sans">
+    <div data-surface="light" className="min-h-screen bg-neutral-100 p-4 md:p-8 select-none space-y-8 font-sans">
       
       {/* Header Profile summary */}
       <div className="bg-white border-4 border-black p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-[6px_6px_0px_0px_#000000]">

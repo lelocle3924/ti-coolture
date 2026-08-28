@@ -264,7 +264,7 @@ export default function OpenShop() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-paper-warm text-ink">
+    <div data-surface="light" className="min-h-[100dvh] bg-paper-warm text-ink">
       <AreaList />
 
       <div className="mx-auto max-w-3xl px-5 py-12 md:py-20">
