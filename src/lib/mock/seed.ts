@@ -20,6 +20,14 @@ import {
   describe as describeProduct,
   dimensionFor,
 } from "./catalogue";
+import {
+  REAL_MATERIAL_ROWS,
+  realProductImageRows,
+  realProductMaterialRows,
+  realProductRows,
+  realShopRows,
+  realShopSocialRows,
+} from "./realShops";
 
 const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
 const NOW = "2026-08-14T00:00:00.000Z";
@@ -415,5 +423,24 @@ seed.products.push(...buildExtraProducts(baseCount));
 seed.product_images.push(...buildExtraImages());
 seed.product_images.push(...buildFillerImages(seed.products.slice(0, baseCount).map((p) => p.id)));
 seed.product_materials.push(...buildExtraMaterials());
+
+/* ── the photographed shops (2026-08-28) ──────────────────────────────────
+   Thirteen real shops with their own photography, from the drop the team
+   collected. Everything above this line is invented and renders as a labelled
+   grey block; this is what actual product imagery looks like in the same
+   layouts. See src/lib/mock/realShops.ts — the shop names are real, the
+   product names and prices are not.
+
+   Unshifted rather than pushed, deliberately. "Mới nhất" is the default sort
+   and it does not reorder, so array order is what the catalogue shows: the
+   photographed rows have to come first or the first three screens of
+   /products are still grey. */
+
+seed.materials.push(...REAL_MATERIAL_ROWS);
+seed.shops.unshift(...realShopRows());
+seed.shop_socials.push(...realShopSocialRows());
+seed.products.unshift(...realProductRows());
+seed.product_images.unshift(...realProductImageRows());
+seed.product_materials.push(...realProductMaterialRows());
 
 export { placeholderImage };

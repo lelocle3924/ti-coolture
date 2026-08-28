@@ -432,7 +432,7 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   const twoLanes = useMediaQuery("(min-width: 768px)");
 
   return (
-    <section id="dong-store" className="bg-brand py-16 text-paper md:py-24">
+    <section id="dong-store" className="bg-brand pb-16 pt-10 text-paper md:pb-24 md:pt-12">
       {/* the title *is* the link through to the catalogue */}
       <div className="px-5 text-center md:px-10">
         <Link

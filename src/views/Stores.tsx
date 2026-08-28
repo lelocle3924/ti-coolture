@@ -32,7 +32,7 @@ export default function Stores() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchName = store.name.toLowerCase().includes(query);
-      const matchDesc = (store.bio || "").toLowerCase().includes(query);
+      const matchDesc = (store.description || "").toLowerCase().includes(query);
       const matchAddr = (store.address || "").toLowerCase().includes(query);
       if (!matchName && !matchDesc && !matchAddr) return false;
     }
@@ -194,7 +194,12 @@ export default function Stores() {
                       </div>
 
                       <p className="text-xs text-ink/70 line-clamp-2 leading-relaxed italic">
-                        "{store.bio || "Không gian chế tác thủ công độc lập."}"
+                        {/* `bio` is not a field on StoreProfile and never has
+                            been, so every card was printing the fallback as
+                            if it were that shop's own line. `description`
+                            carries tagline_vi, which is what each shop
+                            actually says about itself. */}
+                        "{store.description || "Không gian chế tác thủ công độc lập."}"
                       </p>
 
                       {store.address && (
