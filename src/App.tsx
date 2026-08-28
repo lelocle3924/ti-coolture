@@ -12,6 +12,10 @@ import Stores from "./views/Stores";
 import About from "./views/About";
 import Discovery from "./views/Discovery";
 import OpenShop from "./views/OpenShop";
+import LabIndex from "./lab/LabIndex";
+import CollectionStudies from "./lab/CollectionStudies";
+import MapStudies from "./lab/MapStudies";
+import MotionStudies from "./lab/MotionStudies";
 import Footer from "./components/Footer";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
@@ -117,14 +121,20 @@ function SiteShell() {
   const { pathname } = useLocation();
   const isHome = pathname === "/";
 
+  /* The lab is a place to look at things, not part of the site: it carries no
+     shared chrome, because half of what it is comparing sits at the top of a
+     page and the nav pill would be in the way. It is not linked from the nav
+     either — you get there by typing /lab. */
+  const isLab = pathname === "/lab" || pathname.startsWith("/lab/");
+
   return (
     <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
-      <Header />
+      {!isLab && <Header />}
       {/* The nav is a floating pill, so it sits over the page rather than
           pushing it down. Every page therefore needs the pill's height cleared
           at the top — except the homepage, whose hero owns that space and puts
           the deck under the pill on purpose. */}
-      <div className={`flex-grow ${isHome ? "" : "pt-24 md:pt-28"}`}>
+      <div className={`flex-grow ${isHome || isLab ? "" : "pt-24 md:pt-28"}`}>
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/products" element={<Products />} />
@@ -139,6 +149,13 @@ function SiteShell() {
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/auth-gateway" element={<AuthGateway />} />
 
+          {/* Exploration. Rebuilt 28/08 for the two Collections directions and
+              the three map options the 26/08 feedback asks for. */}
+          <Route path="/lab" element={<LabIndex />} />
+          <Route path="/lab/collections" element={<CollectionStudies />} />
+          <Route path="/lab/map" element={<MapStudies />} />
+          <Route path="/lab/motion" element={<MotionStudies />} />
+
           {/* Renamed 26/08. Kept as redirects so anything already shared or
               bookmarked still lands, rather than bouncing to the homepage. */}
           <Route path="/kham-pha" element={<Navigate to="/discover" replace />} />
@@ -148,7 +165,7 @@ function SiteShell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      {!isHome && <Footer />}
+      {!isHome && !isLab && <Footer />}
     </div>
   );
 }
