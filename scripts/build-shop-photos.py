@@ -1,9 +1,12 @@
 """
 Build public/shop-photos/ from the raw shop photography drop.
 
-Neither folder is in the repo — they are assets, not code (team decision,
-28/08) — so this script is the reproducible part. Run it once after getting
-the photo drop, and src/lib/mock/realShops.ts finds everything it expects.
+The output IS in the repo (28/08) — otherwise a clone shows the catalogue as
+grey plates, which defeats the point of having asked the shops for photographs.
+The raw drop is not: ~100MB of full-resolution JPEG nothing renders at size.
+
+So this script only needs running when the drop changes. After that,
+src/lib/mock/realShops.ts finds everything it expects already committed.
 
     pip install pillow
     python scripts/build-shop-photos.py
