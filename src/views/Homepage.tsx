@@ -217,7 +217,7 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
         {/* The deck. 4:5 on phones, 16:10 on tablets, 21:9 on desktop — and
             capped in vh so a short laptop viewport never has to scroll to see
             the whole card. */}
-        <div className="relative aspect-[4/5] max-h-[calc(100dvh-15rem)] w-full sm:aspect-[16/10] lg:aspect-[16/9]">
+        <div className="relative aspect-[4/5] max-h-[calc(100dvh-10rem)] w-full sm:aspect-[16/10] lg:aspect-[16/9]">
           {frames.map((f, i) => {
             const rel = (i - active + count) % count;
             const style =
@@ -403,7 +403,7 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   const twoLanes = useMediaQuery("(min-width: 768px)");
 
   return (
-    <section id="dong-store" className="bg-brand py-16 text-paper md:py-24">
+    <section id="dong-store" className="bg-brand pb-16 pt-10 text-paper md:pb-24 md:pt-12">
       {/* the title *is* the link through to the catalogue */}
       <div className="px-5 text-center md:px-10">
         <Link

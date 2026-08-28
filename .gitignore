@@ -13,3 +13,11 @@ note.txt
 
 # Playwright MCP scratch output — page snapshots and console logs
 .playwright-mcp/
+
+# Shop photography. The raw drop from the shops (~100MB of Instagram-resolution
+# JPEG) and the optimised WebP that scripts/build-shop-photos.py derives from
+# it. Assets, not code — they stay out of the repo (team decision 28/08).
+# Regenerate with: python scripts/build-shop-photos.py
+Ảnh up shop/
+public/shop-photos/
+manifest.json
