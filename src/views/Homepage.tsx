@@ -354,7 +354,7 @@ function StoreTile({
   return (
     <button
       onClick={() => onOpen(product)}
-      className="lab-snap-item group mr-6 w-[62vw] shrink-0 text-left sm:w-[20rem] lg:mr-10 lg:w-[22rem]"
+      className="lab-snap-item group mr-6 w-[62vw] shrink-0 text-left sm:w-[20rem] lg:mr-10 lg:w-[20rem]"
     >
       {/* Team direction (26/08): square and rounded. Square is also the ratio
           the product photographs are actually shot at — the landscape crop
