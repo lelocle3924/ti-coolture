@@ -245,14 +245,28 @@ export function useHomeData(): HomeData {
       awaitingUpload: false,
     };
 
-    const partners = stores.slice(0, 5).map<HeroFrame>((shop) => ({
-      id: `frame-${shop.id}`,
-      src: landscapePlate(shop.name.toUpperCase(), `ẢNH SHOP GỬI · ${LANDSCAPE_SPEC}`, "paper"),
-      shopId: shop.id,
-      shopName: shop.name,
-      caption: shop.vibe || shop.description || "",
-      awaitingUpload: true,
-    }));
+    /* A shop that has actually sent photographs shows them. The plate is for
+       the ones that have not — it is a request for a 16:9 landscape frame, and
+       printing it over a shop whose pictures are already on the page reads as
+       a bug rather than as a prompt (28/08).
+
+       The supplied photographs are portrait, so the deck crops them: the frame
+       is object-cover, which is the same thing it would do to a 16:9 shot on a
+       4:5 phone layout. A real crop of a real photograph tells you more about
+       the finished page than a grey rectangle asking for one. */
+    const partners = stores.slice(0, 5).map<HeroFrame>((shop) => {
+      const sent = !!shop.coverUrl && !shop.coverUrl.startsWith("data:");
+      return {
+        id: `frame-${shop.id}`,
+        src: sent
+          ? shop.coverUrl!
+          : landscapePlate(shop.name.toUpperCase(), `ẢNH SHOP GỬI · ${LANDSCAPE_SPEC}`, "paper"),
+        shopId: shop.id,
+        shopName: shop.name,
+        caption: shop.vibe || shop.description || "",
+        awaitingUpload: !sent,
+      };
+    });
 
     return [house, ...partners];
   }, [stores]);
