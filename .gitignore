@@ -14,10 +14,12 @@ note.txt
 # Playwright MCP scratch output — page snapshots and console logs
 .playwright-mcp/
 
-# Shop photography. The raw drop from the shops (~100MB of Instagram-resolution
-# JPEG) and the optimised WebP that scripts/build-shop-photos.py derives from
-# it. Assets, not code — they stay out of the repo (team decision 28/08).
-# Regenerate with: python scripts/build-shop-photos.py
+# Shop photography. The raw drop stays out — ~100MB of Instagram-resolution
+# JPEG that nothing renders at full size. The optimised WebP under
+# public/shop-photos/ is now COMMITTED (28/08): the earlier call was to keep it
+# out as an asset, but then nobody who clones the repo can see the catalogue
+# with pictures in it, and that is the whole reason the drop was made.
+# 6.5MB for 186 images is a fair price for the mock data being viewable.
+# Regenerate from the raw drop with: python scripts/build-shop-photos.py
 Ảnh up shop/
-public/shop-photos/
 manifest.json
