@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Sparkles, Heart, Check, ArrowRight, Search, X, SlidersHorizontal } from "lucide-react";
+import { Heart, Check, ArrowRight, Search, X } from "lucide-react";
 import { fetchProducts, toggleWishlist, triggerWebhook } from "../lib/dbService";
 import { Product } from "../types";
 import { useAuth } from "../lib/useAuth";
-import { ArcTopRight, ContinuousWave, PaperBackgroundExtender } from "../components/BrandShapes";
+import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
+import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
 
 const CANONICAL_CATEGORIES = [
@@ -179,12 +180,12 @@ export default function Products() {
     (searchQuery ? 1 : 0);
 
   return (
-    <div className="min-h-[100dvh] bg-brand text-ink pb-28 select-none relative overflow-x-hidden w-full">
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <ContinuousWave pageIndex={1} />
-        <PaperBackgroundExtender />
-      </div>
-      
+    /* The negative margin lives on this element, not on the hero inside it:
+       this one clips (overflow-x-hidden), so a child pulled above its top edge
+       would be cut off and the shell's ink would show through — which is the
+       black band the 26/08 note is about. Cancelling the shell's clearance on
+       the clipping element itself moves the whole page up instead. */
+    <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
       {/* Toast Notification (Flow E) */}
       {wishlistToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-brand text-paper px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in backdrop-blur-md">
@@ -198,80 +199,123 @@ export default function Products() {
         </div>
       )}
 
-      {/* ============ BRAND HERO BANNER WITH CURIOUS TOUCHES ============ */}
-      <section className="bg-transparent text-paper pt-10 md:pt-14 pb-12 md:pb-16 px-4 md:px-8 relative overflow-hidden z-10">
+      {/* ============ HERO ============
+          Team 26/08: the hero is the header's own ground now. The violet
+          starts at y=0 — the negative margin cancels the shell's pt-24
+          clearance and the section re-adds it as its own padding — so the
+          pill floats on violet instead of on the shell's ink, which is the
+          black band the note calls out. The band is then only as tall as the
+          title needs, and WaveProducts closes it into the paper below. */}
+      <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
         <ArcTopRight
-          className="pointer-events-none absolute -right-16 -top-16 z-0 opacity-15"
+          className="pointer-events-none absolute -right-16 -top-20 z-0 opacity-15"
           style={{ width: "clamp(18rem, 40vw, 32rem)" }}
           fill="var(--color-wave)"
         />
 
-        <div className="max-w-7xl mx-auto relative z-10 space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1 text-[11px] font-semibold text-wave backdrop-blur-md border border-white/15">
-            <Sparkles className="w-3.5 h-3.5 text-wave" />
-            <span className="tracking-wider uppercase">SÁNG TẠO ĐỘC BẢN VIỆT NAM</span>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="max-w-2xl space-y-2">
-              <h1 className="display text-3xl md:text-5xl normal-case font-medium leading-tight text-paper">
-                Sản phẩm & Tác phẩm
-              </h1>
-              <p className="text-xs md:text-sm text-white/85 max-w-xl leading-relaxed">
-                Những sáng tạo thủ công được chế tác giới hạn, kết hợp văn hoá truyền thống và phong cách đương đại từ các local artist khắp cả nước.
-              </p>
-            </div>
-
-            <div className="text-xs text-white/75 bg-black/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shrink-0">
-              Hiện có <strong className="text-wave font-bold text-base">{products.length}</strong> tác phẩm được chứng thực
-            </div>
-          </div>
+        <div className="relative z-10 px-4 pt-24 pb-3 md:px-8 md:pt-28 md:pb-5">
+          {/* leading-[1.25], not the .display default of 1.02: uppercase
+              Vietnamese spans ~1.18em in DFVN (see the note in index.css), so
+              Ả and Ẩ lose their marks at anything tighter. */}
+          <h1 className="display text-center text-4xl normal-case font-medium leading-[1.25] text-paper md:text-6xl">
+            Sản phẩm
+          </h1>
         </div>
 
-        {/* Negative Transition Seam removed */}
+        {/* The seam, not a decoration: this is the paper below reaching up.
+            The band is height-capped and the SVG hangs off its bottom, so the
+            curve keeps its drawn proportions and the wrapper crops the flat
+            run off the top — squashing the viewBox would draw a different
+            curve (same technique as WaveBottom). Team 26/08: the violet is
+            only ever as tall as the title needs. */}
+        <div className="relative z-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden">
+          <WaveProducts className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
+        </div>
       </section>
 
       {/* ============ MAIN CATALOG INTERFACE ============ */}
       <div data-surface="light" className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-4 relative z-10">
 
-        {/* Breadcrumbs */}
-        <nav className="text-[11px] text-ink/60 flex items-center gap-1.5 font-medium">
-          <Link to="/" viewTransition className="hover:text-brand transition-colors">Trang chủ</Link>
-          <span>›</span>
-          <span className="text-ink font-semibold">Tác phẩm</span>
-          {activeCategory !== "Tất cả" && (
-            <>
-              <span>›</span>
-              <span className="text-brand font-semibold">{activeCategory}</span>
-            </>
-          )}
-        </nav>
+        {/* Sits under the wave, on paper, separate from the violet (26/08). */}
+        <Breadcrumbs
+          trail={[
+            { label: "Trang chủ", to: "/" },
+            { label: "Sản phẩm" },
+            ...(activeCategory !== "Tất cả" ? [{ label: activeCategory }] : []),
+          ]}
+        />
 
-        {/* DOUBLE-BEZEL CATEGORIES STRIP (§4.3) */}
+        {/* ============ FILTERS + SORTING, ONE BAR (§4.3 bezel kept) ============
+            Was two stacked strips — categories in their own bezel, then the
+            three selects floating on a separate row. Integrated per 26/08:
+            one control, categories running left, the selects closing it on
+            the right behind a hairline. */}
         <div className="p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5">
-          <div className="rounded-[1.625rem] bg-paper p-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
-            {CANONICAL_CATEGORIES.map((cat) => {
-              const isActive = activeCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => handleCategorySelect(cat)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center gap-1.5 ${
-                    isActive
-                      ? "bg-brand text-paper shadow-md shadow-brand/20 scale-[1.02]"
-                      : "text-ink/75 hover:text-ink hover:bg-black/5"
-                  }`}
-                >
-                  <span>{cat}</span>
-                </button>
-              );
-            })}
+          <div className="rounded-[1.625rem] bg-paper p-1.5 flex flex-col gap-1.5 lg:flex-row lg:items-center">
+            {/* Scrolls where there is no room and wraps where there is: at lg
+                the selects take ~490px and the categories need ~810px, so a
+                single scrolling row would hide the last two behind an edge
+                with nothing to say so. */}
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth lg:flex-wrap lg:overflow-x-visible">
+              {CANONICAL_CATEGORIES.map((cat) => {
+                const isActive = activeCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => handleCategorySelect(cat)}
+                    className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center gap-1.5 ${
+                      isActive
+                        ? "bg-brand text-paper shadow-md shadow-brand/20 scale-[1.02]"
+                        : "text-ink/75 hover:text-ink hover:bg-black/5"
+                    }`}
+                  >
+                    <span>{cat}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto no-scrollbar border-t border-ink/8 pt-1.5 lg:overflow-x-visible lg:border-t-0 lg:border-l lg:pt-0 lg:pl-2">
+              <select
+                value={activePriceBand}
+                onChange={(e) => handlePriceSelect(e.target.value)}
+                aria-label="Lọc theo mức giá"
+                className="bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand"
+              >
+                {PRICE_BANDS.map(b => (
+                  <option key={b.id} value={b.id}>{b.label}</option>
+                ))}
+              </select>
+
+              <select
+                value={activeMaterial}
+                onChange={(e) => handleMaterialSelect(e.target.value)}
+                aria-label="Lọc theo chất liệu"
+                className="bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand"
+              >
+                <option value="all">Tất cả chất liệu</option>
+                {MATERIALS.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+
+              <select
+                value={activeSort}
+                onChange={(e) => handleSortChange(e.target.value)}
+                aria-label="Sắp xếp"
+                className="bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand"
+              >
+                <option value="newest">Mới nhất</option>
+                <option value="price-asc">Giá: Thấp đến cao</option>
+                <option value="price-desc">Giá: Cao đến thấp</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Filter Controls & Sort Bar */}
+        {/* Result count and whatever filters are currently on */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          
+
           {/* Active Filter Pills */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-ink/60 font-medium">
@@ -318,40 +362,6 @@ export default function Products() {
                 Xoá bộ lọc
               </button>
             )}
-          </div>
-
-          {/* Quick Dropdown Filters & Sort */}
-          <div className="flex items-center gap-2">
-            <select
-              value={activePriceBand}
-              onChange={(e) => handlePriceSelect(e.target.value)}
-              className="bg-paper border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand shadow-xs"
-            >
-              {PRICE_BANDS.map(b => (
-                <option key={b.id} value={b.id}>{b.label}</option>
-              ))}
-            </select>
-
-            <select
-              value={activeMaterial}
-              onChange={(e) => handleMaterialSelect(e.target.value)}
-              className="bg-paper border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand shadow-xs"
-            >
-              <option value="all">Tất cả chất liệu</option>
-              {MATERIALS.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-
-            <select
-              value={activeSort}
-              onChange={(e) => handleSortChange(e.target.value)}
-              className="bg-paper border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand shadow-xs"
-            >
-              <option value="newest">Mới nhất</option>
-              <option value="price-asc">Giá: Thấp đến cao</option>
-              <option value="price-desc">Giá: Cao đến thấp</option>
-            </select>
           </div>
 
         </div>
