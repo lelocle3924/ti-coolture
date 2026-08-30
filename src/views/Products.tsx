@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Heart, Check, ArrowRight, Search, X } from "lucide-react";
-import { fetchProducts, toggleWishlist, triggerWebhook } from "../lib/dbService";
+import { fetchProducts, getOrCreateUserProfile, toggleWishlist, triggerWebhook } from "../lib/dbService";
 import { Product } from "../types";
 import { useAuth } from "../lib/useAuth";
 import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
@@ -34,6 +34,12 @@ const MATERIALS = ["Gốm", "Gỗ", "Vải canvas", "Sơn mài", "Bạc", "Giấ
 const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
 
+/* The row a signed-out visitor's saves go to. Same local store as everyone
+   else's, so the list survives a reload and is there to migrate if the visitor
+   later signs in. */
+const GUEST_ID = "guest_user";
+const GUEST_EMAIL = "guest@local";
+
 export default function Products() {
   const { user, profile, refreshProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,6 +52,36 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [wishlistToast, setWishlistToast] = useState<{ show: boolean; name: string } | null>(null);
+
+  /* Which products are saved, held here rather than read straight off
+     `profile`.
+
+     Signed out — which is how the site is normally met, and how it was being
+     tested on 31/08 — `profile` is null and stays null: AuthProvider's
+     refreshProfile() returns early when there is no user. dbService's
+     toggleWishlist is no kinder, returning [] for any id it has no row for,
+     and "guest_user" has never had one created. So tapping the heart wrote
+     nothing, refreshed nothing and coloured nothing. Fixing the tap target
+     alone would have left it just as inert, only easier to hit.
+
+     The guest gets a real row, and the saved set lives in this component so it
+     is correct for a visitor with an account and for one without. */
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (profile) {
+        setSavedIds(profile.wishlist ?? []);
+        return;
+      }
+      const guest = await getOrCreateUserProfile(GUEST_ID, GUEST_EMAIL);
+      if (!cancelled) setSavedIds(guest.wishlist ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
 
   // Flow B: zero-result demand note capture
   const [demandNote, setDemandNote] = useState("");
@@ -110,8 +146,14 @@ export default function Products() {
   const handleToggleWishlist = async (e: React.MouseEvent, prod: Product) => {
     e.preventDefault();
     e.stopPropagation();
-    const effectiveUserId = user?.uid || "guest_user";
+
+    const effectiveUserId = user?.uid || GUEST_ID;
+    // toggleWishlist returns [] for an id it holds no row for, so the guest
+    // row has to exist before the first toggle rather than after it
+    if (!user) await getOrCreateUserProfile(GUEST_ID, GUEST_EMAIL);
+
     const nextList = await toggleWishlist(effectiveUserId, prod.id);
+    setSavedIds(nextList);
     await refreshProfile();
 
     const isNow = nextList.includes(prod.id);
@@ -452,7 +494,7 @@ export default function Products() {
           /* DOUBLE-BEZEL PRODUCT GRID WITH VIEW TRANSITIONS */
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2">
             {filteredProducts.map((product) => {
-              const isWish = profile?.wishlist?.includes(product.id);
+              const isWish = savedIds.includes(product.id);
               const primaryImg = product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
               const hoverImg = product.images?.[1] || primaryImg;
 
