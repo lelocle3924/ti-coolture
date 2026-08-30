@@ -463,42 +463,62 @@ export default function Products() {
                 >
                   <div className="rounded-[1.625rem] bg-paper h-full flex flex-col justify-between overflow-hidden border border-ink/5">
                     
-                    {/* Image Viewport with Shared Element Transition Name */}
-                    <Link to={`/products/${product.id}`} viewTransition className="block relative aspect-square overflow-hidden bg-paper-warm">
-                      <img
-                        src={primaryImg}
-                        alt={product.name}
-                        referrerPolicy="no-referrer"
-                        style={{ viewTransitionName: vtProductImage(product.id) }}
-                        className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
-                      />
-                      {hoverImg !== primaryImg && (
-                        <img
-                          src={hoverImg}
-                          alt={`${product.name} alternate view`}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                        />
-                      )}
+                    {/* The image is the link; the wishlist button is its
+                        sibling, not its child.
 
-                      {/* Wishlist Button Pill */}
+                        It used to sit inside this <Link>. An <a> may not
+                        contain interactive content — the same rule the
+                        district map cites for not putting a button inside a
+                        button — and a 32px control inside the anchor it
+                        overlaps is a coin toss on a touch screen: the tap
+                        opens the product about as often as it saves it. That
+                        is "tim chỗ này ko sử dụng được" (31/08). */}
+                    <div className="relative">
+                      <Link to={`/products/${product.id}`} viewTransition className="block relative aspect-square overflow-hidden bg-paper-warm">
+                        <img
+                          src={primaryImg}
+                          alt={product.name}
+                          referrerPolicy="no-referrer"
+                          style={{ viewTransitionName: vtProductImage(product.id) }}
+                          className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
+                        />
+                        {hoverImg !== primaryImg && (
+                          <img
+                            src={hoverImg}
+                            alt={`${product.name} alternate view`}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                          />
+                        )}
+
+                        {/* Category Pill Tag — a span, so it stays inside the
+                            anchor quite legitimately */}
+                        <span className="absolute bottom-3 left-3 bg-paper/90 backdrop-blur-md text-ink text-[10px] font-semibold px-2.5 py-1 rounded-full border border-ink/5 shadow-xs">
+                          {product.category}
+                        </span>
+                      </Link>
+
+                      {/* 44x44 of tap target around a 32px mark. The circle is
+                          the size it always was; what grew is the part a
+                          fingertip has to find. touch-manipulation drops the
+                          double-tap-zoom wait so the heart answers at once. */}
                       <button
                         onClick={(e) => handleToggleWishlist(e, product)}
                         aria-label="Lưu vào wishlist"
-                        className={`absolute top-3 right-3 w-8 h-8 rounded-full grid place-items-center transition-all duration-300 backdrop-blur-md ${
-                          isWish 
-                            ? "bg-brand text-wave shadow-md scale-110" 
-                            : "bg-paper/85 text-ink/70 hover:bg-brand hover:text-paper"
-                        }`}
+                        aria-pressed={!!isWish}
+                        className="group/heart absolute top-1.5 right-1.5 z-10 grid h-11 w-11 place-items-center touch-manipulation"
                       >
-                        <Heart className={`w-4 h-4 ${isWish ? "fill-wave stroke-wave" : ""}`} />
+                        <span
+                          className={`grid h-8 w-8 place-items-center rounded-full transition-all duration-300 backdrop-blur-md ${
+                            isWish
+                              ? "bg-brand text-wave shadow-md scale-110"
+                              : "bg-paper/85 text-ink/70 group-hover/heart:bg-brand group-hover/heart:text-paper"
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${isWish ? "fill-wave stroke-wave" : ""}`} />
+                        </span>
                       </button>
-
-                      {/* Category Pill Tag */}
-                      <span className="absolute bottom-3 left-3 bg-paper/90 backdrop-blur-md text-ink text-[10px] font-semibold px-2.5 py-1 rounded-full border border-ink/5 shadow-xs">
-                        {product.category}
-                      </span>
-                    </Link>
+                    </div>
 
                     {/* Card Content */}
                     <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
