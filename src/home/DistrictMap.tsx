@@ -216,7 +216,17 @@ export default function DistrictMap({
   onPin: (routeId: string, stopId: string) => void;
   heading?: string;
 }) {
-  const track = useDragTrack(routes.length);
+  /* Softened on 31/08: "đang trôi khá nhanh, khiến người xem hơi nhức mắt".
+     The map is a picture you read, not a list you flick through, so it now
+     lands slower than the default track (0.72s against 0.42s), throws about a
+     quarter as far on the same flick (deceleration 0.992 against 0.998), and
+     never crosses more than one district per swipe. The collections track on
+     the homepage keeps the original figures. */
+  const track = useDragTrack(routes.length, {
+    response: 0.72,
+    decelerationRate: 0.992,
+    maxPagesPerFlick: 1,
+  });
 
   const route = routes[track.page];
   const plan = route ? planFor(route.id) : null;
