@@ -52,10 +52,28 @@ function DistrictSlide({
         className="group block w-full cursor-pointer"
       >
         {/* Sized by height, not by width (26/08: "everything should fit
-            neatly on the page" at 100% zoom). The old box was width-led —
-            max-w-4xl at 16/9 came out 896×504 on a laptop, which is over half
-            the viewport before the heading and the arrows are counted. */}
-        <div className="relative mx-auto aspect-[16/9] h-[clamp(12rem,38vh,21rem)] max-w-full">
+            neatly on the page" at 100% zoom) — but it is the *width* that gets
+            capped, which is the correction the hero already had to make on
+            28/08.
+
+            `aspect-[16/9]` paired with a fixed `h-` and `max-w-full` cannot
+            all hold at once. On a phone the height rule won at 309px,
+            aspect-ratio asked for 549px of width, `max-w-full` clamped that to
+            the 239px slide, and the box came out 0.78:1 instead of 1.78:1.
+            With preserveAspectRatio="none" below, the 800×600 artwork was then
+            squashed to 58% of its intended width — the island that reads as
+            broken in the 31/08 screenshot ("Ồ map bị lỗi").
+
+            Capping max-width instead keeps aspect-ratio in charge: the width
+            is the smaller of the column and (allowed height × ratio), and the
+            height follows from it. The ratio is now 4:3 — the artwork's own —
+            so "none" is a no-op rather than a distortion, and the pins, which
+            are positioned as percentages of this box, land exactly on their
+            stops at every size. */}
+        <div
+          className="relative mx-auto aspect-[4/3] w-full [--map-h:clamp(11rem,34vh,19rem)]"
+          style={{ maxWidth: "calc(var(--map-h) * 4 / 3)" }}
+        >
           <svg
             viewBox="0 0 800 600"
             preserveAspectRatio="none"
@@ -100,8 +118,10 @@ function DistrictSlide({
               A pin is positioned as a percentage of this box while the island
               is drawn in an 800×600 viewBox, so the two only agree when the
               SVG fills the box exactly — hence preserveAspectRatio="none"
-              above. With the default "meet" the 4:3 artwork letterboxed inside
-              the 16/9 box and every pin drifted outward from its stop. */}
+              above. With the default "meet" the artwork letterboxed and every
+              pin drifted outward from its stop. Since 31/08 the box carries
+              the artwork's own 4:3, so "none" neither letterboxes nor
+              stretches; it just keeps the pin maths exact. */}
           {route.stops.map((stop, i) => (
             <span
               key={stop.id}
