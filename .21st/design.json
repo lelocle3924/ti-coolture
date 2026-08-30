@@ -468,6 +468,71 @@
       "status": "done",
       "date": "2026-08-21",
       "note": "Seed extended from 12 to 77 placeholder products across the same six shops (src/lib/mock/catalogue.ts), with shops crossing categories so filter combinations mean something, three NULL prices for the Liên hệ path, three image slots per product, and a short_desc_vi for every product including the original twelve, which had none. Publication dates use a coprime stride so \"mới nhất\" interleaves the shops. Still INVENTED placeholder content — it must not ship to a public demo."
+    },
+    {
+      "id": "hero-mobile-aspect-ratio",
+      "status": "open",
+      "date": "2026-08-31",
+      "question": "What gives when a 16:9 hero image has to sit on a portrait phone?",
+      "source": "src/lab/HeroRatioStudies.tsx",
+      "note": "Team 31/08: the deck's ratio on mobile does not match PC, and they asked for lab options rather than a pick. The shipped deck is 4:5 on phones, 16:10 from sm, 16:9 from lg. The constraint that forces the trade-off is already recorded in constraints.must: every shop image slot is 16:9. object-cover on a box narrower than 16:9 crops the sides, so at 4:5 a visitor sees 45% of the width the shop framed. Every figure below is measured on a 375x812 box in the study, not estimated.",
+      "sharedAcrossOptions": [
+        "Real heroFrames data, the house frame first, shop attribution on every frame",
+        "The stacked-card deck, its rotations and its 760ms var(--ease-brand) transition",
+        "Only the six brand tokens; violet ground around the card"
+      ],
+      "options": [
+        {
+          "slug": "a",
+          "name": "CHUAN",
+          "en": "One ratio",
+          "axes": {
+            "ratio": "16:9 at every width, same as PC",
+            "crop": "none - 100% of the source width kept",
+            "chrome": "attribution and beads move below the card onto the violet",
+            "height": "188px on a 375px phone - 23% of the screen"
+          }
+        },
+        {
+          "slug": "b",
+          "name": "KHUNG ANH",
+          "en": "The frame",
+          "recommended": true,
+          "axes": {
+            "ratio": "card 1:1, photograph 16:9 inside it",
+            "crop": "none - 100% of the source width kept",
+            "chrome": "shop name and caption on the violet band inside the card; no gradient scrim over the photograph",
+            "height": "335px on a 375px phone - 41% of the screen"
+          },
+          "note": "4:5 was tried first and rejected: the band under the photo came to 231px against a 188px photograph, which reads as a hole. The card has to be square."
+        },
+        {
+          "slug": "c",
+          "name": "CAT DAN",
+          "en": "Progressive",
+          "axes": {
+            "ratio": "interpolates 16:9 to 5:4 with viewport width instead of stepping at breakpoints",
+            "crop": "70% of the source width kept",
+            "chrome": "unchanged, over the photograph",
+            "height": "268px on a 375px phone - 33% of the screen"
+          },
+          "note": "The conservative pick: keeps the current language, removes the jump between sizes, halves the crop."
+        },
+        {
+          "slug": "d",
+          "name": "HIEN TAI",
+          "en": "Shipped",
+          "baseline": true,
+          "axes": {
+            "ratio": "4:5 on phones",
+            "crop": "45% of the source width kept - 55% discarded",
+            "chrome": "over the photograph, on a dark gradient",
+            "height": "419px on a 375px phone - 52% of the screen"
+          }
+        }
+      ],
+      "compare": "/lab/hero",
+      "onDecide": "Fold the chosen option into HeroDeck in src/views/Homepage.tsx (the ratio rule is one line, src/views/Homepage.tsx:247), delete the other studies from src/lab/HeroRatioStudies.tsx, and set this decision to the chosen slug."
     }
   ],
   "evidence": [
