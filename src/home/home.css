@@ -31,6 +31,35 @@
   animation-play-state: paused;
 }
 
+/* ── district route trail ────────────────────────────────────────────────
+   31/08: the route line was a static violet slash at stroke-width 20 that ran
+   clear across the island without touching a single stop. It now threads the
+   pins (homeData › routeTrail), and it arrives the way a route is read — first
+   stop to last, once, slowly, on mount.
+
+   Deliberately *not* re-triggered on every swipe. The note that prompted this
+   asked for less eye strain, not for a new thing to watch, so a district that
+   has already drawn stays drawn when you swipe back to it. */
+
+@keyframes ti-trail-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+.ti-trail {
+  stroke-dasharray: 1;
+  animation: ti-trail-draw 1.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The pins settle behind the line as it reaches them. Small travel, long
+   easing, one pass — the stagger is set per pin in DistrictMap. */
+@keyframes ti-pin-settle {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 10px)); }
+  to   { opacity: 1; transform: translate(-50%, -100%); }
+}
+.ti-pin {
+  animation: ti-pin-settle 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes lab-pop-in {
   0%   { opacity: 0; transform: translateY(26px) scale(0.86) rotate(-3deg); }
   62%  { opacity: 1; transform: translateY(-5px) scale(1.04) rotate(1deg); }
@@ -83,7 +112,14 @@
   .lab-marquee--right,
   .lab-bob,
   .lab-pop,
-  .lab-plate-in {
+  .lab-plate-in,
+  .ti-trail,
+  .ti-pin {
     animation: none !important;
   }
+
+  /* animation:none would leave the trail dashed out of sight and the pins at
+     their from-state, so both need their finished value stating outright. */
+  .ti-trail { stroke-dashoffset: 0; }
+  .ti-pin   { opacity: 1; transform: translate(-50%, -100%); }
 }

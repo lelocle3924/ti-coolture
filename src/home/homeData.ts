@@ -161,6 +161,53 @@ export function islandBlobs(stops: Array<{ x: number; y: number }>): IslandBlob[
   return blobs;
 }
 
+/* ── the walking trail ─────────────────────────────────────────────────────
+   Team 31/08: "Phần đường đi trong trang /discover đang trôi khá nhanh, khiến
+   người xem hơi nhức mắt. Đập đi xây lại với một hướng đi khác mềm mại và
+   uyển chuyển hơn."
+
+   The line that was there was `DistrictPlan.axis` — a decorative waterway,
+   drawn at stroke-width 20 in full brand violet, running clear across the
+   island and out both sides. It never touched a single numbered stop, so it
+   read as a slash laid over the map rather than as a route, and at full
+   strength it was the loudest thing in the section.
+
+   This replaces it with the route the stops actually describe: a Catmull-Rom
+   spline through every stop in order, converted to cubics. It passes exactly
+   through each pin's tip, and because the tangent at each stop is derived from
+   its neighbours the line leans into a turn instead of cornering — which is
+   the "mềm mại và uyển chuyển" the note asks for. The waterway stays, clipped
+   inside the island and dropped to a hint (see DistrictMap). */
+
+/** A smooth trail threaded through the stops, in the 800×600 map viewBox. */
+export function routeTrail(stops: Array<{ x: number; y: number }>): string {
+  if (stops.length < 2) return "";
+
+  const pts = stops.map((s) => ({ x: (s.x / 100) * 800, y: (s.y / 100) * 600 }));
+  const at = (i: number) => pts[Math.max(0, Math.min(pts.length - 1, i))];
+
+  /* Catmull-Rom tension. 0.5 is the uniform spline: tight enough that the line
+     never bulges away from the route, loose enough that it curves rather than
+     kinks. The endpoints reuse their neighbour, so the trail starts and ends
+     travelling in the direction of the leg rather than flicking. */
+  const t = 0.5;
+  const r = (n: number) => n.toFixed(1);
+
+  let d = `M${r(at(0).x)},${r(at(0).y)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = at(i - 1);
+    const p1 = at(i);
+    const p2 = at(i + 1);
+    const p3 = at(i + 2);
+    const c1x = p1.x + ((p2.x - p0.x) / 6) * t * 2;
+    const c1y = p1.y + ((p2.y - p0.y) / 6) * t * 2;
+    const c2x = p2.x - ((p3.x - p1.x) / 6) * t * 2;
+    const c2y = p2.y - ((p3.y - p1.y) / 6) * t * 2;
+    d += `C${r(c1x)},${r(c1y)} ${r(c2x)},${r(c2y)} ${r(p2.x)},${r(p2.y)}`;
+  }
+  return d;
+}
+
 /* ── collections ───────────────────────────────────────────────────────────
    Team feedback (19/08): the two gift collections become four numbered
    placeholders — "Collection 1" … "Collection 4" — until the editors name and

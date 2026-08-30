@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useDragTrack } from "../lib/useDragTrack";
-import { islandBlobs, planFor } from "./homeData";
+import { islandBlobs, planFor, routeTrail } from "./homeData";
+import "./home.css";
 import type { TouristRoute } from "../types";
 
 /**
@@ -37,6 +38,7 @@ function DistrictSlide({
   onPin: (stopId: string) => void;
 }) {
   const island = islandBlobs(route.stops);
+  const trail = routeTrail(route.stops);
   const clipId = `ti-island-clip-${route.id}`;
 
   return (
@@ -99,14 +101,36 @@ function DistrictSlide({
               {plan.shapes.map((d, i) => (
                 <path key={i} d={d} fill="var(--color-wave-ink)" fillOpacity={0.16 + i * 0.05} />
               ))}
+              {/* The waterway. It used to be the loudest mark on the map —
+                  stroke 20, full brand violet, opacity .85, running out past
+                  both edges of the island. It is a geographic hint, not the
+                  route, so it now sits inside the island with the other
+                  terrain and stays under the trail. */}
+              <path
+                d={plan.axis}
+                fill="none"
+                stroke="var(--color-wave-ink)"
+                strokeWidth="9"
+                strokeLinecap="round"
+                opacity="0.28"
+              />
             </g>
+
+            {/* The route itself, threaded through the stops in order. Keyed on
+                the district so the draw restarts when the carousel settles on
+                a new one; pathLength="1" normalises the dash maths so one
+                keyframe works for every route regardless of its real length. */}
             <path
-              d={plan.axis}
+              key={route.id}
+              d={trail}
               fill="none"
               stroke="var(--color-brand)"
-              strokeWidth="20"
+              strokeWidth="13"
               strokeLinecap="round"
-              opacity="0.85"
+              strokeLinejoin="round"
+              pathLength={1}
+              className="ti-trail"
+              opacity="0.9"
             />
           </svg>
 
@@ -125,8 +149,16 @@ function DistrictSlide({
           {route.stops.map((stop, i) => (
             <span
               key={stop.id}
-              style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-              className="absolute z-10 block -translate-x-1/2 -translate-y-full"
+              /* ti-pin carries the -50%/-100% offset in its keyframes, so the
+                 translate utilities would be overridden mid-animation; the
+                 class holds both the offset and the settle. Delay walks with
+                 the trail, which takes 1.7s to cross all four stops. */
+              style={{
+                left: `${stop.x}%`,
+                top: `${stop.y}%`,
+                animationDelay: `${(0.3 + i * 0.34).toFixed(2)}s`,
+              }}
+              className="ti-pin absolute z-10 block"
             >
               <button
                 type="button"
