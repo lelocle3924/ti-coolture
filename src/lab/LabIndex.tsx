@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/hero",
+    n: "04",
+    title: "Hero deck — tỉ lệ trên điện thoại",
+    body: "Bốn cách trả lời câu \"ảnh nguồn là 16:9 mà màn hình thì dọc\". Đo trên khung 375×812 thật.",
+    meta: "4 phương án · trang chủ",
+  },
 ];
 
 export default function LabIndex() {

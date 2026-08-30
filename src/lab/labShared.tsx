@@ -62,6 +62,9 @@ export function LabFrame({
   meta,
   children,
 }: {
+  /* declared for the same reason as elsewhere in the lab: without @types/react
+     a `key` on a call site is checked against these props like any other */
+  key?: string;
   label: string;
   meta?: string;
   children: React.ReactNode;
