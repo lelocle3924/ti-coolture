@@ -468,6 +468,66 @@
       "status": "done",
       "date": "2026-08-21",
       "note": "Seed extended from 12 to 77 placeholder products across the same six shops (src/lib/mock/catalogue.ts), with shops crossing categories so filter combinations mean something, three NULL prices for the Liên hệ path, three image slots per product, and a short_desc_vi for every product including the original twelve, which had none. Publication dates use a coprime stride so \"mới nhất\" interleaves the shops. Still INVENTED placeholder content — it must not ship to a public demo."
+    },
+    {
+      "id": "store-strip-mobile-model",
+      "status": "open",
+      "date": "2026-08-31",
+      "question": "On a phone, is What's in store a lane you push, a grid you scan, or one product at a time?",
+      "source": "src/lab/StoreRailStudies.tsx",
+      "note": "Team 31/08 asked to rework the tile size and make the swipe convenient; the PDF adds 'khong de nhieu khoang trang, luon de sp sau lap lo, tham khao layout cua shopee'. The broken half - a CSS marquee inside overflow-x: hidden, with a :hover pause a touch tap sets and holds - is fixed on fix/homepage-store-mobile-swipe. This decision is the model underneath it, which that fix assumes rather than settles.",
+      "references": [
+        "21st Snap Carousel (ddoemonn, id 23559) - clamped momentum projection, momentum 0.14, maxFlick 1, peek edges, slide indicators",
+        "21st Product Image Card (ruixen.ui) - tight image-led product tile",
+        "src/lib/useDragTrack.ts - the project's own spring, Apple fluid-interface rules"
+      ],
+      "sharedAcrossOptions": [
+        "Real Approved products through useHomeData",
+        "The square photo crop chosen on 26/08",
+        "Shop name, product name and price on every tile; the caption stacks so a Vietnamese name is never cut mid-word",
+        "PRICE_NOTE verbatim; brand tokens only; prefers-reduced-motion honoured"
+      ],
+      "options": [
+        {
+          "slug": "a",
+          "name": "RAP",
+          "en": "The Rail",
+          "recommended": true,
+          "axes": {
+            "navigation": "native horizontal scroll - no JavaScript in the gesture path",
+            "density": "217px tiles, ~1.7 per screen, next tile peeking 126px",
+            "chrome": "none - the cut tile is the only affordance",
+            "snap": "x proximity, scroll-snap-stop normal, gutter-aligned"
+          },
+          "risk": "No dots or arrows, so a visitor may not realise it scrolls; a horizontal scroller nested in a vertical page can grab the wrong axis if touch-action is wrong."
+        },
+        {
+          "slug": "b",
+          "name": "QUAY",
+          "en": "The Counter",
+          "axes": {
+            "navigation": "vertical only - no horizontal gesture exists, so none can fail",
+            "density": "highest: 2 columns, 4+ products per screen",
+            "chrome": "none",
+            "emphasis": "comparison across many rather than one at a time"
+          },
+          "risk": "The section stops being a lane, so the two counter-running marquees lose their mobile counterpart, and it starts overlapping what /products is for. The homepage gets materially longer."
+        },
+        {
+          "slug": "c",
+          "name": "THE",
+          "en": "The Deck",
+          "axes": {
+            "navigation": "controlled paging on a spring, one card per flick",
+            "density": "lowest: one card per screen, largest photograph",
+            "chrome": "dots, arrows and keyboard control",
+            "motion": "useDragTrack at response 0.6, deceleration 0.992, maxPagesPerFlick 1"
+          },
+          "risk": "Slowest to browse - eight products is eight swipes - and the only option that puts JavaScript back in the gesture path, which is the thing that just failed."
+        }
+      ],
+      "compare": "/lab/store",
+      "onDecide": "Fold the chosen model into StoreMarquee/StoreLane in src/views/Homepage.tsx, delete the other two studies from src/lab/StoreRailStudies.tsx, and set this decision to the chosen slug. A is what fix/homepage-store-mobile-swipe already ships, so choosing A means that branch merges as-is."
     }
   ],
   "evidence": [
