@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/store",
+    n: "04",
+    title: "What's in store — băng sản phẩm trên điện thoại",
+    body: "Băng để đẩy, lưới để quét, hay từng món một. Khác nhau ở mô hình điều hướng, không phải ở con số.",
+    meta: "3 phương án · trang chủ",
+  },
 ];
 
 export default function LabIndex() {
