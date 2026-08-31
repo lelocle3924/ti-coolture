@@ -34,6 +34,24 @@ import { useHomeData, LANDSCAPE_SPEC } from "../home/homeData";
  * frame are computed from the rendered box, so they cannot drift from what is
  * actually on screen.
  *
+ * References
+ *   Pulled with the 21st CLI on 31/08, once it authenticated — the first pass
+ *   at this study had none, because `21st search --context auto` was answering
+ *   401 and the directions were grounded only in the project's own context.
+ *
+ *   Consulted at search level (component code on 21st is paid, and the day's
+ *   free reads went to the Snap Carousel behind /lab/store, so none of these
+ *   were opened — they informed which shapes were worth trying, not any line
+ *   of the code below):
+ *     · "Stacked Card Carousel" (shadcnspace, id 21516) — the closest match to
+ *       the deck this study varies.
+ *     · "Arc Gallery Hero Component" (minhxthanh) and "Hero Preview Walls"
+ *       (ruixen.ui) — hero decks that let the frame, rather than the
+ *       photograph, decide the ratio, which is what direction B does.
+ *
+ *   The binding constraint is the project's own and is recorded in
+ *   .21st/design.json: every shop image slot is 16:9, ≥1600px.
+ *
  * Nothing here is imported by src/views.
  */
 

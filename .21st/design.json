@@ -532,7 +532,13 @@
         }
       ],
       "compare": "/lab/hero",
-      "onDecide": "Fold the chosen option into HeroDeck in src/views/Homepage.tsx (the ratio rule is one line, src/views/Homepage.tsx:247), delete the other studies from src/lab/HeroRatioStudies.tsx, and set this decision to the chosen slug."
+      "onDecide": "Fold the chosen option into HeroDeck in src/views/Homepage.tsx (the ratio rule is one line, src/views/Homepage.tsx:247), delete the other studies from src/lab/HeroRatioStudies.tsx, and set this decision to the chosen slug.",
+      "references": [
+        "21st Stacked Card Carousel (shadcnspace, id 21516) - closest match to the deck this study varies; search level only, code not retrieved",
+        "21st Arc Gallery Hero Component (minhxthanh) and Hero Preview Walls (ruixen.ui) - hero decks where the frame rather than the photograph sets the ratio, which is direction B; search level only",
+        "constraints.must in this file: every shop image slot is 16:9, >=1600px - the constraint that forces the trade-off"
+      ],
+      "referencesNote": "Added 31/08 after the 21st CLI authenticated. The first pass at this study had no external references because search was answering 401."
     }
   ],
   "evidence": [
