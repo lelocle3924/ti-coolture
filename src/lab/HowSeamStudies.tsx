@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { LabShell, LabFrame } from "./labShared";
-import { WaveBottomCropped } from "../components/BrandShapes";
+import { RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
 
 /**
  * "Cách đặt hàng" — the two seams around it.
@@ -179,33 +179,6 @@ function BendingSeam({
   );
 }
 
-/* Just the loop's eye, both sub-paths verbatim from brand-ribbon-loop.svg.
-
-   The mock places this mark alone at the bottom-left. The full RibbonLoop
-   cannot do that: its eye sits in the top-left quarter of a 700×695 drawing
-   with a long tail sweeping right, so at the size the mock uses the tail runs
-   straight across the step cards. Cropping the tail inside an overflow box
-   works geometrically but leaves a hard straight edge on two sides, which the
-   mark never has — so the eye is drawn on its own instead, and the only cut is
-   the section's own left edge, exactly as in the mock.
-
-   The viewBox is the eye's bounding box in the original coordinate space, so
-   the shape and its proportions are untouched. */
-function RibbonEye({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="75 58 168 137" aria-hidden="true" className={`block ${className}`}>
-      <path
-        fill="var(--color-wave)"
-        d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z"
-      />
-      <path
-        fill="var(--color-brand)"
-        d="M133.62,97.27a12.63,12.63,0,0,1-25.25,0,12.3,12.3,0,0,1,1.34-5.6.22.22,0,0,1,.06-.13,11.51,11.51,0,0,1,2.13-3,12.62,12.62,0,0,1,21.72,8.76Z"
-      />
-    </svg>
-  );
-}
-
 /* ── the section itself ───────────────────────────────────────────────────── */
 
 function HowSection({
@@ -227,13 +200,32 @@ function HowSection({
   const cardWidth = Math.round(colWidth * 0.26);
   return (
     <section className="relative overflow-hidden bg-paper text-ink">
-      {/* Layer rule from the 31/08 note: brand marks go UNDER the content. z-0
-          here against z-10 on the column below — the canva mock had this the
-          other way round, which is only an artefact of how it was assembled. */}
-      {/* left-[-1%], not further: the mock crops the eye on the section edge
-          but keeps the dot inside the frame, and the dot is the part that
-          makes the mark readable as the brand's loop. */}
-      <RibbonEye className="pointer-events-none absolute bottom-[6%] left-[-1%] z-0 w-[clamp(7.5rem,16%,14rem)]" />
+      {/* The brand loop itself, not a redrawing of it.
+
+          An earlier pass lifted the eye's sub-path out and filled it teal.
+          That inverted the mark: in the artwork the almond is a HOLE with the
+          violet dot inside it, and the teal is the band running around it —
+          which is the colour inversion the 04/09 note caught. Rendering the
+          real path keeps the hole, so the section's own white shows through.
+
+          Mirrored, per the same note: the artwork points its loop up-left with
+          the tail sweeping right, and the mock has it the other way round.
+
+          Layer rule: brand marks go UNDER the content. z-0 here against z-10
+          on the column below — the canva mock had this the other way round,
+          which is only an artefact of how it was assembled. */}
+      {/* Anchored to the section's bottom edge and nudged with a transform,
+          not with `bottom: -14%`. A percentage offset resolves against the
+          section's HEIGHT, and this section is roughly twice as tall on a
+          phone as on a desktop — so the same -14% dropped the mark clean off
+          the bottom of the mobile column. A translate percentage resolves
+          against the mark's own box, so it sits the same way at every width. */}
+      <RibbonLoop
+        className="pointer-events-none absolute bottom-0 left-[-14%] z-0 w-[32%] max-w-[30rem]"
+        style={{ transform: "translateY(26%) scaleX(-1)" }}
+        ribbon="var(--color-wave)"
+        dot="var(--color-brand)"
+      />
 
       <div className="relative z-10 px-5 pb-14 pt-11 md:px-10 md:pb-20 md:pt-14">
         <div className="text-center">
@@ -317,7 +309,7 @@ const CURVES = [
 export default function HowSeamStudies() {
   const [width, setWidth] = useState(WIDTHS[0]);
   const [curve, setCurve] = useState(CURVES[1]);
-  const [crestRatio, setCrestRatio] = useState(1 / 7);
+  const [crestRatio, setCrestRatio] = useState(0.24);
   const [measured, setMeasured] = useState<{ widthPx: number; sagittaPx: number } | null>(null);
 
   /* "PC · full" means the real viewport; the other two are simulated columns.
@@ -414,9 +406,9 @@ export default function HowSeamStudies() {
             </div>
 
             <div>
-              <p className="label text-ink/45">SÓNG DƯỚI (cao / bề ngang)</p>
+              <p className="label text-ink/45">SÓNG DƯỚI (phần cắt / bề ngang)</p>
               <div className="mt-2 flex gap-2">
-                {[1 / 9, 1 / 7, 1 / 5].map((r) => (
+                {[0.18, 0.24, 0.3].map((r) => (
                   <button
                     key={r}
                     onClick={() => setCrestRatio(r)}
@@ -426,7 +418,7 @@ export default function HowSeamStudies() {
                         : "border-ink/15 text-ink/70 hover:border-brand hover:text-brand"
                     }`}
                   >
-                    {r.toFixed(3)}
+                    {r.toFixed(2)}
                   </button>
                 ))}
               </div>

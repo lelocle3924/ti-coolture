@@ -45,34 +45,42 @@ export function WaveBottom({
  * gì?", drop the gradient and let this rise through the seam instead. No
  * motion — it is a shape, not a transition.
  *
- * The artwork is 495×268, which is 1.85:1. Full-bleed at its own ratio a
- * desktop band would come out 780px tall, so the band carries a ratio of its
- * own and the drawing is stretched into it with preserveAspectRatio="none".
- * That is deliberate rather than lazy: a band whose height is a fixed fraction
- * of its width draws the same shape at 375px and at 1440px, which is what the
- * same note asks for ("độ cong phải giống nhau" on mobile and desktop). A band
- * with a fixed pixel height would not.
+ * The artwork is 495×268 and keeps that ratio. Full-bleed it is therefore
+ * 0.54 × the width tall — 780px on a 1440px screen — which is far more band
+ * than the seam wants, so the wrapper crops the top and the crest is what
+ * shows. That is the "một phần element nhô lên" of the 31/08 note: a part of
+ * the shape coming up through the seam, not the whole thing squashed into a
+ * strip.
+ *
+ * An earlier pass did squash it with preserveAspectRatio="none" to control the
+ * band height. Team 04/09: keep the ratio and fill the remainder with the
+ * ground instead — white left over on the left is fine. Cropping does exactly
+ * that, and the crop is set as a fraction of the width, so the shape still
+ * lands identically at 375px and 1440px.
  */
 export function WaveBottomCropped({
   className = "",
   fill = "var(--color-brand)",
-  ratio = 1 / 7,
+  ratio = 0.24,
 }: {
   className?: string;
   fill?: string;
-  /** Band height as a fraction of its width. Same shape at every width. */
+  /** Visible band height as a fraction of its width. The artwork keeps its
+      own 495:268 and is cropped to this, bottom-aligned. */
   ratio?: number;
 }) {
   return (
     <div
-      className={`pointer-events-none w-full ${className}`}
+      className={`pointer-events-none relative w-full overflow-hidden ${className}`}
       aria-hidden="true"
       style={{ aspectRatio: String(1 / ratio) }}
     >
+      {/* h-auto + w-full lets the viewBox set the height, so the drawing keeps
+          its proportions; bottom-0 puts the crop at the top, where the shape
+          has already risen off the page into the section above. */}
       <svg
         viewBox="0 0 495 268"
-        preserveAspectRatio="none"
-        className="block h-full w-full"
+        className="absolute inset-x-0 bottom-0 block h-auto w-full"
       >
         <path
           fill={fill}
