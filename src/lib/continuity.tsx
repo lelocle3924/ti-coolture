@@ -89,7 +89,7 @@ export function readHandoff(id: string | undefined): Product | null {
  *
  * It used to say that the one transition the team could see was the
  * whole-page slide withDirectionalTransition fired on a chip press. Motion
- * proposal 08 (31/08) took that off the filter chips — a filter is a list
+ * proposal 05 (31/08) took that off the filter chips — a filter is a list
  * update, not a page change — so that helper now has no callers.
  *
  * So drive it here: snapshot, navigate synchronously inside the callback so
