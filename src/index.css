@@ -221,8 +221,23 @@ body {
     animation: draw 1.35s cubic-bezier(0.34, 1.4, 0.64, 1) 0.35s forwards;
   }
 
+  /* Motion proposal 03 (approved 31/08): beat three times, then rest.
+     Was `2s ... infinite` with three stacked drop-shadows, on a mark fixed to
+     the right edge for the whole page — so it never left peripheral vision and
+     never stopped asking for attention. Anything that loops has to survive its
+     hundredth repeat; this did not.
+
+     Three beats and done. To say something new later, restart it from the
+     consumer by re-keying the element — when the gem itself changes, or when
+     the tab is focused again — rather than by looping forever.
+
+     NOTE: nothing in src/views carries .gem-star today. The Hidden Gems tab
+     renders a plain StarIcon (Homepage > HiddenGems), so this changes nothing
+     currently on screen; it makes the rule right for whoever reaches for it
+     next. Applying it to that tab would be adding motion the team has not
+     asked for. */
   .gem-star {
-    animation: gem-pulse 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+    animation: gem-pulse 1.6s var(--ease-brand) 3;
   }
 }
 
@@ -233,9 +248,9 @@ body {
   }
   50% {
     transform: scale(1.45) rotate(15deg);
-    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 1))
-      drop-shadow(0 0 35px rgba(57, 214, 207, 0.95))
-      drop-shadow(0 0 60px rgba(117, 32, 247, 0.8));
+    /* one layer, not three — a stacked drop-shadow is re-rasterised every
+       frame, and this one ran forever */
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 1));
   }
 }
 
