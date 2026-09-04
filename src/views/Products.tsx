@@ -6,7 +6,7 @@ import { Product } from "../types";
 import { useAuth } from "../lib/useAuth";
 import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
-import { vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
+import { vtProductImage } from "../lib/viewTransitions";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 
 const CANONICAL_CATEGORIES = [
@@ -62,20 +62,25 @@ export default function Products() {
     loadData();
   }, []);
 
-  const handleCategorySelect = (cat: string) => {
-    const currentIdx = CANONICAL_CATEGORIES.indexOf(activeCategory as any);
-    const nextIdx = CANONICAL_CATEGORIES.indexOf(cat as any);
-    const dir = nextIdx >= currentIdx ? "forward" : "backward";
+  /* Motion proposal 05 (approved 31/08): "không chạy view transition cho đổi
+     bộ lọc — đó là cập nhật danh sách, không phải rời trang."
 
-    withDirectionalTransition(dir, () => {
-      const next = new URLSearchParams(searchParams);
-      if (cat === "Tất cả") {
-        next.delete("category");
-      } else {
-        next.set("category", cat);
-      }
-      setSearchParams(next);
-    });
+     Pressing a category chip used to run withDirectionalTransition, which
+     slides and fades the entire document. Nothing about the page is being left
+     — the heading, the filters and the chrome all stay — so the whole screen
+     moving to swap the results below it was the jerky zoom the team reported.
+
+     The results now change in place. What brings them in is the grid reveal
+     from proposal 02, which re-arms on the rendered count: the new set arrives
+     as a wave in the grid, and nothing else moves. */
+  const handleCategorySelect = (cat: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (cat === "Tất cả") {
+      next.delete("category");
+    } else {
+      next.set("category", cat);
+    }
+    setSearchParams(next);
   };
 
   const handlePriceSelect = (priceId: string) => {
