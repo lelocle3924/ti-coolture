@@ -37,6 +37,53 @@ export function WaveBottom({
 }
 
 /**
+ * The cropped flow wave — verbatim from
+ * src/assets/brand/brand-wave-bottom-cropped.svg.
+ *
+ * Sits at the foot of a light section as the crest of the *next*, violet one
+ * pushing up into it. Team 31/08: between "Cách đặt hàng" and "Chưa biết mua
+ * gì?", drop the gradient and let this rise through the seam instead. No
+ * motion — it is a shape, not a transition.
+ *
+ * The artwork is 495×268, which is 1.85:1. Full-bleed at its own ratio a
+ * desktop band would come out 780px tall, so the band carries a ratio of its
+ * own and the drawing is stretched into it with preserveAspectRatio="none".
+ * That is deliberate rather than lazy: a band whose height is a fixed fraction
+ * of its width draws the same shape at 375px and at 1440px, which is what the
+ * same note asks for ("độ cong phải giống nhau" on mobile and desktop). A band
+ * with a fixed pixel height would not.
+ */
+export function WaveBottomCropped({
+  className = "",
+  fill = "var(--color-brand)",
+  ratio = 1 / 7,
+}: {
+  className?: string;
+  fill?: string;
+  /** Band height as a fraction of its width. Same shape at every width. */
+  ratio?: number;
+}) {
+  return (
+    <div
+      className={`pointer-events-none w-full ${className}`}
+      aria-hidden="true"
+      style={{ aspectRatio: String(1 / ratio) }}
+    >
+      <svg
+        viewBox="0 0 495 268"
+        preserveAspectRatio="none"
+        className="block h-full w-full"
+      >
+        <path
+          fill={fill}
+          d="M495.225 268H0.0208782L0 266.032C83.3005 269.521 117.876 152.851 205.968 153.348C317.825 153.978 327.416 209.927 378.552 233.905C418.225 254.5 317.826 17.0709 495.225 0V268Z"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/**
  * Hero horizon — verbatim from src/assets/brand/brand-wave-bottom-extended.svg.
  *
  * Straight along the left half to x=959, then the wave breaks across the

@@ -37,6 +37,16 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/how",
+    /* 06, not 04: /lab/hero (lab/hero-aspect-studies) takes 04 and /lab/store
+       (lab/store-mobile-studies) takes 05. Numbering past them here keeps the
+       three lab branches from colliding on the same row. */
+    n: "06",
+    title: "Cách đặt hàng — hai đường ranh giới",
+    body: "Ranh giới trên tự lộn từ vồng lên → thẳng → vồng xuống khi cuộn. Dưới là sóng brand nhô lên, không animation.",
+    meta: "1 phương án · trang chủ",
+  },
 ];
 
 export default function LabIndex() {
