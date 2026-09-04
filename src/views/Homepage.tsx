@@ -250,6 +250,25 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
         >
           {frames.map((f, i) => {
             const rel = (i - active + count) % count;
+
+            /* Motion proposal 08 (approved 31/08): deal the card, do not
+               dissolve it.
+
+               Every frame used to fade out where it stood, so mid-change two
+               photographs occupied the same rectangle and the deck read as one
+               frame crossfading rather than as a stack being dealt from.
+
+               The frame that was on top a moment ago — the one that has just
+               wrapped round to the back — now lifts off the top of the deck
+               instead: 3% across, 3% up, rotated 3 degrees, fading, and drawn
+               ABOVE the new front so it reads as being pulled off it. The card
+               underneath rises into place on its own, which it already did.
+
+               Only when there are more frames than stack positions. With three
+               or fewer the outgoing frame is still a visible part of the
+               stack, and lifting it off would delete a card from the deck. */
+            const outgoing = count > 3 && rel === count - 1;
+
             const style =
               rel === 0
                 ? { transform: "translate3d(0,0,0) rotate(0deg) scale(1)", opacity: 1, zIndex: 30 }
@@ -257,7 +276,14 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   ? { transform: "translate3d(2.2%,-2.4%,0) rotate(2.2deg) scale(0.955)", opacity: 1, zIndex: 20 }
                   : rel === 2
                     ? { transform: "translate3d(-2.2%,-4%,0) rotate(-2.4deg) scale(0.915)", opacity: 1, zIndex: 10 }
-                    : { transform: "translate3d(0,-5%,0) scale(0.9)", opacity: 0, zIndex: 0 };
+                    : outgoing
+                      ? {
+                          transform: "translate3d(3%,-3%,0) rotate(3deg) scale(1)",
+                          opacity: 0,
+                          // above the front card, below the attribution chrome
+                          zIndex: 35,
+                        }
+                      : { transform: "translate3d(0,-5%,0) scale(0.9)", opacity: 0, zIndex: 0 };
 
             return (
               <figure
