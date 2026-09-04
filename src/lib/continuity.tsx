@@ -85,8 +85,12 @@ export function readHandoff(id: string | undefined): Product | null {
  * `<Link viewTransition>` does nothing in this app: the prop is only honoured
  * by a data router, and src/App.tsx mounts <BrowserRouter> + <Routes>. Every
  * `viewTransition` in src/views is therefore inert, which is why no product
- * image has ever travelled — and why the only transition the team can see is
- * the whole-page one that withDirectionalTransition fires on a chip press.
+ * image has ever travelled.
+ *
+ * It used to say that the one transition the team could see was the
+ * whole-page slide withDirectionalTransition fired on a chip press. Motion
+ * proposal 08 (31/08) took that off the filter chips — a filter is a list
+ * update, not a page change — so that helper now has no callers.
  *
  * So drive it here: snapshot, navigate synchronously inside the callback so
  * the new page is in the DOM before the second snapshot, and let the CSS in
