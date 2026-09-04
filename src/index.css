@@ -438,16 +438,25 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
     animation-range: entry 0% cover 100%;
   }
 }
+/* Motion proposal 04 (approved 31/08): same effect, different mechanism.
+
+   This used to scrub letter-spacing from 0.1em to -0.04em. letter-spacing is
+   about the most expensive thing to animate — the browser re-shapes and
+   re-lays-out the line on every frame — and it was doing it on the largest
+   text on the site, at clamp(5rem, 18vw, 15rem), tied to a scroll timeline so
+   it ran on every frame of the scroll.
+
+   letter-spacing now stays at its final value on .footer-wordmark, and the
+   widening is scrubbed with scaleX 1.06 -> 1 instead. The eye reads the same
+   movement; it runs on the compositor. */
 @keyframes wm-rise {
   from {
     opacity: 0.05;
-    transform: translateY(80px) scale(0.8);
-    letter-spacing: 0.1em;
+    transform: translateY(80px) scale(0.8) scaleX(1.06);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1.05);
-    letter-spacing: -0.04em;
+    transform: translateY(0) scale(1.05) scaleX(1);
   }
 }
 
