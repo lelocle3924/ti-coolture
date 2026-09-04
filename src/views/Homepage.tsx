@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUpRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
 import { useDragTrack } from "../lib/useDragTrack";
+import { usePauseOffscreen } from "../lib/usePauseOffscreen";
 import {
   formatPrice,
   PRICE_NOTE,
@@ -430,9 +431,17 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   /* Team 20/08: one lane is enough on a phone — two stacked marquees eat the
      screen and neither can be read while both are moving. */
   const twoLanes = useMediaQuery("(min-width: 768px)");
+  /* Motion 11: the lanes loop forever, so they stop when the section is off
+     screen or the tab is hidden. Nothing changes on screen. */
+  const { ref: sectionRef, paused } = usePauseOffscreen<HTMLElement>();
 
   return (
-    <section id="dong-store" className="bg-brand pb-16 pt-10 text-paper md:pb-24 md:pt-12">
+    <section
+      ref={sectionRef}
+      id="dong-store"
+      data-marquee-paused={paused}
+      className="bg-brand pb-16 pt-10 text-paper md:pb-24 md:pt-12"
+    >
       {/* the title *is* the link through to the catalogue */}
       <div className="px-5 text-center md:px-10">
         <Link

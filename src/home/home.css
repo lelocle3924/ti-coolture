@@ -31,6 +31,14 @@
   animation-play-state: paused;
 }
 
+/* Motion proposal 11 (approved 31/08): the lanes stop when nobody is looking.
+   Set from lib/usePauseOffscreen — off screen, or the tab in the background.
+   Pausing holds the lane's position rather than resetting it, so scrolling
+   back finds it where it was. */
+[data-marquee-paused="true"] .lab-marquee {
+  animation-play-state: paused;
+}
+
 @keyframes lab-pop-in {
   0%   { opacity: 0; transform: translateY(26px) scale(0.86) rotate(-3deg); }
   62%  { opacity: 1; transform: translateY(-5px) scale(1.04) rotate(1deg); }
