@@ -535,8 +535,14 @@ function HowItWorks() {
             }}
             aria-hidden={pinned && t < 0.05}
           >
+            {/* 33dvh -> 36dvh (and the rails 13rem -> 13.5rem, 22rem -> 23rem).
+                Growing the cards is the only lever that shrinks the empty band
+                above AND below at once, since both are half of whatever the
+                content does not use. Kept modest on purpose: this pane is
+                sized in dvh precisely because a rem-sized version clipped its
+                last row on short Windows laptops. */}
             <div
-              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13rem,33dvh,22rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${
+              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13.5rem,36dvh,23rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${
                 i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
               } ${i % 2 === 0 ? "bg-brand" : "bg-brand-deep"} text-paper`}
             >
@@ -567,11 +573,19 @@ function HowItWorks() {
     </div>
   );
 
+  /* Same note as the pinned pane below, applied where there is no pin to
+     centre anything: the padding above the title and below the last card is
+     simply smaller. py-16/24 -> pt-11/14 and pb-12/16, and the heading keeps a
+     clear gap to the fan rather than the pinned layout's old tuck. */
   if (!pinned) {
     return (
-      <section id="dong-how" data-surface="light" className="bg-paper py-16 text-ink md:py-24">
+      <section
+        id="dong-how"
+        data-surface="light"
+        className="bg-paper pb-12 pt-11 text-ink md:pb-16 md:pt-14"
+      >
         {header}
-        <div className="mt-10">{fan}</div>
+        <div className="mt-8">{fan}</div>
       </section>
     );
   }
@@ -583,11 +597,29 @@ function HowItWorks() {
             viewport height with rem-sized content, it fitted a 900px MacBook
             and clipped its last row on every shorter Windows laptop — which is
             the vertical overflow the team reported. */}
-        <div className="sticky top-0 flex h-[100dvh] flex-col justify-center overflow-hidden pt-[clamp(3.25rem,7dvh,4.5rem)]">
+        {/* Spacing reworked 31/08: "thu nhỏ khoảng trống trên title và dưới các
+            thẻ steps, đưa 'cách đặt hàng' lên cao xíu, đừng quá sát với các
+            thẻ."
+
+            Measured before, at 1440x900: 291px of nothing above the title,
+            228px below the step counter, and the title sitting -8px into the
+            cards. 519px of a 900px screen was empty while the one thing that
+            was tight was the one gap that should not have been.
+
+            The content is centred in the pinned pane, so the two empty bands
+            are always (viewport - content)/2 and neither can be removed
+            outright without breaking the pin. What can be done is stop pushing
+            the block down and let it take more of the screen: the top padding
+            went from 7dvh to 3dvh — with centring it only ever contributed
+            half its value to the gap above the title, while costing the same
+            half below. */}
+        <div className="sticky top-0 flex h-[100dvh] flex-col justify-center overflow-hidden pt-[clamp(1.25rem,3dvh,2.25rem)]">
           {header}
-          {/* the fan tucks under the heading as it fills, the way the
-              reference layers its cards over the title */}
-          <div className="-mt-2">{fan}</div>
+          {/* The fan used to tuck -8px under the heading, layering its cards
+              over the title the way the reference does. The 31/08 note asks
+              for the opposite — "đừng quá sát với các thẻ" — so the tuck is
+              gone and the heading gets real clearance. */}
+          <div className="mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
 
           {/* step counter, so the pin always says where you are */}
           <div className="mt-[clamp(0.75rem,2.5dvh,2rem)] flex justify-center gap-2" aria-hidden="true">
