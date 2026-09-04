@@ -497,6 +497,28 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   animation: ti-pin-drop 480ms var(--ease-brand) both;
 }
 
+/* Motion proposal 10 (approved 31/08): the toast leaves the way it arrived.
+
+   It used to fade in and then simply be removed from the DOM after 2500ms —
+   no exit at all, so it blinked out. Now it comes in from the right edge it
+   sits against, and goes back that way. The exit is shorter than the entrance
+   on purpose: something arriving wants to be read, something leaving does
+   not. */
+@keyframes ti-toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ti-toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}
+.ti-toast {
+  animation: ti-toast-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ti-toast--out {
+  animation: ti-toast-out 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* D6 · Elastic Momentum Snap Strip */
 .snap-strip {
   display: flex;
@@ -548,6 +570,14 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
     opacity: 1 !important;
     transform: translate(-50%, -100%) !important;
   }
+
+  /* the toast still has to appear and disappear, it just does not travel */
+  .ti-toast,
+  .ti-toast--out {
+    animation: none !important;
+    transform: none !important;
+  }
+  .ti-toast--out { opacity: 0 !important; }
   .hover-elastic:hover,
   .hover-elastic:active,
   .btn-pop:hover,

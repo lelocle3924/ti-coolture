@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Heart, Check, ArrowRight, Search, X } from "lucide-react";
 import { fetchProducts, toggleWishlist, triggerWebhook } from "../lib/dbService";
@@ -46,7 +46,14 @@ export default function Products() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [wishlistToast, setWishlistToast] = useState<{ show: boolean; name: string } | null>(null);
+  /* Motion 10: `leaving` is what gives the toast an exit. It used to be
+     unmounted outright after 2500ms, so it blinked out of existence. */
+  const [wishlistToast, setWishlistToast] = useState<
+    { name: string; leaving: boolean } | null
+  >(null);
+  const toastTimers = useRef<number[]>([]);
+
+  useEffect(() => () => toastTimers.current.forEach(clearTimeout), []);
 
   // Flow B: zero-result demand note capture
   const [demandNote, setDemandNote] = useState("");
@@ -122,10 +129,18 @@ export default function Products() {
 
     const isNow = nextList.includes(prod.id);
     if (isNow) {
-      setWishlistToast({ show: true, name: prod.name });
-      setTimeout(() => {
-        setWishlistToast(null);
-      }, 2500);
+      // a second save while one is still up restarts the run rather than
+      // stacking two sets of timers on the same toast
+      toastTimers.current.forEach(clearTimeout);
+      setWishlistToast({ name: prod.name, leaving: false });
+      toastTimers.current = [
+        window.setTimeout(
+          () => setWishlistToast((t) => (t ? { ...t, leaving: true } : null)),
+          2500
+        ),
+        // 180ms later — the length of the exit — it is gone
+        window.setTimeout(() => setWishlistToast(null), 2680),
+      ];
     }
   };
 
@@ -199,7 +214,13 @@ export default function Products() {
     <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
       {/* Toast Notification (Flow E) */}
       {wishlistToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-brand text-paper px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in backdrop-blur-md">
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 bg-brand text-paper px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 backdrop-blur-md ${
+            wishlistToast.leaving ? "ti-toast--out" : "ti-toast"
+          }`}
+        >
           <div className="w-6 h-6 rounded-full bg-wave text-ink grid place-items-center font-bold">
             <Check className="w-3.5 h-3.5 stroke-[3]" />
           </div>
