@@ -327,19 +327,29 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   to { transform: scaleX(1); }
 }
 
-/* D2 · Exaggerated Staggered Reveal */
-@supports (animation-timeline: view()) {
-  .rev {
-    animation: revup linear both;
-    animation-timeline: view(block);
-    animation-range: entry 5% entry 65%;
-  }
-  .rev:nth-child(2n) {
-    animation-range: entry 12% entry 72%;
-  }
-  .rev:nth-child(3n) {
-    animation-range: entry 18% entry 78%;
-  }
+/* D2 · Staggered reveal — motion proposal 02 (approved 31/08).
+
+   Was a scroll timeline whose stagger came from :nth-child(2n) and (3n)
+   shifting animation-range, so the order followed a card's place in the DOM
+   rather than on screen: in a four-column grid, 1 and 3 arrived together while
+   2 and 4 lagged. That reads as a glitch, not a rhythm.
+
+   The wave is now driven by lib/useStaggerReveal.ts — whatever crosses the
+   threshold together is one row, 45ms apart, stopping at the fourth card.
+
+   The hidden state is scoped to [data-rev-ready], which the hook sets on the
+   container, so cards stay visible if the script never runs. */
+[data-rev-ready] .rev {
+  opacity: 0;
+}
+[data-rev-ready] .rev.rev-in {
+  animation: revup 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Arrived. Nothing is animating any more, so transform belongs to :hover
+   again — a finished animation with fill-mode: both keeps hold of every
+   property it touched, which is what stopped the cards lifting on hover. */
+[data-rev-ready] .rev.rev-done {
+  opacity: 1;
 }
 @keyframes revup {
   from {

@@ -7,6 +7,7 @@ import { useAuth } from "../lib/useAuth";
 import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
+import { useStaggerReveal } from "../lib/useStaggerReveal";
 
 const CANONICAL_CATEGORIES = [
   "Tất cả",
@@ -172,6 +173,11 @@ export default function Products() {
       if (activeSort === "price-desc") return b.price - a.price;
       return 0; // default newest
     });
+
+  /* Motion 02: the reveal re-arms whenever the rendered set changes, so a
+     filter or a sort brings its results in as a wave rather than leaving the
+     new cards sitting at opacity 0. */
+  const revealRef = useStaggerReveal<HTMLDivElement>(filteredProducts.length);
 
   const activeFiltersCount = 
     (activeCategory !== "Tất cả" ? 1 : 0) + 
@@ -450,7 +456,10 @@ export default function Products() {
         ) : (
           
           /* DOUBLE-BEZEL PRODUCT GRID WITH VIEW TRANSITIONS */
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2">
+          <div
+            ref={revealRef}
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2"
+          >
             {filteredProducts.map((product) => {
               const isWish = profile?.wishlist?.includes(product.id);
               const primaryImg = product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
