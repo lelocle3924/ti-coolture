@@ -469,6 +469,34 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   }
 }
 
+/* Motion proposal 06 (approved 31/08): the pins land on the island.
+
+   Changing district slid the island across and the pins simply appeared with
+   it — nothing said a pin belonged to the ground underneath it. They now drop
+   in along the route, 70ms apart, with a small bounce as each one lands, which
+   also states the order of the stops without writing it out. Four pins are
+   done in 480ms, before a visitor has finished taking the island in. */
+@keyframes ti-pin-drop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 26px));
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% + 3px));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+/* The pin's resting offset lives in the keyframes, not in a utility class:
+   an animation owns every property it touches, so a Tailwind -translate-y-full
+   would be overridden mid-flight and then snap back at the end. */
+.ti-pin-drop {
+  animation: ti-pin-drop 480ms var(--ease-brand) both;
+}
+
 /* D6 · Elastic Momentum Snap Strip */
 .snap-strip {
   display: flex;
@@ -511,6 +539,14 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   .btn-pop--quiet,
   .snap-strip > * {
     transition: none !important;
+  }
+
+  /* the pin still needs its resting offset, so this cannot go in the
+     transform: none block below */
+  .ti-pin-drop {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: translate(-50%, -100%) !important;
   }
   .hover-elastic:hover,
   .hover-elastic:active,

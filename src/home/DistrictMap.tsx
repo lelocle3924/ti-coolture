@@ -29,12 +29,15 @@ function DistrictSlide({
   plan,
   onOpen,
   onPin,
+  active,
 }: {
   key?: string;
   route: TouristRoute;
   plan: ReturnType<typeof planFor>;
   onOpen: () => void;
   onPin: (stopId: string) => void;
+  /** True while this is the district on screen — see the pin drop below. */
+  active: boolean;
 }) {
   const island = islandBlobs(route.stops);
   const clipId = `ti-island-clip-${route.id}`;
@@ -102,11 +105,24 @@ function DistrictSlide({
               SVG fills the box exactly — hence preserveAspectRatio="none"
               above. With the default "meet" the 4:3 artwork letterboxed inside
               the 16/9 box and every pin drifted outward from its stop. */}
+          {/* Motion 06: the pins drop in along the route, 70ms apart, rather
+              than arriving with the island as if painted on it.
+
+              Keyed on `active`, so the run restarts when the carousel settles
+              on this district — React remounts the span, which is the only
+              reliable way to replay a CSS animation. The resting -50%/-100%
+              offset moves into the keyframes with it: an animation owns every
+              property it touches, so the translate utilities would be
+              overridden mid-flight and snap back at the end. */}
           {route.stops.map((stop, i) => (
             <span
-              key={stop.id}
-              style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-              className="absolute z-10 block -translate-x-1/2 -translate-y-full"
+              key={`${stop.id}-${active}`}
+              style={{
+                left: `${stop.x}%`,
+                top: `${stop.y}%`,
+                animationDelay: `${i * 70}ms`,
+              }}
+              className="ti-pin-drop absolute z-10 block"
             >
               <button
                 type="button"
@@ -227,6 +243,7 @@ export default function DistrictMap({
                 key={r.id}
                 route={r}
                 plan={planFor(r.id)}
+                active={r.id === route.id}
                 onOpen={() => {
                   // a flick that ends over the island must not also open it
                   if (track.didDrag()) return;
