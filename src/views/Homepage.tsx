@@ -717,21 +717,6 @@ function HowItWorks() {
               for the opposite — "đừng quá sát với các thẻ" — so the tuck is
               gone and the heading gets real clearance. */}
           <div className="relative z-10 mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
-
-          {/* step counter, so the pin always says where you are */}
-          <div className="relative z-10 mt-[clamp(0.75rem,2.5dvh,2rem)] flex justify-center gap-2" aria-hidden="true">
-            {HOW_STEPS.map((step, i) => (
-              <span
-                key={step.n}
-                className="h-px w-10 bg-ink/15"
-              >
-                <span
-                  className="block h-full bg-wave-ink transition-[width] duration-200"
-                  style={{ width: `${Math.min(1, Math.max(0, cursor - i)) * 100}%` }}
-                />
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     </section>
