@@ -8,6 +8,7 @@ import ShopDashboard from "./views/ShopDashboard";
 import UserProfile from "./views/UserProfile";
 import AuthGateway from "./views/AuthGateway";
 import Products from "./views/Products";
+import Wishlist from "./views/Wishlist";
 import Stores from "./views/Stores";
 import About from "./views/About";
 import Discovery from "./views/Discovery";
@@ -138,6 +139,7 @@ function SiteShell() {
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/stores/:storeId" element={<ShopDisplay />} />
           <Route path="/products/:productId" element={<ProductDetail />} />
