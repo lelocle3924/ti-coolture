@@ -650,14 +650,24 @@ function HowItWorks() {
             cards. 519px of a 900px screen was empty while the one thing that
             was tight was the one gap that should not have been.
 
-            The content is centred in the pinned pane, so the two empty bands
-            are always (viewport - content)/2 and neither can be removed
-            outright without breaking the pin. What can be done is stop pushing
-            the block down and let it take more of the screen: the top padding
-            went from 7dvh to 3dvh — with centring it only ever contributed
-            half its value to the gap above the title, while costing the same
-            half below. */}
-        <div className="sticky top-0 flex h-[100dvh] flex-col justify-center overflow-hidden pt-[clamp(1.25rem,3dvh,2.25rem)]">
+            The content was centred in the pinned pane, because at the time
+            both empty bands were (viewport - content)/2 and neither could be
+            removed without breaking the pin.
+
+            Centring is wrong now, and 04/09 caught it: the seam above the
+            section ends up 241px from the title on the homepage against 55px
+            in the lab, purely because the pane centres what the lab lets sit
+            at the top. The foot of the pane is no longer empty either — the
+            crest and the ribbon occupy it — so there is nothing left for the
+            lower band to do. Top-align instead, with the lab's own head
+            clearance, and the seam meets the title the same way in both.
+            The clearance cannot go all the way down to the lab's 55px,
+            because the lab has no floating header and this page does: the
+            pill sits at y 20-93px and is px-sized, not dvh-sized, so the pad
+            has to be px-sized too or it collides on short screens. 6.5rem
+            clears the pill's foot by 11px. Seam to title lands at ~104px
+            against the 241px it was. */}
+        <div className="sticky top-0 flex h-[100dvh] flex-col justify-start overflow-hidden pt-[6.5rem]">
           {/* Inside the pane, not at the foot of the tall wrapper.
 
               Team 04/09: while the page is held, the straight violet edge of
