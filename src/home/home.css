@@ -73,11 +73,62 @@
   scroll-snap-stop: always;
 }
 
+/* ── collections: spring tabs ────────────────────────────────────────────
+   Direction 2 from /lab/collections, folded in on 07/09. These rules came
+   across from src/lab/lab.css, which keeps its own copy so the study page
+   still runs — the homepage does not import that stylesheet.
+
+   flex-grow rather than width, because the panels have to share one row
+   exactly: animating widths independently lets rounding put a hairline of
+   ground between them mid-transition. The spring is the brand ease, which
+   overshoots slightly on the way open, and that overshoot is the "springs
+   open" the sketch is naming. */
+
+.lab-spring-panel {
+  flex-grow: var(--lab-grow, 1);
+  flex-basis: 0;
+  min-width: 3.25rem;
+  transition:
+    flex-grow 620ms var(--ease-brand),
+    background-color 420ms ease;
+  will-change: flex-grow;
+}
+
+/* The vertical name on a closed spine. Reads bottom-to-top, like a book on a
+   shelf, so a row of closed collections scans as a row of spines. */
+.lab-spine-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
+/* The open panel's contents arrive after the panel has most of its width —
+   otherwise the tiles reflow while the flex-grow is still running and the
+   whole thing looks like it is struggling.
+
+   Ease-out, not --ease-brand. The panel overshoots because "springs open" is
+   the idea the sketch names; the contents riding on top of it should not
+   overshoot as well, or one gesture reads as two. */
+@keyframes lab-spring-contents {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lab-spring-contents {
+  animation: lab-spring-contents 380ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
+}
+
 /* ── motion budget ───────────────────────────────────────────────────────
    docs/01-ART-DIRECTION-BRIEF.md: scroll-triggered movement and the wave drift
    stop entirely when the visitor asks for reduced motion. */
 
 @media (prefers-reduced-motion: reduce) {
+  /* The spring tabs keep working — they arrive instead of springing. The
+     panel is the content, so suppressing it would break the page rather than
+     calm it. */
+  .lab-spring-panel {
+    transition: none;
+  }
+  .lab-spring-contents,
   .lab-marquee,
   .lab-marquee--left,
   .lab-marquee--right,
