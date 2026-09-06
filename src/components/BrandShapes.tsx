@@ -71,20 +71,18 @@ export function WaveBottomCropped({
 }) {
   return (
     <div
-      className={`pointer-events-none relative w-full overflow-hidden ${className}`}
+      className={`pointer-events-none relative ${className}`}
       aria-hidden="true"
-      style={{ aspectRatio: String(1 / ratio) }}
+      style={{ width: `${ratio * 100}%`, marginLeft: "auto" }}
     >
-      {/* h-auto + w-full lets the viewBox set the height, so the drawing keeps
-          its proportions; bottom-0 puts the crop at the top, where the shape
-          has already risen off the page into the section above. */}
+      {/* width controlled by ratio, natural aspect ratio maintained by svg */}
       <svg
-        viewBox="0 0 495 268"
-        className="absolute inset-x-0 bottom-0 block h-auto w-full"
+        viewBox="0 0 486 266.05"
+        className="block h-auto w-full"
       >
         <path
           fill={fill}
-          d="M495.225 268H0.0208782L0 266.032C83.3005 269.521 117.876 152.851 205.968 153.348C317.825 153.978 327.416 209.927 378.552 233.905C418.225 254.5 317.826 17.0709 495.225 0V268Z"
+          d="M487.95 266.032H0C78.1202 262.714 113.21 152.866 198.693 153.348C310.55 153.978 320.141 209.927 371.277 233.905C410.95 254.5 310.551 17.0709 487.95 0V266.032Z"
         />
       </svg>
     </div>
@@ -198,6 +196,7 @@ export function RibbonLoop({
   style,
   ribbon = "var(--color-wave)",
   dot = "var(--color-paper)",
+  blink = false,
 }: {
   /* declared because the project has no @types/react, so TS checks key as an
      ordinary prop rather than a reserved one */
@@ -206,6 +205,16 @@ export function RibbonLoop({
   style?: React.CSSProperties;
   ribbon?: string;
   dot?: string;
+  /**
+   * Let the loop blink. Team 04/09: the loop reads as an eye, so give it the
+   * one thing an eye does — twice in a second, then six seconds of stillness.
+   *
+   * The eye is a HOLE in the ribbon, so it cannot be animated directly. This
+   * draws a lid over it: the same almond sub-path, filled in the ribbon's own
+   * colour, scaled from nothing to full height about its own centre. Drawn
+   * after the dot, so a closed lid covers the pupil too.
+   */
+  blink?: boolean;
 }) {
   return (
     <svg
@@ -222,9 +231,40 @@ export function RibbonLoop({
         fill={dot}
         d="M133.62,97.27a12.63,12.63,0,0,1-25.25,0,12.3,12.3,0,0,1,1.34-5.6.22.22,0,0,1,.06-.13,11.51,11.51,0,0,1,2.13-3,12.62,12.62,0,0,1,21.72,8.76Z"
       />
+      {blink && (
+        /* The lid. Same almond the hole is cut with, so a fully closed lid
+           matches the opening exactly rather than approximating it. */
+        <path
+          className="ti-eye-lid"
+          fill={ribbon}
+          d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z"
+        />
+      )}
     </svg>
   );
 }
+
+export function RibbonCorner({
+  className = "",
+  style,
+  ribbon = "var(--color-wave)",
+  dot = "var(--color-brand)",
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  ribbon?: string;
+  dot?: string;
+}) {
+  return (
+    <svg viewBox="0 0 700 695" aria-hidden="true" style={style} className={`block ${className}`}>
+      <path fill={ribbon} d="M109.77 91.54C110.437 90.5467 111.147 89.5467 111.9 88.54C111.034 89.4193 110.315 90.4323 109.77 91.54ZM109.77 91.54C110.437 90.5467 111.147 89.5467 111.9 88.54C111.034 89.4193 110.315 90.4323 109.77 91.54Z" />
+      <path fill={ribbon} d="M109.77 91.51C110.437 90.5167 111.147 89.5167 111.9 88.51C111.031 89.3984 110.312 90.4216 109.77 91.54V91.51ZM109.77 91.51C110.437 90.5167 111.147 89.5167 111.9 88.51C111.031 89.3984 110.312 90.4216 109.77 91.54V91.51ZM111.9 88.51C111.034 89.3893 110.315 90.4023 109.77 91.51C110.423 90.5433 111.133 89.5433 111.9 88.51Z" />
+      <path fill={ribbon} d="M161.93 4.76999C77.16 -8.94001 41.32 44.57 34.13 84.33C26.9666 123.943 35.3773 226.378 230.815 242.632L289.75 242.299V169.77C289.75 169.77 246.7 18.48 161.93 4.76999ZM85.4 69.87C85.4 69.87 152.76 47.05 199.47 130.66L229.76 183.66C229.76 183.66 88.48 175.34 85.4 69.87Z" />
+      <path fill={dot} d="M133.62 97.27C133.527 100.557 132.157 103.678 129.799 105.97C127.442 108.262 124.283 109.545 120.995 109.545C117.707 109.545 114.548 108.262 112.191 105.97C109.833 103.678 108.463 100.557 108.37 97.27C108.367 95.3236 108.827 93.4044 109.71 91.67C109.715 91.6212 109.736 91.5754 109.77 91.54C110.315 90.4323 111.034 89.4193 111.9 88.54C113.645 86.7237 115.894 85.4712 118.357 84.9437C120.82 84.4162 123.384 84.6377 125.72 85.5799C128.056 86.522 130.057 88.1416 131.465 90.2303C132.873 92.319 133.623 94.7812 133.62 97.3V97.27Z" />
+    </svg>
+  );
+}
+
 
 export function ContinuousWave({ pageIndex, className = "" }: { pageIndex: number; className?: string }) {
   return (

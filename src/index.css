@@ -398,6 +398,34 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   }
 }
 
+/* ── the loop blinks ──────────────────────────────────────────────────────
+   Team 04/09: the ribbon loop reads as an eye, so let it blink — twice in a
+   second, then six seconds still, and round again.
+
+   The eye is a hole cut in the ribbon, so nothing about it can be animated on
+   its own. BrandShapes draws a lid over it instead: the same almond, in the
+   ribbon's colour, scaled about its own centre from 0 (open, the hole shows
+   through) to 1 (closed). transform-box: fill-box makes the origin the path's
+   own bounding box, so the lid shuts along the eye's centre line rather than
+   the SVG's, and it is unaffected by any scaleX(-1) mirroring the placement
+   applies to the whole mark.
+
+   The cycle is 7s: both blinks land inside the first 800ms, and the remaining
+   6.2s is the eye simply open. Percentages against 7000ms — 2.9% = 200ms. */
+@keyframes ti-blink {
+  0%    { transform: scaleY(0); }
+  2.9%  { transform: scaleY(1); }
+  5.7%  { transform: scaleY(0); }
+  8.6%  { transform: scaleY(1); }
+  11.4% { transform: scaleY(0); }
+  100%  { transform: scaleY(0); }
+}
+.ti-eye-lid {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ti-blink 7s ease-in-out infinite;
+}
+
 /* D6 · Elastic Momentum Snap Strip */
 .snap-strip {
   display: flex;
@@ -429,6 +457,12 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
    Accessibility: Prefers-reduced-motion Guard
    --------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  /* a blink is a loop, and a loop has to be able to stop */
+  .ti-eye-lid {
+    animation: none !important;
+    transform: scaleY(0) !important;
+  }
+
   ::view-transition-group(*),
   ::view-transition-old(root),
   ::view-transition-new(root),

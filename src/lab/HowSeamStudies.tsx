@@ -1,10 +1,11 @@
 /* No @types/react in the project, so the React namespace has to be pulled in
    explicitly before React.CSSProperties resolves — same note as labShared.tsx. */
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { LabShell, LabFrame } from "./labShared";
-import { RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
+import { RibbonCorner, RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
+import { BendingSeam } from "../home/BendingSeam";
 
 /**
  * "Cách đặt hàng" — the two seams around it.
@@ -61,124 +62,6 @@ const HOW_STEPS = [
   },
 ];
 
-/* ── the bending seam ─────────────────────────────────────────────────────
-   One quadratic across the band. `bend` runs -1 → +1 as the seam travels from
-   the bottom of the viewport to the top, and the apex offset is bend × the
-   sagitta, so the curve inverts through flat exactly at the middle of the
-   screen. */
-
-const VB_W = 1000;
-
-function useSeamBend(ref: { current: HTMLElement | null }) {
-  const [bend, setBend] = useState(-1);
-
-  useEffect(() => {
-    let frame = 0;
-
-    const measure = () => {
-      frame = 0;
-      const el = ref.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const middle = rect.top + rect.height / 2;
-      /* 1 while the seam sits on the bottom edge of the screen, 0 at the top.
-         Guard the viewport height: a 0 would make this NaN. */
-      const vh = window.innerHeight || 1;
-      const t = middle / vh;
-      setBend(Math.max(-1, Math.min(1, 1 - 2 * t)));
-    };
-
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    };
-
-    measure();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule, { passive: true });
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, [ref]);
-
-  return bend;
-}
-
-function BendingSeam({
-  sagittaRatio,
-  above,
-  below,
-  onMeasure,
-}: {
-  /** Deepest bend as a fraction of the seam's own width. */
-  sagittaRatio: number;
-  /** Colour of the section above — this is what the path paints. */
-  above: string;
-  /** Colour of the section below — the band's own ground. */
-  below: string;
-  onMeasure?: (m: { widthPx: number; sagittaPx: number }) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const bend = useSeamBend(ref);
-
-  /* Everything below is in viewBox units, and the band's aspect ratio is set
-     from the same numbers — so the drawn shape is width-independent. */
-  const sagitta = VB_W * sagittaRatio;
-  const height = sagitta * 2.4; // room for the full swing either side of flat
-  const edge = height / 2;
-  const apexOffset = sagitta * bend;
-  // a quadratic's apex sits halfway between its endpoints and its control
-  const control = edge + apexOffset * 2;
-
-  /* A ResizeObserver, not a window resize listener: the width control narrows
-     the column through React state, which never fires a window resize — so a
-     listener kept reporting 1440px while the seam was actually 375px wide, and
-     the readout that exists to prove the ratio was the one thing lying about
-     it. */
-  useEffect(() => {
-    if (!onMeasure) return;
-    const el = ref.current;
-    if (!el) return;
-
-    const report = () => {
-      const w = el.getBoundingClientRect().width;
-      onMeasure({ widthPx: Math.round(w), sagittaPx: Math.round(w * sagittaRatio) });
-    };
-
-    const observer = new ResizeObserver(report);
-    observer.observe(el);
-    report();
-    return () => observer.disconnect();
-  }, [onMeasure, sagittaRatio]);
-
-  return (
-    <div
-      ref={ref}
-      aria-hidden="true"
-      className="pointer-events-none relative w-full"
-      style={{
-        aspectRatio: String(VB_W / height),
-        background: below,
-        // hairline insurance against subpixel gaps at the section joins
-        marginTop: -1,
-        marginBottom: -1,
-      }}
-    >
-      <svg
-        viewBox={`0 0 ${VB_W} ${height}`}
-        preserveAspectRatio="none"
-        className="absolute inset-0 block h-full w-full"
-      >
-        <path
-          fill={above}
-          d={`M0,0 L${VB_W},0 L${VB_W},${edge} Q${VB_W / 2},${control} 0,${edge} Z`}
-        />
-      </svg>
-    </div>
-  );
-}
-
 /* ── the section itself ───────────────────────────────────────────────────── */
 
 function HowSection({
@@ -221,13 +104,13 @@ function HowSection({
           the bottom of the mobile column. A translate percentage resolves
           against the mark's own box, so it sits the same way at every width. */}
       <RibbonLoop
-        className="pointer-events-none absolute bottom-0 left-[-14%] z-0 w-[32%] max-w-[30rem]"
+        className="pointer-events-none absolute bottom-[-22%] left-[-19%] z-0 w-[32%] max-w-[30rem]"
         style={{ transform: "translateY(26%) scaleX(-1)" }}
         ribbon="var(--color-wave)"
         dot="var(--color-brand)"
       />
 
-      <div className="relative z-10 px-5 pb-14 pt-11 md:px-10 md:pb-20 md:pt-14">
+      <div className="relative z-10 px-5 pt-11 md:px-10 md:pt-14">
         <div className="text-center">
           <h2 className="display text-[clamp(1.75rem,min(5.6vw,7.5dvh),4.5rem)] normal-case leading-none text-ink">
             Cách đặt hàng
@@ -309,7 +192,7 @@ const CURVES = [
 export default function HowSeamStudies() {
   const [width, setWidth] = useState(WIDTHS[0]);
   const [curve, setCurve] = useState(CURVES[1]);
-  const [crestRatio, setCrestRatio] = useState(0.24);
+  const [crestRatio, setCrestRatio] = useState(0.25);
   const [measured, setMeasured] = useState<{ widthPx: number; sagittaPx: number } | null>(null);
 
   /* "PC · full" means the real viewport; the other two are simulated columns.

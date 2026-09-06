@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUpRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
 import { useDragTrack } from "../lib/useDragTrack";
+import { BendingSeam } from "../home/BendingSeam";
 import {
   formatPrice,
   PRICE_NOTE,
@@ -14,6 +15,7 @@ import Brandmark from "../components/Brandmark";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
 import BrandSurround from "../components/BrandSurround";
+import { RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
 import DistrictMap from "../home/DistrictMap";
 import "../home/home.css";
 
@@ -476,6 +478,41 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
    Card i is revealed by t = clamp(cursor − i, 0, 1): it rises from 55% below
    its slot, untilts, and fades in. */
 
+/* ── the marks around "Cách đặt hàng" ─────────────────────────────────────
+   Ported verbatim from the hand-tuned build at /lab/how (04/09). The numbers
+   are the team's own, not re-derived: ribbon 32% of the width, left -19%,
+   hanging below the foot of the section; crest 25% of the width, right
+   aligned, at its own 486:266 ratio.
+
+   The one thing that could not be copied literally is the ribbon's vertical
+   offset. The lab writes it `bottom: -22%`, and a percentage bottom resolves
+   against the CONTAINER's height — 685px in the lab's section, but 100dvh in
+   the pinned pane, which would drop the mark much further out of frame. So it
+   is expressed as a translate instead: measured at 1440px the lab hangs the
+   ribbon 270px below the foot, which is 58.9% of the mark's own 458px height,
+   and a translate percentage resolves against the element's own box. Same
+   picture, in a box of any height. */
+
+function HowMarks() {
+  return (
+    <>
+      <RibbonLoop
+        className="pointer-events-none absolute bottom-0 left-[-19%] z-0 w-[32%] max-w-[30rem]"
+        style={{ transform: "translateY(58.9%) scaleX(-1)" }}
+        ribbon="var(--color-wave)"
+        dot="var(--color-brand)"
+        blink
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-[-1px] z-0"
+      >
+        <WaveBottomCropped fill="var(--color-brand)" ratio={0.25} />
+      </div>
+    </>
+  );
+}
+
 function HowItWorks() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState(0);
@@ -566,7 +603,7 @@ function HowItWorks() {
   );
 
   const header = (
-    <div className="px-5 text-center md:px-0">
+    <div className="relative z-10 px-5 text-center md:px-0">
       <h2 className="display text-[clamp(1.75rem,min(5.6vw,7.5dvh),4.5rem)] normal-case leading-none text-ink">
         Cách đặt hàng
       </h2>
@@ -582,10 +619,17 @@ function HowItWorks() {
       <section
         id="dong-how"
         data-surface="light"
-        className="bg-paper pb-12 pt-11 text-ink md:pb-16 md:pt-14"
+        /* pb clears the crest exactly rather than by guess: the crest is 25%
+           of the width at 486:266, so it stands 0.25/1.827 = 13.7% of the
+           width tall. In the lab the crest simply follows the cards in normal
+           flow; here it is absolute, so the padding has to stand in for it. */
+        className="relative overflow-hidden bg-paper pb-[14%] pt-11 text-ink md:pt-14"
       >
-        {header}
-        <div className="mt-8">{fan}</div>
+        <HowMarks />
+        <div className="relative z-10">
+          {header}
+          <div className="mt-8">{fan}</div>
+        </div>
       </section>
     );
   }
@@ -614,15 +658,26 @@ function HowItWorks() {
             half its value to the gap above the title, while costing the same
             half below. */}
         <div className="sticky top-0 flex h-[100dvh] flex-col justify-center overflow-hidden pt-[clamp(1.25rem,3dvh,2.25rem)]">
+          {/* Inside the pane, not at the foot of the tall wrapper.
+
+              Team 04/09: while the page is held, the straight violet edge of
+              "Chưa biết mua gì?" must not show — only the wave and the ribbon
+              coming up. Putting the marks in the pane does exactly that: they
+              ride the sticky pane at the bottom of the screen for the whole
+              pin, while the violet section itself is still below the fold and
+              only arrives once the pin lets go. At that moment the pane's foot
+              and the wrapper's foot are the same line, so the crest meets the
+              violet with nothing between them. */}
+          <HowMarks />
           {header}
           {/* The fan used to tuck -8px under the heading, layering its cards
               over the title the way the reference does. The 31/08 note asks
               for the opposite — "đừng quá sát với các thẻ" — so the tuck is
               gone and the heading gets real clearance. */}
-          <div className="mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
+          <div className="relative z-10 mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
 
           {/* step counter, so the pin always says where you are */}
-          <div className="mt-[clamp(0.75rem,2.5dvh,2rem)] flex justify-center gap-2" aria-hidden="true">
+          <div className="relative z-10 mt-[clamp(0.75rem,2.5dvh,2rem)] flex justify-center gap-2" aria-hidden="true">
             {HOW_STEPS.map((step, i) => (
               <span
                 key={step.n}
@@ -1153,7 +1208,16 @@ export default function Homepage() {
         )}
 
         {/* violet → white */}
-        <GroundBlend from="brand" to="paper" />
+        {/* The seam into "Cách đặt hàng" bends rather than fades (31/08,
+            proven at /lab/how). It replaces the gradient that used to sit
+            here: while it is low on screen the white below bulges up into the
+            violet, it flattens across the middle of the viewport, and by the
+            top the violet has bulged down into the white. */}
+        <BendingSeam
+          sagittaRatio={0.075}
+          above="var(--color-brand)"
+          below="var(--color-paper)"
+        />
         <HowItWorks />
 
         {/* white → violet. The guidelines also offer a chapter-front device
@@ -1162,7 +1226,10 @@ export default function Homepage() {
             point is that it opens on "Chưa biết mua gì?" — so the wave, which
             is the book's transition device, carries the change of ground. */}
         {/* white → violet */}
-        <GroundBlend from="paper" to="brand" />
+        {/* No gradient into "Chưa biết mua gì?" any more. The crest inside
+            HowItWorks is the whole transition now — it rises out of this
+            section's own violet, so the two grounds meet on the shape rather
+            than on a fade. */}
         <CollectionsTrack collections={collections} onOpen={open} />
 
         {/* violet → the deeper violet the map now sits on. The map used to be
