@@ -23,6 +23,13 @@ import { useEffect, useRef, useState } from "react";
 
 const VB_W = 1000;
 
+/* Band height as a multiple of the sagitta. The curve's extremes are exactly
+   ±sagitta from the flat line, so 2.0 is the floor; 2.1 leaves a hair of slack
+   without turning the band into a slab of dead whitespace. It was 2.4, which
+   put 22px of nothing beyond each extreme at 1440px — and since the band sits
+   between two sections, every one of those pixels was pushing them apart. */
+const BAND_FACTOR = 2.1;
+
 export function useSeamBend(ref: { current: HTMLElement | null }) {
   const [bend, setBend] = useState(-1);
 
@@ -64,9 +71,27 @@ export function BendingSeam({
   above,
   below,
   onMeasure,
+  collapse = false,
 }: {
   /** Deepest bend as a fraction of the seam's own width. */
   sagittaRatio: number;
+  /**
+   * Take the band out of the flow so it costs no vertical space.
+   *
+   * The band is (2.1 × sagitta) tall with the flat line across its middle, so
+   * in normal flow it holds the two sections half a band apart on each side —
+   * ~113px each at 1440px, on top of whatever padding they already have. That
+   * was most of the gap the team called out on 06/09.
+   *
+   * Pulling half a band off each margin collapses that to zero and lets the
+   * seam paint ACROSS the join instead: its purple upper half lands on the
+   * purple section above, its white lower half on the white one below, and
+   * both halves are already the colour they cover. The only thing the
+   * neighbours then have to promise is enough padding of their own that the
+   * band never reaches their content — hence the max(..., 7.875%) paddings on
+   * both sides, 7.875% being exactly half a band.
+   */
+  collapse?: boolean;
   /** Colour of the section above — this is what the path paints. */
   above: string;
   /** Colour of the section below — the band's own ground. */
@@ -79,7 +104,7 @@ export function BendingSeam({
   /* Everything below is in viewBox units, and the band's aspect ratio is set
      from the same numbers — so the drawn shape is width-independent. */
   const sagitta = VB_W * sagittaRatio;
-  const height = sagitta * 2.4; // room for the full swing either side of flat
+  const height = sagitta * BAND_FACTOR;
   const edge = height / 2;
   const apexOffset = sagitta * bend;
   // a quadratic's apex sits halfway between its endpoints and its control
@@ -114,9 +139,19 @@ export function BendingSeam({
       style={{
         aspectRatio: String(VB_W / height),
         background: below,
-        // hairline insurance against subpixel gaps at the section joins
-        marginTop: -1,
-        marginBottom: -1,
+        /* Margin percentages resolve against the containing block's WIDTH, and
+           the band is that width — so half the band's height is exactly
+           (sagittaRatio × BAND_FACTOR / 2) of it, at any size. */
+        ...(collapse
+          ? {
+              marginTop: `-${((sagittaRatio * BAND_FACTOR) / 2) * 100}%`,
+              marginBottom: `-${((sagittaRatio * BAND_FACTOR) / 2) * 100}%`,
+              // paints over the section that follows, which comes later in the
+              // DOM and would otherwise cover the downward bulge with its own
+              // background
+              zIndex: 1,
+            }
+          : { marginTop: -1, marginBottom: -1 }),
       }}
     >
       <svg

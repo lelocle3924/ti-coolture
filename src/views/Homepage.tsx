@@ -434,7 +434,15 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   const twoLanes = useMediaQuery("(min-width: 768px)");
 
   return (
-    <section id="dong-store" className="bg-brand pb-16 pt-10 text-paper md:pb-24 md:pt-12">
+    <section
+      id="dong-store"
+      /* pb is max(4rem, 7.875%) — 7.875% is half the collapsed seam band, so
+         the band never reaches the price note; the 4rem floor keeps a sane gap
+         on a phone, where half a band is only ~30px. It reads larger than the
+         old md:pb-24, but the band no longer adds its own ~113px on top, so
+         the gap from the note down to the seam roughly halves. */
+      className="bg-brand pb-[max(4rem,7.875%)] pt-10 text-paper md:pt-12"
+    >
       {/* the title *is* the link through to the catalogue */}
       <div className="px-5 text-center md:px-10">
         <Link
@@ -498,7 +506,7 @@ function HowMarks() {
     <>
       <RibbonLoop
         className="pointer-events-none absolute bottom-0 left-[-19%] z-0 w-[32%] max-w-[30rem]"
-        style={{ transform: "translateY(58.9%) scaleX(-1)" }}
+        style={{ transform: "translateY(40%) scaleX(-1)" }}
         ribbon="var(--color-wave)"
         dot="var(--color-brand)"
         blink
@@ -623,7 +631,7 @@ function HowItWorks() {
            of the width at 486:266, so it stands 0.25/1.827 = 13.7% of the
            width tall. In the lab the crest simply follows the cards in normal
            flow; here it is absolute, so the padding has to stand in for it. */
-        className="relative overflow-hidden bg-paper pb-[14%] pt-11 text-ink md:pt-14"
+        className="relative overflow-hidden bg-paper pb-[14%] pt-[max(2.75rem,7.875%)] text-ink"
       >
         <HowMarks />
         <div className="relative z-10">
@@ -661,13 +669,13 @@ function HowItWorks() {
             crest and the ribbon occupy it — so there is nothing left for the
             lower band to do. Top-align instead, with the lab's own head
             clearance, and the seam meets the title the same way in both.
-            The clearance cannot go all the way down to the lab's 55px,
-            because the lab has no floating header and this page does: the
-            pill sits at y 20-93px and is px-sized, not dvh-sized, so the pad
-            has to be px-sized too or it collides on short screens. 6.5rem
-            clears the pill's foot by 11px. Seam to title lands at ~104px
-            against the 241px it was. */}
-        <div className="sticky top-0 flex h-[100dvh] flex-col justify-start overflow-hidden pt-[6.5rem]">
+            The clearance answers to two things at once, so it is a max().
+            6.5rem clears the floating header, which sits at y 20-93px in px
+            rather than dvh and so cannot be expressed as a percentage. 7.875%
+            is half the collapsed seam band, which the title has to stay below
+            or the downward bulge runs under it. Whichever is larger wins:
+            the header governs up to ~1320px, the band above that. */}
+        <div className="sticky top-0 flex h-[100dvh] flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
           {/* Inside the pane, not at the foot of the tall wrapper.
 
               Team 04/09: while the page is held, the straight violet edge of
@@ -1227,6 +1235,7 @@ export default function Homepage() {
           sagittaRatio={0.075}
           above="var(--color-brand)"
           below="var(--color-paper)"
+          collapse
         />
         <HowItWorks />
 
