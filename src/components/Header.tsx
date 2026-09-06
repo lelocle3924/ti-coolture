@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ArrowUpRight, Menu, Search, X } from "lucide-react";
+import { ArrowUpRight, Heart, Menu, Search, X } from "lucide-react";
 import Brandmark from "./Brandmark";
 import { useAutoHideChrome } from "../lib/useAutoHideChrome";
 import { useSurfaceTone } from "../lib/useSurfaceTone";
 import { fetchProducts } from "../lib/dbService";
+import { useSavedProducts } from "../lib/useSavedProducts";
 import type { Product } from "../types";
 
 /**
@@ -168,6 +169,7 @@ export default function Header() {
 
   const pillRef = useRef<HTMLDivElement>(null);
   const tone = TONE[useSurfaceTone(pillRef)];
+  const saved = useSavedProducts();
 
   useEffect(() => {
     setMenuOpen(false);
@@ -223,6 +225,41 @@ export default function Header() {
               <Search className="h-[18px] w-[18px]" />
             </button>
 
+            {/* Team feedback (07/09): "trên nav bar chưa có chỗ để vào. Chọn 1
+                icon hợp lý để dẫn đến trang wishlist."
+
+                A heart, because the control that puts something on the list is
+                already a heart on every product card — the mark that saves and
+                the mark that leads to what you saved should be the same mark,
+                or the visitor has to learn two.
+
+                The count is on it, not beside it: a saved list with nothing in
+                it needs no number, and one with something in it is the reason
+                you would press this at all. */}
+            <NavLink
+              to="/wishlist"
+              aria-label={
+                saved.ids.length > 0
+                  ? `Đã lưu — ${saved.ids.length} sản phẩm`
+                  : "Đã lưu"
+              }
+              className={({ isActive }) =>
+                `relative grid h-11 w-11 place-items-center rounded-full transition-colors duration-500 ${
+                  isActive ? tone.active : tone.icon
+                }`
+              }
+            >
+              <Heart className="h-[18px] w-[18px]" />
+              {saved.ready && saved.ids.length > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-wave px-1 text-[10px] font-black tabular-nums text-ink"
+                >
+                  {saved.ids.length > 9 ? "9+" : saved.ids.length}
+                </span>
+              )}
+            </NavLink>
+
             <Link
               to="/open-shop"
               className="hidden items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-paper transition-transform duration-300 hover:scale-105 sm:inline-flex"
@@ -249,12 +286,28 @@ export default function Header() {
                 key={link.to}
                 to={link.to}
                 onClick={() => setMenuOpen(false)}
-                className="flex min-h-16 items-center justify-between border-b border-white/12 text-paper last:border-b-0"
+                className="flex min-h-16 items-center justify-between border-b border-white/12 text-paper"
               >
                 <span className="display text-3xl normal-case">{link.label}</span>
                 <ArrowUpRight className="h-5 w-5 text-wave" />
               </Link>
             ))}
+            <Link
+              to="/wishlist"
+              onClick={() => setMenuOpen(false)}
+              className="flex min-h-16 items-center justify-between text-paper"
+            >
+              <span className="display text-3xl normal-case">
+                Đã lưu
+                {saved.ready && saved.ids.length > 0 && (
+                  <span className="ml-3 align-middle text-base text-wave">
+                    {saved.ids.length}
+                  </span>
+                )}
+              </span>
+              <ArrowUpRight className="h-5 w-5 text-wave" />
+            </Link>
+
             <Link
               to="/open-shop"
               onClick={() => setMenuOpen(false)}
