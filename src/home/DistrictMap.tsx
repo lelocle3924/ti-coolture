@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useDragTrack } from "../lib/useDragTrack";
-import { islandBlobs, planFor, routeTrail } from "./homeData";
+import { islandBlobs, planFor } from "./homeData";
 import "./home.css";
 import type { TouristRoute } from "../types";
 
@@ -38,7 +38,6 @@ function DistrictSlide({
   onPin: (stopId: string) => void;
 }) {
   const island = islandBlobs(route.stops);
-  const trail = routeTrail(route.stops);
   const clipId = `ti-island-clip-${route.id}`;
 
   return (
@@ -103,9 +102,11 @@ function DistrictSlide({
               ))}
               {/* The waterway. It used to be the loudest mark on the map —
                   stroke 20, full brand violet, opacity .85, running out past
-                  both edges of the island. It is a geographic hint, not the
-                  route, so it now sits inside the island with the other
-                  terrain and stays under the trail. */}
+                  both edges of the island. It is a geographic hint, not a
+                  route, so it sits inside the island with the rest of the
+                  terrain. It is what is left after the connecting line went
+                  (07/09) and it is deliberately kept: it joins nothing, it
+                  just stops the island reading as a flat teal shape. */}
               <path
                 d={plan.axis}
                 fill="none"
@@ -116,22 +117,6 @@ function DistrictSlide({
               />
             </g>
 
-            {/* The route itself, threaded through the stops in order. Keyed on
-                the district so the draw restarts when the carousel settles on
-                a new one; pathLength="1" normalises the dash maths so one
-                keyframe works for every route regardless of its real length. */}
-            <path
-              key={route.id}
-              d={trail}
-              fill="none"
-              stroke="var(--color-brand)"
-              strokeWidth="13"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pathLength={1}
-              className="ti-trail"
-              opacity="0.9"
-            />
           </svg>
 
           {/* Teardrop pins, tip on the coordinate. Each pin is its own control
@@ -151,12 +136,17 @@ function DistrictSlide({
               key={stop.id}
               /* ti-pin carries the -50%/-100% offset in its keyframes, so the
                  translate utilities would be overridden mid-animation; the
-                 class holds both the offset and the settle. Delay walks with
-                 the trail, which takes 1.7s to cross all four stops. */
+                 class holds both the offset and the settle.
+
+                 The stagger used to walk with the trail, 0.34s a pin over the
+                 line's 1.7s crossing. With no line to follow there is nothing
+                 to keep pace with, and a queue of pins arriving over a second
+                 and a third is just slow — so they arrive as a group now,
+                 90ms apart. */
               style={{
                 left: `${stop.x}%`,
                 top: `${stop.y}%`,
-                animationDelay: `${(0.3 + i * 0.34).toFixed(2)}s`,
+                animationDelay: `${(0.12 + i * 0.09).toFixed(2)}s`,
               }}
               className="ti-pin absolute z-10 block"
             >
