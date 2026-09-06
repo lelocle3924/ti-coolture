@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/search",
+    n: "05",
+    title: "Thanh tìm kiếm — ba đề xuất chuyển động",
+    body: "Nở ra từ nút, kéo ra từ nav, hoặc modal làm cho tử tế. Bấm thử được cả ba.",
+    meta: "3 phương án · toàn site",
+  },
 ];
 
 export default function LabIndex() {

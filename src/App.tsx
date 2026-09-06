@@ -16,6 +16,7 @@ import LabIndex from "./lab/LabIndex";
 import CollectionStudies from "./lab/CollectionStudies";
 import MapStudies from "./lab/MapStudies";
 import MotionStudies from "./lab/MotionStudies";
+import SearchMotionStudies from "./lab/SearchMotionStudies";
 import Footer from "./components/Footer";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
@@ -155,6 +156,7 @@ function SiteShell() {
           <Route path="/lab/collections" element={<CollectionStudies />} />
           <Route path="/lab/map" element={<MapStudies />} />
           <Route path="/lab/motion" element={<MotionStudies />} />
+          <Route path="/lab/search" element={<SearchMotionStudies />} />
 
           {/* Renamed 26/08. Kept as redirects so anything already shared or
               bookmarked still lands, rather than bouncing to the homepage. */}

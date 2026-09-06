@@ -58,6 +58,52 @@
   animation: lab-spring-contents 380ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
 }
 
+/* ── search motion (three proposals) ──────────────────────────────────────
+   The numbers printed under each study on /lab/search are these numbers. */
+
+/* A · the panel grows out of the magnifier. The origin is set inline from a
+   measurement, because it depends on where the button lands at that width. */
+@keyframes lab-search-grow {
+  from { opacity: 0; transform: scale(0.72); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.lab-search-grow {
+  animation: lab-search-grow 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* C · the panel drops a short distance on the brand spring. 22px, because the
+   overshoot in --ease-brand adds its own travel — a longer drop with a spring
+   on top reads as two separate movements. */
+@keyframes lab-search-drop {
+  from { opacity: 0; transform: translateY(-22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lab-search-drop {
+  animation: lab-search-drop 420ms var(--ease-brand) both;
+}
+
+/* The scrim ramps its blur rather than arriving frosted. Animating
+   backdrop-filter is the one expensive property here and it is deliberate:
+   it is a single full-bleed layer, and the alternative — appearing already
+   blurred — is exactly the "no transition at all" the feedback names. */
+@keyframes lab-search-scrim {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(12px); }
+}
+.lab-search-scrim {
+  animation: lab-search-scrim 300ms ease-out both;
+}
+
+/* Results arrive as a group, not as a wall. 45ms is a stagger you feel and do
+   not wait for; past ~70ms the last row starts reading as late. */
+@keyframes lab-search-hit {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lab-search-hit {
+  animation: lab-search-hit 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ── motion studies ──────────────────────────────────────────────────────── */
 
 /* Before/after demos replay on demand; restarting an animation needs the node
@@ -113,6 +159,10 @@
     transition: none;
   }
   .lab-spring-contents,
+  .lab-search-grow,
+  .lab-search-drop,
+  .lab-search-scrim,
+  .lab-search-hit,
   .lab-demo-before,
   .lab-demo-after,
   .lab-stagger > *,

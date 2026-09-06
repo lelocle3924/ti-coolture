@@ -62,6 +62,10 @@ export function LabFrame({
   meta,
   children,
 }: {
+  /* Declared, not inherited: without @types/react there is no JSX.IntrinsicAttributes
+     to carry `key`, so a mapped <LabFrame key=…> is a type error until the prop
+     exists. Same reason the file header gives for importing the React namespace. */
+  key?: string;
   label: string;
   meta?: string;
   children: React.ReactNode;
