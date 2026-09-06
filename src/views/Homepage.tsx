@@ -501,6 +501,11 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
    and a translate percentage resolves against the element's own box. Same
    picture, in a box of any height. */
 
+/* The seam's depth, as a fraction of its width. Both modes read it, and the
+   sections' head/foot padding is derived from it (7.875% = half a band at
+   BAND_FACTOR 2.1), so it lives in one place. */
+const SEAM_SAGITTA = 0.075;
+
 function HowMarks() {
   return (
     <>
@@ -611,7 +616,7 @@ function HowItWorks() {
   );
 
   const header = (
-    <div className="relative z-10 px-5 text-center md:px-0">
+    <div className="relative z-10 px-5 pt-5 text-center md:px-0">
       <h2 className="display text-[clamp(1.75rem,min(5.6vw,7.5dvh),4.5rem)] normal-case leading-none text-ink">
         Cách đặt hàng
       </h2>
@@ -624,6 +629,13 @@ function HowItWorks() {
      clear gap to the fan rather than the pinned layout's old tuck. */
   if (!pinned) {
     return (
+      <>
+      <BendingSeam
+        sagittaRatio={SEAM_SAGITTA}
+        above="var(--color-brand)"
+        below="var(--color-paper)"
+        collapse
+      />
       <section
         id="dong-how"
         data-surface="light"
@@ -639,12 +651,24 @@ function HowItWorks() {
           <div className="mt-8">{fan}</div>
         </div>
       </section>
+      </>
     );
   }
 
   return (
     <section id="dong-how" data-surface="light" className="bg-paper text-ink">
       <div ref={wrapRef} style={{ height: runHeight }}>
+        {/* Sticks at -half a band, so its flat line parks on the pane's top
+            edge and the distance down to the title stays exactly the pane's
+            head padding for the whole lock (06/09). A child of the wrapper, so
+            it starts sticking when the pane does and lets go when it does. */}
+        <BendingSeam
+          sagittaRatio={SEAM_SAGITTA}
+          above="var(--color-brand)"
+          below="var(--color-paper)"
+          collapse
+          stick
+        />
         {/* Everything in this pane is sized from dvh, not rem. Pinned to the
             viewport height with rem-sized content, it fitted a 900px MacBook
             and clipped its last row on every shorter Windows laptop — which is
@@ -1226,17 +1250,8 @@ export default function Homepage() {
         )}
 
         {/* violet → white */}
-        {/* The seam into "Cách đặt hàng" bends rather than fades (31/08,
-            proven at /lab/how). It replaces the gradient that used to sit
-            here: while it is low on screen the white below bulges up into the
-            violet, it flattens across the middle of the viewport, and by the
-            top the violet has bulged down into the white. */}
-        <BendingSeam
-          sagittaRatio={0.075}
-          above="var(--color-brand)"
-          below="var(--color-paper)"
-          collapse
-        />
+        {/* The seam that used to sit here is inside HowItWorks now: it has to
+            stick with the pin, and only a child of the pinned wrapper can. */}
         <HowItWorks />
 
         {/* white → violet. The guidelines also offer a chapter-front device
