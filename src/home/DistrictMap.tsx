@@ -156,6 +156,7 @@ export default function DistrictMap({
   onOpenRoute,
   onPin,
   heading = "Khám phá Sài Gòn",
+  variant = "section",
 }: {
   routes: TouristRoute[];
   /** The island was tapped — open this district. */
@@ -163,8 +164,21 @@ export default function DistrictMap({
   /** A single pin was tapped — open this stop of this district. */
   onPin: (routeId: string, stopId: string) => void;
   heading?: string;
+  /**
+   * "section" is the homepage: the map owns a band of the page, brings its
+   * own deeper-violet ground and titles itself.
+   *
+   * "inline" is /discover (07/09), where the map sits *inside* the route
+   * hero rather than after it. It takes no ground of its own — so the violet
+   * runs unbroken from the top of the page through the map and into the wave
+   * seam — and its title drops to a label, because the page already has an
+   * h1 two lines above it and two display headings stacked is the noise the
+   * "hài hoà hơn" note is about.
+   */
+  variant?: "section" | "inline";
 }) {
   const track = useDragTrack(routes.length);
+  const inline = variant === "inline";
 
   const route = routes[track.page];
   const plan = route ? planFor(route.id) : null;
@@ -181,11 +195,22 @@ export default function DistrictMap({
        heading clamp tops out at 3.5rem instead of 5rem, and the gaps between
        heading, label, map and dots go from 4/10/8 to 2/5/5. That plus the
        height-led island is what brings the section under one screen. */
-    <section id="dong-map" className="bg-brand-deep py-10 text-paper md:py-14">
+    <section
+      id="dong-map"
+      className={
+        inline
+          ? "pb-2 pt-4 text-paper"
+          : "bg-brand-deep py-10 text-paper md:py-14"
+      }
+    >
       <div className="px-5 text-center md:px-10">
-        <h2 className="display text-[clamp(1.75rem,4.6vw,3.5rem)] normal-case leading-[1.15] text-wave">
-          {heading}
-        </h2>
+        {inline ? (
+          <p className="label text-wave">{heading}</p>
+        ) : (
+          <h2 className="display text-[clamp(1.75rem,4.6vw,3.5rem)] normal-case leading-[1.15] text-wave">
+            {heading}
+          </h2>
+        )}
         {/* the label crossfades on the key, so the district name never cuts */}
         <p
           key={route.id}
@@ -195,7 +220,14 @@ export default function DistrictMap({
         </p>
       </div>
 
-      <div className="relative mt-5 flex items-center gap-2 px-2 md:gap-5 md:px-8">
+      {/* Inline, the map shares the hero's column, so its arrows come in to
+          sit beside the island instead of being stranded on the far edges of
+          the viewport with the page's brand shapes behind them. */}
+      <div
+        className={`relative flex items-center gap-2 md:gap-5 ${
+          inline ? "mx-auto mt-3 max-w-4xl px-2 md:px-4" : "mt-5 px-2 md:px-8"
+        }`}
+      >
         <button
           onClick={track.prev}
           disabled={track.page === 0}
