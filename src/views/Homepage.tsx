@@ -384,46 +384,41 @@ function StoreTile({
 
 function StoreLane({
   products,
-  direction,
-  duration,
   onOpen,
 }: {
   products: Product[];
-  direction: "left" | "right";
-  duration: string;
   onOpen: (p: Product) => void;
 }) {
-  const reduced = useReducedMotion();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current && scrollRef.current.children.length > 1) {
+      const el = scrollRef.current;
+      const firstProductNode = el.children[1] as HTMLElement;
+      el.scrollLeft = firstProductNode.offsetLeft - el.clientWidth / 2 + firstProductNode.clientWidth / 2;
+    }
+  }, [products]);
+
   if (products.length === 0) return null;
 
-  // Reduced motion turns the lane into an ordinary swipeable scroll-snap row.
-  if (reduced) {
-    return (
-      <div className="lab-snap-x lab-no-scrollbar flex overflow-x-auto px-5 md:px-10">
-        {products.map((p, i) => (
-          <StoreTile key={p.id} product={p} onOpen={onOpen} index={i} />
-        ))}
-      </div>
-    );
-  }
+  // Move last product to front
+  const loopProducts = [products[products.length - 1], ...products.slice(0, -1)];
 
   return (
-    <div className="lab-marquee-track overflow-hidden">
-      <div
-        className={`lab-marquee lab-marquee--${direction}`}
-        style={{ ["--lab-marquee-duration" as string]: duration }}
-      >
-        {[0, 1].map((copy) => (
-          <div key={copy} className="flex" aria-hidden={copy === 1}>
-            {products.map((p, i) => (
-              <StoreTile key={`${copy}-${p.id}`} product={p} onOpen={onOpen} index={i} />
-            ))}
-          </div>
-        ))}
-      </div>
+    <div
+      ref={scrollRef}
+      className="ti-rail lab-no-scrollbar flex overflow-x-auto"
+      style={{ scrollSnapType: "x mandatory" }}
+    >
+      {loopProducts.map((p, i) => (
+        <div key={`${i}-${p.id}`} className="shrink-0 px-1 md:px-10" style={{ scrollSnapAlign: "center" }}>
+          <StoreTile product={p} onOpen={onOpen} index={i} />
+        </div>
+      ))}
     </div>
   );
 }
+
 
 function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
   const half = Math.ceil(products.length / 2);
