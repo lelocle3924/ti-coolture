@@ -658,17 +658,6 @@ function HowItWorks() {
   return (
     <section id="dong-how" data-surface="light" className="bg-paper text-ink">
       <div ref={wrapRef} style={{ height: runHeight }}>
-        {/* Sticks at -half a band, so its flat line parks on the pane's top
-            edge and the distance down to the title stays exactly the pane's
-            head padding for the whole lock (06/09). A child of the wrapper, so
-            it starts sticking when the pane does and lets go when it does. */}
-        <BendingSeam
-          sagittaRatio={SEAM_SAGITTA}
-          above="var(--color-brand)"
-          below="var(--color-paper)"
-          collapse
-          stick
-        />
         {/* Everything in this pane is sized from dvh, not rem. Pinned to the
             viewport height with rem-sized content, it fitted a 900px MacBook
             and clipped its last row on every shorter Windows laptop — which is
@@ -699,7 +688,39 @@ function HowItWorks() {
             is half the collapsed seam band, which the title has to stay below
             or the downward bulge runs under it. Whichever is larger wins:
             the header governs up to ~1320px, the band above that. */}
-        <div className="sticky top-0 flex h-[100dvh] flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
+        {/* flow-root, so the pane is its own block formatting context.
+            Without it the seam's negative top margin collapses INTO the pane
+            instead of lifting the seam above it, and the whole composition
+            drops half a band. The pane used to get that context for free from
+            overflow-hidden; that has moved to the inner element, so the pane
+            has to ask for it. */}
+        <div className="sticky top-0 h-[100dvh] flow-root">
+          {/* The seam belongs to the pane, not to the wrapper.
+
+              It was a sibling of the pane, sticking on its own at -half a
+              band. That held the gap during the lock, but the two had
+              different release points: the pane lets go when the wrapper's
+              foot reaches the bottom of the screen, while the seam's own
+              sticky range ran on almost to the foot of the wrapper. So the
+              cards scrolled away and the violet edge of "Chưa biết mua gì?"
+              came up while the seam was still nailed to the top of the screen
+              (07/09).
+
+              As a child it cannot drift: it sticks when the pane sticks, and
+              scrolls away with it at exactly the same moment.
+
+              Which is why the pane is now two elements. The overflow-hidden
+              has to stay — it is what crops the ribbon's overhang at the foot
+              — but it would also crop the seam's upper half, and that half is
+              where the white bulges up into the violet on the way in. So the
+              clip moves to the inner element and the seam sits outside it. */}
+          <BendingSeam
+            sagittaRatio={SEAM_SAGITTA}
+            above="var(--color-brand)"
+            below="var(--color-paper)"
+            collapse
+          />
+          <div className="flex h-full flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
           {/* Inside the pane, not at the foot of the tall wrapper.
 
               Team 04/09: while the page is held, the straight violet edge of
@@ -716,7 +737,8 @@ function HowItWorks() {
               over the title the way the reference does. The 31/08 note asks
               for the opposite — "đừng quá sát với các thẻ" — so the tuck is
               gone and the heading gets real clearance. */}
-          <div className="relative z-10 mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
+            <div className="relative z-10 mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
+          </div>
         </div>
       </div>
     </section>

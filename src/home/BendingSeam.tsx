@@ -72,7 +72,6 @@ export function BendingSeam({
   below,
   onMeasure,
   collapse = false,
-  stick = false,
 }: {
   /** Deepest bend as a fraction of the seam's own width. */
   sagittaRatio: number;
@@ -93,24 +92,6 @@ export function BendingSeam({
    * both sides, 7.875% being exactly half a band.
    */
   collapse?: boolean;
-  /**
-   * Hold the seam at the top of the screen instead of letting it scroll away.
-   *
-   * Team 06/09: approaching the section the gap between the seam and the title
-   * is right, but the moment the page locks the seam slides off the top and
-   * the gap is gone. It slides away because it sits in normal flow ABOVE the
-   * pinned pane, so the pane sticks and the seam does not.
-   *
-   * Sticking it with `top: -half` parks its flat line on the pane's own top
-   * edge, which is where it already was when the lock began — so the distance
-   * down to the title is exactly the pane's head padding, held for the whole
-   * lock. It starts sticking at the same scroll position the pane does, and
-   * because it is a child of the pinned wrapper it lets go when the pin does.
-   *
-   * The offset is measured rather than written in vw: vw counts the scrollbar
-   * and the band does not, which would leave the flat line a pixel or so off.
-   */
-  stick?: boolean;
   /** Colour of the section above — this is what the path paints. */
   above: string;
   /** Colour of the section below — the band's own ground. */
@@ -119,19 +100,6 @@ export function BendingSeam({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const bend = useSeamBend(ref);
-  const [widthPx, setWidthPx] = useState(0);
-
-  useEffect(() => {
-    if (!stick) return;
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() =>
-      setWidthPx(el.getBoundingClientRect().width)
-    );
-    observer.observe(el);
-    setWidthPx(el.getBoundingClientRect().width);
-    return () => observer.disconnect();
-  }, [stick]);
 
   /* Everything below is in viewBox units, and the band's aspect ratio is set
      from the same numbers — so the drawn shape is width-independent. */
@@ -174,13 +142,6 @@ export function BendingSeam({
         /* Margin percentages resolve against the containing block's WIDTH, and
            the band is that width — so half the band's height is exactly
            (sagittaRatio × BAND_FACTOR / 2) of it, at any size. */
-        ...(stick
-          ? {
-              position: "sticky" as const,
-              // half the band, so the flat line parks on the pane's top edge
-              top: -((widthPx * sagittaRatio * BAND_FACTOR) / 2),
-            }
-          : null),
         ...(collapse
           ? {
               marginTop: `-${((sagittaRatio * BAND_FACTOR) / 2) * 100}%`,
