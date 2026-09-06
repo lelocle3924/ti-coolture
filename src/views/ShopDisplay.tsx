@@ -132,20 +132,58 @@ export default function ShopDisplay() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-brand pb-24 text-paper">
+    /* The same move /products, /stores and /discover already make: the shell
+       clears the floating nav pill with pt-24, and a page whose first element
+       is a photograph has to give that back or the pill sits on a strip of the
+       shell's own ink — the black bar above the cover in the 07/09 feedback.
+       The cover runs to y=0 now and the pill floats on the photograph, which
+       is what it is built to do. */
+    <div className="min-h-[100dvh] -mt-24 bg-brand pb-24 text-paper md:-mt-28">
       {/* ── the opening frame ─────────────────────────────────────────── */}
-      <header className="relative">
-        <div className="relative aspect-[3/2] w-full overflow-hidden bg-ink md:aspect-[21/9]">
+      <header className="relative" data-surface="dark">
+        {/* 5:4 on phones rather than the 3:2 of UX-TASKS 6.1. That spec was
+            written when a black band held the nav and the whole cover was
+            free; with the pill and the back link now floating on the
+            photograph, 3:2 leaves 260px at 390 wide and the shop name lands
+            6px under the back link — it fits today and breaks on the first
+            name that wraps. 5:4 buys 52px and costs 17% of the source's
+            width, which is the cheapest crop that makes the frame breathe.
+            Desktop is untouched: 21:9 is tall enough to carry both. */}
+        <div className="relative aspect-[5/4] w-full overflow-hidden bg-brand-deep md:aspect-[21/9]">
           <img
             src={store.coverUrl}
             alt={`Ảnh bìa của ${store.name}`}
             className="h-full w-full object-cover"
           />
-          {/* The name sits on this, so the scrim has to hold contrast over a
-              light cover, not just tint it. */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/92 via-ink/55 to-ink/10" />
 
-          <div className="absolute inset-x-0 bottom-0 p-5 md:p-10">
+          {/* Colour, per the same note. The scrim used to be three stops of
+              near-black over the whole frame, which left every cover reading
+              as a muddy grey plate with no relation to the violet page under
+              it — and the team have already ruled black grounds out once
+              (26/08, the district map).
+
+              So the scrim is the palette's own deep violet, and it resolves to
+              exactly --color-brand at the bottom edge: the photograph does not
+              stop at a hard line, it becomes the page. Above 55% it is gone
+              altogether, so the top half of the cover is a photograph again.
+
+              Two layers rather than one because they do different jobs — the
+              lower one carries the name, the short upper one gives the nav
+              pill something to sit on over a bright cover. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(to top, var(--color-brand) 0%, color-mix(in srgb, var(--color-brand-deep) 78%, transparent) 26%, transparent 55%)",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-deep/55 to-transparent"
+          />
+
+          <div className="absolute inset-x-0 bottom-0 p-5 pb-7 md:p-10 md:pb-12">
             <div className="mx-auto flex max-w-6xl items-end gap-4">
               {store.logoUrl && (
                 <img
@@ -166,9 +204,11 @@ export default function ShopDisplay() {
             </div>
           </div>
 
+          {/* Below the pill, not beside it: the cover starts at y=0 now, so
+              top-5 would put this under the nav. */}
           <Link
             to="/stores"
-            className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-ink/40 px-3 py-1.5 text-[11px] text-paper backdrop-blur-md transition-colors hover:border-wave hover:text-wave md:left-10"
+            className="absolute left-5 top-24 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-brand-deep/45 px-3 py-1.5 text-[11px] text-paper backdrop-blur-md transition-colors hover:border-wave hover:bg-brand-deep/70 hover:text-wave md:left-10 md:top-28"
           >
             <ArrowLeft className="h-3 w-3" /> Danh bạ shop
           </Link>
@@ -274,7 +314,10 @@ export default function ShopDisplay() {
       </main>
 
       {/* ── docked contact rail — every width ───────────────────────────── */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/20 bg-ink/90 backdrop-blur-md">
+      {/* The rail was a second black bar under the first (bg-ink/90). It is
+          the palette's deep violet now, so the page has one colour family from
+          the cover down to the bottom edge. */}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/20 bg-brand-deep/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3 md:px-10">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs text-white/70">{store.name}</p>
