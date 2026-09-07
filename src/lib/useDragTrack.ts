@@ -191,15 +191,30 @@ export function useDragTrack(pageCount: number, options: DragTrackOptions = {}):
       let moved = false;
       movedRef.current = false;
 
-      try {
-        el.setPointerCapture(e.pointerId);
-      } catch {
-        /* capture is a nicety; tracking still works without it */
-      }
-
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - startX;
         if (!moved && Math.abs(dx) < 8) return; // hysteresis before committing
+
+        if (!moved) {
+          /* Capture is taken here, at the moment the gesture becomes a drag,
+             and never on the press itself.
+
+             Per the Pointer Events spec a captured pointer dispatches its
+             `click` at the capture element, so capturing on pointerdown sent
+             every click inside the viewport to this container instead of to
+             the button that was pressed. Nothing inside a track could be
+             opened: not a collection card on the homepage, not a pin or an
+             island on the district map. Deferring capture past the 8px
+             threshold leaves a tap as an ordinary click on its own target,
+             while a real drag still gets capture and still has its trailing
+             click swallowed by the didDrag() guard callers already use. */
+          try {
+            el.setPointerCapture(ev.pointerId);
+          } catch {
+            /* capture is a nicety; moves still bubble here without it */
+          }
+        }
+
         moved = true;
         movedRef.current = true;
 

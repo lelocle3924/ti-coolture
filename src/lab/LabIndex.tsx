@@ -75,6 +75,13 @@ const STUDIES = [
     body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
     meta: "3 phương án · /stores/[slug]",
   },
+  {
+    to: "/lab/discover",
+    n: "09",
+    title: "Khám phá — ba hướng, không cái nào cong",
+    body: "Sóng bị thay bằng cạnh thẳng, và ba lập trường khác nhau về chỗ nối nền tối với nền giấy.",
+    meta: "3 hướng · /discover",
+  },
 ];
 
 export default function LabIndex() {

@@ -16,6 +16,7 @@ import OpenShop from "./views/OpenShop";
 import LabIndex from "./lab/LabIndex";
 import HeartStudies from "./lab/HeartStudies";
 import ShopPaletteStudies from "./lab/ShopPaletteStudies";
+import DiscoverStudies from "./lab/DiscoverStudies";
 import CollectionStudies from "./lab/CollectionStudies";
 import MapStudies from "./lab/MapStudies";
 import MotionStudies from "./lab/MotionStudies";
@@ -161,6 +162,7 @@ function SiteShell() {
           <Route path="/lab" element={<LabIndex />} />
           <Route path="/lab/heart" element={<HeartStudies />} />
           <Route path="/lab/shop-colour" element={<ShopPaletteStudies />} />
+          <Route path="/lab/discover" element={<DiscoverStudies />} />
           <Route path="/lab/collections" element={<CollectionStudies />} />
           <Route path="/lab/map" element={<MapStudies />} />
           <Route path="/lab/motion" element={<MotionStudies />} />
