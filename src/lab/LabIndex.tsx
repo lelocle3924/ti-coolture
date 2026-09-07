@@ -24,73 +24,73 @@ const STUDIES = [
     meta: "2 hướng · trang chủ",
   },
   {
-    to: "/lab/map",
+    to: "/lab/how",
+    /* 06, not 04: /lab/hero (lab/hero-aspect-studies) takes 04 and /lab/store
+       (lab/store-mobile-studies) takes 05. Numbering past them here keeps the
+       three lab branches from colliding on the same row. */
     n: "02",
-    title: "Bản đồ — ba phương án",
-    body: "Băng, Kề, Chồng. Cả ba vừa một màn hình, không nền đen, không câu hướng dẫn.",
-    meta: "3 phương án · trang chủ + /discover",
-  },
-  {
-    to: "/lab/motion",
-    n: "03",
-    title: "Chuyển động — đề xuất theo component",
-    body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
-    meta: "12 đề xuất · toàn site",
-  },
-  {
-    to: "/lab/hidden-gem",
-    n: "05",
-    title: "Viên ngọc ẩn — thẻ và tab ngôi sao",
-    body: "Ba cách để hai thứ đọc ra một vật: một thân, một gốc, hoặc một con dấu.",
-    meta: "3 phương án · trang chủ",
-  },
-  {
-    to: "/lab/search",
-    n: "05",
-    title: "Thanh tìm kiếm — ba đề xuất chuyển động",
-    body: "Nở ra từ nút, kéo ra từ nav, hoặc modal làm cho tử tế. Bấm thử được cả ba.",
-    meta: "3 phương án · toàn site",
+    title: "Cách đặt hàng — hai đường ranh giới",
+    body: "Ranh giới trên tự lộn từ vồng lên → thẳng → vồng xuống khi cuộn. Dưới là sóng brand nhô lên, không animation.",
+    meta: "1 phương án · trang chủ",
   },
   {
     to: "/lab/store",
     /* 05, not 04: /lab/hero on lab/hero-aspect-studies takes 04, and this
        study's own eyebrow already reads 05. Leaving both at 04 would collide
        the moment the two lab branches meet. */
-    n: "05",
+    n: "03",
     title: "What's in store — băng sản phẩm trên điện thoại",
     body: "Băng để đẩy, lưới để quét, hay từng món một. Khác nhau ở mô hình điều hướng, không phải ở con số.",
     meta: "3 phương án · trang chủ",
   },
   {
+    to: "/lab/hidden-gem",
+    n: "04",
+    title: "Viên ngọc ẩn — thẻ và tab ngôi sao",
+    body: "Ba cách để hai thứ đọc ra một vật: một thân, một gốc, hoặc một con dấu.",
+    meta: "3 phương án · trang chủ",
+  },
+  {
     to: "/lab/heart",
-    n: "07",
+    n: "05",
     title: "Nút lưu — hiện hay đợi được hỏi",
     body: "Luôn hiện, hay chỉ hiện khi hover. Và trên điện thoại, nơi không có hover.",
     meta: "2 phương án · trang chủ + bộ sưu tập",
   },
   {
-    to: "/lab/shop-colour",
-    n: "08",
-    title: "Trang shop — ba cách phối màu",
-    body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
-    meta: "3 phương án · /stores/[slug]",
+    to: "/lab/search",
+    n: "06",
+    title: "Thanh tìm kiếm — ba đề xuất chuyển động",
+    body: "Nở ra từ nút, kéo ra từ nav, hoặc modal làm cho tử tế. Bấm thử được cả ba.",
+    meta: "3 phương án · toàn site",
+  },
+  {
+    to: "/lab/map",
+    n: "07",
+    title: "Bản đồ — ba phương án",
+    body: "Băng, Kề, Chồng. Cả ba vừa một màn hình, không nền đen, không câu hướng dẫn.",
+    meta: "3 phương án · trang chủ + /discover",
   },
   {
     to: "/lab/discover",
-    n: "09",
+    n: "08",
     title: "Khám phá — ba hướng, không cái nào cong",
     body: "Sóng bị thay bằng cạnh thẳng, và ba lập trường khác nhau về chỗ nối nền tối với nền giấy.",
     meta: "3 hướng · /discover",
   },
   {
-    to: "/lab/how",
-    /* 06, not 04: /lab/hero (lab/hero-aspect-studies) takes 04 and /lab/store
-       (lab/store-mobile-studies) takes 05. Numbering past them here keeps the
-       three lab branches from colliding on the same row. */
-    n: "06",
-    title: "Cách đặt hàng — hai đường ranh giới",
-    body: "Ranh giới trên tự lộn từ vồng lên → thẳng → vồng xuống khi cuộn. Dưới là sóng brand nhô lên, không animation.",
-    meta: "1 phương án · trang chủ",
+    to: "/lab/shop-colour",
+    n: "09",
+    title: "Trang shop — ba cách phối màu",
+    body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
+    meta: "3 phương án · /stores/[slug]",
+  },
+  {
+    to: "/lab/motion",
+    n: "10",
+    title: "Chuyển động — đề xuất theo component",
+    body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
+    meta: "12 đề xuất · toàn site",
   },
 ];
 
