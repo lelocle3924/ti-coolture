@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/heart",
+    n: "07",
+    title: "Nút lưu — hiện hay đợi được hỏi",
+    body: "Luôn hiện, hay chỉ hiện khi hover. Và trên điện thoại, nơi không có hover.",
+    meta: "2 phương án · trang chủ + bộ sưu tập",
+  },
 ];
 
 export default function LabIndex() {
