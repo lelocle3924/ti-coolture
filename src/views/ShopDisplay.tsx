@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, ExternalLink } from "lucide-react";
 import { fetchProductsStore, fetchStoreById, toggleFollowShop } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
 import { useAuth } from "../lib/useAuth";
+import SaveButton from "../components/SaveButton";
 import {
   Clamp,
   ContinuityLink,
@@ -55,27 +56,37 @@ function useShopPage(storeId: string | undefined) {
 function ShopCard({ product }: { product: Product }) {
   const ref = useRef<HTMLImageElement>(null);
   return (
-    <ContinuityLink
-      product={product}
-      to={`/products/${product.id}`}
-      imgRef={ref}
-      className="group block"
-    >
-      {/* square and rounded, matching What's in store on the homepage */}
-      <div className="aspect-square overflow-hidden rounded-[1.25rem] bg-white/10">
-        <img
-          ref={ref}
-          src={product.images?.[0]}
-          alt={product.name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      </div>
-      <h3 className="pt-2.5 text-sm leading-snug text-paper transition-colors group-hover:text-wave">
-        {product.name}
-      </h3>
-      <p className="pt-0.5 text-sm font-semibold text-wave">{formatPrice(product.price)}</p>
-    </ContinuityLink>
+    /* The link wraps the card, and the save control is its sibling rather
+       than its child: a button inside an anchor is invalid, and the anchor
+       swallows the press. Same shape /products settled on. */
+    <div className="group/tile group relative">
+      <ContinuityLink
+        product={product}
+        to={`/products/${product.id}`}
+        imgRef={ref}
+        className="block"
+      >
+        {/* square and rounded, matching What's in store on the homepage */}
+        <div className="relative aspect-square overflow-hidden rounded-[1.25rem] bg-white/10">
+          <img
+            ref={ref}
+            src={product.images?.[0]}
+            alt={product.name}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        </div>
+        <h3 className="pt-2.5 text-sm leading-snug text-paper transition-colors group-hover:text-wave">
+          {product.name}
+        </h3>
+        <p className="pt-0.5 text-sm font-semibold text-wave">{formatPrice(product.price)}</p>
+      </ContinuityLink>
+
+      {/* everywhere a product photograph is (07/09) */}
+      <span className="absolute right-1 top-1 z-10">
+        <SaveButton product={product} />
+      </span>
+    </div>
   );
 }
 

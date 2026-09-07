@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Heart, Check, ArrowRight, Search, X } from "lucide-react";
+import { Check, ArrowRight, Search, X } from "lucide-react";
 import { fetchProducts, triggerWebhook } from "../lib/dbService";
-import { useSavedProducts } from "../lib/useSavedProducts";
+import SaveButton from "../components/SaveButton";
 import { Product } from "../types";
 import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
@@ -46,11 +46,6 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [wishlistToast, setWishlistToast] = useState<{ show: boolean; name: string } | null>(null);
 
-  /* Which products are saved. This was a copy of the guest-row logic living
-     in this component; it is a hook now (07/09), because the nav's saved-items
-     button and /wishlist need exactly the same answer, and because a save made
-     here has to move the count up there in the same beat. */
-  const saved = useSavedProducts();
 
   // Flow B: zero-result demand note capture
   const [demandNote, setDemandNote] = useState("");
@@ -110,19 +105,6 @@ export default function Products() {
 
   const clearAllFilters = () => {
     setSearchParams(new URLSearchParams());
-  };
-
-  const handleToggleWishlist = async (e: React.MouseEvent, prod: Product) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const isNow = await saved.toggle(prod.id);
-    if (isNow) {
-      setWishlistToast({ show: true, name: prod.name });
-      setTimeout(() => {
-        setWishlistToast(null);
-      }, 2500);
-    }
   };
 
   const handleDemandSubmit = (e: React.FormEvent) => {
@@ -454,7 +436,6 @@ export default function Products() {
           /* DOUBLE-BEZEL PRODUCT GRID WITH VIEW TRANSITIONS */
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2">
             {filteredProducts.map((product) => {
-              const isWish = saved.has(product.id);
               const primaryImg = product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
               const hoverImg = product.images?.[1] || primaryImg;
 
@@ -504,22 +485,15 @@ export default function Products() {
                           the size it always was; what grew is the part a
                           fingertip has to find. touch-manipulation drops the
                           double-tap-zoom wait so the heart answers at once. */}
-                      <button
-                        onClick={(e) => handleToggleWishlist(e, product)}
-                        aria-label="Lưu vào wishlist"
-                        aria-pressed={!!isWish}
-                        className="group/heart absolute top-1.5 right-1.5 z-10 grid h-11 w-11 place-items-center touch-manipulation"
-                      >
-                        <span
-                          className={`grid h-8 w-8 place-items-center rounded-full transition-all duration-300 backdrop-blur-md ${
-                            isWish
-                              ? "bg-brand text-wave shadow-md scale-110"
-                              : "bg-paper/85 text-ink/70 group-hover/heart:bg-brand group-hover/heart:text-paper"
-                          }`}
-                        >
-                          <Heart className={`w-4 h-4 ${isWish ? "fill-wave stroke-wave" : ""}`} />
-                        </span>
-                      </button>
+                      <SaveButton
+                        product={product}
+                        className="absolute right-1.5 top-1.5 z-10"
+                        onToggled={(now) => {
+                          if (!now) return;
+                          setWishlistToast({ show: true, name: product.name });
+                          setTimeout(() => setWishlistToast(null), 2500);
+                        }}
+                      />
                     </div>
 
                     {/* Card Content */}

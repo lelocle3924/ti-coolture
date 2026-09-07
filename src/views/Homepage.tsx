@@ -12,6 +12,7 @@ import {
   type HomeCollection,
 } from "../home/homeData";
 import Brandmark from "../components/Brandmark";
+import SaveButton from "../components/SaveButton";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
 import BrandSurround from "../components/BrandSurround";
@@ -354,10 +355,17 @@ function StoreTile({
   blocked?: () => boolean;
 }) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => {
         // a flick that comes to rest over a tile must not also open it
         if (blocked?.()) return;
+        onOpen(product);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
         onOpen(product);
       }}
       draggable={false}
@@ -366,7 +374,7 @@ function StoreTile({
       {/* Team direction (26/08): square and rounded. Square is also the ratio
           the product photographs are actually shot at — the landscape crop
           this used to force was cutting the top and bottom off every piece. */}
-      <div className="relative aspect-square overflow-hidden rounded-[1.25rem] bg-white/5 md:rounded-[1.75rem]">
+      <div className="group/tile relative aspect-square overflow-hidden rounded-[1.25rem] bg-white/5 md:rounded-[1.75rem]">
         <img
           src={product.images[0]}
           alt={product.name}
@@ -374,6 +382,12 @@ function StoreTile({
           draggable={false}
           className="h-full w-full object-cover transition-transform duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />
+        {/* Team 07/09: "ở homepage chưa có nút tim trên ảnh sản phẩm ở
+            What's in store." The same control the catalogue and the product
+            page carry — wherever a product photograph is, this is on it. */}
+        <span className="absolute right-1 top-1 z-10">
+          <SaveButton product={product} />
+        </span>
       </div>
       <div className="mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3">
         <span className="min-w-0 flex-1">
@@ -386,7 +400,7 @@ function StoreTile({
           {formatPrice(product.price)}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
