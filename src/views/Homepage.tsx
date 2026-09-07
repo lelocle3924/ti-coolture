@@ -652,14 +652,53 @@ function HowItWorks() {
 }
 
 /* ── hidden gems ────────────────────────────────────────────────────────
-   Ported from the live homepage (src/views/Homepage.tsx): a persistent tab on
-   the right edge opening the editor's pick. UX-TASKS 2.3 also asks the tab to
-   hide on scroll-down, so it rides the same chrome hook as the nav. */
+   A persistent tab on the right edge opening the editor's pick. UX-TASKS 2.3
+   asks the tab to hide on scroll-down, so it rides the same chrome hook as
+   the nav — inverted, per the 26/08 direction (see below).
+
+   Team 07/09: "Đổi motion của thẻ Hidden gem từ appear thành slide từ mép
+   phải ra."
+
+   It used to fade: `lab-plate-in`, 1.1s of opacity and nothing else, with the
+   card simply unmounted on close so there was no exit at all. Nothing said
+   where the card came from, and a card that arrives by fading has no
+   relationship to the tab you pressed on the right edge.
+
+   It now comes in from beyond the right edge and goes back out the same way.
+   Three things make that a real slide rather than a decorated fade:
+
+     · The card is mounted before it is shown, so the browser has a frame to
+       paint it off-screen at translateX(100% + 1.5rem) — its own width plus
+       the gutter — before the transition to 0 begins. Without that frame the
+       element is born at its resting place and the transition never runs.
+     · Enter and exit are the same transition read in two directions, not two
+       keyframes. Interrupting one mid-flight reverses it from where it is.
+     · The tab stays mounted while the card is open and withdraws through the
+       same edge the card arrives from, so the two cross and read as a
+       handoff. It used to be unmounted the instant the card appeared, which
+       is part of why the card looked unrelated to it.
+
+   Only the card's relationship to the edge is settled here. How the card and
+   the tab should be shaped so they read as one object is the separate
+   question the same feedback asks, and three answers to it are at
+   /lab/hidden-gem. */
+
+/* Enter is longer than exit, which is the usual asymmetry: arriving is the
+   part worth watching, leaving should get out of the way. */
+const GEM_IN = 520;
+const GEM_OUT = 320;
 
 function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> }) {
   const navigate = useNavigate();
+  const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
-  // Team direction (26/08): the tab now does the OPPOSITE of the nav. Scrolling
+  /* `mounted` is whether the card is in the tree; `shown` is whether it has
+     arrived. They differ for exactly one frame on the way in, and for the
+     length of the exit on the way out. */
+  const [mounted, setMounted] = useState(false);
+  const [shown, setShown] = useState(false);
+
+  // Team direction (26/08): the tab does the OPPOSITE of the nav. Scrolling
   // down hides the nav and pushes this out; scrolling up brings the nav back
   // and takes this away — the two never occupy the screen at the same time.
   // This deliberately reverses UX-TASKS 2.3, which had the tab hiding with the
@@ -667,31 +706,72 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   const { hidden } = useAutoHideChrome({ locked: open });
   const gem = gems[0];
 
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      if (reduced) {
+        setShown(true);
+        return;
+      }
+      // one frame off-screen, then travel — see the note above
+      const frame = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      return () => cancelAnimationFrame(frame);
+    }
+
+    setShown(false);
+    if (reduced) {
+      setMounted(false);
+      return;
+    }
+    const timer = setTimeout(() => setMounted(false), GEM_OUT);
+    return () => clearTimeout(timer);
+  }, [open, reduced]);
+
   if (!gem) return null;
+
+  /* Off-screen is the card's own width plus the gutter it rests in, so it
+     starts beyond the edge rather than at it. */
+  const offscreen = "translateX(calc(100% + 1.5rem))";
+  const travel = reduced
+    ? "none"
+    : `transform ${shown ? GEM_IN : GEM_OUT}ms var(--ease-brand), opacity ${
+        shown ? 240 : GEM_OUT
+      }ms ease`;
 
   return (
     <>
-      {!open && (
-        <button
-          onClick={() => {
-            setOpen(true);
-            triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
-          }}
-          aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
-          aria-hidden={!hidden}
-          tabIndex={hidden ? 0 : -1}
-          className="fixed right-0 top-1/2 z-40 grid h-14 w-12 place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
-          style={{ transform: hidden ? "translate(0, -50%)" : "translate(100%, -50%)" }}
-        >
-          <StarIcon className="h-6 w-6" />
-        </button>
-      )}
+      <button
+        onClick={() => {
+          if (open) return;
+          setOpen(true);
+          triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
+        }}
+        aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
+        aria-expanded={open}
+        /* Reachable only while it is actually on the edge: the nav has hidden
+           and the card is not already out. */
+        aria-hidden={!hidden || open}
+        tabIndex={hidden && !open ? 0 : -1}
+        className="fixed right-0 top-1/2 z-40 grid h-14 w-12 place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
+        /* Out of the way while the card is open, through the same edge the
+           card arrives from. The two cross rather than one of them blinking
+           off, which reads as a handoff: the tab gives the edge to the card
+           and takes it back when the card leaves. */
+        style={{ transform: hidden && !open ? "translate(0, -50%)" : "translate(100%, -50%)" }}
+      >
+        <StarIcon className="h-6 w-6" />
+      </button>
 
-      {open && (
+      {mounted && (
         <div
           role="dialog"
           aria-label="Viên ngọc ẩn"
-          className="lab-plate-in fixed bottom-6 right-6 z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[2rem] border border-ink/10 bg-paper p-2 text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)]"
+          className="fixed bottom-6 right-6 z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[2rem] border border-ink/10 bg-paper p-2 text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] will-change-transform"
+          style={{
+            transform: shown ? "translateX(0)" : offscreen,
+            opacity: shown ? 1 : 0,
+            transition: travel,
+          }}
         >
           <div className="overflow-hidden rounded-[1.625rem] bg-paper">
             <div className="relative aspect-video overflow-hidden bg-paper-warm">
