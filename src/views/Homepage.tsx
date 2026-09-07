@@ -762,7 +762,19 @@ function HowItWorks() {
             below="var(--color-paper)"
             collapse
           />
-          <div className="flex h-full flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
+          {/* `relative` is load-bearing, not decoration (07/09).
+
+              overflow-hidden clips a descendant only when the clipping box is
+              also that descendant's containing block, and an absolutely
+              positioned element takes its containing block from the nearest
+              *positioned* ancestor. Without `relative` here this div clipped
+              nothing absolute: the ribbon resolved against a positioned
+              ancestor further up and its tail carried on past the foot of the
+              white, over the violet of "Chưa biết mua gì?" — 183px of it at
+              1440. The non-pinned branch of this section already had
+              `relative` and already clipped correctly, which is why only the
+              pinned path showed it. */}
+          <div className="relative flex h-full flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
           {/* Inside the pane, not at the foot of the tall wrapper.
 
               Team 04/09: while the page is held, the straight violet edge of
