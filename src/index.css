@@ -46,6 +46,35 @@
 }
 
 /* ---------------------------------------------------------------
+   The save control on a product tile.
+
+   Team 08/09, deciding /lab/heart: "Trên mobile thì hiện luôn. Trên PC thì
+   chỉ hiện khi hover."
+
+   Keyed on the pointer, not on a width breakpoint. A touch laptop has a wide
+   screen and no hover, and it has to behave like the phone — a control that
+   only appears on an event the device cannot produce is a control that is
+   not there. So the default is visible, and only a device that can really
+   hover gets the quiet version.
+
+   A saved heart never hides: it is state, not an offer.
+   --------------------------------------------------------------- */
+.save-reveal {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .save-reveal {
+    opacity: 0;
+  }
+  .group\/tile:hover .save-reveal,
+  .save-reveal:focus-visible,
+  .save-reveal:focus-within {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------
    Exaggerated Interactive Micro-Motion Physics
    --------------------------------------------------------------- */
 .hover-elastic {

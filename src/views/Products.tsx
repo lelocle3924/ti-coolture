@@ -442,7 +442,7 @@ export default function Products() {
               return (
                 <div
                   key={product.id}
-                  className="rev hover-elastic p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5 hover:ring-brand/40 group cursor-pointer"
+                  className="rev hover-elastic p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5 hover:ring-brand/40 group/tile group cursor-pointer"
                 >
                   <div className="rounded-[1.625rem] bg-paper h-full flex flex-col justify-between overflow-hidden border border-ink/5">
                     
@@ -487,6 +487,7 @@ export default function Products() {
                           double-tap-zoom wait so the heart answers at once. */}
                       <SaveButton
                         product={product}
+                        revealOnHover
                         className="absolute right-1.5 top-1.5 z-10"
                         onToggled={(now) => {
                           if (!now) return;

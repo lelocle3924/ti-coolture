@@ -31,7 +31,11 @@ import type { Product } from "../types";
 export default function SaveButton({
   product,
   ground = "onImage",
-  /** Reveal only on hover of an ancestor marked `group/tile`. */
+  /**
+   * On a device that can hover, stay out of the way until the tile the
+   * control sits on is hovered. Devices that cannot hover always show it —
+   * see .save-reveal in index.css. Requires an ancestor marked `group/tile`.
+   */
   revealOnHover = false,
   onToggled,
   className = "",
@@ -78,9 +82,7 @@ export default function SaveButton({
       /* 44px of target around a smaller disc: the touch area is the button,
          the circle is only what you can see of it. */
       className={`group/heart grid h-11 w-11 touch-manipulation place-items-center transition-opacity duration-300 ${
-        revealOnHover && !isSaved
-          ? "opacity-0 focus-visible:opacity-100 group-hover/tile:opacity-100"
-          : "opacity-100"
+        revealOnHover && !isSaved ? "save-reveal" : "opacity-100"
       } ${className}`}
     >
       <span
