@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight, Heart, Menu, Search, X } from "lucide-react";
 import Brandmark from "./Brandmark";
@@ -119,11 +119,28 @@ function rememberSearch(term: string) {
   }
 }
 
-/** A stable random sample, so the suggestions do not reshuffle as you type. */
-function sample<T>(rows: T[], n: number): T[] {
+/**
+ * A stable random sample.
+ *
+ * Seeded, and the seed is drawn once per opening of the panel. Team 08/09:
+ * "khi đang mở tìm kiếm, mỗi khi scroll chuột bên ngoài, list sản phẩm gợi ý
+ * lại bị thay đổi." Math.random() straight into a useMemo is only as stable
+ * as the memo's dependencies, and those turned out not to be stable at all —
+ * see the note on the fetch below. A seed makes the order a pure function of
+ * the products and the opening, so it survives a refetch either way.
+ */
+function sample<T>(rows: T[], n: number, seed: number): T[] {
+  // mulberry32 — small, fast, and good enough to shuffle a product list
+  let a = seed >>> 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
   const copy = [...rows];
   for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rand() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy.slice(0, n);
@@ -136,9 +153,21 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  /* The catalogue is fetched once, on opening.
+
+     It used to share an effect with the Escape listener, and that effect
+     depended on `onClose` — which the header rebuilt on every render, and the
+     header re-renders on every scroll tick because the chrome hook publishes
+     scroll progress. So every notch of the wheel refetched the catalogue,
+     handed back a new array, and reshuffled the suggestions underneath
+     whoever was reading them. The two jobs are separate effects now, and
+     `onClose` is stable at the call site as well. */
   useEffect(() => {
     fetchProducts("Approved").then(setProducts).catch(() => setProducts([]));
     inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -148,9 +177,12 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   const norm = (s: string) =>
     s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
 
-  /* Drawn once per opening, not once per keystroke: a suggestion list that
-     reshuffles while you are reading it is worse than an empty one. */
-  const suggestions = useMemo(() => sample(products, SEARCH_ROWS), [products]);
+  /* Drawn once per opening, not once per keystroke and not once per scroll
+     tick: a suggestion list that reshuffles while you are reading it is worse
+     than an empty one. The seed is fixed for the life of the panel, so even a
+     refetch cannot reorder it. */
+  const seed = useRef(Math.floor(Math.random() * 0xffffffff));
+  const suggestions = useMemo(() => sample(products, SEARCH_ROWS, seed.current), [products]);
 
   const hits = useMemo(() => {
     if (!query.trim()) return [];
@@ -262,6 +294,9 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  /* Stable, so the overlay's effects do not re-run every time the header
+     re-renders — which is once per scroll tick. */
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
   const { hidden, atTop } = useAutoHideChrome({ locked: menuOpen || searchOpen });
   const location = useLocation();
 
@@ -418,7 +453,7 @@ export default function Header() {
         )}
       </header>
 
-      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+      {searchOpen && <SearchOverlay onClose={closeSearch} />}
     </>
   );
 }
