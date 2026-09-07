@@ -398,32 +398,48 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   }
 }
 
-/* ── the loop blinks ──────────────────────────────────────────────────────
+/* ── the loop blinks ────────────────────────────────────────────
    Team 04/09: the ribbon loop reads as an eye, so let it blink — twice in a
    second, then six seconds still, and round again.
 
-   The eye is a hole cut in the ribbon, so nothing about it can be animated on
-   its own. BrandShapes draws a lid over it instead: the same almond, in the
-   ribbon's colour, scaled about its own centre from 0 (open, the hole shows
-   through) to 1 (closed). transform-box: fill-box makes the origin the path's
-   own bounding box, so the lid shuts along the eye's centre line rather than
-   the SVG's, and it is unaffected by any scaleX(-1) mirroring the placement
-   applies to the whole mark.
+   Rebuilt 07/09. It was one lid scaled on Y, which shuts an eye along a
+   horizontal line, and this eye is not horizontal: measured from the almond's
+   own two anchors its axis runs at 38.25°. So it is two lids now, rotated
+   onto that axis in BrandShapes and translated along the perpendicular —
+   which, inside the rotated group, is a plain translateY.
+
+   38 is the parked distance, and it is measured rather than picked: sampling
+   the almond's two curves and its straight leg puts its perpendicular extent
+   at -34.8 .. +36.0 about the axis, so a lid held 38 out is just clear of the
+   opening and the eye's clip path makes "clear of the opening" mean
+   invisible. It was 130 first, which parked the lids so far out that seven
+   tenths of the travel happened where nothing could be seen and the blink
+   arrived as a snap at the very end. At 0 the two meet on the axis and the
+   eye is shut, over the pupil rather than beside it.
 
    The cycle is 7s: both blinks land inside the first 800ms, and the remaining
    6.2s is the eye simply open. Percentages against 7000ms — 2.9% = 200ms. */
-@keyframes ti-blink {
-  0%    { transform: scaleY(0); }
-  2.9%  { transform: scaleY(1); }
-  5.7%  { transform: scaleY(0); }
-  8.6%  { transform: scaleY(1); }
-  11.4% { transform: scaleY(0); }
-  100%  { transform: scaleY(0); }
+@keyframes ti-blink-a {
+  0%    { transform: translateY(-38px); }
+  2.9%  { transform: translateY(0); }
+  5.7%  { transform: translateY(-38px); }
+  8.6%  { transform: translateY(0); }
+  11.4% { transform: translateY(-38px); }
+  100%  { transform: translateY(-38px); }
 }
-.ti-eye-lid {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: ti-blink 7s ease-in-out infinite;
+@keyframes ti-blink-b {
+  0%    { transform: translateY(38px); }
+  2.9%  { transform: translateY(0); }
+  5.7%  { transform: translateY(38px); }
+  8.6%  { transform: translateY(0); }
+  11.4% { transform: translateY(38px); }
+  100%  { transform: translateY(38px); }
+}
+.ti-eye-lid-a {
+  animation: ti-blink-a 7s ease-in-out infinite;
+}
+.ti-eye-lid-b {
+  animation: ti-blink-b 7s ease-in-out infinite;
 }
 
 /* D6 · Elastic Momentum Snap Strip */
@@ -457,10 +473,16 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
    Accessibility: Prefers-reduced-motion Guard
    --------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  /* a blink is a loop, and a loop has to be able to stop */
-  .ti-eye-lid {
+  /* A blink is a loop, and a loop has to be able to stop. Stopped means the
+     eye is OPEN, so each lid keeps its parked offset rather than falling to
+     the identity transform, which would leave the eye shut for good. */
+  .ti-eye-lid-a {
     animation: none !important;
-    transform: scaleY(0) !important;
+    transform: translateY(-38px) !important;
+  }
+  .ti-eye-lid-b {
+    animation: none !important;
+    transform: translateY(38px) !important;
   }
 
   ::view-transition-group(*),

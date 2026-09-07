@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 
 /**
  * The brand's supporting marks ("dấu hiệu phụ trợ"), inlined so their fills can
@@ -209,13 +210,25 @@ export function RibbonLoop({
    * Let the loop blink. Team 04/09: the loop reads as an eye, so give it the
    * one thing an eye does — twice in a second, then six seconds of stillness.
    *
-   * The eye is a HOLE in the ribbon, so it cannot be animated directly. This
-   * draws a lid over it: the same almond sub-path, filled in the ribbon's own
-   * colour, scaled from nothing to full height about its own centre. Drawn
-   * after the dot, so a closed lid covers the pupil too.
+   * Rebuilt 07/09. It used to be one lid scaled on Y, which shuts an eye
+   * along a horizontal line; this eye is not horizontal. Its two tips are the
+   * anchors of the almond — (85.4, 69.87) and (229.76, 183.66) in the mark's
+   * own 700×695 space — so its axis runs at 38.25° below horizontal, not the
+   * 45° the note estimated, and its centre is (157.58, 126.77).
+   *
+   * It is two lids now, as asked: the eye's opening is split along that axis,
+   * each half parked outside the eye on its own side, and both travel
+   * perpendicular to the axis to meet on it. The pupil sits 0.5 units off
+   * that same line — measured, not assumed — so the lids close over it
+   * exactly rather than beside it.
    */
   blink?: boolean;
 }) {
+  /* Two loops can share a page (the hero and the seam), and two clipPaths
+     cannot share an id — the second would be ignored and its lids would spill
+     over the ribbon. */
+  const eyeClipId = useId();
+
   return (
     <svg
       viewBox="0 0 700 695"
@@ -232,13 +245,26 @@ export function RibbonLoop({
         d="M133.62,97.27a12.63,12.63,0,0,1-25.25,0,12.3,12.3,0,0,1,1.34-5.6.22.22,0,0,1,.06-.13,11.51,11.51,0,0,1,2.13-3,12.62,12.62,0,0,1,21.72,8.76Z"
       />
       {blink && (
-        /* The lid. Same almond the hole is cut with, so a fully closed lid
-           matches the opening exactly rather than approximating it. */
-        <path
-          className="ti-eye-lid"
-          fill={ribbon}
-          d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z"
-        />
+        <>
+          <defs>
+            {/* Everything the lids do is clipped to the eye's own opening, so
+                a lid parked "outside the eye" is genuinely invisible and no
+                lid can ever spill onto the ribbon. */}
+            <clipPath id={eyeClipId}>
+              <path d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z" />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${eyeClipId})`}>
+            {/* Rotated onto the eye's own axis, so "perpendicular to the
+                centre line" is a plain translateY in here. The rects are
+                deliberately larger than the opening — the clip decides what
+                shows, so their size only has to be generous. */}
+            <g transform="translate(157.58 126.77) rotate(38.25)">
+              <rect className="ti-eye-lid-a" x="-140" y="-130" width="280" height="130" fill={ribbon} />
+              <rect className="ti-eye-lid-b" x="-140" y="0" width="280" height="130" fill={ribbon} />
+            </g>
+          </g>
+        </>
       )}
     </svg>
   );
