@@ -271,6 +271,7 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
   const [dragging, setDragging] = useState(false);
 
   const reduced = useReducedMotion();
+  const wide = useMediaQuery("(min-width: 768px)");
   const count = frames.length;
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -380,6 +381,56 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
 
   if (count === 0) return <div className="min-h-[60vh] bg-brand" />;
 
+  const chrome = (
+    <div className="pointer-events-none flex flex-wrap items-end justify-between gap-3 p-3 md:p-6">
+            <div key={frame!.id} className="lab-pop pointer-events-auto">
+              {frame!.shopId ? (
+                <Link
+                  to={`/stores/${frame!.shopId}`}
+                  draggable={false}
+                  className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
+                    {String(active + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
+                    <span className="block text-[11px] font-medium text-ink/55">
+                      {frame!.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame!.caption}
+                    </span>
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 text-brand" />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-3 rounded-full bg-wave py-2.5 pl-4 pr-5 text-ink">
+                  <span className="text-sm font-black">Tí Coolture</span>
+                  <span className="text-[11px] font-medium">{frame!.caption}</span>
+                </span>
+              )}
+            </div>
+
+            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink/40 p-2 backdrop-blur-md">
+              {frames.map((f, i) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setTaken(true);
+                    setActive(i);
+                  }}
+                  aria-label={`Xem ảnh ${i + 1}: ${f.shopName}`}
+                  aria-current={i === active}
+                  className={`h-2.5 rounded-full transition-all duration-500 ${
+                    i === active ? "w-8 bg-wave" : "w-2.5 bg-white/45 hover:bg-white/80"
+                  }`}
+                  style={{ transitionTimingFunction: "var(--ease-brand)" }}
+                />
+              ))}
+            </div>
+          </div>
+  );
+
+
+
   return (
     <section
       id="dong-hero"
@@ -481,7 +532,10 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   draggable={false}
                   className="h-full w-full object-cover"
                 />
-                {isTop && (
+                {isTop && wide && (
+                  /* The scrim exists to carry the chrome. On a phone the
+                     chrome is under the card now, so this would be darkening
+                     two fifths of the photograph for nothing. */
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-ink/70 to-transparent"
@@ -508,53 +562,22 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
             </>
           )}
 
-          {/* attribution — the shop gets the front page, by name */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex flex-wrap items-end justify-between gap-3 p-3 md:p-6">
-            <div key={frame!.id} className="lab-pop pointer-events-auto">
-              {frame!.shopId ? (
-                <Link
-                  to={`/stores/${frame!.shopId}`}
-                  draggable={false}
-                  className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
-                    {String(active + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-left">
-                    <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
-                    <span className="block text-[11px] font-medium text-ink/55">
-                      {frame!.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame!.caption}
-                    </span>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-brand" />
-                </Link>
-              ) : (
-                <span className="inline-flex items-center gap-3 rounded-full bg-wave py-2.5 pl-4 pr-5 text-ink">
-                  <span className="text-sm font-black">Tí Coolture</span>
-                  <span className="text-[11px] font-medium">{frame!.caption}</span>
-                </span>
-              )}
-            </div>
+          {/* attribution and beads.
 
-            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink/40 p-2 backdrop-blur-md">
-              {frames.map((f, i) => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setTaken(true);
-                    setActive(i);
-                  }}
-                  aria-label={`Xem ảnh ${i + 1}: ${f.shopName}`}
-                  aria-current={i === active}
-                  className={`h-2.5 rounded-full transition-all duration-500 ${
-                    i === active ? "w-8 bg-wave" : "w-2.5 bg-white/45 hover:bg-white/80"
-                  }`}
-                  style={{ transitionTimingFunction: "var(--ease-brand)" }}
-                />
-              ))}
-            </div>
-          </div>
+              Team 07/09: "hãy để cái chrome ở dưới, không có đè lên hình."
+              On a phone the deck is 5:4 and about 280px tall, and a pill plus
+              a row of beads laid over it takes a third of that — of the one
+              picture the page opens on. So below the card there, on the
+              violet, where the violet is doing nothing anyway.
+
+              On a desktop it stays over the photograph, which is what the
+              team's own drawing of the wide layout shows: the card is 744px
+              tall there and the chrome costs it nothing. */}
+          {wide && <div className="absolute inset-x-0 bottom-0 z-40">{chrome}</div>}
         </div>
+
+        {/* on a phone the chrome is under the card, not on it */}
+        {!wide && <div className="mt-1">{chrome}</div>}
       </div>
     </section>
   );
