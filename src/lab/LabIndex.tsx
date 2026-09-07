@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/shop-colour",
+    n: "08",
+    title: "Trang shop — ba cách phối màu",
+    body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
+    meta: "3 phương án · /stores/[slug]",
+  },
 ];
 
 export default function LabIndex() {
