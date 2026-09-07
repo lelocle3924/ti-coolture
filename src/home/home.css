@@ -62,49 +62,12 @@
 .lab-no-scrollbar { scrollbar-width: none; }
 .lab-no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* ── What's in store: the phone rail ─────────────────────────────────────
-   "Ôi chỗ này trên đt ko kéo được 😫" (31/08).
-
-   It could not be dragged because there was nothing to drag: the lane is a CSS
-   marquee living inside .lab-marquee-track, which is overflow-x: hidden. No
-   scroll container, no pointer handler, no gesture of any kind — the tiles just
-   translate past on a 72s loop.
-
-   On a phone the lane is now an ordinary scroll container instead, so the
-   swipe is the platform's: its momentum, its rubber-banding, its scrollbar
-   suppression, and nothing in JavaScript that can drop a frame.
-
-   proximity rather than mandatory snapping, and no scroll-snap-stop: a flick
-   should be able to cross several products and still settle tidily, which is
-   the "thuận tiện" the note asks for. mandatory would fight every long flick
-   back to the neighbouring tile. */
-.ti-rail {
-  scroll-snap-type: x proximity;
-  overscroll-behavior-x: contain;
-  /* == the page's px-5 gutter, so a snapped tile lines up with the heading
-     above it rather than with the raw edge of the viewport */
-  scroll-padding-inline-start: 1.25rem;
-}
-/* The tile still carries .lab-snap-item for the reduced-motion lane, and that
-   class asks for centre alignment and scroll-snap-stop: always. Neither is
-   wanted here — start alignment is what lines a tile up with the gutter, and
-   "always" would arrest every flick at the very next tile. Same specificity as
-   .lab-snap-item loses on source order, so name both classes. */
-.ti-rail > .lab-snap-item,
-.ti-rail > * {
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
-}
-
-/* Native scroll-snap carousels — UX-TASKS 1.3. */
-.lab-snap-x {
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-}
-.lab-snap-item {
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
-}
+/* ── What's in store: the phone rail, removed ───────────────────────
+   `.ti-rail` was a native scroll container with proximity snapping, the phone
+   answer to "Ôi chỗ này trên đt ko kéo được" (31/08). It is gone because a scroll
+   container cannot loop: 07/09 asked the rail to wrap endlessly in both
+   directions, and it runs on src/lib/useLoopTrack.ts now, which owns its own
+   transform and needs no snap rules. */
 
 /* ── collections: spring tabs ────────────────────────────────────────────
    Direction 2 from /lab/collections, folded in on 07/09. These rules came

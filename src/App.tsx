@@ -14,16 +14,10 @@ import About from "./views/About";
 import Discovery from "./views/Discovery";
 import OpenShop from "./views/OpenShop";
 import LabIndex from "./lab/LabIndex";
-import HeartStudies from "./lab/HeartStudies";
 import ShopPaletteStudies from "./lab/ShopPaletteStudies";
 import DiscoverStudies from "./lab/DiscoverStudies";
-import CollectionStudies from "./lab/CollectionStudies";
 import MapStudies from "./lab/MapStudies";
-import MotionStudies from "./lab/MotionStudies";
-import HiddenGemStudies from "./lab/HiddenGemStudies";
 import SearchMotionStudies from "./lab/SearchMotionStudies";
-import StoreRailStudies from "./lab/StoreRailStudies";
-import HowSeamStudies from "./lab/HowSeamStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, type ReactNode } from "react";
@@ -180,16 +174,10 @@ function SiteShell() {
           {/* Exploration. Rebuilt 28/08 for the two Collections directions and
               the three map options the 26/08 feedback asks for. */}
           <Route path="/lab" element={<LabIndex />} />
-          <Route path="/lab/heart" element={<HeartStudies />} />
           <Route path="/lab/shop-colour" element={<ShopPaletteStudies />} />
           <Route path="/lab/discover" element={<DiscoverStudies />} />
-          <Route path="/lab/collections" element={<CollectionStudies />} />
           <Route path="/lab/map" element={<MapStudies />} />
-          <Route path="/lab/motion" element={<MotionStudies />} />
-          <Route path="/lab/hidden-gem" element={<HiddenGemStudies />} />
           <Route path="/lab/search" element={<SearchMotionStudies />} />
-          <Route path="/lab/store" element={<StoreRailStudies />} />
-          <Route path="/lab/how" element={<HowSeamStudies />} />
 
           {/* Renamed 26/08. Kept as redirects so anything already shared or
               bookmarked still lands, rather than bouncing to the homepage. */}
