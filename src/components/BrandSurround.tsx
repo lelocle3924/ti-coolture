@@ -34,16 +34,17 @@ import { ArcTopRight, RibbonLoop } from "./BrandShapes";
  *     "phần nào của cái ribbon nằm ngoài nền tím thì biến mất khỏi tầm nhìn"
  *     asks for.
  *
- * Two rules carried over unchanged, because both are constraints rather than
- * preferences:
+ * On motion: the loop blinks here too, at the team's request on 08/09 —
+ * "thêm animation chớp mắt giống như ở chỗ 'Cách đặt hàng' cho cái ribbon
+ * loop". This file used to argue the opposite, that the deck is the moving
+ * thing on this screen and the background should not compete; the blink is
+ * cheap enough to be the exception, because it is two lids for a fifth of a
+ * second and then six seconds of nothing. Nothing else here moves.
  *
- * · Nothing here animates. The hero deck is the moving thing on this screen
- *   and a drifting background would be a second. (The loop can blink — see
- *   BrandShapes — but that is for the seam above "Chưa biết mua gì?", where
- *   nothing else is moving. Not here.)
- * · Everything is aria-hidden and pointer-events-none. These marks carry no
- *   information — the wordmark in the nav does that — so they must not appear
- *   in the accessibility tree or intercept a click.
+ * One rule carried over unchanged, because it is a constraint rather than a
+ * preference: everything is aria-hidden and pointer-events-none. These marks
+ * carry no information — the wordmark in the nav does that — so they must not
+ * appear in the accessibility tree or intercept a click.
  */
 
 /* The measured geometry, kept together so the drawing and the code can be
@@ -145,6 +146,7 @@ export default function BrandSurround({ className = "" }: { className?: string }
         }}
         ribbon="var(--color-wave)"
         dot="var(--color-paper)"
+        blink
       />
     </div>
   );
