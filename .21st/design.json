@@ -468,6 +468,14 @@
       "status": "done",
       "date": "2026-08-21",
       "note": "Seed extended from 12 to 77 placeholder products across the same six shops (src/lib/mock/catalogue.ts), with shops crossing categories so filter combinations mean something, three NULL prices for the Liên hệ path, three image slots per product, and a short_desc_vi for every product including the original twelve, which had none. Publication dates use a coprime stride so \"mới nhất\" interleaves the shops. Still INVENTED placeholder content — it must not ship to a public demo."
+    },
+    {
+      "id": "admin-collection-editing",
+      "status": "open",
+      "date": "2026-09-07",
+      "question": "Where does an editor choose what is in a collection, and what it is called?",
+      "note": "Team 07/09, recorded at their request: \"sau này nhớ nhắc tôi là phải thêm chỗ trong admin dashboard để chỉnh sửa các sản phẩm xuất hiện trên collections, cũng như chỉnh sửa tên của collections.\" Not built. Today the four collections are generated in src/home/homeData.ts as \"Collection 1\"…\"Collection 4\" with their items sliced from the catalogue, and the homepage says so in type (\"Tên bộ sưu tập là placeholder\"). The editing surface belongs in src/views/ShopDashboard.tsx's admin deck, alongside the moderation queue.",
+      "blocks": "Real collection names and curation. Until it exists the names cannot leave placeholder."
     }
   ],
   "evidence": [
