@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Check, ArrowRight, Search, X } from "lucide-react";
 import { fetchProducts, triggerWebhook } from "../lib/dbService";
@@ -33,6 +33,84 @@ const MATERIALS = ["Gốm", "Gỗ", "Vải canvas", "Sơn mài", "Bạc", "Giấ
 
 const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+
+/* Team 08/09: "trang /products hiện tối đa 36 sản phẩm trên 1 trang. số còn
+   lại cho sang trang tiếp theo." 36 divides by 2, 3 and 4, which are the
+   column counts the grid actually uses, so no page ever ends on a short row. */
+const PAGE_SIZE = 36;
+
+/** The window of page numbers to show around the current one. */
+function pageWindow(current: number, total: number): Array<number | "gap"> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: Array<number | "gap"> = [1];
+  const from = Math.max(2, current - 1);
+  const to = Math.min(total - 1, current + 1);
+  if (from > 2) out.push("gap");
+  for (let i = from; i <= to; i++) out.push(i);
+  if (to < total - 1) out.push("gap");
+  out.push(total);
+  return out;
+}
+
+function Pager({
+  page,
+  total,
+  onGo,
+}: {
+  page: number;
+  total: number;
+  onGo: (p: number) => void;
+}) {
+  if (total <= 1) return null;
+  const step = "grid h-10 min-w-10 place-items-center rounded-full px-3 text-sm font-semibold transition-colors";
+
+  return (
+    <nav
+      aria-label="Phân trang"
+      className="flex flex-wrap items-center justify-center gap-2 border-t border-ink/10 pt-8"
+    >
+      <button
+        onClick={() => onGo(page - 1)}
+        disabled={page === 1}
+        aria-label="Trang trước"
+        className={`${step} border border-ink/15 text-ink/70 hover:border-brand hover:text-brand disabled:pointer-events-none disabled:opacity-30`}
+      >
+        <ArrowRight className="h-4 w-4 rotate-180" />
+      </button>
+
+      {pageWindow(page, total).map((slot, i) =>
+        slot === "gap" ? (
+          <span key={`gap-${i}`} aria-hidden="true" className="px-1 text-sm text-ink/35">
+            …
+          </span>
+        ) : (
+          <button
+            key={slot}
+            onClick={() => onGo(slot)}
+            aria-label={`Trang ${slot}`}
+            aria-current={slot === page ? "page" : undefined}
+            className={`${step} tabular-nums ${
+              slot === page
+                ? "bg-brand text-paper"
+                : "border border-ink/15 text-ink/70 hover:border-brand hover:text-brand"
+            }`}
+          >
+            {slot}
+          </button>
+        )
+      )}
+
+      <button
+        onClick={() => onGo(page + 1)}
+        disabled={page === total}
+        aria-label="Trang sau"
+        className={`${step} border border-ink/15 text-ink/70 hover:border-brand hover:text-brand disabled:pointer-events-none disabled:opacity-30`}
+      >
+        <ArrowRight className="h-4 w-4" />
+      </button>
+    </nav>
+  );
+}
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,6 +151,7 @@ export default function Products() {
       } else {
         next.set("category", cat);
       }
+      next.delete("page");
       setSearchParams(next);
     });
   };
@@ -84,6 +163,7 @@ export default function Products() {
     } else {
       next.set("price", priceId);
     }
+    next.delete("page");
     setSearchParams(next);
   };
 
@@ -94,12 +174,14 @@ export default function Products() {
     } else {
       next.set("material", mat);
     }
+    next.delete("page");
     setSearchParams(next);
   };
 
   const handleSortChange = (sort: string) => {
     const next = new URLSearchParams(searchParams);
     next.set("sort", sort);
+    next.delete("page");
     setSearchParams(next);
   };
 
@@ -156,6 +238,30 @@ export default function Products() {
       if (activeSort === "price-desc") return b.price - a.price;
       return 0; // default newest
     });
+
+  /* The page lives in the URL, so a page of results can be shared, and the
+     back button walks the pages rather than leaving the catalogue.
+
+     Clamped rather than trusted: a filter can shrink the catalogue under the
+     page someone is standing on, and ?page=99 is a URL anyone can type. */
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const page = Math.min(pageCount, Math.max(1, Number(searchParams.get("page")) || 1));
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const visibleProducts = filteredProducts.slice(pageStart, pageStart + PAGE_SIZE);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const goToPage = (next: number) => {
+    const clamped = Math.min(pageCount, Math.max(1, next));
+    const params = new URLSearchParams(searchParams);
+    if (clamped === 1) params.delete("page");
+    else params.set("page", String(clamped));
+    setSearchParams(params);
+    /* Back to the top of the grid, not the top of the document: the filters
+       are above it and a reader who has just paged wants the first row, not
+       the hero again. */
+    gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const activeFiltersCount = 
     (activeCategory !== "Tất cả" ? 1 : 0) + 
@@ -434,8 +540,8 @@ export default function Products() {
         ) : (
           
           /* DOUBLE-BEZEL PRODUCT GRID WITH VIEW TRANSITIONS */
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2">
-            {filteredProducts.map((product) => {
+          <div ref={gridRef} className="scroll-mt-28 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2">
+            {visibleProducts.map((product) => {
               const primaryImg = product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
               const hoverImg = product.images?.[1] || primaryImg;
 
@@ -535,6 +641,22 @@ export default function Products() {
             })}
           </div>
 
+        )}
+
+        {/* 36 a page, the rest on the next one. The count above the grid stays
+            the size of the whole result set — it answers "how many are there",
+            not "how many can you see". */}
+        {!loading && filteredProducts.length > 0 && (
+          <div className="pt-6">
+            <Pager page={page} total={pageCount} onGo={goToPage} />
+            {pageCount > 1 && (
+              <p className="pt-4 text-center text-xs text-ink/50">
+                Trang {page} / {pageCount} · {pageStart + 1}–
+                {Math.min(pageStart + PAGE_SIZE, filteredProducts.length)} trên{" "}
+                {filteredProducts.length} tác phẩm
+              </p>
+            )}
+          </div>
         )}
 
       </div>
