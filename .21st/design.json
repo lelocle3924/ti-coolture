@@ -603,6 +603,14 @@
       "decidedDate": "2026-09-07",
       "outcome": "Team 07/09 chose C. Folded into HeroDeck as a clamp on the ratio itself — aspect-ratio: clamp(1.25, calc(1.25 + (100vw - 375px) / 1562.5px), 1.7778) — shared with the card's max-width calc so the two bounds cannot disagree. Measured on the running page: 1.25 at 375px, 1.33 at 500, 1.46 at 700, 1.59 at 900, 1.71 at 1100, and 1.778 from 1200 up. /lab/hero and the four studies were deleted in the same change, per the same note.",
       "alsoShipped": "The same 07/09 note asked for the deck to be operable: click-and-drag or bare chevrons on desktop, swipe on a phone, with each chevron coloured against its own edge of the current frame (src/lib/useImageTone.ts). Autoplay stops at the first manual interaction."
+    },
+    {
+      "id": "admin-collection-editing",
+      "status": "open",
+      "date": "2026-09-07",
+      "question": "Where does an editor choose what is in a collection, and what it is called?",
+      "note": "Team 07/09, recorded at their request: \"sau này nhớ nhắc tôi là phải thêm chỗ trong admin dashboard để chỉnh sửa các sản phẩm xuất hiện trên collections, cũng như chỉnh sửa tên của collections.\" Not built. Today the four collections are generated in src/home/homeData.ts as \"Collection 1\"…\"Collection 4\" with their items sliced from the catalogue, and the homepage says so in type (\"Tên bộ sưu tập là placeholder\"). The editing surface belongs in src/views/ShopDashboard.tsx's admin deck, alongside the moderation queue.",
+      "blocks": "Real collection names and curation. Until it exists the names cannot leave placeholder."
     }
   ],
   "evidence": [

@@ -14,6 +14,7 @@ import {
   type HomeCollection,
 } from "../home/homeData";
 import Brandmark from "../components/Brandmark";
+import SaveButton from "../components/SaveButton";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
 import BrandSurround from "../components/BrandSurround";
@@ -1371,212 +1372,328 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   );
 }
 
-/* ── collections: a draggable track, and a bar that says how far it runs ──
-   Team 26/08: "Remove scroll interaction on 'Collections' section… 1st one
-   simply replace scroll with click and drag and a bar below to signal there's
-   more."
+/* ── collections: spring tabs ───────────────────────────────────────────
+   Team 07/09: "Implement Collections option 2 trong lab."
 
-   What went — the pinned run (MO-7). The section was ~3 viewports tall and
-   drove a 60/30/10 window across the panels from the document's own scroll
-   position: the only way to reach collection 3 was to keep scrolling the
-   page, and the only way back was to scroll up through it again. Panels
-   squeezed to 10% of their width on the way past, which is why each one
-   needed a vertical rail to stay legible while it was a sliver.
+   Direction 2 from /lab/collections, built to the sketch on page 1 of the
+   26/08 feedback: the collections are a horizontal accordion. Closed ones
+   stand as narrow spines with the name set vertically, like books on a shelf;
+   the one you press springs open and takes the room the others give up.
 
-   What replaced it — one screen, whole cards, and the same drag physics the
-   district map already runs on (useDragTrack: 1:1 while held, released at the
-   pointer's own velocity, landing where the flick was going, rubber-banding
-   at the ends). The bar below is the one in the sketch: the page you are on
-   is a wide teal pill, the others are dots.
+   What it replaces — the drag track (direction 1), which had been running
+   here since 26/08. Both replaced the same thing before that: the pinned run
+   (MO-7), a section three viewports tall whose only control was the page's
+   own scrollbar.
 
-   The second direction the team asked for — the spring tabs from the sketch
-   on page 1 — is in the lab at /lab/collections/2, so the two can be looked
-   at side by side before one is chosen. */
+   Two things differ from the lab build, and both are because this is a
+   homepage section rather than a specimen:
 
-/* Panel rotation still carries the 60/30/10 ratio, but the roles have moved.
-   In the pinned version the panels butted edge to edge and filled the whole
-   band, so one of them could be bg-brand and still read — its neighbours drew
-   its edges. Cards with gaps between them have no neighbours to do that, and
-   a violet card on the violet ground simply disappears. So the violet is the
-   field now (the 60), and the panels are what sits on it. */
+     · One collection is always open on desktop. In the lab a second press
+       closes the panel, which is right for something you are inspecting; on
+       the page it leaves four equal panels each showing a spine and 300px of
+       nothing, and the section reads as broken. Phones keep the toggle: the
+       row is a stacked accordion there, closing is the ordinary gesture, and
+       an all-closed list still reads as a list.
+     · The row keeps the "Xem thêm" route through to the catalogue that the
+       drag track carried as its last card. It is a line under the row rather
+       than a fifth spine — a spine that is not a collection would break the
+       one thing the shelf is saying.
+
+   The spring is --ease-brand on flex-grow, which overshoots slightly on the
+   way open; that overshoot is the "springs open" the sketch names. The
+   contents ride in on a curve that only decelerates, so one gesture does not
+   read as two. See home.css. */
+
+/* A closed spine keeps the colour of the panel it opens into — that is what
+   makes the row read as a row of collections rather than as decoration.
+
+   The sketch's literal palette is teal / violet / white on a white page. Here
+   the section is the site's violet field, so the bright brand violet is the
+   one colour a panel cannot take: at 3.25rem wide a violet spine on violet
+   ground is not a spine, it is a gap. brand-deep stands in for it and stays
+   in the violet family. */
 const PANEL_TONES = [
-  { fill: "bg-wave", text: "text-ink", muted: "text-ink/65" },
-  { fill: "bg-paper", text: "text-ink", muted: "text-ink/60" },
-  { fill: "bg-brand-deep", text: "text-paper", muted: "text-white/65" },
-  { fill: "bg-ink", text: "text-paper", muted: "text-white/60" },
+  { fill: "bg-wave", text: "text-ink", spine: "text-ink", tile: "bg-ink/10", muted: "text-ink/65" },
+  { fill: "bg-brand-deep", text: "text-paper", spine: "text-wave", tile: "bg-white/15", muted: "text-white/65" },
+  { fill: "bg-paper", text: "text-ink", spine: "text-brand", tile: "bg-ink/8", muted: "text-ink/60" },
+  { fill: "bg-ink", text: "text-paper", spine: "text-wave", tile: "bg-white/12", muted: "text-white/60" },
 ];
 
-function CollectionsTrack({
+/* The three pieces on show inside an open collection, and the way to the
+   rest of them.
+
+   Team 07/09: "Nếu collection có từ 4 sản phẩm trở lên, cũng cần có 1 thanh
+   trượt ở ngay dưới hoặc nút mũi tên để người dùng biết là collection đó còn
+   thêm nữa. Tất nhiên tính năng này khác so với tính năng spring tab để
+   chuyển sang xem collection khác."
+
+   So it gets both, and it is kept visibly distinct from the spine beside it:
+
+     · The arrows are small, inline and sit on the panel's own heading row,
+       next to the count they page through. The spine is the tall coloured
+       edge on the left. Nothing about the two reads the same.
+     · The bar under the tiles is proportional — its width is the fraction of
+       the collection currently on screen — so it says how much more there is,
+       not merely that there is more.
+
+   Both appear only at four items or more. At three there is nothing to page
+   to, and an arrow that cannot move is a worse signal than no arrow. */
+function CollectionShelf({
+  collection,
+  tone,
+  onOpen,
+}: {
+  collection: HomeCollection;
+  tone: (typeof PANEL_TONES)[number];
+  onOpen: (p: Product) => void;
+}) {
+  const PER_PAGE = 3;
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(collection.items.length / PER_PAGE));
+  const pageable = collection.items.length > PER_PAGE;
+
+  /* A collection that is swapped for a shorter one must not stay on a page
+     that no longer exists. */
+  useEffect(() => {
+    setPage((p) => Math.min(p, pages - 1));
+  }, [pages]);
+
+  const shown = collection.items.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
+
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-4">
+        <h3 className="display truncate text-[clamp(1.4rem,2.2vw,2.1rem)] normal-case leading-[1.25]">
+          {collection.name}
+        </h3>
+
+        <span className="flex shrink-0 items-center gap-3">
+          <span className={`text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}>
+            {String(collection.items.length).padStart(2, "0")} MÓN
+          </span>
+          {pageable && (
+            <span className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                aria-label={`Xem ${PER_PAGE} món trước của ${collection.name}`}
+                className="grid h-7 w-7 place-items-center rounded-full border border-current opacity-60 transition-opacity hover:opacity-100 disabled:opacity-20"
+              >
+                <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+                disabled={page === pages - 1}
+                aria-label={`Xem ${PER_PAGE} món tiếp theo của ${collection.name}`}
+                className="grid h-7 w-7 place-items-center rounded-full border border-current opacity-60 transition-opacity hover:opacity-100 disabled:opacity-20"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          )}
+        </span>
+      </div>
+
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-3 gap-3">
+        {shown.map((p) => (
+          <div
+            key={p.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpen(p)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              onOpen(p);
+            }}
+            className={`group/tile group flex min-h-0 cursor-pointer flex-col text-left ${tone.tile}`}
+          >
+            <span className="relative block min-h-0 flex-1 overflow-hidden">
+              <img
+                src={p.images[0]}
+                alt={p.name}
+                loading="lazy"
+                draggable={false}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
+              />
+              {/* everywhere a product photograph is (07/09) */}
+              <span className="absolute right-0 top-0 z-10">
+                <SaveButton product={p} />
+              </span>
+            </span>
+            <span className="flex items-baseline justify-between gap-2 p-2">
+              <span className="truncate text-xs font-medium">{p.name}</span>
+              <span className={`shrink-0 text-[11px] ${tone.muted}`}>{formatPrice(p.price)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Proportional, so it says how much more rather than only that there is
+          more. Presentational — the arrows above are the control. */}
+      {pageable && (
+        <div aria-hidden="true" className="mt-3 h-[3px] w-full rounded-full bg-current/15">
+          <div
+            className="h-full rounded-full bg-current/60 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{
+              width: `${100 / pages}%`,
+              transform: `translateX(${page * 100}%)`,
+            }}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+function CollectionsSpringTabs({
   collections,
   onOpen,
 }: {
   collections: HomeCollection[];
   onOpen: (p: Product) => void;
 }) {
-  /* How many whole cards fit before one has to be cut in half. The track
-     pages by viewport width, so this also decides how many pages there are
-     and therefore how many segments the bar below carries. */
-  const wide = useMediaQuery("(min-width: 1024px)");
-  const medium = useMediaQuery("(min-width: 640px)");
-  const perPage = wide ? 3 : medium ? 2 : 1;
-
-  /* panels = every collection plus the closing "Xem thêm" card */
-  const panelCount = collections.length + 1;
-  const pageCount = Math.max(1, Math.ceil(panelCount / perPage));
-  const track = useDragTrack(pageCount);
+  const [open, setOpen] = useState(0);
+  const wide = useMediaQuery("(min-width: 768px)");
 
   if (collections.length === 0) return null;
 
-  const seeMoreIndex = panelCount - 1;
-
-  const renderPanel = (i: number) => {
-    const tone = PANEL_TONES[i % PANEL_TONES.length];
-    const isSeeMore = i === seeMoreIndex;
-    const collection = isSeeMore ? null : collections[i];
-    const lead = collection?.items[0] ?? null;
-
-    if (isSeeMore) {
-      return (
-        <div
-          key="panel-see-more"
-          className={`flex min-h-[20rem] flex-col justify-between p-6 lg:p-8 ${tone.fill} ${tone.text}`}
-        >
-          <span className="text-[11px] tabular-nums tracking-[0.16em] opacity-60">→</span>
-          <div>
-            <h3 className="display text-[clamp(1.5rem,2.4vw,2.25rem)] normal-case leading-[1.15]">
-              Còn nhiều bộ sưu tập khác
-            </h3>
-            <Link
-              to="/products"
-              className="mt-5 inline-flex w-fit items-center gap-3 border-b border-current pb-1 text-sm font-semibold"
-            >
-              Xem thêm
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        key={collection!.id}
-        className={`flex min-h-[20rem] flex-col p-6 lg:p-8 ${tone.fill} ${tone.text}`}
-      >
-        <div className="flex items-baseline justify-between gap-4">
-          <span className="text-[11px] tabular-nums tracking-[0.16em] opacity-60">
-            {collection!.index}
-          </span>
-          <span
-            className={`shrink-0 whitespace-nowrap text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}
-          >
-            {String(collection!.items.length).padStart(2, "0")} MÓN
-          </span>
-        </div>
-
-        {/* Team 20/08: one lead piece per collection, and the name never
-            wraps. A strip of six thumbnails made the panel read as another
-            product row; a single object reads as a choice someone made. */}
-        <h3
-          className="display mt-3 truncate text-[clamp(1.35rem,2.2vw,2rem)] normal-case leading-[1.15]"
-          title={collection!.name}
-        >
-          {collection!.name}
-        </h3>
-
-        {lead && (
-          <button
-            onClick={() => {
-              // a flick that ends over a card must not also open it
-              if (track.didDrag()) return;
-              onOpen(lead);
-            }}
-            className="group mt-5 flex min-h-0 flex-1 flex-col text-left"
-          >
-            <span className="relative block min-h-0 flex-1 overflow-hidden bg-current/10">
-              <img
-                src={lead.images[0]}
-                alt={lead.name}
-                loading="lazy"
-                draggable={false}
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
-              />
-            </span>
-            <span className="mt-3 flex items-baseline justify-between gap-4">
-              <span className="truncate text-base font-medium">{lead.name}</span>
-              <span className={`shrink-0 whitespace-nowrap text-sm ${tone.muted}`}>
-                {formatPrice(lead.price)}
-              </span>
-            </span>
-          </button>
-        )}
-      </div>
-    );
-  };
-
-  const pages = Array.from({ length: pageCount }, (_, p) =>
-    Array.from({ length: perPage }, (_, k) => p * perPage + k).filter((i) => i < panelCount)
+  const heading = (
+    <div className="px-5 pt-16 text-center md:px-10 md:pt-24">
+      <h2 className="display mx-auto text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none">
+        Chưa biết mua gì?
+      </h2>
+      <p className="mx-auto mt-4 max-w-[46ch] text-base leading-relaxed text-white/70">
+        Ngó thử mấy bộ sưu tập này xem, biết đâu lại đúng gu bạn.
+      </p>
+      <p className="mt-3 text-xs text-white/45">
+        Tên bộ sưu tập là placeholder — chờ ban biên tập đặt tên thật.
+      </p>
+    </div>
   );
+
+  const seeMore = (
+    <div className="mt-8 flex justify-center px-5 pb-4 md:px-10">
+      <Link
+        to="/products"
+        className="group inline-flex items-center gap-3 border-b border-white/40 pb-1 text-sm font-semibold text-paper transition-colors hover:border-wave hover:text-wave"
+      >
+        Còn nhiều bộ sưu tập khác
+        <ArrowUpRight className="h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+      </Link>
+    </div>
+  );
+
+  /* Stacked on phones. A 3.25rem spine times four leaves nothing for the open
+     panel at 390px, and the sketch's whole point is that the open one is
+     wide. */
+  if (!wide) {
+    return (
+      <section id="dong-collections" className="border-t border-white/20 bg-brand text-paper">
+        {heading}
+        <div className="mt-10 space-y-3 px-5">
+          {collections.map((c, i) => {
+            const tone = PANEL_TONES[i % PANEL_TONES.length];
+            const isOpen = i === open;
+            return (
+              <div key={c.id} className={`${tone.fill} ${tone.text}`}>
+                <button
+                  onClick={() => setOpen(isOpen ? -1 : i)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-baseline justify-between gap-3 p-4 text-left"
+                >
+                  <span className="display text-xl normal-case leading-[1.25]">{c.name}</span>
+                  <span className="shrink-0 text-[11px] tabular-nums tracking-[0.16em] opacity-60">
+                    {String(c.items.length).padStart(2, "0")} MÓN
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="lab-spring-contents grid grid-cols-3 gap-2 px-4 pb-4">
+                    {c.items.slice(0, 3).map((p) => (
+                      <div
+                        key={p.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onOpen(p)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" && e.key !== " ") return;
+                          e.preventDefault();
+                          onOpen(p);
+                        }}
+                        aria-label={p.name}
+                        className={`group/tile relative aspect-square cursor-pointer overflow-hidden ${tone.tile}`}
+                      >
+                        <img
+                          src={p.images[0]}
+                          alt={p.name}
+                          loading="lazy"
+                          draggable={false}
+                          className="h-full w-full object-cover"
+                        />
+                        <span className="absolute right-0 top-0 z-10">
+                          <SaveButton product={p} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {seeMore}
+      </section>
+    );
+  }
 
   return (
     <section id="dong-collections" className="border-t border-white/20 bg-brand text-paper">
-      <div className="px-5 pt-16 text-center md:px-10 md:pt-24">
-        <h2 className="display mx-auto text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-none">
-          Chưa biết mua gì?
-        </h2>
-        <p className="mx-auto mt-4 max-w-[46ch] text-base leading-relaxed text-white/70">
-          Ngó thử mấy bộ sưu tập này xem, biết đâu lại đúng gu bạn.
-        </p>
-        <p className="mt-3 text-xs text-white/45">
-          Tên bộ sưu tập là placeholder — chờ ban biên tập đặt tên thật.
-        </p>
-      </div>
+      {heading}
 
-      <div
-        ref={track.setViewport}
-        {...track.handlers}
-        role="group"
-        aria-roledescription="carousel"
-        aria-label="Bộ sưu tập"
-        className={`mt-10 overflow-hidden touch-pan-y ${
-          track.dragging ? "cursor-grabbing" : "cursor-grab"
-        }`}
-      >
-        <div
-          className="flex"
-          style={{ transform: `translate3d(${track.x}px, 0, 0)`, willChange: "transform" }}
-        >
-          {pages.map((indices, p) => (
-            <div key={p} className="w-full shrink-0 px-5 md:px-10">
-              <div
-                className="grid gap-4"
-                style={{ gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))` }}
+      {/* One row, panels sharing it by flex-grow. The open one takes the room
+          the closed spines give up, so nothing is ever mid-air — which is what
+          makes it read as one mechanism rather than four panels animating. */}
+      <div className="mt-10 flex h-[clamp(22rem,52dvh,29rem)] gap-1 overflow-hidden px-5 md:px-10">
+        {collections.map((c, i) => {
+          const tone = PANEL_TONES[i % PANEL_TONES.length];
+          const isOpen = i === open;
+
+          return (
+            <div
+              key={c.id}
+              className={`lab-spring-panel relative flex overflow-hidden ${tone.fill} ${tone.text}`}
+              style={{ ["--lab-grow" as string]: isOpen ? 10 : 1 }}
+            >
+              {/* The spine is the control, and it stays put when the panel
+                  opens — so the thing you pressed is still under your cursor.
+                  Pressing the open one again does nothing: see the note above
+                  on why the page cannot afford an all-closed row. */}
+              <button
+                onClick={() => setOpen(i)}
+                aria-expanded={isOpen}
+                aria-label={`${c.name} — ${c.items.length} món`}
+                className={`flex w-[3.25rem] shrink-0 flex-col items-center justify-between py-5 ${tone.spine}`}
               >
-                {indices.map(renderPanel)}
-              </div>
+                <span className="text-[11px] tabular-nums tracking-[0.16em] opacity-70">
+                  {c.index}
+                </span>
+                <span className="lab-spine-label text-[11px] font-semibold uppercase tracking-[0.22em]">
+                  {c.name}
+                </span>
+                <span aria-hidden="true" className="h-5 w-px bg-current opacity-30" />
+              </button>
+
+              {isOpen && (
+                <div className="lab-spring-contents flex min-w-0 flex-1 flex-col py-5 pr-5">
+                  <CollectionShelf collection={c} tone={tone} onOpen={onOpen} />
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* The bar from the sketch: current page is a wide teal pill, the rest
-          are dots. Same indicator the district map carries, so "there is more
-          sideways" reads the same way twice on one page. */}
-      {pageCount > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-3 pb-4">
-          {pages.map((_, p) => (
-            <button
-              key={p}
-              onClick={() => track.goTo(p)}
-              aria-label={`Trang ${p + 1} trên ${pageCount}`}
-              aria-current={p === track.page}
-              className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                p === track.page ? "w-10 bg-wave" : "w-1.5 bg-white/30 hover:bg-white/60"
-              }`}
-            />
-          ))}
-        </div>
-      )}
+      {seeMore}
     </section>
   );
 }
@@ -1807,7 +1924,7 @@ export default function Homepage() {
             is the book's transition device, carries the change of ground. */}
         {/* white → violet */}
         <GroundBlend from="paper" to="brand" />
-        <CollectionsTrack collections={collections} onOpen={open} />
+        <CollectionsSpringTabs collections={collections} onOpen={open} />
 
         {/* violet → the deeper violet the map now sits on. The map used to be
             bg-ink and the team asked for that black to go (26/08), so the two
