@@ -4,6 +4,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
 import { useDragTrack } from "../lib/useDragTrack";
 import { useMarqueeTrack } from "../lib/useMarqueeTrack";
+import { useLoopTrack, LOOP_COPIES } from "../lib/useLoopTrack";
 import {
   formatPrice,
   PRICE_NOTE,
@@ -346,12 +347,15 @@ function StoreTile({
   product,
   onOpen,
   blocked,
+  full = false,
 }: {
   key?: string;
   product: Product;
   onOpen: (p: Product) => void;
   /** True when the gesture that just ended was a drag, not a tap. */
   blocked?: () => boolean;
+  /** Fill the slide it is in, for the phone lane's one-per-screen paging. */
+  full?: boolean;
 }) {
   return (
     <button
@@ -361,7 +365,11 @@ function StoreTile({
         onOpen(product);
       }}
       draggable={false}
-      className="lab-snap-item group mr-6 w-[62vw] shrink-0 text-left sm:w-[20rem] lg:mr-10 lg:w-[20rem]"
+      className={
+        full
+          ? "group block w-full text-left"
+          : "lab-snap-item group mr-6 w-[62vw] shrink-0 text-left sm:w-[20rem] lg:mr-10 lg:w-[20rem]"
+      }
     >
       {/* Team direction (26/08): square and rounded. Square is also the ratio
           the product photographs are actually shot at — the landscape crop
@@ -462,6 +470,96 @@ function StoreLane({
   );
 }
 
+
+/* ── the phone lane: one product at a time, endlessly ────────────────────
+   Team 07/09: "nếu có 10 sản phẩm featured trên What's in store, thì vuốt
+   sang phải 10 lần sẽ qua sản phẩm 2,…,10 rồi quay trở về đúng sản phẩm đầu
+   tiên, vuốt thêm 10 lần nữa thì vẫn quay lại chỗ xuất phát."
+
+   Yes, and this is it. What was in the way was the mechanism: the lane was a
+   native `overflow-x: auto` container with the last product rotated to the
+   front of the list. That looks like a loop standing still — the last product
+   does sit to the left of the first — but a scroll container has a finite
+   scrollWidth, so one swipe left hits scrollLeft 0 and stops. Reordering the
+   list cannot fix that; the browser will not scroll to content that is not
+   there.
+
+   useLoopTrack lays the list out three times, keeps the index in the middle
+   copy, and folds it back by ±count once the spring has settled. The fold is
+   invisible because index i and index i+count are the same pixels. See the
+   note on the hook.
+
+   The desktop lanes keep the marquee: two drifting rows are the shape that
+   section has, and there is no "current product" there to page between. */
+function LoopingStoreLane({
+  products,
+  onOpen,
+}: {
+  products: Product[];
+  onOpen: (p: Product) => void;
+}) {
+  const track = useLoopTrack(products.length, {
+    response: 0.55,
+    decelerationRate: 0.992,
+    maxPagesPerFlick: 1,
+  });
+  const laid = Array.from({ length: LOOP_COPIES }, () => products).flat();
+
+  if (products.length === 0) return null;
+
+  return (
+    <div>
+      <div
+        ref={track.setViewport}
+        {...track.handlers}
+        /* No padding on the viewport: useLoopTrack measures its step from
+           clientWidth, which includes padding, so a padded viewport would
+           step further than a slide is wide and drift out of true. The gutter
+           goes on the slide. */
+        className={`overflow-hidden touch-pan-y ${
+          track.dragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        role="group"
+        aria-roledescription="carousel"
+        aria-label="Sản phẩm nổi bật"
+      >
+        <div
+          className="flex"
+          style={{ transform: `translate3d(${track.x}px, 0, 0)`, willChange: "transform" }}
+        >
+          {laid.map((p, i) => (
+            <div
+              key={`${i}-${p.id}`}
+              className="w-full shrink-0 px-5"
+              /* Only the middle copy is read out. The other two are the same
+                 products again, there to cover the fold. */
+              aria-hidden={i < products.length || i >= products.length * 2}
+            >
+              <StoreTile product={p} onOpen={onOpen} blocked={track.didDrag} full />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* At one product per screen there is nothing else on screen saying
+          there is more, so the beads carry it. No ends to disable. */}
+      <div className="mt-5 flex items-center justify-center gap-2 px-5">
+        {products.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => track.goTo(i)}
+            aria-label={`Xem sản phẩm ${i + 1}`}
+            aria-current={i === track.page}
+            className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              i === track.page ? "w-7 bg-wave" : "w-1.5 bg-white/30"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
   const half = Math.ceil(products.length / 2);
   /* Team 20/08: one lane is enough on a phone — two stacked marquees eat the
@@ -486,19 +584,33 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
       </div>
 
       <div className="mt-10 space-y-6">
-        {/* Speeds in px/s rather than a loop duration: the duration a CSS
-            marquee takes depends on how much content it happens to hold, so
-            two lanes with different counts ran at different speeds. These are
-            the same two speeds the old durations worked out to on a laptop,
-            now stated directly and independent of the catalogue's length. */}
-        <StoreLane
-          products={twoLanes ? products.slice(0, half) : products}
-          direction="left"
-          speed={twoLanes ? 34 : 26}
-          onOpen={onOpen}
-        />
-        {twoLanes && (
-          <StoreLane products={products.slice(half)} direction="right" speed={28} onOpen={onOpen} />
+        {twoLanes ? (
+          <>
+            {/* Speeds in px/s rather than a loop duration: the duration a CSS
+                marquee takes depends on how much content it happens to hold,
+                so two lanes with different counts ran at different speeds.
+                These are the same two speeds the old durations worked out to
+                on a laptop, now stated directly and independent of the
+                catalogue's length. */}
+            <StoreLane
+              products={products.slice(0, half)}
+              direction="left"
+              speed={34}
+              onOpen={onOpen}
+            />
+            <StoreLane
+              products={products.slice(half)}
+              direction="right"
+              speed={28}
+              onOpen={onOpen}
+            />
+          </>
+        ) : (
+          /* One product per screen on a phone, and endless. Two stacked
+             marquees eat the screen and neither can be read while both are
+             moving (20/08); a single drifting one still gives you no way to
+             go back to the product you just passed. */
+          <LoopingStoreLane products={products} onOpen={onOpen} />
         )}
       </div>
 

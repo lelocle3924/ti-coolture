@@ -51,6 +51,16 @@ const STUDIES = [
     body: "Nở ra từ nút, kéo ra từ nav, hoặc modal làm cho tử tế. Bấm thử được cả ba.",
     meta: "3 phương án · toàn site",
   },
+  {
+    to: "/lab/store",
+    /* 05, not 04: /lab/hero on lab/hero-aspect-studies takes 04, and this
+       study's own eyebrow already reads 05. Leaving both at 04 would collide
+       the moment the two lab branches meet. */
+    n: "05",
+    title: "What's in store — băng sản phẩm trên điện thoại",
+    body: "Băng để đẩy, lưới để quét, hay từng món một. Khác nhau ở mô hình điều hướng, không phải ở con số.",
+    meta: "3 phương án · trang chủ",
+  },
 ];
 
 export default function LabIndex() {

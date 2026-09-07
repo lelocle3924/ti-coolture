@@ -30,6 +30,28 @@ function rubberband(overshoot: number, dimension: number, constant = 0.55): numb
   return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
 }
 
+export interface DragTrackOptions {
+  /**
+   * Spring response in seconds — the time the landing takes to resolve.
+   * Higher is calmer. Default 0.42, which is the value every track shipped
+   * with until 31/08.
+   */
+  response?: number;
+  /**
+   * Apple's deceleration rate, fed to the momentum projection. The projection
+   * is velocity/1000 * r / (1 - r), so the default 0.998 multiplies release
+   * velocity by ~0.5 and a hard flick throws the track a long way. Lower
+   * values shorten the throw sharply.
+   */
+  decelerationRate?: number;
+  /**
+   * Cap on how many pages a single flick may cross. Without it a fast swipe
+   * can skip several pages, which is the part that reads as the track
+   * "drifting" past you rather than following you.
+   */
+  maxPagesPerFlick?: number;
+}
+
 export interface DragTrack {
   /** Current offset in px; negative moves the track left. */
   x: number;
@@ -49,7 +71,13 @@ export interface DragTrack {
   didDrag: () => boolean;
 }
 
-export function useDragTrack(pageCount: number): DragTrack {
+export function useDragTrack(pageCount: number, options: DragTrackOptions = {}): DragTrack {
+  const {
+    response = 0.42,
+    decelerationRate = 0.998,
+    maxPagesPerFlick = Infinity,
+  } = options;
+
   const reduced = useReducedMotion();
 
   const [x, setX] = useState(0);
@@ -93,7 +121,7 @@ export function useDragTrack(pageCount: number): DragTrack {
     }
   }, []);
 
-  /** Critically damped spring, run from the live value. Response ≈ 0.42s. */
+  /** Critically damped spring, run from the live value. Response per options. */
   const springTo = useCallback(
     (target: number, initialVelocity = 0) => {
       stop();
@@ -107,7 +135,7 @@ export function useDragTrack(pageCount: number): DragTrack {
       }
 
       velRef.current = initialVelocity;
-      const omega = (2 * Math.PI) / 0.42;
+      const omega = (2 * Math.PI) / response;
       let last = performance.now();
 
       const tick = (now: number) => {
@@ -133,7 +161,7 @@ export function useDragTrack(pageCount: number): DragTrack {
 
       frameRef.current = requestAnimationFrame(tick);
     },
-    [reduced, stop]
+    [reduced, response, stop]
   );
 
   const goTo = useCallback(
@@ -208,8 +236,17 @@ export function useDragTrack(pageCount: number): DragTrack {
         const velocity = ((ev.clientX - first.x) / dt) * 1000; // px/s
 
         // Land where the flick is going, not where the finger stopped.
-        const projected = xRef.current + project(velocity);
-        const target = Math.round(-projected / width);
+        const projected = xRef.current + project(velocity, decelerationRate);
+        const wanted = Math.round(-projected / width);
+
+        /* ...but no further than the flick is allowed to carry. A track that
+           crosses three pages on one swipe stops reading as something you are
+           moving and starts reading as something moving on its own. */
+        const from = pageRef.current;
+        const target = Math.max(
+          from - maxPagesPerFlick,
+          Math.min(from + maxPagesPerFlick, wanted)
+        );
         goTo(target, velocity);
       };
 
@@ -217,7 +254,7 @@ export function useDragTrack(pageCount: number): DragTrack {
       el.addEventListener("pointerup", onUp);
       el.addEventListener("pointercancel", onUp);
     },
-    [goTo, pageCount, stop]
+    [decelerationRate, goTo, maxPagesPerFlick, pageCount, stop]
   );
 
   useEffect(() => stop, [stop]);
