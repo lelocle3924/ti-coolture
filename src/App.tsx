@@ -23,6 +23,7 @@ import MotionStudies from "./lab/MotionStudies";
 import HiddenGemStudies from "./lab/HiddenGemStudies";
 import SearchMotionStudies from "./lab/SearchMotionStudies";
 import StoreRailStudies from "./lab/StoreRailStudies";
+import HowSeamStudies from "./lab/HowSeamStudies";
 import Footer from "./components/Footer";
 import { useEffect } from "react";
 import { recordButtonClick } from "./lib/dbService";
@@ -169,6 +170,7 @@ function SiteShell() {
           <Route path="/lab/hidden-gem" element={<HiddenGemStudies />} />
           <Route path="/lab/search" element={<SearchMotionStudies />} />
           <Route path="/lab/store" element={<StoreRailStudies />} />
+          <Route path="/lab/how" element={<HowSeamStudies />} />
 
           {/* Renamed 26/08. Kept as redirects so anything already shared or
               bookmarked still lands, rather than bouncing to the homepage. */}

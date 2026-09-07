@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 
 /**
  * The brand's supporting marks ("dấu hiệu phụ trợ"), inlined so their fills can
@@ -30,6 +31,59 @@ export function WaveBottom({
         <path
           fill={fill}
           d="M-1.95,318.33s476.18-70.31,773.39,147,348.35-159.13,572.06-157.87,242.89,113.12,345.16,161.06S1567.21,35,1922,.87V698.63H-1.95Z"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * The cropped flow wave — verbatim from
+ * src/assets/brand/brand-wave-bottom-cropped.svg.
+ *
+ * Sits at the foot of a light section as the crest of the *next*, violet one
+ * pushing up into it. Team 31/08: between "Cách đặt hàng" and "Chưa biết mua
+ * gì?", drop the gradient and let this rise through the seam instead. No
+ * motion — it is a shape, not a transition.
+ *
+ * The artwork is 495×268 and keeps that ratio. Full-bleed it is therefore
+ * 0.54 × the width tall — 780px on a 1440px screen — which is far more band
+ * than the seam wants, so the wrapper crops the top and the crest is what
+ * shows. That is the "một phần element nhô lên" of the 31/08 note: a part of
+ * the shape coming up through the seam, not the whole thing squashed into a
+ * strip.
+ *
+ * An earlier pass did squash it with preserveAspectRatio="none" to control the
+ * band height. Team 04/09: keep the ratio and fill the remainder with the
+ * ground instead — white left over on the left is fine. Cropping does exactly
+ * that, and the crop is set as a fraction of the width, so the shape still
+ * lands identically at 375px and 1440px.
+ */
+export function WaveBottomCropped({
+  className = "",
+  fill = "var(--color-brand)",
+  ratio = 0.24,
+}: {
+  className?: string;
+  fill?: string;
+  /** Visible band height as a fraction of its width. The artwork keeps its
+      own 495:268 and is cropped to this, bottom-aligned. */
+  ratio?: number;
+}) {
+  return (
+    <div
+      className={`pointer-events-none relative ${className}`}
+      aria-hidden="true"
+      style={{ width: `${ratio * 100}%`, marginLeft: "auto" }}
+    >
+      {/* width controlled by ratio, natural aspect ratio maintained by svg */}
+      <svg
+        viewBox="0 0 486 266.05"
+        className="block h-auto w-full"
+      >
+        <path
+          fill={fill}
+          d="M487.95 266.032H0C78.1202 262.714 113.21 152.866 198.693 153.348C310.55 153.978 320.141 209.927 371.277 233.905C410.95 254.5 310.551 17.0709 487.95 0V266.032Z"
         />
       </svg>
     </div>
@@ -143,6 +197,7 @@ export function RibbonLoop({
   style,
   ribbon = "var(--color-wave)",
   dot = "var(--color-paper)",
+  blink = false,
 }: {
   /* declared because the project has no @types/react, so TS checks key as an
      ordinary prop rather than a reserved one */
@@ -151,7 +206,29 @@ export function RibbonLoop({
   style?: React.CSSProperties;
   ribbon?: string;
   dot?: string;
+  /**
+   * Let the loop blink. Team 04/09: the loop reads as an eye, so give it the
+   * one thing an eye does — twice in a second, then six seconds of stillness.
+   *
+   * Rebuilt 07/09. It used to be one lid scaled on Y, which shuts an eye
+   * along a horizontal line; this eye is not horizontal. Its two tips are the
+   * anchors of the almond — (85.4, 69.87) and (229.76, 183.66) in the mark's
+   * own 700×695 space — so its axis runs at 38.25° below horizontal, not the
+   * 45° the note estimated, and its centre is (157.58, 126.77).
+   *
+   * It is two lids now, as asked: the eye's opening is split along that axis,
+   * each half parked outside the eye on its own side, and both travel
+   * perpendicular to the axis to meet on it. The pupil sits 0.5 units off
+   * that same line — measured, not assumed — so the lids close over it
+   * exactly rather than beside it.
+   */
+  blink?: boolean;
 }) {
+  /* Two loops can share a page (the hero and the seam), and two clipPaths
+     cannot share an id — the second would be ignored and its lids would spill
+     over the ribbon. */
+  const eyeClipId = useId();
+
   return (
     <svg
       viewBox="0 0 700 695"
@@ -167,9 +244,53 @@ export function RibbonLoop({
         fill={dot}
         d="M133.62,97.27a12.63,12.63,0,0,1-25.25,0,12.3,12.3,0,0,1,1.34-5.6.22.22,0,0,1,.06-.13,11.51,11.51,0,0,1,2.13-3,12.62,12.62,0,0,1,21.72,8.76Z"
       />
+      {blink && (
+        <>
+          <defs>
+            {/* Everything the lids do is clipped to the eye's own opening, so
+                a lid parked "outside the eye" is genuinely invisible and no
+                lid can ever spill onto the ribbon. */}
+            <clipPath id={eyeClipId}>
+              <path d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z" />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${eyeClipId})`}>
+            {/* Rotated onto the eye's own axis, so "perpendicular to the
+                centre line" is a plain translateY in here. The rects are
+                deliberately larger than the opening — the clip decides what
+                shows, so their size only has to be generous. */}
+            <g transform="translate(157.58 126.77) rotate(38.25)">
+              <rect className="ti-eye-lid-a" x="-140" y="-130" width="280" height="130" fill={ribbon} />
+              <rect className="ti-eye-lid-b" x="-140" y="0" width="280" height="130" fill={ribbon} />
+            </g>
+          </g>
+        </>
+      )}
     </svg>
   );
 }
+
+export function RibbonCorner({
+  className = "",
+  style,
+  ribbon = "var(--color-wave)",
+  dot = "var(--color-brand)",
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  ribbon?: string;
+  dot?: string;
+}) {
+  return (
+    <svg viewBox="0 0 700 695" aria-hidden="true" style={style} className={`block ${className}`}>
+      <path fill={ribbon} d="M109.77 91.54C110.437 90.5467 111.147 89.5467 111.9 88.54C111.034 89.4193 110.315 90.4323 109.77 91.54ZM109.77 91.54C110.437 90.5467 111.147 89.5467 111.9 88.54C111.034 89.4193 110.315 90.4323 109.77 91.54Z" />
+      <path fill={ribbon} d="M109.77 91.51C110.437 90.5167 111.147 89.5167 111.9 88.51C111.031 89.3984 110.312 90.4216 109.77 91.54V91.51ZM109.77 91.51C110.437 90.5167 111.147 89.5167 111.9 88.51C111.031 89.3984 110.312 90.4216 109.77 91.54V91.51ZM111.9 88.51C111.034 89.3893 110.315 90.4023 109.77 91.51C110.423 90.5433 111.133 89.5433 111.9 88.51Z" />
+      <path fill={ribbon} d="M161.93 4.76999C77.16 -8.94001 41.32 44.57 34.13 84.33C26.9666 123.943 35.3773 226.378 230.815 242.632L289.75 242.299V169.77C289.75 169.77 246.7 18.48 161.93 4.76999ZM85.4 69.87C85.4 69.87 152.76 47.05 199.47 130.66L229.76 183.66C229.76 183.66 88.48 175.34 85.4 69.87Z" />
+      <path fill={dot} d="M133.62 97.27C133.527 100.557 132.157 103.678 129.799 105.97C127.442 108.262 124.283 109.545 120.995 109.545C117.707 109.545 114.548 108.262 112.191 105.97C109.833 103.678 108.463 100.557 108.37 97.27C108.367 95.3236 108.827 93.4044 109.71 91.67C109.715 91.6212 109.736 91.5754 109.77 91.54C110.315 90.4323 111.034 89.4193 111.9 88.54C113.645 86.7237 115.894 85.4712 118.357 84.9437C120.82 84.4162 123.384 84.6377 125.72 85.5799C128.056 86.522 130.057 88.1416 131.465 90.2303C132.873 92.319 133.623 94.7812 133.62 97.3V97.27Z" />
+    </svg>
+  );
+}
+
 
 export function ContinuousWave({ pageIndex, className = "" }: { pageIndex: number; className?: string }) {
   return (

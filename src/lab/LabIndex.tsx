@@ -82,6 +82,16 @@ const STUDIES = [
     body: "Sóng bị thay bằng cạnh thẳng, và ba lập trường khác nhau về chỗ nối nền tối với nền giấy.",
     meta: "3 hướng · /discover",
   },
+  {
+    to: "/lab/how",
+    /* 06, not 04: /lab/hero (lab/hero-aspect-studies) takes 04 and /lab/store
+       (lab/store-mobile-studies) takes 05. Numbering past them here keeps the
+       three lab branches from colliding on the same row. */
+    n: "06",
+    title: "Cách đặt hàng — hai đường ranh giới",
+    body: "Ranh giới trên tự lộn từ vồng lên → thẳng → vồng xuống khi cuộn. Dưới là sóng brand nhô lên, không animation.",
+    meta: "1 phương án · trang chủ",
+  },
 ];
 
 export default function LabIndex() {

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, StarIco
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
 import { useDragTrack } from "../lib/useDragTrack";
 import { useImageTone, type ImageTone } from "../lib/useImageTone";
+import { BendingSeam } from "../home/BendingSeam";
 import { useMarqueeTrack } from "../lib/useMarqueeTrack";
 import { useLoopTrack, LOOP_COPIES } from "../lib/useLoopTrack";
 import {
@@ -18,6 +19,7 @@ import SaveButton from "../components/SaveButton";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
 import BrandSurround from "../components/BrandSurround";
+import { RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
 import DistrictMap from "../home/DistrictMap";
 import "../home/home.css";
 
@@ -824,7 +826,15 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   const twoLanes = useMediaQuery("(min-width: 768px)");
 
   return (
-    <section id="dong-store" className="bg-brand pb-16 pt-10 text-paper md:pb-24 md:pt-12">
+    <section
+      id="dong-store"
+      /* pb is max(4rem, 7.875%) — 7.875% is half the collapsed seam band, so
+         the band never reaches the price note; the 4rem floor keeps a sane gap
+         on a phone, where half a band is only ~30px. It reads larger than the
+         old md:pb-24, but the band no longer adds its own ~113px on top, so
+         the gap from the note down to the seam roughly halves. */
+      className="bg-brand pb-[max(4rem,7.875%)] pt-10 text-paper md:pt-12"
+    >
       {/* the title *is* the link through to the catalogue */}
       <div className="px-5 text-center md:px-10">
         <Link
@@ -887,6 +897,46 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
    Card i is revealed by t = clamp(cursor − i, 0, 1): it rises from 55% below
    its slot, untilts, and fades in. */
 
+/* ── the marks around "Cách đặt hàng" ─────────────────────────────────────
+   Ported verbatim from the hand-tuned build at /lab/how (04/09). The numbers
+   are the team's own, not re-derived: ribbon 32% of the width, left -19%,
+   hanging below the foot of the section; crest 25% of the width, right
+   aligned, at its own 486:266 ratio.
+
+   The one thing that could not be copied literally is the ribbon's vertical
+   offset. The lab writes it `bottom: -22%`, and a percentage bottom resolves
+   against the CONTAINER's height — 685px in the lab's section, but 100dvh in
+   the pinned pane, which would drop the mark much further out of frame. So it
+   is expressed as a translate instead: measured at 1440px the lab hangs the
+   ribbon 270px below the foot, which is 58.9% of the mark's own 458px height,
+   and a translate percentage resolves against the element's own box. Same
+   picture, in a box of any height. */
+
+/* The seam's depth, as a fraction of its width. Both modes read it, and the
+   sections' head/foot padding is derived from it (7.875% = half a band at
+   BAND_FACTOR 2.1), so it lives in one place. */
+const SEAM_SAGITTA = 0.075;
+
+function HowMarks() {
+  return (
+    <>
+      <RibbonLoop
+        className="pointer-events-none absolute bottom-0 left-[-19%] z-0 w-[32%] max-w-[30rem]"
+        style={{ transform: "translateY(40%) scaleX(-1)" }}
+        ribbon="var(--color-wave)"
+        dot="var(--color-brand)"
+        blink
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-[-1px] z-0"
+      >
+        <WaveBottomCropped fill="var(--color-brand)" ratio={0.25} />
+      </div>
+    </>
+  );
+}
+
 function HowItWorks() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState(0);
@@ -946,8 +996,14 @@ function HowItWorks() {
             }}
             aria-hidden={pinned && t < 0.05}
           >
+            {/* 33dvh -> 36dvh (and the rails 13rem -> 13.5rem, 22rem -> 23rem).
+                Growing the cards is the only lever that shrinks the empty band
+                above AND below at once, since both are half of whatever the
+                content does not use. Kept modest on purpose: this pane is
+                sized in dvh precisely because a rem-sized version clipped its
+                last row on short Windows laptops. */}
             <div
-              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13rem,33dvh,22rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${
+              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13.5rem,36dvh,23rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${
                 i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
               } ${i % 2 === 0 ? "bg-brand" : "bg-brand-deep"} text-paper`}
             >
@@ -971,19 +1027,42 @@ function HowItWorks() {
   );
 
   const header = (
-    <div className="px-5 text-center md:px-0">
+    <div className="relative z-10 px-5 pt-5 text-center md:px-0">
       <h2 className="display text-[clamp(1.75rem,min(5.6vw,7.5dvh),4.5rem)] normal-case leading-none text-ink">
         Cách đặt hàng
       </h2>
     </div>
   );
 
+  /* Same note as the pinned pane below, applied where there is no pin to
+     centre anything: the padding above the title and below the last card is
+     simply smaller. py-16/24 -> pt-11/14 and pb-12/16, and the heading keeps a
+     clear gap to the fan rather than the pinned layout's old tuck. */
   if (!pinned) {
     return (
-      <section id="dong-how" data-surface="light" className="bg-paper py-16 text-ink md:py-24">
-        {header}
-        <div className="mt-10">{fan}</div>
+      <>
+      <BendingSeam
+        sagittaRatio={SEAM_SAGITTA}
+        above="var(--color-brand)"
+        below="var(--color-paper)"
+        collapse
+      />
+      <section
+        id="dong-how"
+        data-surface="light"
+        /* pb clears the crest exactly rather than by guess: the crest is 25%
+           of the width at 486:266, so it stands 0.25/1.827 = 13.7% of the
+           width tall. In the lab the crest simply follows the cards in normal
+           flow; here it is absolute, so the padding has to stand in for it. */
+        className="relative overflow-hidden bg-paper pb-[14%] pt-[max(2.75rem,7.875%)] text-ink"
+      >
+        <HowMarks />
+        <div className="relative z-10">
+          {header}
+          <div className="mt-8">{fan}</div>
+        </div>
       </section>
+      </>
     );
   }
 
@@ -994,25 +1073,94 @@ function HowItWorks() {
             viewport height with rem-sized content, it fitted a 900px MacBook
             and clipped its last row on every shorter Windows laptop — which is
             the vertical overflow the team reported. */}
-        <div className="sticky top-0 flex h-[100dvh] flex-col justify-center overflow-hidden pt-[clamp(3.25rem,7dvh,4.5rem)]">
-          {header}
-          {/* the fan tucks under the heading as it fills, the way the
-              reference layers its cards over the title */}
-          <div className="-mt-2">{fan}</div>
+        {/* Spacing reworked 31/08: "thu nhỏ khoảng trống trên title và dưới các
+            thẻ steps, đưa 'cách đặt hàng' lên cao xíu, đừng quá sát với các
+            thẻ."
 
-          {/* step counter, so the pin always says where you are */}
-          <div className="mt-[clamp(0.75rem,2.5dvh,2rem)] flex justify-center gap-2" aria-hidden="true">
-            {HOW_STEPS.map((step, i) => (
-              <span
-                key={step.n}
-                className="h-px w-10 bg-ink/15"
-              >
-                <span
-                  className="block h-full bg-wave-ink transition-[width] duration-200"
-                  style={{ width: `${Math.min(1, Math.max(0, cursor - i)) * 100}%` }}
-                />
-              </span>
-            ))}
+            Measured before, at 1440x900: 291px of nothing above the title,
+            228px below the step counter, and the title sitting -8px into the
+            cards. 519px of a 900px screen was empty while the one thing that
+            was tight was the one gap that should not have been.
+
+            The content was centred in the pinned pane, because at the time
+            both empty bands were (viewport - content)/2 and neither could be
+            removed without breaking the pin.
+
+            Centring is wrong now, and 04/09 caught it: the seam above the
+            section ends up 241px from the title on the homepage against 55px
+            in the lab, purely because the pane centres what the lab lets sit
+            at the top. The foot of the pane is no longer empty either — the
+            crest and the ribbon occupy it — so there is nothing left for the
+            lower band to do. Top-align instead, with the lab's own head
+            clearance, and the seam meets the title the same way in both.
+            The clearance answers to two things at once, so it is a max().
+            6.5rem clears the floating header, which sits at y 20-93px in px
+            rather than dvh and so cannot be expressed as a percentage. 7.875%
+            is half the collapsed seam band, which the title has to stay below
+            or the downward bulge runs under it. Whichever is larger wins:
+            the header governs up to ~1320px, the band above that. */}
+        {/* flow-root, so the pane is its own block formatting context.
+            Without it the seam's negative top margin collapses INTO the pane
+            instead of lifting the seam above it, and the whole composition
+            drops half a band. The pane used to get that context for free from
+            overflow-hidden; that has moved to the inner element, so the pane
+            has to ask for it. */}
+        <div className="sticky top-0 h-[100dvh] flow-root">
+          {/* The seam belongs to the pane, not to the wrapper.
+
+              It was a sibling of the pane, sticking on its own at -half a
+              band. That held the gap during the lock, but the two had
+              different release points: the pane lets go when the wrapper's
+              foot reaches the bottom of the screen, while the seam's own
+              sticky range ran on almost to the foot of the wrapper. So the
+              cards scrolled away and the violet edge of "Chưa biết mua gì?"
+              came up while the seam was still nailed to the top of the screen
+              (07/09).
+
+              As a child it cannot drift: it sticks when the pane sticks, and
+              scrolls away with it at exactly the same moment.
+
+              Which is why the pane is now two elements. The overflow-hidden
+              has to stay — it is what crops the ribbon's overhang at the foot
+              — but it would also crop the seam's upper half, and that half is
+              where the white bulges up into the violet on the way in. So the
+              clip moves to the inner element and the seam sits outside it. */}
+          <BendingSeam
+            sagittaRatio={SEAM_SAGITTA}
+            above="var(--color-brand)"
+            below="var(--color-paper)"
+            collapse
+          />
+          {/* `relative` is load-bearing, not decoration (07/09).
+
+              overflow-hidden clips a descendant only when the clipping box is
+              also that descendant's containing block, and an absolutely
+              positioned element takes its containing block from the nearest
+              *positioned* ancestor. Without `relative` here this div clipped
+              nothing absolute: the ribbon resolved against a positioned
+              ancestor further up and its tail carried on past the foot of the
+              white, over the violet of "Chưa biết mua gì?" — 183px of it at
+              1440. The non-pinned branch of this section already had
+              `relative` and already clipped correctly, which is why only the
+              pinned path showed it. */}
+          <div className="relative flex h-full flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
+          {/* Inside the pane, not at the foot of the tall wrapper.
+
+              Team 04/09: while the page is held, the straight violet edge of
+              "Chưa biết mua gì?" must not show — only the wave and the ribbon
+              coming up. Putting the marks in the pane does exactly that: they
+              ride the sticky pane at the bottom of the screen for the whole
+              pin, while the violet section itself is still below the fold and
+              only arrives once the pin lets go. At that moment the pane's foot
+              and the wrapper's foot are the same line, so the crest meets the
+              violet with nothing between them. */}
+          <HowMarks />
+          {header}
+          {/* The fan used to tuck -8px under the heading, layering its cards
+              over the title the way the reference does. The 31/08 note asks
+              for the opposite — "đừng quá sát với các thẻ" — so the tuck is
+              gone and the heading gets real clearance. */}
+            <div className="relative z-10 mt-[clamp(1rem,3dvh,2rem)]">{fan}</div>
           </div>
         </div>
       </div>
@@ -1927,7 +2075,8 @@ export default function Homepage() {
         )}
 
         {/* violet → white */}
-        <GroundBlend from="brand" to="paper" />
+        {/* The seam that used to sit here is inside HowItWorks now: it has to
+            stick with the pin, and only a child of the pinned wrapper can. */}
         <HowItWorks />
 
         {/* white → violet. The guidelines also offer a chapter-front device
@@ -1936,7 +2085,10 @@ export default function Homepage() {
             point is that it opens on "Chưa biết mua gì?" — so the wave, which
             is the book's transition device, carries the change of ground. */}
         {/* white → violet */}
-        <GroundBlend from="paper" to="brand" />
+        {/* No gradient into "Chưa biết mua gì?" any more. The crest inside
+            HowItWorks is the whole transition now — it rises out of this
+            section's own violet, so the two grounds meet on the shape rather
+            than on a fade. */}
         <CollectionsSpringTabs collections={collections} onOpen={open} />
 
         {/* violet → the deeper violet the map now sits on. The map used to be
