@@ -200,15 +200,15 @@ export default function Discovery() {
           and the itinerary under the wave is what it chooses. */}
       <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
         <ArcTopRight
-          className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-15"
+          className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-[0.3]"
           style={{ width: "clamp(16rem, 34vw, 28rem)" }}
           fill="var(--color-wave)"
         />
         <RibbonLoop
-          className="pointer-events-none absolute -left-28 bottom-0 z-0 opacity-[0.12]"
+          className="pointer-events-none absolute -left-28 bottom-0 z-0 opacity-[0.3] -scale-x-100"
           style={{ width: "clamp(16rem, 30vw, 24rem)" }}
-          ribbon="var(--color-paper)"
-          dot="var(--color-wave)"
+          ribbon="var(--color-wave)"
+          dot="var(--color-paper)"
         />
 
         <div className="relative z-10 mx-auto max-w-4xl px-5 pb-2 pt-24 md:px-8 md:pt-28">
