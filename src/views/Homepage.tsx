@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUpRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
 import { useDragTrack } from "../lib/useDragTrack";
+import { useMarqueeTrack } from "../lib/useMarqueeTrack";
 import {
   formatPrice,
   PRICE_NOTE,
@@ -344,16 +345,22 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
 function StoreTile({
   product,
   onOpen,
-  index = 0,
+  blocked,
 }: {
   key?: string;
   product: Product;
   onOpen: (p: Product) => void;
-  index?: number;
+  /** True when the gesture that just ended was a drag, not a tap. */
+  blocked?: () => boolean;
 }) {
   return (
     <button
-      onClick={() => onOpen(product)}
+      onClick={() => {
+        // a flick that comes to rest over a tile must not also open it
+        if (blocked?.()) return;
+        onOpen(product);
+      }}
+      draggable={false}
       className="lab-snap-item group mr-6 w-[62vw] shrink-0 text-left sm:w-[20rem] lg:mr-10 lg:w-[20rem]"
     >
       {/* Team direction (26/08): square and rounded. Square is also the ratio
@@ -364,6 +371,7 @@ function StoreTile({
           src={product.images[0]}
           alt={product.name}
           loading="lazy"
+          draggable={false}
           className="h-full w-full object-cover transition-transform duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />
       </div>
@@ -382,41 +390,70 @@ function StoreTile({
   );
 }
 
+/* Team feedback (07/09): "Thao tác vuốt ở What's in store trên PC chưa ổn."
+
+   The lane keeps its ambient drift, but the drift is no longer the only thing
+   that can move it: the whole row is grabbable now, on a mouse, a trackpad and
+   a touchscreen alike, and a flick coasts on its own velocity before rejoining
+   the drift. See useMarqueeTrack for why that cannot be done in CSS.
+
+   Hover still holds the lane still — you stop it to read a tile — but stopping
+   it is no longer a dead end, because you can now push it along yourself. */
 function StoreLane({
   products,
   direction,
-  duration,
+  speed,
   onOpen,
 }: {
   products: Product[];
   direction: "left" | "right";
-  duration: string;
+  /** Ambient drift in px/s. */
+  speed: number;
   onOpen: (p: Product) => void;
 }) {
-  const reduced = useReducedMotion();
+  const [held, setHeld] = useState(false);
+  const lane = useMarqueeTrack({
+    speed: direction === "left" ? speed : -speed,
+    paused: held,
+  });
+
   if (products.length === 0) return null;
 
-  // Reduced motion turns the lane into an ordinary swipeable scroll-snap row.
-  if (reduced) {
-    return (
-      <div className="lab-snap-x lab-no-scrollbar flex overflow-x-auto px-5 md:px-10">
-        {products.map((p, i) => (
-          <StoreTile key={p.id} product={p} onOpen={onOpen} index={i} />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="lab-marquee-track overflow-hidden">
-      <div
-        className={`lab-marquee lab-marquee--${direction}`}
-        style={{ ["--lab-marquee-duration" as string]: duration }}
-      >
+    <div
+      /* touch-pan-y, so a vertical swipe still scrolls the page: the lane only
+         claims the horizontal axis. */
+      className={`overflow-hidden touch-pan-y ${lane.dragging ? "cursor-grabbing" : "cursor-grab"}`}
+      onPointerEnter={(e) => {
+        // a finger "enters" on touch down; only a hovering cursor should hold
+        if (e.pointerType === "mouse") setHeld(true);
+      }}
+      onPointerLeave={() => setHeld(false)}
+      onFocusCapture={() => setHeld(true)}
+      onBlurCapture={() => setHeld(false)}
+      {...lane.handlers}
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="Sản phẩm nổi bật"
+    >
+      <div ref={lane.trackRef} className="flex w-max will-change-transform">
         {[0, 1].map((copy) => (
-          <div key={copy} className="flex" aria-hidden={copy === 1}>
-            {products.map((p, i) => (
-              <StoreTile key={`${copy}-${p.id}`} product={p} onOpen={onOpen} index={i} />
+          /* Two copies: the second covers the seam when the first has drifted
+             a full width off. Only the first is measured and only the first is
+             read out — the second is the same products again. */
+          <div
+            key={copy}
+            ref={copy === 0 ? lane.spanRef : undefined}
+            className="flex"
+            aria-hidden={copy === 1}
+          >
+            {products.map((p) => (
+              <StoreTile
+                key={`${copy}-${p.id}`}
+                product={p}
+                onOpen={onOpen}
+                blocked={lane.didDrag}
+              />
             ))}
           </div>
         ))}
@@ -449,14 +486,19 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
       </div>
 
       <div className="mt-10 space-y-6">
+        {/* Speeds in px/s rather than a loop duration: the duration a CSS
+            marquee takes depends on how much content it happens to hold, so
+            two lanes with different counts ran at different speeds. These are
+            the same two speeds the old durations worked out to on a laptop,
+            now stated directly and independent of the catalogue's length. */}
         <StoreLane
           products={twoLanes ? products.slice(0, half) : products}
           direction="left"
-          duration={twoLanes ? "58s" : "72s"}
+          speed={twoLanes ? 34 : 26}
           onOpen={onOpen}
         />
         {twoLanes && (
-          <StoreLane products={products.slice(half)} direction="right" duration="70s" onOpen={onOpen} />
+          <StoreLane products={products.slice(half)} direction="right" speed={28} onOpen={onOpen} />
         )}
       </div>
 
