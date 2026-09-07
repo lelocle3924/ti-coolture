@@ -7,29 +7,12 @@
    Every colour resolves to a token from src/index.css — no new palette.
    --------------------------------------------------------------------------- */
 
-/* ── marquee lanes: What's in store ─────────────────────────────────────── */
-
-@keyframes lab-marquee-left {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-50%, 0, 0); }
-}
-@keyframes lab-marquee-right {
-  from { transform: translate3d(-50%, 0, 0); }
-  to   { transform: translate3d(0, 0, 0); }
-}
-
-.lab-marquee {
-  display: flex;
-  width: max-content;
-  will-change: transform;
-}
-.lab-marquee--left  { animation: lab-marquee-left  var(--lab-marquee-duration, 46s) linear infinite; }
-.lab-marquee--right { animation: lab-marquee-right var(--lab-marquee-duration, 58s) linear infinite; }
-
-.lab-marquee-track:hover .lab-marquee,
-.lab-marquee-track:focus-within .lab-marquee {
-  animation-play-state: paused;
-}
+/* ── marquee lanes: What's in store ───────────────────────────────────────
+   The keyframes that used to live here are gone (07/09). A CSS animation owns
+   the transform outright, so the lane could drift or be dragged but never
+   both — and the team's note was that it could not be dragged at all. The
+   lane is driven from src/lib/useMarqueeTrack.ts now: same drift, same
+   hover-to-hold, plus the gesture. Nothing else used these rules. */
 
 @keyframes lab-pop-in {
   0%   { opacity: 0; transform: translateY(26px) scale(0.86) rotate(-3deg); }
@@ -78,9 +61,6 @@
    stop entirely when the visitor asks for reduced motion. */
 
 @media (prefers-reduced-motion: reduce) {
-  .lab-marquee,
-  .lab-marquee--left,
-  .lab-marquee--right,
   .lab-bob,
   .lab-pop,
   .lab-plate-in {
