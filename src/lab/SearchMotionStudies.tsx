@@ -162,7 +162,7 @@ function Hits({
       {hits.map((p, i) => (
         <li
           key={`${runKey}-${p.id}`}
-          className={stagger > 0 ? "lab-search-hit" : undefined}
+          className={stagger > 0 ? "ti-search-hit" : undefined}
           style={stagger > 0 ? { animationDelay: `${i * stagger}ms` } : undefined}
         >
           <span className="flex items-center gap-3 px-5 py-2.5">
@@ -222,7 +222,7 @@ function StudyOrigin({ products }: { products: Product[] }) {
       <Pill onSearch={() => setOpen(true)} searchRef={(el) => (btn.current = el)} dimmed={open} />
       {open && (
         <>
-          <div className="lab-search-scrim absolute inset-0 z-20 bg-ink/70 backdrop-blur-md" />
+          <div className="ti-search-scrim absolute inset-0 z-20 bg-ink/70" />
           <div
             ref={panel}
             onClick={(e) => e.stopPropagation()}
@@ -305,10 +305,10 @@ function StudyModal({ products }: { products: Product[] }) {
       <Pill onSearch={() => setOpen(true)} />
       {open && (
         <>
-          <div className="lab-search-scrim absolute inset-0 z-20 bg-ink/70" />
+          <div className="ti-search-scrim absolute inset-0 z-20 bg-ink/70" />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="lab-search-drop absolute inset-x-5 top-[5.5rem] z-30 overflow-hidden rounded-[1.25rem] bg-paper shadow-[0_30px_70px_rgba(18,8,31,0.45)]"
+            className="ti-search-drop absolute inset-x-5 top-[5.5rem] z-30 overflow-hidden rounded-[1.25rem] bg-paper shadow-[0_30px_70px_rgba(18,8,31,0.45)]"
           >
             <Field query={query} setQuery={setQuery} onClose={() => setOpen(false)} />
             <Hits hits={hits} stagger={45} runKey={query} />
@@ -443,11 +443,19 @@ export default function SearchMotionStudies() {
             </LabFrame>
           ))}
 
-          <LabFrame label="ĐỀ XUẤT" meta="chọn một, tôi gộp vào Header.tsx">
+          <LabFrame label="ĐÃ CHỌN · C" meta="07/09 — đã gộp vào Header.tsx">
             <div className="mx-auto max-w-[70ch] px-5 pb-20 text-sm leading-relaxed text-ink/75 md:px-10">
+              <p className="mb-4 rounded-xl bg-brand/5 px-4 py-3 text-ink">
+                <strong>Team 07/09 chọn C.</strong> Đã gộp vào{" "}
+                <code>Header.tsx</code>: rèm dâng độ mờ 0 → 12px trong 300ms, bảng rơi
+                22px trên spring của brand, các dòng lệch nhau 45ms. Kèm theo hai yêu cầu
+                cùng đợt: bấm ra ngoài thì đóng, và khi chưa nhập gì thì bảng mở ra
+                trên lịch sử tìm kiếm của phiên này, hoặc vài sản phẩm ngẫu nhiên nếu
+                chưa tìm gì. A và B ở lại đây làm tư liệu.
+              </p>
               <p>
                 <strong className="text-ink">A — Nở ra từ nút</strong> là phương án tôi
-                đề xuất, kèm <strong className="text-ink">C</strong> làm dự phòng. Chúng
+                đã đề xuất, kèm <strong className="text-ink">C</strong> làm dự phòng. Chúng
                 không loại trừ nhau: A cần nút kính lúp còn trên màn hình, mà nav thì ẩn
                 khi cuộn xuống, nên C là thứ chạy trong đúng những lúc A không chạy
                 được. Một dòng điều kiện, hai chuyển động, không có trạng thái nào bị

@@ -72,9 +72,66 @@ export function useChromeHidden(locked = false) {
   return useAutoHideChrome({ locked });
 }
 
+/* ── search ──────────────────────────────────────────────────────────────
+   Direction C from /lab/search, chosen 07/09: the modal keeps its shape and
+   spends its motion where a search modal earns it — the scrim ramps its blur
+   instead of arriving already frosted, the panel drops 22px on the brand
+   spring, and the rows arrive 45ms apart rather than as a wall. The rules are
+   ti-search-* in index.css and the numbers there are the numbers the study
+   printed.
+
+   The same note asked for two other things:
+
+     · "bấm ra ngoài thì đóng search" — the scrim already closed on click and
+       still does; Escape does too, and the panel stops the event so a press
+       inside it never reaches the scrim.
+     · "chưa có lịch sử tìm kiếm … phần đề xuất bị trống quá, nên thêm đề xuất
+       random sản phẩm" — an empty field used to show an empty panel, which is
+       a box asking to be filled with nothing to look at. It now opens on
+       something: this session's own recent searches if there are any, and a
+       handful of products picked at random if there are not. The moment
+       anything is typed it becomes matches, as before. */
+
+/** How many rows the panel carries, searching or suggesting. */
+const SEARCH_ROWS = 6;
+/** Recent searches live for the session only — this is not a profile. */
+const RECENT_KEY = "ticoolture_recent_searches";
+const RECENT_MAX = 5;
+
+function readRecent(): string[] {
+  try {
+    const raw = sessionStorage.getItem(RECENT_KEY);
+    return raw ? (JSON.parse(raw) as string[]).slice(0, RECENT_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberSearch(term: string) {
+  const clean = term.trim();
+  if (!clean) return;
+  try {
+    const next = [clean, ...readRecent().filter((t) => t !== clean)].slice(0, RECENT_MAX);
+    sessionStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* private mode, or storage disabled — the panel just has no history */
+  }
+}
+
+/** A stable random sample, so the suggestions do not reshuffle as you type. */
+function sample<T>(rows: T[], n: number): T[] {
+  const copy = [...rows];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
 function SearchOverlay({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const [recent] = useState<string[]>(() => readRecent());
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -90,31 +147,45 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   const norm = (s: string) =>
     s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
 
+  /* Drawn once per opening, not once per keystroke: a suggestion list that
+     reshuffles while you are reading it is worse than an empty one. */
+  const suggestions = useMemo(() => sample(products, SEARCH_ROWS), [products]);
+
   const hits = useMemo(() => {
     if (!query.trim()) return [];
     const q = norm(query);
     return products
       .filter((p) => norm(`${p.name} ${p.storeName} ${p.category}`).includes(q))
-      .slice(0, 8);
+      .slice(0, SEARCH_ROWS + 2);
   }, [query, products]);
+
+  const searching = !!query.trim();
+  const rows = searching ? hits : suggestions;
+
+  const submit = (term: string) => {
+    const clean = term.trim();
+    if (!clean) return;
+    rememberSearch(clean);
+    navigate(`/products?q=${encodeURIComponent(clean)}`);
+    onClose();
+  };
 
   return (
     <div
       role="dialog"
       aria-label="Tìm kiếm"
-      className="fixed inset-0 z-[70] bg-ink/80 backdrop-blur-md"
+      aria-modal="true"
+      className="ti-search-scrim fixed inset-0 z-[70] bg-ink/80"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto mt-[12vh] w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] bg-paper text-ink shadow-[0_40px_90px_rgba(18,8,31,0.5)]"
+        className="ti-search-drop mx-auto mt-[12vh] w-[min(46rem,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] bg-paper text-ink shadow-[0_40px_90px_rgba(18,8,31,0.5)]"
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!query.trim()) return;
-            navigate(`/products?q=${encodeURIComponent(query.trim())}`);
-            onClose();
+            submit(query);
           }}
           className="flex items-center gap-3 border-b border-ink/12 px-5 py-4"
         >
@@ -131,10 +202,37 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           </button>
         </form>
 
-        {hits.length > 0 && (
-          <ul className="max-h-[52vh] overflow-y-auto">
-            {hits.map((p) => (
-              <li key={p.id}>
+        {/* This session's own searches, if it has made any. Chips rather than
+            rows: they are terms to run again, not things to open. */}
+        {!searching && recent.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-ink/10 px-5 py-3">
+            <span className="label mr-1 text-ink/40">VỪA TÌM</span>
+            {recent.map((term) => (
+              <button
+                key={term}
+                onClick={() => submit(term)}
+                className="rounded-full bg-paper-warm px-3 py-1.5 text-xs font-medium text-ink/75 transition-colors hover:bg-brand hover:text-paper"
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!searching && rows.length > 0 && (
+          <p className="label px-5 pt-3 text-ink/40">
+            {recent.length > 0 ? "CÓ THỂ BẠN THÍCH" : "THỬ XEM VÀI MÓN"}
+          </p>
+        )}
+
+        {rows.length > 0 && (
+          <ul className="max-h-[52vh] overflow-y-auto py-1">
+            {rows.map((p, i) => (
+              <li
+                key={`${searching ? "q" : "s"}-${p.id}`}
+                className="ti-search-hit"
+                style={{ animationDelay: `${i * 45}ms` }}
+              >
                 <Link
                   to={`/products/${p.id}`}
                   onClick={onClose}
@@ -152,7 +250,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           </ul>
         )}
 
-        {query.trim() && hits.length === 0 && (
+        {searching && hits.length === 0 && (
           <p className="px-5 py-6 text-sm text-ink/55">Chưa tìm thấy gì khớp với “{query}”.</p>
         )}
       </div>

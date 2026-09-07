@@ -447,4 +447,51 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   }
 }
 
+/* ---------------------------------------------------------------
+   Search overlay — direction C from /lab/search, chosen 07/09.
+   The numbers here are the numbers printed under the study.
+   --------------------------------------------------------------- */
 
+/* The scrim ramps its blur rather than arriving already frosted. Animating
+   backdrop-filter is the one expensive property in this set and it is
+   deliberate: it is a single full-bleed layer, and the alternative — appearing
+   pre-blurred — is exactly the "no transition at all" the feedback named. */
+@keyframes ti-search-scrim {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(12px); }
+}
+.ti-search-scrim {
+  animation: ti-search-scrim 300ms ease-out both;
+}
+
+/* The panel drops a short distance on the brand spring. 22px, because the
+   overshoot in --ease-brand adds its own travel — a longer drop with a spring
+   on top reads as two separate movements. */
+@keyframes ti-search-drop {
+  from { opacity: 0; transform: translateY(-22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ti-search-drop {
+  animation: ti-search-drop 420ms var(--ease-brand) both;
+}
+
+/* Rows arrive as a group, not as a wall. 45ms is a stagger you feel and do not
+   wait for; past ~70ms the last row starts reading as late. */
+@keyframes ti-search-hit {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ti-search-hit {
+  animation: ti-search-hit 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ti-search-scrim,
+  .ti-search-drop,
+  .ti-search-hit {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    backdrop-filter: blur(12px);
+  }
+}
