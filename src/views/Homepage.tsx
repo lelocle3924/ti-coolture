@@ -11,6 +11,7 @@ import {
   type HomeCollection,
 } from "../home/homeData";
 import Brandmark from "../components/Brandmark";
+import SaveButton from "../components/SaveButton";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
 import BrandSurround from "../components/BrandSurround";
@@ -783,6 +784,133 @@ const PANEL_TONES = [
   { fill: "bg-ink", text: "text-paper", spine: "text-wave", tile: "bg-white/12", muted: "text-white/60" },
 ];
 
+/* The three pieces on show inside an open collection, and the way to the
+   rest of them.
+
+   Team 07/09: "Nếu collection có từ 4 sản phẩm trở lên, cũng cần có 1 thanh
+   trượt ở ngay dưới hoặc nút mũi tên để người dùng biết là collection đó còn
+   thêm nữa. Tất nhiên tính năng này khác so với tính năng spring tab để
+   chuyển sang xem collection khác."
+
+   So it gets both, and it is kept visibly distinct from the spine beside it:
+
+     · The arrows are small, inline and sit on the panel's own heading row,
+       next to the count they page through. The spine is the tall coloured
+       edge on the left. Nothing about the two reads the same.
+     · The bar under the tiles is proportional — its width is the fraction of
+       the collection currently on screen — so it says how much more there is,
+       not merely that there is more.
+
+   Both appear only at four items or more. At three there is nothing to page
+   to, and an arrow that cannot move is a worse signal than no arrow. */
+function CollectionShelf({
+  collection,
+  tone,
+  onOpen,
+}: {
+  collection: HomeCollection;
+  tone: (typeof PANEL_TONES)[number];
+  onOpen: (p: Product) => void;
+}) {
+  const PER_PAGE = 3;
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(collection.items.length / PER_PAGE));
+  const pageable = collection.items.length > PER_PAGE;
+
+  /* A collection that is swapped for a shorter one must not stay on a page
+     that no longer exists. */
+  useEffect(() => {
+    setPage((p) => Math.min(p, pages - 1));
+  }, [pages]);
+
+  const shown = collection.items.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
+
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-4">
+        <h3 className="display truncate text-[clamp(1.4rem,2.2vw,2.1rem)] normal-case leading-[1.25]">
+          {collection.name}
+        </h3>
+
+        <span className="flex shrink-0 items-center gap-3">
+          <span className={`text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}>
+            {String(collection.items.length).padStart(2, "0")} MÓN
+          </span>
+          {pageable && (
+            <span className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                aria-label={`Xem ${PER_PAGE} món trước của ${collection.name}`}
+                className="grid h-7 w-7 place-items-center rounded-full border border-current opacity-60 transition-opacity hover:opacity-100 disabled:opacity-20"
+              >
+                <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
+                disabled={page === pages - 1}
+                aria-label={`Xem ${PER_PAGE} món tiếp theo của ${collection.name}`}
+                className="grid h-7 w-7 place-items-center rounded-full border border-current opacity-60 transition-opacity hover:opacity-100 disabled:opacity-20"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          )}
+        </span>
+      </div>
+
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-3 gap-3">
+        {shown.map((p) => (
+          <div
+            key={p.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onOpen(p)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              onOpen(p);
+            }}
+            className={`group/tile group flex min-h-0 cursor-pointer flex-col text-left ${tone.tile}`}
+          >
+            <span className="relative block min-h-0 flex-1 overflow-hidden">
+              <img
+                src={p.images[0]}
+                alt={p.name}
+                loading="lazy"
+                draggable={false}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
+              />
+              {/* everywhere a product photograph is (07/09) */}
+              <span className="absolute right-0 top-0 z-10">
+                <SaveButton product={p} />
+              </span>
+            </span>
+            <span className="flex items-baseline justify-between gap-2 p-2">
+              <span className="truncate text-xs font-medium">{p.name}</span>
+              <span className={`shrink-0 text-[11px] ${tone.muted}`}>{formatPrice(p.price)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Proportional, so it says how much more rather than only that there is
+          more. Presentational — the arrows above are the control. */}
+      {pageable && (
+        <div aria-hidden="true" className="mt-3 h-[3px] w-full rounded-full bg-current/15">
+          <div
+            className="h-full rounded-full bg-current/60 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{
+              width: `${100 / pages}%`,
+              transform: `translateX(${page * 100}%)`,
+            }}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
 function CollectionsSpringTabs({
   collections,
   onOpen,
@@ -847,11 +975,18 @@ function CollectionsSpringTabs({
                 {isOpen && (
                   <div className="lab-spring-contents grid grid-cols-3 gap-2 px-4 pb-4">
                     {c.items.slice(0, 3).map((p) => (
-                      <button
+                      <div
                         key={p.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => onOpen(p)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" && e.key !== " ") return;
+                          e.preventDefault();
+                          onOpen(p);
+                        }}
                         aria-label={p.name}
-                        className={`aspect-square overflow-hidden ${tone.tile}`}
+                        className={`group/tile relative aspect-square cursor-pointer overflow-hidden ${tone.tile}`}
                       >
                         <img
                           src={p.images[0]}
@@ -860,7 +995,10 @@ function CollectionsSpringTabs({
                           draggable={false}
                           className="h-full w-full object-cover"
                         />
-                      </button>
+                        <span className="absolute right-0 top-0 z-10">
+                          <SaveButton product={p} />
+                        </span>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -912,42 +1050,7 @@ function CollectionsSpringTabs({
 
               {isOpen && (
                 <div className="lab-spring-contents flex min-w-0 flex-1 flex-col py-5 pr-5">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h3 className="display truncate text-[clamp(1.4rem,2.2vw,2.1rem)] normal-case leading-[1.25]">
-                      {c.name}
-                    </h3>
-                    <span
-                      className={`shrink-0 text-[11px] tabular-nums tracking-[0.16em] ${tone.muted}`}
-                    >
-                      {String(c.items.length).padStart(2, "0")} MÓN
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid min-h-0 flex-1 grid-cols-3 gap-3">
-                    {c.items.slice(0, 3).map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => onOpen(p)}
-                        className={`group flex min-h-0 flex-col text-left ${tone.tile}`}
-                      >
-                        <span className="relative block min-h-0 flex-1 overflow-hidden">
-                          <img
-                            src={p.images[0]}
-                            alt={p.name}
-                            loading="lazy"
-                            draggable={false}
-                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
-                          />
-                        </span>
-                        <span className="flex items-baseline justify-between gap-2 p-2">
-                          <span className="truncate text-xs font-medium">{p.name}</span>
-                          <span className={`shrink-0 text-[11px] ${tone.muted}`}>
-                            {formatPrice(p.price)}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <CollectionShelf collection={c} tone={tone} onOpen={onOpen} />
                 </div>
               )}
             </div>
