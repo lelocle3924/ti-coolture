@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { LabShell, LabFrame } from "./labShared";
 import { useHomeData, formatPrice, PRICE_NOTE } from "../home/homeData";
-import { useDragTrack } from "../lib/useDragTrack";
+import { useLoopTrack, LOOP_COPIES } from "../lib/useLoopTrack";
 import type { Product } from "../types";
 import "../home/home.css";
 
@@ -134,7 +134,7 @@ function StudyRail({ products }: { products: Product[] }) {
         className="ti-rail lab-no-scrollbar flex items-start gap-3 overflow-x-auto px-5"
         role="group"
         aria-roledescription="carousel"
-        aria-label="Sản phẩm đang có"
+        aria-label="Sản phẩm đang có — băng đẩy"
       >
         {products.map((p) => (
           /* 217px, not 58vw: inside the lab the phone is a 375px box on a
@@ -177,21 +177,32 @@ function StudyGrid({ products }: { products: Product[] }) {
 }
 
 /* ── C · THẺ — the deck ───────────────────────────────────────────────────
-   One product at a time, big, on the project's own spring.
+   One product at a time, big, on the project's own spring, and endless.
 
-   The landing rule is 21st's Snap Carousel translated into useDragTrack's
+   The landing rule is 21st's Snap Carousel translated into this project's own
    options: a short throw and a hard cap of one card per flick, so the deck
    always stops on the card next to the one you were looking at. Dots and
    arrows are present because at one card per screen there is otherwise
-   nothing on screen saying there is more. */
+   nothing on screen saying there is more.
+
+   Runs on useLoopTrack since 07/09, not useDragTrack. The team's note was
+   that the loop was not a loop: swiping left reached the first product and
+   stopped. useDragTrack clamps to [0, count-1] by design and rubber-bands at
+   both ends, so it can never wrap. useLoopTrack lays the list out three times
+   and folds the index back into the middle copy once the spring has settled,
+   which is invisible because the pixels repeat. Ten swipes across ten
+   products come back to the first one and keep going, in both directions.
+   The arrows lose their disabled state along with the ends. */
 
 function StudyDeck({ products }: { products: Product[] }) {
   const items = products.slice(0, 8);
-  const track = useDragTrack(items.length, {
+  const track = useLoopTrack(items.length, {
     response: 0.6,
     decelerationRate: 0.992,
     maxPagesPerFlick: 1,
   });
+  /* Three copies of the list; the index lives in the middle one. */
+  const laid = Array.from({ length: LOOP_COPIES }, () => items).flat();
 
   return (
     <Phone>
@@ -211,14 +222,20 @@ function StudyDeck({ products }: { products: Product[] }) {
           }`}
           role="group"
           aria-roledescription="carousel"
-          aria-label="Sản phẩm đang có"
+          aria-label="Sản phẩm đang có — từng món một"
         >
           <div
             className="flex h-full"
             style={{ transform: `translate3d(${track.x}px, 0, 0)`, willChange: "transform" }}
           >
-            {items.map((p) => (
-              <div key={p.id} className="w-full shrink-0 px-5">
+            {laid.map((p, i) => (
+              <div
+                key={`${i}-${p.id}`}
+                className="w-full shrink-0 px-5"
+                /* only the middle copy is read out; the other two are the same
+                   products again, there to cover the fold */
+                aria-hidden={i < items.length || i >= items.length * 2}
+              >
                 <Tile product={p} width="100%" nameLines={1} />
               </div>
             ))}
@@ -242,17 +259,15 @@ function StudyDeck({ products }: { products: Product[] }) {
           <div className="flex items-center gap-2">
             <button
               onClick={track.prev}
-              disabled={track.page === 0}
               aria-label="Sản phẩm trước"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/25 text-paper transition-colors hover:border-wave hover:text-wave disabled:opacity-25"
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/25 text-paper transition-colors hover:border-wave hover:text-wave"
             >
               <ArrowRight className="h-4 w-4 rotate-180" />
             </button>
             <button
               onClick={track.next}
-              disabled={track.page === items.length - 1}
               aria-label="Sản phẩm sau"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/25 text-paper transition-colors hover:border-wave hover:text-wave disabled:opacity-25"
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/25 text-paper transition-colors hover:border-wave hover:text-wave"
             >
               <ArrowRight className="h-4 w-4" />
             </button>
