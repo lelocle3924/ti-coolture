@@ -13,6 +13,7 @@ import About from "./views/About";
 import Discovery from "./views/Discovery";
 import OpenShop from "./views/OpenShop";
 import LabIndex from "./lab/LabIndex";
+import DiscoverStudies from "./lab/DiscoverStudies";
 import CollectionStudies from "./lab/CollectionStudies";
 import MapStudies from "./lab/MapStudies";
 import MotionStudies from "./lab/MotionStudies";
@@ -152,6 +153,7 @@ function SiteShell() {
           {/* Exploration. Rebuilt 28/08 for the two Collections directions and
               the three map options the 26/08 feedback asks for. */}
           <Route path="/lab" element={<LabIndex />} />
+          <Route path="/lab/discover" element={<DiscoverStudies />} />
           <Route path="/lab/collections" element={<CollectionStudies />} />
           <Route path="/lab/map" element={<MapStudies />} />
           <Route path="/lab/motion" element={<MotionStudies />} />

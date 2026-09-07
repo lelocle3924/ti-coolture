@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/discover",
+    n: "09",
+    title: "Khám phá — ba hướng, không cái nào cong",
+    body: "Sóng bị thay bằng cạnh thẳng, và ba lập trường khác nhau về chỗ nối nền tối với nền giấy.",
+    meta: "3 hướng · /discover",
+  },
 ];
 
 export default function LabIndex() {
