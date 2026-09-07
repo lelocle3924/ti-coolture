@@ -116,7 +116,23 @@ export function WaveBottomExtended({
   );
 }
 
-/** Unique curve for Products subpage - gentle swell on the right */
+/**
+ * The seam under the /products hero — one long rise, left to right.
+ *
+ * Team 08/09: "ranh giới chỗ nền ở hero của chỗ này xiên vẹo, cong không cong
+ * hẳn, thẳng không thẳng hẳn."
+ *
+ * Fair. The old path ran dead flat at y=160 from x=0 to x=1000 and only then
+ * lifted, and the band that shows it is capped at 4.5rem — which crops the
+ * viewBox to roughly y=104–200. So the flat half sat below the crop and the
+ * rise cut across it: a straight line that was not straight, drawn by a curve
+ * that was never seen curving.
+ *
+ * This one does its whole travel inside the visible window. It leaves the
+ * left edge near the bottom of the band, climbs to the top of it by the two
+ * thirds mark, and eases back down — so the eye reads one deliberate swell
+ * rather than a slope of indeterminate intent.
+ */
 export function WaveProducts({
   className = "",
   fill = "var(--color-paper-warm)",
@@ -128,7 +144,7 @@ export function WaveProducts({
     <svg viewBox="0 0 1920 200" aria-hidden="true" className={`block h-auto w-full ${className}`}>
       <path
         fill={fill}
-        d="M0 160 C 600 160, 1000 160, 1400 80 C 1700 20, 1800 60, 1920 40 L1920 200 L0 200 Z"
+        d="M0 190 C 380 190, 700 112, 1120 110 C 1450 108, 1690 146, 1920 156 L1920 200 L0 200 Z"
       />
     </svg>
   );

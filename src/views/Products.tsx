@@ -4,7 +4,7 @@ import { Check, ArrowRight, Search, X } from "lucide-react";
 import { fetchProducts, triggerWebhook } from "../lib/dbService";
 import SaveButton from "../components/SaveButton";
 import { Product } from "../types";
-import { ArcTopRight, WaveProducts } from "../components/BrandShapes";
+import { ArcTopRight, RibbonLoop, WaveProducts } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
 
@@ -191,6 +191,21 @@ export default function Products() {
           black band the note calls out. The band is then only as tall as the
           title needs, and WaveProducts closes it into the paper below. */}
       <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
+        {/* The faded identity, as /stores carries it — team 08/09: "Thêm brand
+            identity đã làm mờ giống bên /stores." This hero had one arc and
+            little else, so the band read as a plain violet slab next to a
+            page that composes with two marks.
+
+            Placed as a mirror of /stores rather than a copy of it: the title
+            here is centred, so the ribbon takes the left and the arc keeps
+            the right, and the pair balances the line instead of pushing it
+            off-axis the way /stores deliberately does. */}
+        <RibbonLoop
+          className="pointer-events-none absolute -left-28 -top-24 z-0 rotate-180 opacity-20"
+          style={{ width: "clamp(18rem, 40vw, 34rem)" }}
+          ribbon="var(--color-wave)"
+          dot="var(--color-paper)"
+        />
         <ArcTopRight
           className="pointer-events-none absolute -right-16 -top-20 z-0 opacity-15"
           style={{ width: "clamp(18rem, 40vw, 32rem)" }}
