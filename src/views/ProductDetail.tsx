@@ -22,7 +22,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Copy, Check, ExternalLink, Heart, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Copy, Check, ExternalLink, X } from "lucide-react";
 import {
   fetchProductById,
   fetchProductsStore,
@@ -31,6 +31,7 @@ import {
   triggerWebhook,
 } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
+import SaveButton from "../components/SaveButton";
 import {
   Clamp,
   ContinuityLink,
@@ -296,7 +297,6 @@ export default function ProductDetail() {
   const { product, store, siblings, resolved } = useProductPage(productId);
   const inquiry = useInquiry(product, store);
   const [active, setActive] = useState(0);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => setActive(0), [productId]);
 
@@ -383,16 +383,11 @@ export default function ProductDetail() {
                 </span>
               </span>
             </Link>
-            <button
-              onClick={() => setSaved((v) => !v)}
-              aria-pressed={saved}
-              aria-label="Lưu sản phẩm"
-              className={`grid h-10 w-10 place-items-center border transition-colors ${
-                saved ? "border-brand bg-brand text-wave" : "border-ink/15 text-ink/50 hover:border-brand hover:text-brand"
-              }`}
-            >
-              <Heart className={`h-4 w-4 ${saved ? "fill-wave stroke-wave" : ""}`} />
-            </button>
+            {/* Was a 40px square whose state was a bare useState — pressing
+                it coloured the icon and saved nothing (07/09). It is the
+                shared control now, on the page's paper rather than on a
+                photograph. */}
+            <SaveButton product={product} ground="onSurface" />
           </div>
 
           <div className="space-y-3">

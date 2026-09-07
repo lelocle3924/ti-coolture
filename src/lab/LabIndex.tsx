@@ -61,6 +61,13 @@ const STUDIES = [
     body: "Băng để đẩy, lưới để quét, hay từng món một. Khác nhau ở mô hình điều hướng, không phải ở con số.",
     meta: "3 phương án · trang chủ",
   },
+  {
+    to: "/lab/heart",
+    n: "07",
+    title: "Nút lưu — hiện hay đợi được hỏi",
+    body: "Luôn hiện, hay chỉ hiện khi hover. Và trên điện thoại, nơi không có hover.",
+    meta: "2 phương án · trang chủ + bộ sưu tập",
+  },
 ];
 
 export default function LabIndex() {

@@ -8,11 +8,13 @@ import ShopDashboard from "./views/ShopDashboard";
 import UserProfile from "./views/UserProfile";
 import AuthGateway from "./views/AuthGateway";
 import Products from "./views/Products";
+import Wishlist from "./views/Wishlist";
 import Stores from "./views/Stores";
 import About from "./views/About";
 import Discovery from "./views/Discovery";
 import OpenShop from "./views/OpenShop";
 import LabIndex from "./lab/LabIndex";
+import HeartStudies from "./lab/HeartStudies";
 import CollectionStudies from "./lab/CollectionStudies";
 import MapStudies from "./lab/MapStudies";
 import MotionStudies from "./lab/MotionStudies";
@@ -141,6 +143,7 @@ function SiteShell() {
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/stores/:storeId" element={<ShopDisplay />} />
           <Route path="/products/:productId" element={<ProductDetail />} />
@@ -155,6 +158,7 @@ function SiteShell() {
           {/* Exploration. Rebuilt 28/08 for the two Collections directions and
               the three map options the 26/08 feedback asks for. */}
           <Route path="/lab" element={<LabIndex />} />
+          <Route path="/lab/heart" element={<HeartStudies />} />
           <Route path="/lab/collections" element={<CollectionStudies />} />
           <Route path="/lab/map" element={<MapStudies />} />
           <Route path="/lab/motion" element={<MotionStudies />} />
