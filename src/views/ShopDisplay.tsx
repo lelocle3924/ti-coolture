@@ -84,7 +84,7 @@ function ShopCard({ product }: { product: Product }) {
 
       {/* everywhere a product photograph is (07/09) */}
       <span className="absolute right-1 top-1 z-10">
-        <SaveButton product={product} />
+        <SaveButton product={product} revealOnHover />
       </span>
     </div>
   );

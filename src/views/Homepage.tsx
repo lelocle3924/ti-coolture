@@ -658,7 +658,7 @@ function StoreTile({
             What's in store." The same control the catalogue and the product
             page carry — wherever a product photograph is, this is on it. */}
         <span className="absolute right-1 top-1 z-10">
-          <SaveButton product={product} />
+          <SaveButton product={product} revealOnHover />
         </span>
       </div>
       <div className="mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3">
@@ -1698,7 +1698,7 @@ function CollectionShelf({
               />
               {/* everywhere a product photograph is (07/09) */}
               <span className="absolute right-0 top-0 z-10">
-                <SaveButton product={p} />
+                <SaveButton product={p} revealOnHover />
               </span>
             </span>
             <span className="flex items-baseline justify-between gap-2 p-2">
@@ -1811,7 +1811,7 @@ function CollectionsSpringTabs({
                           className="h-full w-full object-cover"
                         />
                         <span className="absolute right-0 top-0 z-10">
-                          <SaveButton product={p} />
+                          <SaveButton product={p} revealOnHover />
                         </span>
                       </div>
                     ))}
