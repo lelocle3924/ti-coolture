@@ -46,26 +46,21 @@ import { ArcTopRight, RibbonLoop } from "./BrandShapes";
  * be released — the strip is much narrower than 1920:698 and the wave has to
  * stretch to it rather than crop.
  */
-function WaveOnEnd({ length, depth }: { length: string; depth: string }) {
+function WaveOnEnd({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 1920 698"
+      viewBox="0 0 698 1920"
       preserveAspectRatio="none"
       aria-hidden="true"
-      className="absolute left-1/2 top-1/2 block"
-      /* width is the wave's run and height its depth; the quarter turn then
-         stands the run up the page. Rotating about the centre keeps the strip
-         centred on the element whatever those two are. */
-      style={{
-        width: length,
-        height: depth,
-        transform: "translate(-50%, -50%) rotate(-90deg)",
-      }}
+      className={className}
     >
-      <path
-        fill="var(--color-brand)"
-        d="M-1.95,318.33s476.18-70.31,773.39,147,348.35-159.13,572.06-157.87,242.89,113.12,345.16,161.06S1567.21,35,1922,.87V698.63H-1.95Z"
-      />
+      {/* Rotate the path inside the SVG instead of rotating the HTML element */}
+      <g transform="translate(0, 1920) rotate(-90)">
+        <path
+          fill="var(--color-brand)"
+          d="M-1.95,318.33s476.18-70.31,773.39,147,348.35-159.13,572.06-157.87,242.89,113.12,345.16,161.06S1567.21,35,1922,.87V698.63H-1.95Z"
+        />
+      </g>
     </svg>
   );
 }
@@ -76,19 +71,23 @@ export default function BrandSurround({ className = "" }: { className?: string }
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
     >
-      {/* ── left: the white plate, the wave standing on it, the arc over both ──
-          The plate is a plain rectangle bled off the left edge. The wave sits
-          on top in the field's own violet, so what is left of the white is the
-          shape between the page edge and the wave. */}
-      <div className="absolute inset-y-0 left-0 w-[26vw] overflow-hidden">
-        <div className="absolute inset-y-[6%] left-0 w-[19vw] bg-paper" />
-        <WaveOnEnd length="88%" depth="26vw" />
-        <ArcTopRight
-          className="absolute -left-[7vw] top-[46%]"
-          style={{ width: "clamp(9rem, 17vw, 20rem)" }}
+      {/* 
+        h-[50dvh]: height is half the page
+        aspect-[698/1920]: auto-calculates width to perfectly preserve the wave's proportion
+        top-1/2 -translate-y-1/2: vertically centers it
+      */}
+      <div className="absolute left-0 top-1/2 h-[75dvh] -translate-y-1/2 aspect-[698/1920] overflow-hidden">
+        {/* These just fill the perfectly-sized container */}
+        <div className="absolute inset-0.5 bg-paper" />
+        <WaveOnEnd className="absolute inset-0 w-full h-full" />
+        
+        {/* Switched to percentages so the arc scales automatically with the block */}
+        {/* <ArcTopRight
+          className="absolute top-[46%] -left-[27%] w-[100%] rotate-220"
           fill="var(--color-wave)"
-        />
+        /> */}
       </div>
+
 
       {/* ── top right: the loop, twice the size, a quarter turn anticlockwise ──
           The offsets are not arbitrary. The deck covers everything but a
