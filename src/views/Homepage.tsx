@@ -469,12 +469,31 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
             (available height × ratio), and the height follows from it. */}
         <div
           ref={cardRef}
-          className="relative mx-auto w-full touch-pan-y [--hero-reserve:8.25rem] md:[--hero-reserve:9.75rem]"
+          className="relative mx-auto w-full touch-pan-y [--hero-cap:100%] [--hero-reserve:8.25rem] md:[--hero-cap:74.6%] md:[--hero-reserve:9.75rem]"
           style={{
             ["--hero-ar" as string]:
               "clamp(1.25, calc(1.25 + (100vw - 375px) / 1562.5px), 1.7778)",
             aspectRatio: "var(--hero-ar)",
-            maxWidth: "calc((100dvh - var(--hero-reserve)) * var(--hero-ar))",
+            /* Two caps, whichever bites first.
+
+               The height one is the original: the card may not be taller than
+               the viewport less the room the chrome needs.
+
+               The width one is new (07/09). The team's drawing puts the brand
+               marks in a violet margin either side of the deck, and asks for
+               the composition to be matched. Under the height cap alone that
+               margin only exists on a short window — at 1440x900 the card came
+               out 1322 wide and buried the surround it is supposed to sit in.
+               74.6% is the width the height cap already produces at 1440x760,
+               which is the shape the drawing was made at, so this changes
+               nothing there and holds the same proportion on taller screens.
+
+               --hero-cap is 100% below md: a phone has no room for a margin
+               to put marks in, the surround does not draw there, and 74.6% of
+               390px would be a 291px card. Desktop composition, desktop
+               only. */
+            maxWidth:
+              "min(calc((100dvh - var(--hero-reserve)) * var(--hero-ar)), var(--hero-cap))",
             cursor: count > 1 ? (dragging ? "grabbing" : "grab") : undefined,
           }}
           onPointerDown={onPointerDown}
