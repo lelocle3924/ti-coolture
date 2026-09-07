@@ -68,6 +68,13 @@ const STUDIES = [
     body: "Luôn hiện, hay chỉ hiện khi hover. Và trên điện thoại, nơi không có hover.",
     meta: "2 phương án · trang chủ + bộ sưu tập",
   },
+  {
+    to: "/lab/shop-colour",
+    n: "08",
+    title: "Trang shop — ba cách phối màu",
+    body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
+    meta: "3 phương án · /stores/[slug]",
+  },
 ];
 
 export default function LabIndex() {
