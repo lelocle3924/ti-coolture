@@ -656,43 +656,267 @@ function HowItWorks() {
    asks the tab to hide on scroll-down, so it rides the same chrome hook as
    the nav — inverted, per the 26/08 direction (see below).
 
-   Team 07/09: "Đổi motion của thẻ Hidden gem từ appear thành slide từ mép
-   phải ra."
+   Team 07/09 (a): "Đổi motion của thẻ Hidden gem từ appear thành slide từ mép
+   phải ra." It used to fade — lab-plate-in, 1.1s of opacity and nothing else,
+   with the card unmounted on close so there was no exit at all. Nothing said
+   where the card came from, least of all that it came from the tab.
 
-   It used to fade: `lab-plate-in`, 1.1s of opacity and nothing else, with the
-   card simply unmounted on close so there was no exit at all. Nothing said
-   where the card came from, and a card that arrives by fading has no
-   relationship to the tab you pressed on the right edge.
+   Team 07/09 (b), after seeing the three answers at /lab/hidden-gem: "chọn
+   option A cho PC, option C cho mobile … viền màu teal của bản thân cái card
+   phải có độ dày ít nhất 3px."
 
-   It now comes in from beyond the right edge and goes back out the same way.
-   Three things make that a real slide rather than a decorated fade:
+   So the two shapes ship side by side, and the split is not a compromise —
+   each is the one that works at its own width:
 
-     · The card is mounted before it is shown, so the browser has a frame to
-       paint it off-screen at translateX(100% + 1.5rem) — its own width plus
-       the gutter — before the transition to 0 begins. Without that frame the
-       element is born at its resting place and the transition never runs.
-     · Enter and exit are the same transition read in two directions, not two
-       keyframes. Interrupting one mid-flight reverses it from where it is.
-     · The tab stays mounted while the card is open and withdraws through the
-       same edge the card arrives from, so the two cross and read as a
-       handoff. It used to be unmounted the instant the card appeared, which
-       is part of why the card looked unrelated to it.
+     · Desktop is A, DẤU TRANG. The chip is welded to the card's leading
+       corner and the whole object slides in from beyond the right edge as one
+       rigid body. One transform, so the two can never be seen apart, and the
+       chip is the handle both ways.
+     · Phones are C, NGÔI SAO ĐI THEO. A 19rem object parked at half height
+       covers what you are reading on a 390px screen, and an edge-docked card
+       has nowhere to dock that is not over the text. So the card comes up
+       from the bottom and the star flies from the edge into its badge corner
+       — the mark is what carries the link, and the card keeps a shape a phone
+       can hold.
 
-   Only the card's relationship to the edge is settled here. How the card and
-   the tab should be shaped so they read as one object is the separate
-   question the same feedback asks, and three answers to it are at
-   /lab/hidden-gem. */
+   Both are one transition read in two directions rather than two keyframes,
+   so interrupting either reverses it from where it is; and both mount a frame
+   before they are shown, because an element born at its resting place has
+   nothing to transition from. */
 
-/* Enter is longer than exit, which is the usual asymmetry: arriving is the
-   part worth watching, leaving should get out of the way. */
+/* Enter is longer than exit: arriving is the part worth watching. */
 const GEM_IN = 520;
 const GEM_OUT = 320;
+
+/** A's chip, and C's star at rest, are the same 48×56 tab. */
+const GEM_TAB = { w: 48, h: 56 };
+/** C's star once it has landed on the card, and the badge slot's inset. */
+const GEM_STAR = { w: 28, h: 28 };
+const GEM_BADGE_INSET = 12;
+/** Where C's card rests. Stated once, because the star's landing point is
+    derived from it and a second copy in a class name would drift. */
+const GEM_CARD_INSET = { bottom: 24, right: 16 };
+
+function GemCardBody({
+  gem,
+  onOpenProduct,
+  onClose,
+}: {
+  gem: { product: Product; note: string };
+  onOpenProduct: () => void;
+  /** Omitted on A, where the chip is the close control. */
+  onClose?: () => void;
+}) {
+  return (
+    <>
+      <div className="relative aspect-video overflow-hidden bg-paper-warm">
+        <img
+          src={gem.product.images[0]}
+          alt={gem.product.name}
+          className="h-full w-full object-cover"
+        />
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Đóng"
+            className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-paper backdrop-blur-md transition-colors hover:bg-black"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <button
+        onClick={onOpenProduct}
+        className="block w-full space-y-2 p-5 text-left transition-colors hover:bg-paper-warm"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
+            {gem.product.storeName}
+          </span>
+          <span className="text-sm font-bold">{formatPrice(gem.product.price)}</span>
+        </div>
+        <h4 className="line-clamp-1 text-base font-medium leading-snug">{gem.product.name}</h4>
+        <p className="line-clamp-2 text-xs italic text-ink/75">
+          &ldquo;{gem.note || "Tác phẩm được ban biên tập Tí tuyển chọn."}&rdquo;
+        </p>
+        <span className="flex items-center justify-between pt-2 text-xs font-semibold text-brand">
+          Xem tác phẩm
+          <ArrowRight className="h-3.5 w-3.5" />
+        </span>
+      </button>
+    </>
+  );
+}
+
+/* ── A · DẤU TRANG — desktop ──────────────────────────────────────────────
+   One body, docked to the edge. Closed, the object is parked off the right
+   with only its chip showing; open, it slides left as one piece. The card is
+   square on the right because that is what makes it read as attached to the
+   page's edge rather than floating near it.
+
+   The teal outline is 3px at the team's request (07/09) — it was 2 in the
+   study. At 2 it reads as a hairline that happens to be teal; at 3 it reads
+   as the chip's own colour continuing round the card, which is the job it is
+   doing. */
+function GemBookmark({
+  gem,
+  open,
+  shown,
+  onToggle,
+  onOpenProduct,
+  reduced,
+}: {
+  gem: { product: Product; note: string };
+  open: boolean;
+  shown: boolean;
+  onToggle: () => void;
+  onOpenProduct: () => void;
+  reduced: boolean;
+}) {
+  return (
+    <div
+      className="fixed right-0 top-1/2 z-50 flex w-[21rem] items-start will-change-transform"
+      style={{
+        /* Vertical centring lives in the transform, not in a -translate-y-1/2
+           utility: Tailwind v4 compiles those to the standalone `translate`
+           property, which composes with `transform` instead of being
+           overridden by it, and the object lands a whole height too high. */
+        transform: shown
+          ? "translate3d(0, -50%, 0)"
+          : `translate3d(calc(100% - ${GEM_TAB.w}px), -50%, 0)`,
+        transition: reduced ? "none" : `transform ${shown ? GEM_IN : GEM_OUT}ms var(--ease-brand)`,
+      }}
+    >
+      {/* the chip — the handle, and the only thing showing when closed */}
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-label={open ? "Đóng viên ngọc ẩn" : "Viên ngọc ẩn — xem sản phẩm Tí chọn"}
+        className="grid shrink-0 place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-300 active:scale-95"
+        style={{ width: GEM_TAB.w, height: GEM_TAB.h }}
+      >
+        <StarIcon className="h-6 w-6" />
+      </button>
+
+      <div className="min-w-0 flex-1 overflow-hidden bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave">
+        <GemCardBody gem={gem} onOpenProduct={onOpenProduct} />
+      </div>
+    </div>
+  );
+}
+
+/* ── C · NGÔI SAO ĐI THEO — phones ────────────────────────────────────────
+   The link is the star itself: it flies from the edge to the card's badge
+   corner and becomes the "✦ Tí chọn" chip, and the card rises under it.
+   Closing sends it back to the edge. Same idea src/lib/continuity already
+   uses between pages — the mark is the constant and everything else is
+   staging around it. */
+function GemTravellingStar({
+  gem,
+  open,
+  shown,
+  onToggle,
+  onOpenProduct,
+  reduced,
+}: {
+  gem: { product: Product; note: string };
+  open: boolean;
+  shown: boolean;
+  onToggle: () => void;
+  onOpenProduct: () => void;
+  reduced: boolean;
+}) {
+  const card = useRef<HTMLDivElement>(null);
+  /* Where the badge slot actually is. The card's height depends on how long
+     the shop's name and the editor's note run, so a hardcoded landing point
+     is wrong for every gem but the one it was tuned on. */
+  const [slot, setSlot] = useState({ right: 0, top: 0 });
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const c = card.current;
+      if (!c) return;
+      /* Derived from the viewport and the card's own offsetWidth/Height, not
+         from a rect. A rect folds in the transform, and the card is still
+         carrying its closed translateY when this first runs — measuring it
+         then landed the star 14px below the badge slot every time. offsetWidth
+         and offsetHeight ignore transforms, so the answer is the same before
+         and after the card has arrived. */
+      setSlot({
+        right: GEM_CARD_INSET.right + c.offsetWidth - GEM_BADGE_INSET - GEM_STAR.w,
+        top: window.innerHeight - GEM_CARD_INSET.bottom - c.offsetHeight + GEM_BADGE_INSET,
+      });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open]);
+
+  const landed = shown && slot.top > 0;
+  const travel = reduced
+    ? "none"
+    : `right ${GEM_IN}ms var(--ease-brand), top ${GEM_IN}ms var(--ease-brand), height ${GEM_IN}ms var(--ease-brand), width ${GEM_IN}ms var(--ease-brand), border-radius ${GEM_IN}ms ease`;
+
+  return (
+    <>
+      <div
+        ref={card}
+        role="dialog"
+        aria-label="Viên ngọc ẩn"
+        className="fixed z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave will-change-transform"
+        style={{
+          bottom: GEM_CARD_INSET.bottom,
+          right: GEM_CARD_INSET.right,
+          transform: shown ? "translateY(0)" : "translateY(14px)",
+          opacity: shown ? 1 : 0,
+          transition: reduced
+            ? "none"
+            : `transform ${shown ? GEM_IN : GEM_OUT}ms var(--ease-brand) ${shown ? 90 : 0}ms, opacity ${shown ? 260 : GEM_OUT}ms ease ${shown ? 90 : 0}ms`,
+        }}
+      >
+        <GemCardBody gem={gem} onOpenProduct={onOpenProduct} onClose={onToggle} />
+      </div>
+
+      {/* the mark — one element, two homes */}
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-label={open ? "Đóng viên ngọc ẩn" : "Viên ngọc ẩn — xem sản phẩm Tí chọn"}
+        className="fixed z-[51] grid place-items-center bg-wave text-ink shadow-2xl will-change-transform"
+        style={
+          landed
+            ? {
+                right: slot.right,
+                top: slot.top,
+                width: GEM_STAR.w,
+                height: GEM_STAR.h,
+                borderRadius: 999,
+                transition: travel,
+              }
+            : {
+                right: 0,
+                top: "50%",
+                marginTop: -GEM_TAB.h / 2,
+                width: GEM_TAB.w,
+                height: GEM_TAB.h,
+                borderRadius: "1rem 0 0 1rem",
+                transition: travel,
+              }
+        }
+      >
+        <StarIcon className={landed ? "h-3.5 w-3.5" : "h-6 w-6"} />
+      </button>
+    </>
+  );
+}
 
 function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
+  const wide = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useState(false);
-  /* `mounted` is whether the card is in the tree; `shown` is whether it has
+  /* `mounted` is whether the object is in the tree; `shown` is whether it has
      arrived. They differ for exactly one frame on the way in, and for the
      length of the exit on the way out. */
   const [mounted, setMounted] = useState(false);
@@ -713,7 +937,7 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
         setShown(true);
         return;
       }
-      // one frame off-screen, then travel — see the note above
+      // one frame at rest off-screen, then travel — see the note above
       const frame = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
       return () => cancelAnimationFrame(frame);
     }
@@ -727,92 +951,67 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
     return () => clearTimeout(timer);
   }, [open, reduced]);
 
+  const toggle = useCallback(() => {
+    setOpen((v) => {
+      if (!v && gem) triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
+      return !v;
+    });
+  }, [gem]);
+
+  const openProduct = useCallback(() => {
+    if (!gem) return;
+    triggerWebhook("CURATED_GEM_CLICKED", { productId: gem.product.id });
+    navigate(`/products/${gem.product.id}`, { viewTransition: true });
+  }, [gem, navigate]);
+
   if (!gem) return null;
 
-  /* Off-screen is the card's own width plus the gutter it rests in, so it
-     starts beyond the edge rather than at it. */
-  const offscreen = "translateX(calc(100% + 1.5rem))";
-  const travel = reduced
-    ? "none"
-    : `transform ${shown ? GEM_IN : GEM_OUT}ms var(--ease-brand), opacity ${
-        shown ? 240 : GEM_OUT
-      }ms ease`;
+  /* The resting tab. Both shapes park in the same place, so this is one
+     control with two destinations rather than two controls: on desktop it is
+     the bookmark's own chip riding in on the object, on a phone it is the
+     star before it flies. It shows only while the nav is hidden. */
+  const parked = (
+    <button
+      onClick={toggle}
+      aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
+      aria-expanded={false}
+      aria-hidden={!hidden}
+      tabIndex={hidden ? 0 : -1}
+      className="fixed right-0 top-1/2 z-40 grid place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
+      style={{
+        width: GEM_TAB.w,
+        height: GEM_TAB.h,
+        transform: hidden ? "translate(0, -50%)" : "translate(100%, -50%)",
+      }}
+    >
+      <StarIcon className="h-6 w-6" />
+    </button>
+  );
 
   return (
     <>
-      <button
-        onClick={() => {
-          if (open) return;
-          setOpen(true);
-          triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
-        }}
-        aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
-        aria-expanded={open}
-        /* Reachable only while it is actually on the edge: the nav has hidden
-           and the card is not already out. */
-        aria-hidden={!hidden || open}
-        tabIndex={hidden && !open ? 0 : -1}
-        className="fixed right-0 top-1/2 z-40 grid h-14 w-12 place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
-        /* Out of the way while the card is open, through the same edge the
-           card arrives from. The two cross rather than one of them blinking
-           off, which reads as a handoff: the tab gives the edge to the card
-           and takes it back when the card leaves. */
-        style={{ transform: hidden && !open ? "translate(0, -50%)" : "translate(100%, -50%)" }}
-      >
-        <StarIcon className="h-6 w-6" />
-      </button>
+      {!mounted && parked}
 
-      {mounted && (
-        <div
-          role="dialog"
-          aria-label="Viên ngọc ẩn"
-          className="fixed bottom-6 right-6 z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[2rem] border border-ink/10 bg-paper p-2 text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] will-change-transform"
-          style={{
-            transform: shown ? "translateX(0)" : offscreen,
-            opacity: shown ? 1 : 0,
-            transition: travel,
-          }}
-        >
-          <div className="overflow-hidden rounded-[1.625rem] bg-paper">
-            <div className="relative aspect-video overflow-hidden bg-paper-warm">
-              <img src={gem.product.images[0]} alt={gem.product.name} className="h-full w-full object-cover" />
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Đóng"
-                className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-paper backdrop-blur-md transition-colors hover:bg-black"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-bold uppercase text-paper">
-                ✦ Tí chọn
-              </span>
-            </div>
-
-            <button
-              onClick={() => {
-                triggerWebhook("CURATED_GEM_CLICKED", { productId: gem.product.id });
-                navigate(`/products/${gem.product.id}`, { viewTransition: true });
-              }}
-              className="block w-full space-y-2 p-5 text-left transition-colors hover:bg-paper-warm"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-brand">
-                  {gem.product.storeName}
-                </span>
-                <span className="text-sm font-bold">{formatPrice(gem.product.price)}</span>
-              </div>
-              <h4 className="line-clamp-1 text-base font-medium leading-snug">{gem.product.name}</h4>
-              <p className="line-clamp-2 text-xs italic text-ink/75">
-                &ldquo;{gem.note || "Tác phẩm được ban biên tập Tí tuyển chọn."}&rdquo;
-              </p>
-              <span className="flex items-center justify-between pt-2 text-xs font-semibold text-brand">
-                Xem tác phẩm
-                <ArrowRight className="h-3.5 w-3.5" />
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
+      {mounted &&
+        (wide ? (
+          <GemBookmark
+            gem={gem}
+            open={open}
+            shown={shown}
+            onToggle={toggle}
+            onOpenProduct={openProduct}
+            reduced={reduced}
+          />
+        ) : (
+          <GemTravellingStar
+            gem={gem}
+            open={open}
+            shown={shown}
+            onToggle={toggle}
+            onOpenProduct={openProduct}
+            reduced={reduced}
+          />
+        ))}
     </>
   );
 }
