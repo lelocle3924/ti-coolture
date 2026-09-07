@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowRight, ArrowUpRight, StarIcon, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
 import { useDragTrack } from "../lib/useDragTrack";
+import { useImageTone, type ImageTone } from "../lib/useImageTone";
 import { useMarqueeTrack } from "../lib/useMarqueeTrack";
 import { useLoopTrack, LOOP_COPIES } from "../lib/useLoopTrack";
 import {
@@ -187,23 +188,249 @@ function Collaborate() {
 
    Height is content-driven, not 100dvh. The old hero locked itself to the
    viewport, which is what pushed the caption and the beads off the bottom of
-   shorter Windows laptops; the deck now sizes from its own aspect ratio and
-   the section takes whatever height that needs. */
+   shorter Windows laptops; the deck sizes from its own aspect ratio and the
+   section takes whatever height that needs.
+
+   Two changes on 07/09, both from the same note:
+
+     · The ratio is option C from /lab/hero — a continuous function of the
+       viewport width rather than three breakpoint steps. See the note on the
+       card itself.
+     · The deck is something you operate, not something you watch. Click and
+       drag or press a chevron on a desktop; swipe on a phone. Autoplay stops
+       for good at the first of those, because a deck that keeps advancing
+       under someone who has taken hold of it is fighting them. */
+
+/** The gesture has to clear this before it counts as a drag rather than a tap. */
+const HERO_DRAG_THRESHOLD = 8;
+/** Past this much travel — real or projected — the deck changes frame. */
+const HERO_COMMIT_PX = 64;
+
+/**
+ * A bare chevron, coloured against whatever is under it.
+ *
+ * Team 07/09: "chỉ hiện viền mũi tên giống như dấu <,>, không hiện nút. 2 dấu
+ * mũi tên màu trắng nếu background sáng, màu đen nếu background tối, có thể
+ * khác màu nhau miễn là dễ thấy."
+ *
+ * The two halves of that note disagree, and the second one wins. Taken
+ * literally the first half puts a white arrow on a bright photograph and a
+ * black one on a dark photograph, which is the pairing that cannot be seen;
+ * "miễn là dễ thấy" is the requirement the whole sentence is for. So each
+ * chevron is measured against its own edge of the current frame and takes the
+ * colour that stands out from it — which also delivers the "khác màu nhau"
+ * literally, because a photograph that is bright on one side and dark on the
+ * other gets two different arrows.
+ *
+ * No button: no fill, no ring, no plate. The stroke carries a drop-shadow in
+ * the opposite tone, which is what keeps it readable across a busy edge where
+ * a flat colour alone would break up.
+ */
+function DeckArrow({
+  side,
+  tone,
+  onPress,
+  label,
+}: {
+  side: "left" | "right";
+  tone: ImageTone;
+  onPress: () => void;
+  label: string;
+}) {
+  const Glyph = side === "left" ? ChevronLeft : ChevronRight;
+  const dark = tone === "dark";
+
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      aria-label={label}
+      className={`absolute top-1/2 z-40 hidden -translate-y-1/2 cursor-pointer p-2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-110 active:scale-95 md:block ${
+        side === "left" ? "left-1 md:left-2" : "right-1 md:right-2"
+      }`}
+      style={{ color: dark ? "var(--color-paper)" : "var(--color-ink)" }}
+    >
+      <Glyph
+        className="h-9 w-9 lg:h-11 lg:w-11"
+        strokeWidth={2.25}
+        style={{
+          filter: dark
+            ? "drop-shadow(0 1px 6px rgba(18,8,31,0.75))"
+            : "drop-shadow(0 1px 6px rgba(255,255,255,0.8))",
+        }}
+      />
+    </button>
+  );
+}
 
 function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFrames"] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  /** Set on the first drag, swipe or chevron press, and never unset. */
+  const [taken, setTaken] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
   const reduced = useReducedMotion();
+  const wide = useMediaQuery("(min-width: 768px)");
   const count = frames.length;
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  /* State, not a ref. Refs are attached after render and mutating one does not
+     re-render, so reading it during render handed the tone probe the frame
+     that was on its way out and the chevrons lagged a frame behind the
+     photograph they were supposed to be measured against. */
+  const [topImg, setTopImg] = useState<HTMLImageElement | null>(null);
+  /** The card's live ratio, so the tone probe knows what object-cover kept. */
+  const [boxRatio, setBoxRatio] = useState(16 / 9);
+
+  const go = useCallback(
+    (delta: number) => {
+      setTaken(true);
+      setActive((i) => (i + delta + count) % count);
+    },
+    [count]
+  );
+
   useEffect(() => {
-    if (reduced || paused || count < 2) return;
+    if (reduced || paused || taken || count < 2) return;
     const timer = setInterval(() => setActive((i) => (i + 1) % count), 5000);
     return () => clearInterval(timer);
-  }, [reduced, paused, count]);
+  }, [reduced, paused, taken, count]);
+
+  /* The ratio is a continuous function of the viewport now, so it has to be
+     measured rather than read off a breakpoint. */
+  useEffect(() => {
+    const measure = () => {
+      const el = cardRef.current;
+      if (!el || !el.clientHeight) return;
+      setBoxRatio(el.clientWidth / el.clientHeight);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [count]);
+
+  const frame = count > 0 ? frames[active] : null;
+  const toneLeft = useImageTone(topImg, boxRatio, "left", frame?.id ?? "");
+  const toneRight = useImageTone(topImg, boxRatio, "right", frame?.id ?? "");
+
+  /* The gesture. Same rules as the rest of the site's tracks — 1:1 while
+     held, capture taken only once it is really a drag so a tap still opens
+     the shop, and the landing decided from where the flick is going rather
+     than where the finger stopped. The deck wraps, so there is no end to
+     rubber-band against. */
+  const onPointerDown = useCallback(
+    (e: { pointerId: number; clientX: number; currentTarget: Element }) => {
+      if (count < 2) return;
+      const el = e.currentTarget as HTMLElement;
+      const startX = e.clientX;
+      let moved = false;
+      let history: Array<{ t: number; x: number }> = [{ t: performance.now(), x: startX }];
+
+      const onMove = (ev: PointerEvent) => {
+        const dx = ev.clientX - startX;
+        if (!moved && Math.abs(dx) < HERO_DRAG_THRESHOLD) return;
+        if (!moved) {
+          try {
+            el.setPointerCapture(ev.pointerId);
+          } catch {
+            /* capture is a nicety; moves still bubble here without it */
+          }
+          setDragging(true);
+          setTaken(true);
+        }
+        moved = true;
+        setDragX(dx);
+
+        const now = performance.now();
+        history.push({ t: now, x: ev.clientX });
+        history = history.filter((h) => now - h.t < 90);
+      };
+
+      const onUp = (ev: PointerEvent) => {
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
+        el.removeEventListener("pointercancel", onUp);
+        try {
+          el.releasePointerCapture(ev.pointerId);
+        } catch {
+          /* already released */
+        }
+        setDragging(false);
+        setDragX(0);
+        if (!moved) return;
+
+        const dx = ev.clientX - startX;
+        const first = history[0];
+        const dt = Math.max(1, performance.now() - first.t);
+        const velocity = ((ev.clientX - first.x) / dt) * 1000; // px/s
+        // where the flick is heading, not where it let go
+        const projected = dx + velocity * 0.12;
+
+        if (Math.abs(projected) > HERO_COMMIT_PX) {
+          setActive((i) => (i + (projected < 0 ? 1 : -1) + count) % count);
+        }
+      };
+
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
+      el.addEventListener("pointercancel", onUp);
+    },
+    [count]
+  );
 
   if (count === 0) return <div className="min-h-[60vh] bg-brand" />;
-  const frame = frames[active];
+
+  const chrome = (
+    <div className="pointer-events-none flex flex-wrap items-end justify-between gap-3 p-3 md:p-6">
+            <div key={frame!.id} className="lab-pop pointer-events-auto">
+              {frame!.shopId ? (
+                <Link
+                  to={`/stores/${frame!.shopId}`}
+                  draggable={false}
+                  className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
+                    {String(active + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
+                    <span className="block text-[11px] font-medium text-ink/55">
+                      {frame!.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame!.caption}
+                    </span>
+                  </span>
+                  <ArrowUpRight className="h-4 w-4 text-brand" />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-3 rounded-full bg-wave py-2.5 pl-4 pr-5 text-ink">
+                  <span className="text-sm font-black">Tí Coolture</span>
+                  <span className="text-[11px] font-medium">{frame!.caption}</span>
+                </span>
+              )}
+            </div>
+
+            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink/40 p-2 backdrop-blur-md">
+              {frames.map((f, i) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setTaken(true);
+                    setActive(i);
+                  }}
+                  aria-label={`Xem ảnh ${i + 1}: ${f.shopName}`}
+                  aria-current={i === active}
+                  className={`h-2.5 rounded-full transition-all duration-500 ${
+                    i === active ? "w-8 bg-wave" : "w-2.5 bg-white/45 hover:bg-white/80"
+                  }`}
+                  style={{ transitionTimingFunction: "var(--ease-brand)" }}
+                />
+              ))}
+            </div>
+          </div>
+  );
+
+
 
   return (
     <section
@@ -217,62 +444,84 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
       {/* identity marks in the violet around the deck */}
       <BrandSurround />
 
-      {/* No max-width here any more. It used to cap the deck at 82rem, which
-          on any desktop was a tighter bound than the viewport height — so the
-          card stopped short of the arrow no matter how much room was below it.
-          The two bounds that remain are the real ones: the column's width, and
-          the height the card is allowed (--hero-reserve). Height wins at
-          ordinary desktop shapes, which is what puts the card's bottom edge on
-          the arrow. */}
       <div className="relative z-10 w-full">
-        {/* The deck. 4:5 on phones, 16:10 on tablets, 16:9 on desktop — the
-            ratio the shop photographs are actually shot at (LANDSCAPE_SPEC).
+        {/* The deck.
 
-            The ratio is now exact at every size, which it was not (28/08).
-            The old rule paired `aspect-[16/9]` with `max-h-[calc(100dvh-15rem)]`
-            and those two cannot both hold: once the cap bit — which it did on
-            any laptop viewport, and at any zoom level that made the viewport
-            short in CSS pixels — the width stayed at 100% while the height
-            was clamped, so the card silently rendered at ~2:1 instead. Nothing
-            said so; it just looked slightly wrong.
+            Ratio is option C from /lab/hero, chosen 07/09: one continuous
+            function of the viewport width instead of the three breakpoint
+            steps that were here (4:5 phone, 16:10 sm, 16:9 lg). It runs from
+            5:4 at 375px to 16:9 at 1200 and holds there, so there is nowhere
+            the shape jumps because the window moved a pixel, and the crop of
+            the shop's 16:9 frame goes from 55% of its width to 30%.
 
-            Constraining the *width* instead keeps aspect-ratio in charge:
-            width is the smaller of the column and (available height × ratio),
-            and the height follows from it. The card therefore fits the
-            viewport without ever leaving its ratio.
+            The two bounds that remain are the real ones: the column's width,
+            and the height the card is allowed (--hero-reserve). Height wins
+            at ordinary desktop shapes, which is what puts the card's bottom
+            edge on the scroll arrow.
 
-            --hero-reserve is the vertical space the card must not eat: the
-            top clearance for the header pill, plus 1.75rem at the bottom so
-            the card's bottom edge lands on the bottom of the scroll arrow's
-            circle (ScrollHint is fixed at bottom-7). */}
+            Constraining the *width* rather than the height is deliberate and
+            load-bearing: `aspect-ratio` with a max-height cannot both hold,
+            and when the cap bit the card silently rendered at the wrong ratio
+            with nothing to say so. Width is the smaller of the column and
+            (available height × ratio), and the height follows from it. */}
         <div
-          className="relative mx-auto aspect-[4/5] w-full [--hero-ar:0.8] [--hero-reserve:8.25rem] sm:aspect-[16/10] sm:[--hero-ar:1.6] md:[--hero-reserve:9.75rem] lg:aspect-[16/9] lg:[--hero-ar:1.7778]"
-          style={{ maxWidth: "calc((100dvh - var(--hero-reserve)) * var(--hero-ar))" }}
+          ref={cardRef}
+          className="relative mx-auto w-full touch-pan-y [--hero-reserve:8.25rem] md:[--hero-reserve:9.75rem]"
+          style={{
+            ["--hero-ar" as string]:
+              "clamp(1.25, calc(1.25 + (100vw - 375px) / 1562.5px), 1.7778)",
+            aspectRatio: "var(--hero-ar)",
+            maxWidth: "calc((100dvh - var(--hero-reserve)) * var(--hero-ar))",
+            cursor: count > 1 ? (dragging ? "grabbing" : "grab") : undefined,
+          }}
+          onPointerDown={onPointerDown}
         >
           {frames.map((f, i) => {
             const rel = (i - active + count) % count;
+            const isTop = rel === 0;
+
+            /* The top card follows the pointer; the one behind it leans in as
+               it goes, so the stack reads as one object being turned rather
+               than a picture sliding off another picture. */
+            const lead = dragging ? dragX : 0;
+            const progress = Math.min(1, Math.abs(lead) / 160);
+
             const style =
               rel === 0
-                ? { transform: "translate3d(0,0,0) rotate(0deg) scale(1)", opacity: 1, zIndex: 30 }
+                ? {
+                    transform: `translate3d(${lead}px,0,0) rotate(${lead * 0.012}deg) scale(1)`,
+                    opacity: 1,
+                    zIndex: 30,
+                  }
                 : rel === 1
-                  ? { transform: "translate3d(2.2%,-2.4%,0) rotate(2.2deg) scale(0.955)", opacity: 1, zIndex: 20 }
+                  ? {
+                      transform: `translate3d(${2.2 - progress * 2.2}%,${-2.4 + progress * 2.4}%,0) rotate(${(1 - progress) * 2.2}deg) scale(${0.955 + progress * 0.045})`,
+                      opacity: 1,
+                      zIndex: 20,
+                    }
                   : rel === 2
-                    ? { transform: "translate3d(-2.2%,-4%,0) rotate(-2.4deg) scale(0.915)", opacity: 1, zIndex: 10 }
+                    ? {
+                        transform: "translate3d(-2.2%,-4%,0) rotate(-2.4deg) scale(0.915)",
+                        opacity: 1,
+                        zIndex: 10,
+                      }
                     : { transform: "translate3d(0,-5%,0) scale(0.9)", opacity: 0, zIndex: 0 };
 
             return (
               <figure
                 key={f.id}
-                aria-hidden={rel !== 0}
+                aria-hidden={!isTop}
                 className="absolute inset-0 m-0 overflow-hidden rounded-[1.5rem] bg-paper-warm ring-1 ring-white/15 will-change-transform md:rounded-[2.5rem]"
                 style={{
                   ...style,
-                  transition: reduced
-                    ? "none"
-                    : "transform 760ms var(--ease-brand), opacity 420ms ease",
+                  transition:
+                    reduced || dragging
+                      ? "none"
+                      : "transform 760ms var(--ease-brand), opacity 420ms ease",
                 }}
               >
                 <img
+                  ref={isTop ? setTopImg : undefined}
                   src={f.src}
                   alt={
                     f.shopId
@@ -281,9 +530,13 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   }
                   fetchPriority={i === 0 ? "high" : "auto"}
                   loading={i === 0 ? "eager" : "lazy"}
+                  draggable={false}
                   className="h-full w-full object-cover"
                 />
-                {rel === 0 && (
+                {isTop && wide && (
+                  /* The scrim exists to carry the chrome. On a phone the
+                     chrome is under the card now, so this would be darkening
+                     two fifths of the photograph for nothing. */
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-ink/70 to-transparent"
@@ -293,49 +546,39 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
             );
           })}
 
-          {/* attribution — the shop gets the front page, by name */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex flex-wrap items-end justify-between gap-3 p-3 md:p-6">
-            <div key={frame.id} className="lab-pop pointer-events-auto">
-              {frame.shopId ? (
-                <Link
-                  to={`/stores/${frame.shopId}`}
-                  className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
-                    {String(active + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-left">
-                    <span className="block text-sm font-black leading-tight">{frame.shopName}</span>
-                    <span className="block text-[11px] font-medium text-ink/55">
-                      {frame.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame.caption}
-                    </span>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-brand" />
-                </Link>
-              ) : (
-                <span className="inline-flex items-center gap-3 rounded-full bg-wave py-2.5 pl-4 pr-5 text-ink">
-                  <span className="text-sm font-black">Tí Coolture</span>
-                  <span className="text-[11px] font-medium">{frame.caption}</span>
-                </span>
-              )}
-            </div>
+          {count > 1 && (
+            <>
+              <DeckArrow
+                side="left"
+                tone={toneLeft}
+                onPress={() => go(-1)}
+                label="Ảnh trước"
+              />
+              <DeckArrow
+                side="right"
+                tone={toneRight}
+                onPress={() => go(1)}
+                label="Ảnh tiếp theo"
+              />
+            </>
+          )}
 
-            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink/40 p-2 backdrop-blur-md">
-              {frames.map((f, i) => (
-                <button
-                  key={f.id}
-                  onClick={() => setActive(i)}
-                  aria-label={`Xem ảnh ${i + 1}: ${f.shopName}`}
-                  aria-current={i === active}
-                  className={`h-2.5 rounded-full transition-all duration-500 ${
-                    i === active ? "w-8 bg-wave" : "w-2.5 bg-white/45 hover:bg-white/80"
-                  }`}
-                  style={{ transitionTimingFunction: "var(--ease-brand)" }}
-                />
-              ))}
-            </div>
-          </div>
+          {/* attribution and beads.
+
+              Team 07/09: "hãy để cái chrome ở dưới, không có đè lên hình."
+              On a phone the deck is 5:4 and about 280px tall, and a pill plus
+              a row of beads laid over it takes a third of that — of the one
+              picture the page opens on. So below the card there, on the
+              violet, where the violet is doing nothing anyway.
+
+              On a desktop it stays over the photograph, which is what the
+              team's own drawing of the wide layout shows: the card is 744px
+              tall there and the chrome costs it nothing. */}
+          {wide && <div className="absolute inset-x-0 bottom-0 z-40">{chrome}</div>}
         </div>
+
+        {/* on a phone the chrome is under the card, not on it */}
+        {!wide && <div className="mt-1">{chrome}</div>}
       </div>
     </section>
   );

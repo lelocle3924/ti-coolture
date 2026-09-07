@@ -528,6 +528,81 @@
       ],
       "compare": "/lab/store",
       "onDecide": "Fold the chosen model into StoreMarquee/StoreLane in src/views/Homepage.tsx, delete the other two studies from src/lab/StoreRailStudies.tsx, and set this decision to the chosen slug. A is what fix/homepage-store-mobile-swipe already ships, so choosing A means that branch merges as-is."
+    },
+    {
+      "id": "hero-mobile-aspect-ratio",
+      "status": "done",
+      "date": "2026-08-31",
+      "question": "What gives when a 16:9 hero image has to sit on a portrait phone?",
+      "source": "src/lab/HeroRatioStudies.tsx (deleted 07/09 once C was chosen; in the history of lab/hero-aspect-studies)",
+      "note": "Team 31/08: the deck's ratio on mobile does not match PC, and they asked for lab options rather than a pick. The shipped deck is 4:5 on phones, 16:10 from sm, 16:9 from lg. The constraint that forces the trade-off is already recorded in constraints.must: every shop image slot is 16:9. object-cover on a box narrower than 16:9 crops the sides, so at 4:5 a visitor sees 45% of the width the shop framed. Every figure below is measured on a 375x812 box in the study, not estimated.",
+      "sharedAcrossOptions": [
+        "Real heroFrames data, the house frame first, shop attribution on every frame",
+        "The stacked-card deck, its rotations and its 760ms var(--ease-brand) transition",
+        "Only the six brand tokens; violet ground around the card"
+      ],
+      "options": [
+        {
+          "slug": "a",
+          "name": "CHUAN",
+          "en": "One ratio",
+          "axes": {
+            "ratio": "16:9 at every width, same as PC",
+            "crop": "none - 100% of the source width kept",
+            "chrome": "attribution and beads move below the card onto the violet",
+            "height": "188px on a 375px phone - 23% of the screen"
+          }
+        },
+        {
+          "slug": "b",
+          "name": "KHUNG ANH",
+          "en": "The frame",
+          "axes": {
+            "ratio": "card 1:1, photograph 16:9 inside it",
+            "crop": "none - 100% of the source width kept",
+            "chrome": "shop name and caption on the violet band inside the card; no gradient scrim over the photograph",
+            "height": "335px on a 375px phone - 41% of the screen"
+          },
+          "note": "4:5 was tried first and rejected: the band under the photo came to 231px against a 188px photograph, which reads as a hole. The card has to be square."
+        },
+        {
+          "slug": "c",
+          "name": "CAT DAN",
+          "en": "Progressive",
+          "axes": {
+            "ratio": "interpolates 16:9 to 5:4 with viewport width instead of stepping at breakpoints",
+            "crop": "70% of the source width kept",
+            "chrome": "unchanged, over the photograph",
+            "height": "268px on a 375px phone - 33% of the screen"
+          },
+          "note": "The conservative pick: keeps the current language, removes the jump between sizes, halves the crop.",
+          "chosen": true
+        },
+        {
+          "slug": "d",
+          "name": "HIEN TAI",
+          "en": "Shipped",
+          "baseline": true,
+          "axes": {
+            "ratio": "4:5 on phones",
+            "crop": "45% of the source width kept - 55% discarded",
+            "chrome": "over the photograph, on a dark gradient",
+            "height": "419px on a 375px phone - 52% of the screen"
+          }
+        }
+      ],
+      "compare": "/lab/hero (route removed 07/09)",
+      "onDecide": "Done. The reasoning and the numbers now live on the card in HeroDeck (src/views/Homepage.tsx); the four studies are in the history of lab/hero-aspect-studies if the other three answers are ever wanted again.",
+      "references": [
+        "21st Stacked Card Carousel (shadcnspace, id 21516) - closest match to the deck this study varies; search level only, code not retrieved",
+        "21st Arc Gallery Hero Component (minhxthanh) and Hero Preview Walls (ruixen.ui) - hero decks where the frame rather than the photograph sets the ratio, which is direction B; search level only",
+        "constraints.must in this file: every shop image slot is 16:9, >=1600px - the constraint that forces the trade-off"
+      ],
+      "referencesNote": "Added 31/08 after the 21st CLI authenticated. The first pass at this study had no external references because search was answering 401.",
+      "chosen": "c",
+      "decidedDate": "2026-09-07",
+      "outcome": "Team 07/09 chose C. Folded into HeroDeck as a clamp on the ratio itself — aspect-ratio: clamp(1.25, calc(1.25 + (100vw - 375px) / 1562.5px), 1.7778) — shared with the card's max-width calc so the two bounds cannot disagree. Measured on the running page: 1.25 at 375px, 1.33 at 500, 1.46 at 700, 1.59 at 900, 1.71 at 1100, and 1.778 from 1200 up. /lab/hero and the four studies were deleted in the same change, per the same note.",
+      "alsoShipped": "The same 07/09 note asked for the deck to be operable: click-and-drag or bare chevrons on desktop, swipe on a phone, with each chevron coloured against its own edge of the current frame (src/lib/useImageTone.ts). Autoplay stops at the first manual interaction."
     }
   ],
   "evidence": [

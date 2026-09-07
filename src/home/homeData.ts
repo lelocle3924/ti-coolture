@@ -31,7 +31,12 @@ export function landscapePlate(
   const type = tone === "paper" ? "#12081F" : "#FFFFFF";
 
   const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">`,
+    /* width and height, not just a viewBox. An SVG with only a viewBox has no
+       intrinsic size, so naturalWidth reads 0 — which is fine for layout, and
+       not fine for anything that needs to measure the image (useImageTone
+       samples the plate to colour the hero's chevrons against it, and a plate
+       it cannot read is a near-white ground it would put a white arrow on). */
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`,
     `<rect width="${w}" height="${h}" fill="${ground}"/>`,
     `<rect x="14" y="14" width="${w - 28}" height="${h - 28}" fill="none" stroke="${type}" stroke-opacity=".18" stroke-width="2"/>`,
     `<path d="M0 612c320 -90 480 72 768 18s448 -90 832 -18" fill="none" stroke="#39D6CF" stroke-width="14" stroke-opacity=".85"/>`,
