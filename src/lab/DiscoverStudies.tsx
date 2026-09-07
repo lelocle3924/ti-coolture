@@ -737,7 +737,12 @@ export default function DiscoverStudies() {
             <LabFrame key={id} label={`${id} · ${name}`} meta={metaLine}>
               <div className="mx-auto max-w-[92rem] px-5 pb-14 md:px-10">
                 <div className="flex flex-wrap items-start gap-8">
-                  <div className="flex shrink-0 gap-4">
+                  {/* The drafts are fixed-width by design — they are drawn at
+                      1280 and 390 and scaled, so they cannot reflow. On a
+                      narrow screen the pair scrolls inside its own box rather
+                      than making the whole lab page scroll sideways. */}
+                  <div className="-mx-5 max-w-full shrink-0 overflow-x-auto px-5 md:mx-0 md:px-0">
+                    <div className="flex w-max gap-4">
                     <Draft size={PC} label="PC · 1280×820">
                       {id === "E" ? (
                         <E_Desktop routes={routes} />
@@ -752,6 +757,7 @@ export default function DiscoverStudies() {
                         <Phone route={route} routes={routes} />
                       )}
                     </Draft>
+                    </div>
                   </div>
 
                   <div className="min-w-[20rem] flex-1 space-y-4">
