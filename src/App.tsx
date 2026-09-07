@@ -25,7 +25,8 @@ import SearchMotionStudies from "./lab/SearchMotionStudies";
 import StoreRailStudies from "./lab/StoreRailStudies";
 import HowSeamStudies from "./lab/HowSeamStudies";
 import Footer from "./components/Footer";
-import { useEffect } from "react";
+import RevealFooterLayout from "./components/RevealFooter";
+import { useEffect, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
 function ScrollToTop() {
@@ -135,6 +136,23 @@ function SiteShell() {
      either — you get there by typing /lab. */
   const isLab = pathname === "/lab" || pathname.startsWith("/lab/");
 
+  /* Team 08/09: "mọi trang /products/[slug], /products, /stores, /discover đều
+     phải có reveal footer giống với homepage."
+
+     Decided here rather than in each page, so the four cannot drift apart and
+     a fifth is one entry away. The homepage wraps itself, because its sheet is
+     violet and it has chrome of its own to sit outside the sheet.
+
+     /stores/:storeId is deliberately not on this list. It docks a contact rail
+     to the bottom of the viewport at z-50, which would sit on top of a footer
+     that is revealed by scrolling the page off — the two want the same edge.
+     Worth raising separately rather than breaking one to add the other. */
+  const REVEAL_FOOTER = ["/products", "/stores", "/discover"];
+  const hasRevealFooter =
+    !isLab &&
+    REVEAL_FOOTER.some((base) => pathname === base || pathname.startsWith(`${base}/`)) &&
+    !pathname.startsWith("/stores/");
+
   return (
     <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
       {!isLab && <Header />}
@@ -143,6 +161,7 @@ function SiteShell() {
           at the top — except the homepage, whose hero owns that space and puts
           the deck under the pill on purpose. */}
       <div className={`flex-grow ${isHome || isLab ? "" : "pt-24 md:pt-28"}`}>
+        <PageBody reveal={hasRevealFooter}>
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/products" element={<Products />} />
@@ -180,10 +199,23 @@ function SiteShell() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </PageBody>
       </div>
-      {!isHome && !isLab && <Footer />}
+      {!isHome && !isLab && !hasRevealFooter && <Footer />}
     </div>
   );
+}
+
+/**
+ * Wraps the routed page in the reveal footer, or does not.
+ *
+ * A component rather than a ternary around <Routes>, because duplicating the
+ * route table to put a wrapper round one copy of it is how the two copies
+ * start to differ.
+ */
+function PageBody({ reveal, children }: { reveal: boolean; children: ReactNode }) {
+  if (!reveal) return <>{children}</>;
+  return <RevealFooterLayout>{children}</RevealFooterLayout>;
 }
 
 /** Carries the :routeId across a rename so a deep link keeps its district. */

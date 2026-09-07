@@ -19,6 +19,7 @@ import SaveButton from "../components/SaveButton";
 import { triggerWebhook } from "../lib/dbService";
 import type { Product, TouristRoute } from "../types";
 import BrandSurround from "../components/BrandSurround";
+import RevealFooterLayout from "../components/RevealFooter";
 import { RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
 import DistrictMap from "../home/DistrictMap";
 import "../home/home.css";
@@ -1889,140 +1890,11 @@ function GroundBlend({
 }
 
 
-/* ── reveal footer ──────────────────────────────────────────────────────
-   wireframes.html MO-4. Stationary full-viewport underlay; the content sheet
-   above carries an opaque background and a bottom margin equal to the footer
-   height. The wordmark is the brand lockup as SVG — vector, so the diacritic
-   cannot clip — scrubbing opacity 0.25 → 1 and translateY 26 → 0. */
-
-const SITEMAP = [
-  { to: "/products", label: "Sản phẩm" },
-  { to: "/stores", label: "Shop" },
-  { to: "/kham-pha", label: "Khám phá" },
-  { to: "/about", label: "Tạp chí" },
-  { to: "/gioi-thieu", label: "Về Tí" },
-  { to: "/hop-tac", label: "Hợp tác" },
-  { to: "/faq", label: "FAQ" },
-  { to: "/dieu-khoan", label: "Điều khoản" },
-  { to: "/bao-mat", label: "Bảo mật" },
-];
-
-/* Structural ref type — the project has no @types/react, so `React.RefObject`
-   has no namespace to resolve against. */
-/** How much of the stationary footer the content sheet has uncovered, 0 → 1. */
-function useRevealProgress(sheetRef: { current: HTMLDivElement | null }): number {
-  const [reveal, setReveal] = useState(0);
-  const reduced = useReducedMotion();
-
-  useEffect(() => {
-    if (reduced) {
-      setReveal(1);
-      return;
-    }
-    let frame = 0;
-    const onScroll = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        const sheet = sheetRef.current;
-        if (!sheet) return;
-        const bottom = sheet.getBoundingClientRect().bottom;
-        const vh = window.innerHeight || 1;
-        setReveal(Math.min(1, Math.max(0, 1 - bottom / vh)));
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [reduced, sheetRef]);
-
-  return reveal;
-}
-
-function RevealFooter({ reveal }: { reveal: number }) {
-  return (
-    <footer
-      /* pt and pb are dvh-derived for the same reason the pinned How-it-works
-         pane is: at 560px of viewport the rem-sized version put the legal row
-         below the fold with no way to reach it. */
-      className="fixed inset-x-0 bottom-0 z-0 flex h-[100dvh] flex-col justify-between overflow-hidden bg-brand px-5 pb-[clamp(0.85rem,6dvh,4rem)] pt-[clamp(3.75rem,11dvh,6.5rem)] text-paper md:px-10 xl:px-24"
-      aria-label="Chân trang"
-    >
-      <div className="grid gap-[clamp(0.75rem,3.5dvh,2.5rem)] sm:grid-cols-2 lg:grid-cols-[1fr_auto]">
-        <div className="max-w-sm">
-          <p className="text-sm leading-relaxed text-white/80">
-            Nơi tuyển chọn local brand và artist Việt.
-          </p>
-          <a
-            href="mailto:hello@ticoolture.vn"
-            className="mt-4 inline-flex min-h-11 items-center text-sm text-paper underline underline-offset-4 decoration-white/40 hover:decoration-paper"
-          >
-            hello@ticoolture.vn
-          </a>
-        </div>
-
-        <nav aria-label="Sơ đồ trang">
-          <ul className="grid grid-cols-2 gap-x-10 sm:grid-cols-3">
-            {SITEMAP.map((item) => (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  className="inline-flex min-h-11 items-center text-sm text-white/85 transition-colors hover:text-wave"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
-
-      {/* The lockup, scrubbed — vector, so Í can never clip.
-          Sized off the room left in the panel rather than off viewport width:
-          at 1440px a full-width lockup is 878px tall and pushes the legal row
-          out of a 900px footer. flex-1 + min-h-0 lets it take what is left and
-          no more, which also keeps the bottom clearance the spec asks for. */}
-      <div
-        className="flex min-h-0 flex-1 items-center justify-center py-[clamp(0.25rem,2.5dvh,2rem)]"
-        style={{
-          opacity: 0.25 + reveal * 0.75,
-          transform: `translateY(${(1 - reveal) * 26}px)`,
-          willChange: "opacity, transform",
-        }}
-      >
-        <Brandmark
-          className="h-full max-h-full w-auto max-w-full"
-          body="var(--color-paper)"
-          wave="var(--color-wave)"
-          title="Tí Coolture"
-        />
-      </div>
-
-      <div className="mt-[clamp(0.75rem,3dvh,2rem)] flex flex-col gap-[clamp(0.4rem,1.4dvh,0.75rem)] border-t border-white/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="m-0 text-xs text-white/60">© 2026 Tí Coolture</p>
-        <p className="m-0 text-xs text-white/60">
-          Tí Coolture không bán hàng và không xử lý giao dịch.
-        </p>
-        <p className="m-0 text-xs text-white/60">
-          <span className="text-paper">VI</span> / EN
-        </p>
-      </div>
-    </footer>
-  );
-}
-
 /* ── page ───────────────────────────────────────────────────────────────── */
 
 export default function Homepage() {
   const navigate = useNavigate();
   const { loading, error, reload, heroFrames, popular, collections, routes, gems } = useHomeData();
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const reveal = useRevealProgress(sheetRef);
 
   const open = useCallback(
     (p: Product) => navigate(`/products/${p.id}`, { viewTransition: true }),
@@ -2043,10 +1915,9 @@ export default function Homepage() {
       <ScrollProgress />
       <ScrollHint />
       <HiddenGems gems={gems} />
-      <RevealFooter reveal={reveal} />
-
       {/* content sheet — opaque, scrolls over the stationary footer */}
-      <div ref={sheetRef} className="relative z-10 bg-brand" style={{ marginBottom: "100dvh" }}>
+      <RevealFooterLayout sheet="bg-brand">
+        <div>
         <HeroDeck frames={heroFrames} />
 
         {loading ? (
@@ -2096,7 +1967,8 @@ export default function Homepage() {
         {/* No blend below it any more: the map and the collaborate band are
             both brand-deep, so there is no ground change left to ramp. */}
         <Collaborate />
-      </div>
+        </div>
+      </RevealFooterLayout>
     </div>
   );
 }
