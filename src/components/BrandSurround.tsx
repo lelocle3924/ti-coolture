@@ -120,7 +120,7 @@ export default function BrandSurround({ className = "" }: { className?: string }
           inside the field — the rest leaves through the bottom-left corner,
           which is what the drawing shows. */}
       <ArcTopRight
-        className="absolute"
+        className="absolute rotate-180"
         style={{
           left: `${ARC.left}%`,
           top: `${ARC.top}%`,
