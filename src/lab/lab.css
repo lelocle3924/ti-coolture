@@ -58,6 +58,22 @@
   animation: lab-spring-contents 380ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
 }
 
+/* ── search motion ──────────────────────────────────────────
+   Direction C was chosen on 07/09 and now runs on the real header, so its
+   three rules live in src/index.css as ti-search-* — the site does not import
+   this stylesheet. A and B keep their own rules here, since they exist only
+   on this page. */
+
+/* A · the panel grows out of the magnifier. The origin is set inline from a
+   measurement, because it depends on where the button lands at that width. */
+@keyframes lab-search-grow {
+  from { opacity: 0; transform: scale(0.72); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.lab-search-grow {
+  animation: lab-search-grow 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ── motion studies ──────────────────────────────────────────────────────── */
 
 /* Before/after demos replay on demand; restarting an animation needs the node
@@ -113,6 +129,10 @@
     transition: none;
   }
   .lab-spring-contents,
+  .lab-search-grow,
+  .ti-search-scrim,
+  .ti-search-drop,
+  .ti-search-hit,
   .lab-demo-before,
   .lab-demo-after,
   .lab-stagger > *,

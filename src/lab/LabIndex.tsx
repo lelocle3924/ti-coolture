@@ -43,6 +43,11 @@ const STUDIES = [
     title: "Viên ngọc ẩn — thẻ và tab ngôi sao",
     body: "Ba cách để hai thứ đọc ra một vật: một thân, một gốc, hoặc một con dấu.",
     meta: "3 phương án · trang chủ",
+    to: "/lab/search",
+    n: "05",
+    title: "Thanh tìm kiếm — ba đề xuất chuyển động",
+    body: "Nở ra từ nút, kéo ra từ nav, hoặc modal làm cho tử tế. Bấm thử được cả ba.",
+    meta: "3 phương án · toàn site",
   },
 ];
 
