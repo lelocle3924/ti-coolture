@@ -1298,36 +1298,53 @@ function GemCardBody({
 function GemBookmark({
   gem,
   open,
-  shown,
+  parked,
   onToggle,
   onOpenProduct,
   reduced,
 }: {
   gem: { product: Product; note: string };
   open: boolean;
-  shown: boolean;
+  /** Closed but on the edge, chip showing. False means gone entirely. */
+  parked: boolean;
   onToggle: () => void;
   onOpenProduct: () => void;
   reduced: boolean;
 }) {
+  /* Three rest positions, one element, one transform. Team 08/09: "Tôi muốn
+     vị trí của lưỡi ngôi sao nhất quán. Khi đóng thẻ vào thì cũng chưa được
+     liền mạch."
+
+     Both notes had the same cause: there used to be a separate parked tab
+     that was swapped for this object on open and swapped back on close. Two
+     elements cannot be continuous with each other, so closing popped; and the
+     two were centred on different things, so the chip jumped. */
+  const x = open ? "0px" : parked ? `calc(100% - ${GEM_TAB.w}px)` : "100%";
+
   return (
     <div
       className="fixed right-0 top-1/2 z-50 flex w-[21rem] items-start will-change-transform"
       style={{
-        /* Vertical centring lives in the transform, not in a -translate-y-1/2
-           utility: Tailwind v4 compiles those to the standalone `translate`
-           property, which composes with `transform` instead of being
-           overridden by it, and the object lands a whole height too high. */
-        transform: shown
-          ? "translate3d(0, -50%, 0)"
-          : `translate3d(calc(100% - ${GEM_TAB.w}px), -50%, 0)`,
-        transition: reduced ? "none" : `transform ${shown ? GEM_IN : GEM_OUT}ms var(--ease-brand)`,
+        /* The object hangs from the chip rather than being centred on itself,
+           so the chip's own centre is on the viewport's midline in every one
+           of the three states — which is what "nhất quán" asks for. Centring
+           the whole object put the chip half a card above the midline the
+           moment the card arrived.
+
+           The vertical half of this lives in the transform, not in a
+           -translate-y utility: Tailwind v4 compiles those to the standalone
+           `translate` property, which composes with `transform` rather than
+           being overridden by it. */
+        transform: `translate3d(${x}, -${GEM_TAB.h / 2}px, 0)`,
+        transition: reduced ? "none" : `transform ${open ? GEM_IN : GEM_OUT}ms var(--ease-brand)`,
       }}
     >
       {/* the chip — the handle, and the only thing showing when closed */}
       <button
         onClick={onToggle}
         aria-expanded={open}
+        aria-hidden={!parked && !open}
+        tabIndex={parked || open ? 0 : -1}
         aria-label={open ? "Đóng viên ngọc ẩn" : "Viên ngọc ẩn — xem sản phẩm Tí chọn"}
         className="grid shrink-0 place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-300 active:scale-95"
         style={{ width: GEM_TAB.w, height: GEM_TAB.h }}
@@ -1335,7 +1352,10 @@ function GemBookmark({
         <StarIcon className="h-6 w-6" />
       </button>
 
-      <div className="min-w-0 flex-1 overflow-hidden bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave">
+      <div
+        aria-hidden={!open}
+        className="min-w-0 flex-1 overflow-hidden bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave"
+      >
         <GemCardBody gem={gem} onOpenProduct={onOpenProduct} />
       </div>
     </div>
@@ -1351,14 +1371,15 @@ function GemBookmark({
 function GemTravellingStar({
   gem,
   open,
-  shown,
+  parked,
   onToggle,
   onOpenProduct,
   reduced,
 }: {
   gem: { product: Product; note: string };
   open: boolean;
-  shown: boolean;
+  /** Closed but on the edge. False means the nav has taken it away. */
+  parked: boolean;
   onToggle: () => void;
   onOpenProduct: () => void;
   reduced: boolean;
@@ -1389,10 +1410,11 @@ function GemTravellingStar({
     return () => window.removeEventListener("resize", measure);
   }, [open]);
 
-  const landed = shown && slot.top > 0;
+  const landed = open && slot.top > 0;
+  const dur = open ? GEM_IN : GEM_OUT;
   const travel = reduced
     ? "none"
-    : `right ${GEM_IN}ms var(--ease-brand), top ${GEM_IN}ms var(--ease-brand), height ${GEM_IN}ms var(--ease-brand), width ${GEM_IN}ms var(--ease-brand), border-radius ${GEM_IN}ms ease`;
+    : `right ${dur}ms var(--ease-brand), top ${dur}ms var(--ease-brand), height ${dur}ms var(--ease-brand), width ${dur}ms var(--ease-brand), border-radius ${dur}ms ease`;
 
   return (
     <>
@@ -1404,11 +1426,12 @@ function GemTravellingStar({
         style={{
           bottom: GEM_CARD_INSET.bottom,
           right: GEM_CARD_INSET.right,
-          transform: shown ? "translateY(0)" : "translateY(14px)",
-          opacity: shown ? 1 : 0,
+          transform: open ? "translateY(0)" : "translateY(14px)",
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
           transition: reduced
             ? "none"
-            : `transform ${shown ? GEM_IN : GEM_OUT}ms var(--ease-brand) ${shown ? 90 : 0}ms, opacity ${shown ? 260 : GEM_OUT}ms ease ${shown ? 90 : 0}ms`,
+            : `transform ${open ? GEM_IN : GEM_OUT}ms var(--ease-brand) ${open ? 90 : 0}ms, opacity ${open ? 260 : GEM_OUT}ms ease ${open ? 90 : 0}ms`,
         }}
       >
         <GemCardBody gem={gem} onOpenProduct={onOpenProduct} onClose={onToggle} />
@@ -1418,6 +1441,8 @@ function GemTravellingStar({
       <button
         onClick={onToggle}
         aria-expanded={open}
+        aria-hidden={!parked && !open}
+        tabIndex={parked || open ? 0 : -1}
         aria-label={open ? "Đóng viên ngọc ẩn" : "Viên ngọc ẩn — xem sản phẩm Tí chọn"}
         className="fixed z-[51] grid place-items-center bg-wave text-ink shadow-2xl will-change-transform"
         style={
@@ -1431,7 +1456,10 @@ function GemTravellingStar({
                 transition: travel,
               }
             : {
-                right: 0,
+                /* Parked on the edge, or pushed off it while the nav is up.
+                   Same element, same transition — the tab leaving with the
+                   nav is the same movement as the star coming home. */
+                right: parked ? 0 : -GEM_TAB.w,
                 top: "50%",
                 marginTop: -GEM_TAB.h / 2,
                 width: GEM_TAB.w,
@@ -1452,11 +1480,6 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   const reduced = useReducedMotion();
   const wide = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useState(false);
-  /* `mounted` is whether the object is in the tree; `shown` is whether it has
-     arrived. They differ for exactly one frame on the way in, and for the
-     length of the exit on the way out. */
-  const [mounted, setMounted] = useState(false);
-  const [shown, setShown] = useState(false);
 
   // Team direction (26/08): the tab does the OPPOSITE of the nav. Scrolling
   // down hides the nav and pushes this out; scrolling up brings the nav back
@@ -1465,27 +1488,6 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   // rest of the chrome.
   const { hidden } = useAutoHideChrome({ locked: open });
   const gem = gems[0];
-
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      if (reduced) {
-        setShown(true);
-        return;
-      }
-      // one frame at rest off-screen, then travel — see the note above
-      const frame = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
-      return () => cancelAnimationFrame(frame);
-    }
-
-    setShown(false);
-    if (reduced) {
-      setMounted(false);
-      return;
-    }
-    const timer = setTimeout(() => setMounted(false), GEM_OUT);
-    return () => clearTimeout(timer);
-  }, [open, reduced]);
 
   const toggle = useCallback(() => {
     setOpen((v) => {
@@ -1502,54 +1504,25 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
 
   if (!gem) return null;
 
-  /* The resting tab. Both shapes park in the same place, so this is one
-     control with two destinations rather than two controls: on desktop it is
-     the bookmark's own chip riding in on the object, on a phone it is the
-     star before it flies. It shows only while the nav is hidden. */
-  const parked = (
-    <button
-      onClick={toggle}
-      aria-label="Viên ngọc ẩn — xem sản phẩm Tí chọn"
-      aria-expanded={false}
-      aria-hidden={!hidden}
-      tabIndex={hidden ? 0 : -1}
-      className="fixed right-0 top-1/2 z-40 grid place-items-center rounded-l-2xl bg-wave text-ink shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95"
-      style={{
-        width: GEM_TAB.w,
-        height: GEM_TAB.h,
-        transform: hidden ? "translate(0, -50%)" : "translate(100%, -50%)",
-      }}
-    >
-      <StarIcon className="h-6 w-6" />
-    </button>
-  );
+  /* No separate parked tab any more, and nothing mounts or unmounts.
 
-  return (
-    <>
-      {!mounted && parked}
+     Team 08/09: "Khi đóng thẻ vào thì cũng chưa được liền mạch." It could not
+     be: closing animated one element out and then swapped in a different one
+     at a different offset. Each shape owns all three of its rest positions
+     now — gone, parked on the edge, open — so opening, closing and the nav
+     taking the tab away are the same transform running between three values.
+     Keeping the object mounted is also what lets it be interrupted: pressing
+     the chip mid-close reverses from wherever it is. */
+  const props = {
+    gem,
+    open,
+    parked: hidden,
+    onToggle: toggle,
+    onOpenProduct: openProduct,
+    reduced,
+  };
 
-      {mounted &&
-        (wide ? (
-          <GemBookmark
-            gem={gem}
-            open={open}
-            shown={shown}
-            onToggle={toggle}
-            onOpenProduct={openProduct}
-            reduced={reduced}
-          />
-        ) : (
-          <GemTravellingStar
-            gem={gem}
-            open={open}
-            shown={shown}
-            onToggle={toggle}
-            onOpenProduct={openProduct}
-            reduced={reduced}
-          />
-        ))}
-    </>
-  );
+  return wide ? <GemBookmark {...props} /> : <GemTravellingStar {...props} />;
 }
 
 /* ── collections: spring tabs ───────────────────────────────────────────
