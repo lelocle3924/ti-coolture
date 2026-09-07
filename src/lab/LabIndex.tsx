@@ -37,6 +37,13 @@ const STUDIES = [
     body: "Mười hai đề xuất kèm số cụ thể, và demo A/B cho những cái đáng nhìn hơn đọc.",
     meta: "12 đề xuất · toàn site",
   },
+  {
+    to: "/lab/hidden-gem",
+    n: "05",
+    title: "Viên ngọc ẩn — thẻ và tab ngôi sao",
+    body: "Ba cách để hai thứ đọc ra một vật: một thân, một gốc, hoặc một con dấu.",
+    meta: "3 phương án · trang chủ",
+  },
 ];
 
 export default function LabIndex() {
