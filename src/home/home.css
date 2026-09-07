@@ -14,6 +14,22 @@
    lane is driven from src/lib/useMarqueeTrack.ts now: same drift, same
    hover-to-hold, plus the gesture. Nothing else used these rules. */
 
+/* ── district pins ─────────────────────────────────────────────
+   `.ti-trail` and its draw keyframes were here until 07/09 ("Xoá đường nối
+   các điểm ở map"). Nothing draws a route across the island now, so the pins
+   are the whole mark and no longer keep pace with a line.
+
+   Small travel, long easing, one pass — the stagger is set per pin in
+   DistrictMap, tightened to 90ms now that there is nothing to walk with. */
+
+@keyframes ti-pin-settle {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 10px)); }
+  to   { opacity: 1; transform: translate(-50%, -100%); }
+}
+.ti-pin {
+  animation: ti-pin-settle 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes lab-pop-in {
   0%   { opacity: 0; transform: translateY(26px) scale(0.86) rotate(-3deg); }
   62%  { opacity: 1; transform: translateY(-5px) scale(1.04) rotate(1deg); }
@@ -148,7 +164,12 @@
   .lab-spring-contents,
   .lab-bob,
   .lab-pop,
-  .lab-plate-in {
+  .lab-plate-in,
+  .ti-pin {
     animation: none !important;
   }
+
+  /* animation:none would leave the pins at their from-state, so the
+     finished value has to be stated outright. */
+  .ti-pin   { opacity: 1; transform: translate(-50%, -100%); }
 }

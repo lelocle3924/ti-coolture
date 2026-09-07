@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useDragTrack } from "../lib/useDragTrack";
 import { islandBlobs, planFor } from "./homeData";
+import "./home.css";
 import type { TouristRoute } from "../types";
 
 /**
@@ -52,10 +53,28 @@ function DistrictSlide({
         className="group block w-full cursor-pointer"
       >
         {/* Sized by height, not by width (26/08: "everything should fit
-            neatly on the page" at 100% zoom). The old box was width-led —
-            max-w-4xl at 16/9 came out 896×504 on a laptop, which is over half
-            the viewport before the heading and the arrows are counted. */}
-        <div className="relative mx-auto aspect-[16/9] h-[clamp(12rem,38vh,21rem)] max-w-full">
+            neatly on the page" at 100% zoom) — but it is the *width* that gets
+            capped, which is the correction the hero already had to make on
+            28/08.
+
+            `aspect-[16/9]` paired with a fixed `h-` and `max-w-full` cannot
+            all hold at once. On a phone the height rule won at 309px,
+            aspect-ratio asked for 549px of width, `max-w-full` clamped that to
+            the 239px slide, and the box came out 0.78:1 instead of 1.78:1.
+            With preserveAspectRatio="none" below, the 800×600 artwork was then
+            squashed to 58% of its intended width — the island that reads as
+            broken in the 31/08 screenshot ("Ồ map bị lỗi").
+
+            Capping max-width instead keeps aspect-ratio in charge: the width
+            is the smaller of the column and (allowed height × ratio), and the
+            height follows from it. The ratio is now 4:3 — the artwork's own —
+            so "none" is a no-op rather than a distortion, and the pins, which
+            are positioned as percentages of this box, land exactly on their
+            stops at every size. */}
+        <div
+          className="relative mx-auto aspect-[4/3] w-full [--map-h:clamp(11rem,34vh,19rem)]"
+          style={{ maxWidth: "calc(var(--map-h) * 4 / 3)" }}
+        >
           <svg
             viewBox="0 0 800 600"
             preserveAspectRatio="none"
@@ -81,15 +100,23 @@ function DistrictSlide({
               {plan.shapes.map((d, i) => (
                 <path key={i} d={d} fill="var(--color-wave-ink)" fillOpacity={0.16 + i * 0.05} />
               ))}
+              {/* The waterway. It used to be the loudest mark on the map —
+                  stroke 20, full brand violet, opacity .85, running out past
+                  both edges of the island. It is a geographic hint, not a
+                  route, so it sits inside the island with the rest of the
+                  terrain. It is what is left after the connecting line went
+                  (07/09) and it is deliberately kept: it joins nothing, it
+                  just stops the island reading as a flat teal shape. */}
+              <path
+                d={plan.axis}
+                fill="none"
+                stroke="var(--color-wave-ink)"
+                strokeWidth="9"
+                strokeLinecap="round"
+                opacity="0.28"
+              />
             </g>
-            <path
-              d={plan.axis}
-              fill="none"
-              stroke="var(--color-brand)"
-              strokeWidth="20"
-              strokeLinecap="round"
-              opacity="0.85"
-            />
+
           </svg>
 
           {/* Teardrop pins, tip on the coordinate. Each pin is its own control
@@ -100,13 +127,28 @@ function DistrictSlide({
               A pin is positioned as a percentage of this box while the island
               is drawn in an 800×600 viewBox, so the two only agree when the
               SVG fills the box exactly — hence preserveAspectRatio="none"
-              above. With the default "meet" the 4:3 artwork letterboxed inside
-              the 16/9 box and every pin drifted outward from its stop. */}
+              above. With the default "meet" the artwork letterboxed and every
+              pin drifted outward from its stop. Since 31/08 the box carries
+              the artwork's own 4:3, so "none" neither letterboxes nor
+              stretches; it just keeps the pin maths exact. */}
           {route.stops.map((stop, i) => (
             <span
               key={stop.id}
-              style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-              className="absolute z-10 block -translate-x-1/2 -translate-y-full"
+              /* ti-pin carries the -50%/-100% offset in its keyframes, so the
+                 translate utilities would be overridden mid-animation; the
+                 class holds both the offset and the settle.
+
+                 The stagger used to walk with the trail, 0.34s a pin over the
+                 line's 1.7s crossing. With no line to follow there is nothing
+                 to keep pace with, and a queue of pins arriving over a second
+                 and a third is just slow — so they arrive as a group now,
+                 90ms apart. */
+              style={{
+                left: `${stop.x}%`,
+                top: `${stop.y}%`,
+                animationDelay: `${(0.12 + i * 0.09).toFixed(2)}s`,
+              }}
+              className="ti-pin absolute z-10 block"
             >
               <button
                 type="button"
@@ -177,7 +219,17 @@ export default function DistrictMap({
    */
   variant?: "section" | "inline";
 }) {
-  const track = useDragTrack(routes.length);
+  /* Softened on 31/08: "đang trôi khá nhanh, khiến người xem hơi nhức mắt".
+     The map is a picture you read, not a list you flick through, so it now
+     lands slower than the default track (0.72s against 0.42s), throws about a
+     quarter as far on the same flick (deceleration 0.992 against 0.998), and
+     never crosses more than one district per swipe. The collections track on
+     the homepage keeps the original figures. */
+  const track = useDragTrack(routes.length, {
+    response: 0.72,
+    decelerationRate: 0.992,
+    maxPagesPerFlick: 1,
+  });
   const inline = variant === "inline";
 
   const route = routes[track.page];

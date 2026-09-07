@@ -166,6 +166,15 @@ export function islandBlobs(stops: Array<{ x: number; y: number }>): IslandBlob[
   return blobs;
 }
 
+/* ── the walking trail, removed ───────────────────────────────────
+   `routeTrail` lived here: a Catmull-Rom spline threaded through the stops,
+   built on 31/08 to replace the decorative waterway that was being drawn as
+   if it were the route. Team 07/09: "Xoá đường nối các điểm ở map." So the
+   answer to that note turns out to be that the map should not draw the route
+   at all — the numbered pins carry the order on their own — and the function
+   goes with it rather than being left behind unused. Its history is on
+   fix/district-map-route if the decision is ever revisited. */
+
 /* ── collections ───────────────────────────────────────────────────────────
    Team feedback (19/08): the two gift collections become four numbered
    placeholders — "Collection 1" … "Collection 4" — until the editors name and
