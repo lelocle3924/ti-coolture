@@ -640,6 +640,7 @@ function StoreTile({
   onOpen,
   blocked,
   full = false,
+  quiet = false,
 }: {
   key?: string;
   product: Product;
@@ -648,6 +649,16 @@ function StoreTile({
   blocked?: () => boolean;
   /** Fill the slide it is in, for the phone lane's one-per-screen paging. */
   full?: boolean;
+  /**
+   * Show the photograph only.
+   *
+   * The phone rail leaves 15% of the neighbour either side showing, and what
+   * the team asked to see there is the picture — "mép phải và mép trái của
+   * hình ảnh của 2 sản phẩm ở 2 bên". A caption cut off 15% in is not a
+   * peek, it is a sentence with its end missing, twice, at both screen
+   * edges. The space is kept so nothing moves as it fades back in.
+   */
+  quiet?: boolean;
 }) {
   return (
     <div
@@ -688,7 +699,11 @@ function StoreTile({
           <SaveButton product={product} revealOnHover />
         </span>
       </div>
-      <div className="mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3">
+      <div
+        className={`mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3 transition-opacity duration-300 ${
+          quiet ? "opacity-0" : "opacity-100"
+        }`}
+      >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[11px] tracking-[0.16em] text-white/70">
             {product.storeName.toUpperCase()}
@@ -866,7 +881,13 @@ function LoopingStoreLane({
                  products again, there to cover the fold. */
               aria-hidden={i < products.length || i >= products.length * 2}
             >
-              <StoreTile product={p} onOpen={onOpen} blocked={track.didDrag} full />
+              <StoreTile
+                product={p}
+                onOpen={onOpen}
+                blocked={track.didDrag}
+                full
+                quiet={i % products.length !== track.page}
+              />
             </div>
           ))}
         </div>
