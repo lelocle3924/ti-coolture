@@ -1,52 +1,45 @@
-import { useCallback, useEffect, useState } from "react";
-import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { fetchTouristRoutes } from "../lib/dbService";
 import { TouristRoute } from "../types";
 import { Compass, ArrowUpRight, MapPin } from "lucide-react";
 import { ArcTopRight, RibbonLoop, WaveBlog } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
-import DistrictMap from "../home/DistrictMap";
+import { CategoryMap, DISCOVER_CATEGORIES } from "../home/DistrictMap";
+import { planFor } from "../home/homeData";
 
 /**
  * Khám phá — /discover and /discover/:routeId
  *
- * Team 07/09: "Trang /discover cần overhaul lại visual. Dù vẫn giữ cái map từ
- * bên homepage đem sang, nhưng vẫn phải hài hoà hơn."
+ * Two grounds with one seam between them, which is the shape 07/09 settled
+ * on and nothing here disturbs:
  *
- * The map stays. What was making the page unharmonious was not the map itself
- * but everything around it — the page ran five grounds top to bottom with a
- * hard cut at every join:
- *
- *     violet hero → a 60px sliver of white → a deep-violet slab for the map
- *     → white for the stops → the footer's ink
- *
- * A white band that thin between two violet fields does not read as a ground,
- * it reads as a seam that went wrong; and the map arriving as its own darker
- * slab, hard-edged on both sides, cut the page in half exactly where the
- * itinerary was meant to begin. The site's own rule is the opposite of this —
- * "NEVER allow abrupt transitions, always aim for CONTINUITY" (20/08).
- *
- * So the page is two grounds now, with one seam between them, and the seam is
- * the brand wave this page was already using:
- *
- *     violet — the route's name, its description, and the map
+ *     violet — the title, the region, and the map
  *     ~ wave ~
- *     paper — the trail, and the stops
+ *     paper — the places
  *
- * The map moved *into* the hero rather than after it, which is also where it
- * belongs by function: it is the chooser. You pick a district on it, and the
- * itinerary below is the answer. Having it sit between the breadcrumb and the
- * stops put the chooser in the middle of the thing it chooses.
+ * What changed on 08/09 is what the page is *about*. It used to be an
+ * itinerary: a named route, its length in stops and hours, and a numbered
+ * walking order to follow. The team took all of that off —
  *
- * The stops were rebuilt in the language the rest of the site is written in —
- * hairline rules and a full-width row, no floating cards. They had been four
- * bordered chips adrift in a half-empty column, each with its own shadow on
- * hover, which is the one thing the direction says the site does not do
- * ("Nothing sits in a card; hairlines and full-bleed colour fields carry the
- * structure instead").
+ *     "Trên header, chỗ ghi tên lộ trình ('Vòng chợ lớn'), giờ căn giữa và
+ *      chỉ ghi 'Khám phá thành phố'. Xoá dòng '4 điểm, nửa ngày', 'chọn quận
+ *      khác', 'Quận 5 · chợ lớn · 4 điểm · 1.8km', 'Mở lộ trình Quận 5 · chợ
+ *      lớn'. Thay bằng 1 dòng duy nhất ghi tên vùng mà bản đồ đó thể hiện."
+ *
+ * — and replaced the per-stop pins with one pin per kind of place. So the
+ * page is a place-finder now: it says which part of the city you are looking
+ * at, and the map asks what kind of thing you want to do there. The list
+ * under the wave answers that question rather than the old one, which is why
+ * "Đi theo thứ tự này" has become the name of the kind you picked.
+ *
+ * The route is still the unit underneath, because that is what the dataset
+ * has: /discover/:routeId picks the region, and the homepage map is where a
+ * region is chosen. Removing "chọn quận khác" removed the in-page switch on
+ * purpose.
  */
 
-/** How long a stop stays marked after you arrive on it from a pin. */
+/** How long a stop stays marked after you arrive on it from a link. */
 const FLASH_MS = 2200;
 
 function StopRow({
@@ -57,7 +50,7 @@ function StopRow({
   key?: string;
   stop: TouristRoute["stops"][number];
   index: number;
-  /** Arrived here from a pin — hold a mark on it long enough to be found. */
+  /** Arrived here from a link — hold a mark on it long enough to be found. */
   flashed: boolean;
 }) {
   const mapHref = stop.address?.startsWith("http")
@@ -124,7 +117,6 @@ function StopRow({
 }
 
 export default function Discovery() {
-  const navigate = useNavigate();
   const { routeId } = useParams();
   const [searchParams] = useSearchParams();
   const startStopId = searchParams.get("start");
@@ -133,6 +125,10 @@ export default function Discovery() {
   const [loading, setLoading] = useState(true);
   /** Which stop is currently marked, if any. */
   const [flash, setFlash] = useState<string | null>(null);
+  /** Which kind of place is being shown — null until someone picks one. */
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchTouristRoutes()
@@ -156,14 +152,31 @@ export default function Discovery() {
     setFlash(stopId);
   }, []);
 
+  /* A pin does two things at once (08/09): it brings the list it names into
+     view, and it marks itself so the answer to "which one am I looking at"
+     survives the scroll that hides it. */
+  const selectCategory = useCallback((categoryId: string) => {
+    setPicked(categoryId);
+    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   useEffect(() => {
     if (!flash) return;
     const timer = setTimeout(() => setFlash(null), FLASH_MS);
     return () => clearTimeout(timer);
   }, [flash]);
 
+  /* A new region starts on its own first filled kind rather than carrying the
+     last one over — declared before the ?start= effect so that one wins. */
+  useEffect(() => {
+    setPicked(null);
+  }, [route?.id]);
+
   useEffect(() => {
     if (loading || !route || !startStopId) return;
+    const stop = route.stops.find((s) => s.id === startStopId);
+    // the row only exists while its own kind is showing, so open that first
+    if (stop) setPicked(stop.category);
     // one beat for the list to paint before we scroll to a row inside it
     const timer = setTimeout(() => revealStop(startStopId), 300);
     return () => clearTimeout(timer);
@@ -188,16 +201,24 @@ export default function Discovery() {
     );
   }
 
+  const plan = planFor(route.id);
+  /* Open on a kind this region actually has, so the page never lands on an
+     empty list — the taxonomy is a placeholder and does not cover every
+     region evenly. */
+  const firstFilled =
+    DISCOVER_CATEGORIES.find((c) => route.stops.some((s) => s.category === c.id))?.id ??
+    DISCOVER_CATEGORIES[0].id;
+  const activeId = picked ?? firstFilled;
+  const category = DISCOVER_CATEGORIES.find((c) => c.id === activeId) ?? DISCOVER_CATEGORIES[0];
+  const shown = route.stops.filter((s) => s.category === activeId);
+
   return (
     /* The same move /products and /stores make: the negative margin cancels
        the shell's pt-24 pill clearance on the element that clips, so the
        violet runs to y=0 and the header does not sit on a strip of the
        shell's ink. */
     <div className="relative w-full overflow-x-hidden bg-paper text-ink md:-mt-28 -mt-24">
-      {/* ═══ violet: where you are, and where you can go ═══════════════════
-          One field from the top of the page through the map and into the
-          wave. The map is inside this section on purpose — it is the chooser,
-          and the itinerary under the wave is what it chooses. */}
+      {/* ═══ violet: where you are, and what you can do there ═════════════ */}
       <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
         <ArcTopRight
           className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-[0.3]"
@@ -211,45 +232,33 @@ export default function Discovery() {
           dot="var(--color-paper)"
         />
 
-        <div className="relative z-10 mx-auto max-w-4xl px-5 pb-2 pt-24 md:px-8 md:pt-28">
+        {/* pt is deeper than the other pages': the title is centred now, so
+            it runs under the middle of the floating nav pill rather than
+            clearing it to the left the way a left-aligned h1 did. */}
+        <div className="relative z-10 mx-auto max-w-4xl px-5 pt-28 text-center md:px-8 md:pt-32">
           {/* leading-[1.25] rather than .display's 1.02 — see index.css on how
               far Vietnamese uppercase reaches in DFVN. */}
           <h1 className="display text-4xl font-medium normal-case leading-[1.25] text-paper md:text-6xl">
-            {route.name}
+            Khám phá thành phố
           </h1>
 
-          <p className="mt-3 max-w-[54ch] text-base leading-relaxed text-white/80 md:text-lg">
-            {route.description ||
-              "Khám phá những xưởng thủ công và địa điểm văn hoá đặc sắc trên tuyến đường này."}
-          </p>
+          {/* The one line the four removed ones were replaced by: which part
+              of the city the map underneath is drawing. */}
+          <p className="mt-4 text-base tracking-[0.12em] text-wave md:text-lg">{plan.region}</p>
         </div>
 
-        {/* The same district map the homepage carries (26/08), in its inline
-            variant so it brings no ground of its own. Here a pin does not
-            navigate — the stop it names is already on this page, so it scrolls
-            to it and marks it, the way arriving with ?start= does. */}
-        <div className="relative z-10">
-          <DistrictMap
-            routes={routes}
-            heading="Chọn quận khác"
-            variant="inline"
-            onOpenRoute={(id) => navigate(`/discover/${id}`)}
-            onPin={(id, stopId) => {
-              if (id !== route.id) {
-                navigate(`/discover/${id}?start=${stopId}`);
-                return;
-              }
-              revealStop(stopId);
-            }}
-          />
+        {/* The map, at 65% of the page on a desktop and 75% on a phone, with
+            no column padding to take that width back. */}
+        <div className="relative z-10 mt-9 md:mt-12">
+          <CategoryMap route={route} activeId={activeId} onSelect={selectCategory} />
         </div>
 
-        <div className="relative z-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden">
+        <div className="relative z-10 mt-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden md:mt-14">
           <WaveBlog className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
         </div>
       </section>
 
-      {/* ═══ paper: the itinerary ═════════════════════════════════════════ */}
+      {/* ═══ paper: the places ════════════════════════════════════════════ */}
       <div data-surface="light" className="relative z-10 pb-16 md:pb-24">
         <div className="mx-auto max-w-4xl px-5 md:px-8">
           <Breadcrumbs
@@ -257,32 +266,37 @@ export default function Discovery() {
             trail={[
               { label: "Trang chủ", to: "/" },
               { label: "Khám phá", to: "/discover" },
-              { label: route.name },
+              { label: plan.region },
             ]}
           />
 
-          <div className="mt-10 flex items-baseline justify-between gap-4 md:mt-14">
-            <h2 className="display text-[clamp(1.5rem,3.4vw,2.4rem)] normal-case leading-[1.15] text-ink">
-              Đi theo thứ tự này
-            </h2>
-            <span className="label shrink-0 text-ink/45">
-              {String(route.stops.length).padStart(2, "0")} điểm
-            </span>
-          </div>
+          {/* scroll-mt clears the floating nav pill, so a pin lands the
+              heading under it rather than behind it. */}
+          <div ref={listRef} className="scroll-mt-24 md:scroll-mt-28">
+            <div className="mt-10 flex items-baseline justify-between gap-4 md:mt-14">
+              <h2 className="display text-[clamp(1.5rem,3.4vw,2.4rem)] normal-case leading-[1.15] text-ink">
+                Địa điểm {category.name}
+              </h2>
+              <span className="label shrink-0 text-ink/45">
+                {String(shown.length).padStart(2, "0")} điểm
+              </span>
+            </div>
 
-          {route.stops.length === 0 ? (
-            <p className="mt-8 border-t border-ink/12 py-10 text-sm text-ink/55">
-              Lộ trình này chưa có điểm dừng nào.
-            </p>
-          ) : (
-            /* The rules do the work. The last row closes the list, so the
-               block reads as one table of stops rather than four objects. */
-            <ul className="mt-6 border-b border-ink/12">
-              {route.stops.map((stop, i) => (
-                <StopRow key={stop.id} stop={stop} index={i} flashed={flash === stop.id} />
-              ))}
-            </ul>
-          )}
+            {shown.length === 0 ? (
+              <p className="mt-8 border-t border-ink/12 py-10 text-sm leading-relaxed text-ink/55">
+                Chưa có điểm {category.name.toLowerCase()} nào ở {plan.region}. Chọn một nhóm
+                khác trên bản đồ.
+              </p>
+            ) : (
+              /* The rules do the work. The last row closes the list, so the
+                 block reads as one table of places rather than four objects. */
+              <ul className="mt-6 border-b border-ink/12">
+                {shown.map((stop, i) => (
+                  <StopRow key={stop.id} stop={stop} index={i} flashed={flash === stop.id} />
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </div>
