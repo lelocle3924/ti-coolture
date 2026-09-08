@@ -286,7 +286,7 @@
     },
     {
       "id": "catalogue-page-direction",
-      "status": "open",
+      "status": "done",
       "date": "2026-08-21",
       "question": "How should /products carry its filters, its paging and its density?",
       "source": "src/lab/subpages/CatalogueStudies.tsx — deleted by a64504b (26/08); still on branch lab/direction-c-motion-revisions",
@@ -333,7 +333,10 @@
       ],
       "compare": "/lab/catalog/{1,2,3} — routes removed with the lab",
       "screenshots": "docs/directions/sub-catalog-*.png",
-      "stillOpen": "The one subpage of that batch that never got a pick. a64504b folded a direction into every other page and recorded \"/products = unchanged except the nav\" for this one, so the question was dropped rather than answered. Two thirds of it are still unanswered: where the filters live, and how dense the grid is. The paging third was settled independently on 08/09 at 36 per page, which is what option 3 (MỤC LỤC) proposed."
+      "stillOpen": "The one subpage of that batch that never got a pick. a64504b folded a direction into every other page and recorded \"/products = unchanged except the nav\" for this one, so the question was dropped rather than answered. Two thirds of it are still unanswered: where the filters live, and how dense the grid is. The paging third was settled independently on 08/09 at 36 per page, which is what option 3 (MỤC LỤC) proposed.",
+      "decision": "Filters: a tab strip of the seven groups, chips for the kinds inside the open one, and three in-page dropdowns for price, material and sort. Paging: 36 a page. Density: four columns on a desktop, a two-column jagged waterfall on a phone.",
+      "note": " — Settled 08/09 by the team rather than by picking one of the studies. The taxonomy came with it (seven groups, 29 kinds), which is what ruled out a flat chip strip; the phone density came with a Shopee reference and a method (±10% image ratios, a fixed 2px gutter, and the offset falls out of the two). Shipped in src/views/Products.tsx.",
+      "openAfter": "Seven kinds have nothing filed under them and show a count of 0, unpressable — they are a statement of what the site is open to stocking, and can come out of the strip if the team would rather it only showed what exists. Đặc sản under Quà tặng is an added leaf, not the team's, and needs confirming: see the seed's own note."
     },
     {
       "id": "product-page-direction",
