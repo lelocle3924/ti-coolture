@@ -8,6 +8,7 @@ import { ArcTopRight, RibbonLoop, WaveProducts } from "../components/BrandShapes
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage } from "../lib/viewTransitions";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
+import { useMediaQuery } from "../lib/useAutoHideChrome";
 
 /**
  * Categories, in two tiers.
@@ -64,6 +65,30 @@ const SORTS = [
 
 const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+
+/**
+ * The phone grid's three display ratios.
+ *
+ * Team 08/09, with Shopee as the reference: "với ý định là giảm thiểu khoảng
+ * trống, tạo cảm giác đầy… Làm điều này bằng cách cho mỗi ảnh 1 tỉ lệ hiển
+ * thị hơi khác nhau 1 tí, ví dụ 1:1, 1.1:1, 0.9:1. Sau đó cho padding top và
+ * bottom cố định bằng 1px hoặc 2px. Tỉ lệ ảnh khác nhau sẽ tự động kéo lưới ở
+ * 2 bên lệch nhau."
+ *
+ * That is the whole mechanism and it is worth stating why it works: two
+ * columns of tiles with a fixed gap only look like a grid because every tile
+ * in a row is the same height. Vary the height by ±10% and the two columns
+ * stop agreeing about where a row ends — the jag is a consequence, not
+ * something drawn.
+ *
+ * By position rather than by product, and three ratios against two columns on
+ * purpose: a hash could deal the same ratio down one column and leave the two
+ * sides in step, which is the one arrangement this cannot afford.
+ */
+const JAG_RATIOS = [1, 1.1, 0.9];
+
+/** The fixed 2px the note asks for, top and bottom of every tile. */
+const JAG_GAP = "2px";
 
 /* Team 08/09: "trang /products hiện tối đa 36 sản phẩm trên 1 trang. số còn
    lại cho sang trang tiếp theo." 36 divides by 2, 3 and 4, which are the
@@ -237,6 +262,128 @@ function Dropdown({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * One catalogue tile.
+ *
+ * Lifted out of the grid on 08/09 so the phone's waterfall and the desktop
+ * grid can lay the same card out two different ways rather than keeping two
+ * copies of it. `ratio` is the image box; `dense` is the phone.
+ */
+function ProductCard({
+  product,
+  ratio,
+  dense,
+  onSaved,
+}: {
+  key?: string;
+  product: Product;
+  ratio: number;
+  /** Phone: no outer plate, so the tiles can sit 4px apart and read as full. */
+  dense: boolean;
+  onSaved: (name: string) => void;
+}) {
+  const primaryImg =
+    product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
+  const hoverImg = product.images?.[1] || primaryImg;
+
+  return (
+    <div
+      /* The grey plate around each card is a desktop device. On a phone it
+         spends 6px of a 190px tile on a border twice over, and the note above
+         is about giving that space back to the photographs. */
+      className={`rev hover-elastic group/tile group cursor-pointer ${
+        dense
+          ? ""
+          : "rounded-[2rem] bg-black/5 p-1.5 ring-1 ring-black/5 hover:ring-brand/40"
+      }`}
+      style={dense ? { paddingTop: JAG_GAP, paddingBottom: JAG_GAP } : undefined}
+    >
+      <div
+        className={`flex h-full flex-col justify-between overflow-hidden border border-ink/5 bg-paper ${
+          dense ? "rounded-[1.25rem]" : "rounded-[1.625rem]"
+        }`}
+      >
+        {/* The image is the link; the wishlist button is its sibling, not its
+            child. An <a> may not contain interactive content — the same rule
+            the district map cites for not putting a button inside a button —
+            and a 32px control inside the anchor it overlaps is a coin toss on
+            a touch screen: the tap opens the product about as often as it
+            saves it. That is "tim chỗ này ko sử dụng được" (31/08). */}
+        <div className="relative">
+          <Link
+            to={`/products/${product.id}`}
+            viewTransition
+            className="relative block overflow-hidden bg-paper-warm"
+            style={{ aspectRatio: String(ratio) }}
+          >
+            <img
+              src={primaryImg}
+              alt={product.name}
+              referrerPolicy="no-referrer"
+              style={{ viewTransitionName: vtProductImage(product.id) }}
+              className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
+            />
+            {hoverImg !== primaryImg && (
+              <img
+                src={hoverImg}
+                alt={`${product.name} alternate view`}
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+              />
+            )}
+
+            {/* the kind of thing it is — a span, so it stays inside the
+                anchor quite legitimately */}
+            <span className="absolute bottom-3 left-3 rounded-full border border-ink/5 bg-paper/90 px-2.5 py-1 text-[10px] font-semibold text-ink shadow-xs backdrop-blur-md">
+              {product.category}
+            </span>
+          </Link>
+
+          {/* 44×44 of tap target around a 32px mark. */}
+          <SaveButton
+            product={product}
+            revealOnHover
+            className="absolute right-1.5 top-1.5 z-10"
+            onToggled={(now) => now && onSaved(product.name)}
+          />
+        </div>
+
+        <div className={`flex flex-1 flex-col justify-between ${dense ? "space-y-1.5 p-3" : "space-y-2 p-4"}`}>
+          <div className="space-y-1">
+            <Link
+              to={`/stores/${product.storeId}`}
+              viewTransition
+              className="block truncate text-[11px] font-semibold text-brand hover:underline"
+            >
+              {product.storeName}
+            </Link>
+
+            <Link to={`/products/${product.id}`} viewTransition className="block">
+              <h3 className="line-clamp-2 text-xs font-medium leading-snug text-ink transition-colors group-hover:text-brand md:text-sm">
+                {product.name}
+              </h3>
+            </Link>
+          </div>
+
+          <div className={`flex items-center justify-between border-t border-ink/5 ${dense ? "pt-1.5" : "pt-2"}`}>
+            <span className="text-xs font-bold text-ink md:text-sm">
+              {formatPrice(product.price)}
+            </span>
+
+            <Link
+              to={`/products/${product.id}`}
+              viewTransition
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-paper-warm text-brand transition-all duration-300 group-hover:bg-brand group-hover:text-paper"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -442,7 +589,20 @@ export default function Products() {
      about: two pages of a full grid hold the same 36 cards, so a count alone
      would not notice the turn. The same ref is the scroll target below — the
      grid is both the thing that reveals and the thing to come back to. */
-  const gridRef = useStaggerReveal<HTMLDivElement>(`${page}:${filteredProducts.length}`);
+  /* Which of the two layouts is on. A media query rather than two trees
+     behind `hidden md:grid`, because the hidden one still downloads 36
+     photographs. */
+  const dense = !useMediaQuery("(min-width: 768px)");
+
+  /* Motion 02: the reveal re-arms whenever the rendered set changes, so a
+     filter, a sort or a page turn brings its results in as a wave.
+
+     `dense` is in the key because crossing 768px swaps one container for the
+     other, and the cards in the new one would otherwise stay at the opacity 0
+     the hook's own [data-rev-ready] put them at. */
+  const gridRef = useStaggerReveal<HTMLDivElement>(
+    `${page}:${filteredProducts.length}:${dense}`
+  );
 
   const goToPage = (next: number) => {
     const clamped = Math.min(pageCount, Math.max(1, next));
@@ -763,19 +923,46 @@ export default function Products() {
           </div>
         )}
 
-        {/* ============ DOUBLE-BEZEL PRODUCT CARDS GRID ============ */}
+        {/* ============ THE RESULTS ============ */}
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="p-2 rounded-[2rem] bg-black/5">
-                <div className="rounded-[1.625rem] bg-paper p-3 space-y-3 animate-pulse">
-                  <div className="aspect-square rounded-2xl bg-paper-warm" />
-                  <div className="h-3 w-1/3 bg-paper-warm rounded" />
-                  <div className="h-4 w-3/4 bg-paper-warm rounded" />
-                  <div className="h-3 w-1/2 bg-paper-warm rounded" />
-                </div>
-              </div>
-            ))}
+          /* The skeleton carries the jag too, so the page does not settle
+             from an even grid into an uneven one the moment it loads. */
+          <div
+            className={
+              dense ? "flex gap-1 pt-4" : "grid grid-cols-2 gap-5 pt-4 md:grid-cols-3 lg:grid-cols-4"
+            }
+            aria-busy="true"
+          >
+            {dense
+              ? [0, 1].map((col) => (
+                  <div key={col} className="flex min-w-0 flex-1 flex-col">
+                    {[0, 1, 2, 3].map((row) => {
+                      const i = row * 2 + col;
+                      return (
+                        <div key={i} style={{ paddingTop: JAG_GAP, paddingBottom: JAG_GAP }}>
+                          <div className="space-y-3 rounded-[1.25rem] bg-paper p-3 animate-pulse">
+                            <div
+                              className="rounded-2xl bg-paper-warm"
+                              style={{ aspectRatio: String(JAG_RATIOS[i % JAG_RATIOS.length]) }}
+                            />
+                            <div className="h-3 w-1/3 rounded bg-paper-warm" />
+                            <div className="h-4 w-3/4 rounded bg-paper-warm" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              : Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-[2rem] bg-black/5 p-2">
+                    <div className="space-y-3 rounded-[1.625rem] bg-paper p-3 animate-pulse">
+                      <div className="aspect-square rounded-2xl bg-paper-warm" />
+                      <div className="h-3 w-1/3 rounded bg-paper-warm" />
+                      <div className="h-4 w-3/4 rounded bg-paper-warm" />
+                      <div className="h-3 w-1/2 rounded bg-paper-warm" />
+                    </div>
+                  </div>
+                ))}
           </div>
         ) : filteredProducts.length === 0 ? (
           
@@ -846,107 +1033,58 @@ export default function Products() {
 
         ) : (
           
-          /* DOUBLE-BEZEL PRODUCT GRID WITH VIEW TRANSITIONS */
-          <div
-            ref={gridRef}
-            className="scroll-mt-28 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2"
-          >
-            {visibleProducts.map((product) => {
-              const primaryImg = product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
-              const hoverImg = product.images?.[1] || primaryImg;
+          /* ── the results ──────────────────────────────────────────────
+             Two shapes, one card. On a desktop the four-column grid, which
+             is what a wide screen wants and where a row of equal heights
+             reads as order rather than as waste.
 
-              return (
-                <div
-                  key={product.id}
-                  className="rev hover-elastic p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5 hover:ring-brand/40 group/tile group cursor-pointer"
-                >
-                  <div className="rounded-[1.625rem] bg-paper h-full flex flex-col justify-between overflow-hidden border border-ink/5">
-                    
-                    {/* The image is the link; the wishlist button is its
-                        sibling, not its child.
+             On a phone, a two-column waterfall: the tiles are dealt left,
+             right, left, each column stacks its own, and because the image
+             ratios differ by ±10% the two sides stop agreeing about where a
+             row ends. That is the whole of "tỉ lệ ảnh khác nhau sẽ tự động
+             kéo lưới ở 2 bên lệch nhau" — nothing measures anything, the
+             offset is a consequence of the heights.
 
-                        It used to sit inside this <Link>. An <a> may not
-                        contain interactive content — the same rule the
-                        district map cites for not putting a button inside a
-                        button — and a 32px control inside the anchor it
-                        overlaps is a coin toss on a touch screen: the tap
-                        opens the product about as often as it saves it. That
-                        is "tim chỗ này ko sử dụng được" (31/08). */}
-                    <div className="relative">
-                      <Link to={`/products/${product.id}`} viewTransition className="block relative aspect-square overflow-hidden bg-paper-warm">
-                        <img
-                          src={primaryImg}
-                          alt={product.name}
-                          referrerPolicy="no-referrer"
-                          style={{ viewTransitionName: vtProductImage(product.id) }}
-                          className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
-                        />
-                        {hoverImg !== primaryImg && (
-                          <img
-                            src={hoverImg}
-                            alt={`${product.name} alternate view`}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                          />
-                        )}
-
-                        {/* Category Pill Tag — a span, so it stays inside the
-                            anchor quite legitimately */}
-                        <span className="absolute bottom-3 left-3 bg-paper/90 backdrop-blur-md text-ink text-[10px] font-semibold px-2.5 py-1 rounded-full border border-ink/5 shadow-xs">
-                          {product.category}
-                        </span>
-                      </Link>
-
-                      {/* 44x44 of tap target around a 32px mark. The circle is
-                          the size it always was; what grew is the part a
-                          fingertip has to find. touch-manipulation drops the
-                          double-tap-zoom wait so the heart answers at once. */}
-                      <SaveButton
+             CSS columns would have been fewer lines and the wrong reading
+             order: they fill the first column top to bottom before starting
+             the second, so a 36-product page would run 1–18 down the left
+             and 19–36 down the right. Dealing alternately keeps the catalogue
+             in the order it is sorted in. */
+          dense ? (
+            <div ref={gridRef} className="flex scroll-mt-28 gap-1 pt-2">
+              {[0, 1].map((col) => (
+                <div key={col} className="flex min-w-0 flex-1 flex-col">
+                  {visibleProducts
+                    .map((product, i) => ({ product, i }))
+                    .filter(({ i }) => i % 2 === col)
+                    .map(({ product, i }) => (
+                      <ProductCard
+                        key={product.id}
                         product={product}
-                        revealOnHover
-                        className="absolute right-1.5 top-1.5 z-10"
-                        onToggled={(now) => now && showSavedToast(product.name)}
+                        ratio={JAG_RATIOS[i % JAG_RATIOS.length]}
+                        dense
+                        onSaved={showSavedToast}
                       />
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                      <div className="space-y-1">
-                        <Link 
-                          to={`/stores/${product.storeId}`}
-                          viewTransition
-                          className="text-[11px] font-semibold text-brand hover:underline truncate block"
-                        >
-                          {product.storeName}
-                        </Link>
-
-                        <Link to={`/products/${product.id}`} viewTransition className="block">
-                          <h3 className="font-medium text-xs md:text-sm text-ink group-hover:text-brand transition-colors line-clamp-2 leading-snug">
-                            {product.name}
-                          </h3>
-                        </Link>
-                      </div>
-
-                      <div className="pt-2 border-t border-ink/5 flex items-center justify-between">
-                        <span className="font-bold text-xs md:text-sm text-ink">
-                          {formatPrice(product.price)}
-                        </span>
-                        
-                        <Link
-                          to={`/products/${product.id}`}
-                          viewTransition
-                          className="w-7 h-7 rounded-full bg-paper-warm text-brand flex items-center justify-center group-hover:bg-brand group-hover:text-paper transition-all duration-300"
-                        >
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
-                    </div>
-
-                  </div>
+                    ))}
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              ref={gridRef}
+              className="scroll-mt-28 grid grid-cols-2 gap-5 pt-2 md:grid-cols-3 lg:grid-cols-4"
+            >
+              {visibleProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  ratio={1}
+                  dense={false}
+                  onSaved={showSavedToast}
+                />
+              ))}
+            </div>
+          )
 
         )}
 
