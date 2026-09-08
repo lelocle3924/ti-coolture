@@ -232,7 +232,10 @@ export default function Discovery() {
           dot="var(--color-paper)"
         />
 
-        <div className="relative z-10 mx-auto max-w-4xl px-5 pt-24 text-center md:px-8 md:pt-28">
+        {/* pt is deeper than the other pages': the title is centred now, so
+            it runs under the middle of the floating nav pill rather than
+            clearing it to the left the way a left-aligned h1 did. */}
+        <div className="relative z-10 mx-auto max-w-4xl px-5 pt-28 text-center md:px-8 md:pt-32">
           {/* leading-[1.25] rather than .display's 1.02 — see index.css on how
               far Vietnamese uppercase reaches in DFVN. */}
           <h1 className="display text-4xl font-medium normal-case leading-[1.25] text-paper md:text-6xl">
