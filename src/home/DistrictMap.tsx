@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Camera, Landmark, ShoppingBag, Utensils } from "lucide-react";
+import { ArrowRight, Camera, Landmark, ShoppingBag, Utensils } from "lucide-react";
 import { islandBlobs, planFor, pointsAlongRoute } from "./homeData";
 import "./home.css";
 import type { TouristRoute } from "../types";
@@ -62,11 +62,42 @@ export type DiscoverCategory = (typeof DISCOVER_CATEGORIES)[number];
  *
  * On a phone the two stack and the island takes 75%, centred.
  */
-function KeLayout({ index, island }: { index: ReactNode; island: ReactNode }) {
+function KeLayout({
+  index,
+  island,
+  islandFirst = false,
+}: {
+  index: ReactNode;
+  island: ReactNode;
+  /**
+   * Phone only: put the map above the column beside it.
+   *
+   * Team 09/09 for /discover — "Trên mobile, để map nằm trên và list địa điểm
+   * nằm dưới." The homepage keeps the other order, because its column opens
+   * with the section's own heading and a map arriving above the title would
+   * be a section with no name.
+   *
+   * order-* on a phone and order-none at md, so the grid places by DOM order
+   * on a desktop and the index stays in the first column.
+   */
+  islandFirst?: boolean;
+}) {
   return (
-    <div className="md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] md:items-center">
-      <div className="px-5 md:px-10">{index}</div>
-      <div className="mx-auto mt-8 w-[75%] md:mx-0 md:mt-0 md:w-full">{island}</div>
+    <div className="flex flex-col md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] md:items-center">
+      <div
+        className={`px-5 md:order-none md:px-10 ${
+          islandFirst ? "order-2 mt-8 md:mt-0" : "order-1"
+        }`}
+      >
+        {index}
+      </div>
+      <div
+        className={`mx-auto w-[75%] md:order-none md:mx-0 md:w-full ${
+          islandFirst ? "order-1" : "order-2 mt-8 md:mt-0"
+        }`}
+      >
+        {island}
+      </div>
     </div>
   );
 }
@@ -284,18 +315,31 @@ export default function DistrictMap({
  * the strongest colour available on the ground it sits on: teal on the violet
  * field beside the map, violet on the teal island.
  *
- * The names are not on the pins. They are in the list beside them, which is
- * direction 2's whole argument, and it keeps four labels off an island where
- * they would collide wherever two stops sit close together.
+ * The names are not on the pins, and as of 09/09 they are not written out at
+ * all: "List 4 loại địa điểm thì không cần ghi vì người dùng có thể nhìn icon
+ * trên map và hiểu." So the column beside the island belongs to the caller —
+ * on /discover it holds the places of whichever kind is picked, which is what
+ * used to sit on a white ground below the fold.
+ *
+ * The arrows are the other half of that note. The region list went with
+ * "chọn quận khác" on 08/09 and left /discover with no way to change region
+ * at all; two chevrons on the map's own edges give it back without putting a
+ * second list on the page.
  */
 export function CategoryMap({
   route,
   activeId,
   onSelect,
+  onStep,
+  aside,
 }: {
   route: TouristRoute;
   activeId: string;
   onSelect: (categoryId: string) => void;
+  /** Move to the previous (-1) or next (+1) region. Wraps. */
+  onStep: (delta: number) => void;
+  /** What sits beside the map — the places of the picked kind. */
+  aside: ReactNode;
 }) {
   const points = useMemo(
     () => pointsAlongRoute(route.stops, DISCOVER_CATEGORIES.length),
@@ -304,36 +348,37 @@ export function CategoryMap({
 
   return (
     <KeLayout
-      index={
-        <ul className="border-t border-white/15">
-          {DISCOVER_CATEGORIES.map((c) => {
-            const on = c.id === activeId;
-            return (
-              <li key={c.id} className="border-b border-white/15">
-                <button
-                  type="button"
-                  onClick={() => onSelect(c.id)}
-                  aria-current={on}
-                  className={`flex w-full items-center gap-3 py-3.5 text-left transition-colors ${
-                    on ? "text-wave" : "text-white/65 hover:text-paper"
-                  }`}
-                >
-                  <c.Icon aria-hidden="true" className="h-4 w-4 shrink-0 opacity-80" />
-                  <span className="min-w-0 flex-1 truncate text-lg font-medium">{c.name}</span>
-                  <span
-                    aria-hidden="true"
-                    className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      on ? "w-8" : "w-0"
-                    }`}
-                  />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      }
+      islandFirst
+      index={aside}
       island={
-        <IslandFrame route={route}>
+        <div className="relative">
+          {/* On the map's own edges, as drawn: they belong to the map, not to
+              a control strip under it, and there is nowhere else to put them
+              once the region list is gone. */}
+          {[-1, 1].map((delta) => (
+            <button
+              key={delta}
+              type="button"
+              onClick={() => onStep(delta)}
+              aria-label={delta < 0 ? "Vùng trước" : "Vùng sau"}
+              className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-paper transition-colors hover:text-wave md:h-14 md:w-14 ${
+                /* The map runs out to the page edge on its right, so the
+                   forward arrow comes inside; the back one has violet to its
+                   left and can sit off the island. */
+                delta < 0 ? "left-0 md:-left-3" : "right-1 md:right-4"
+              }`}
+            >
+              <ArrowRight
+                aria-hidden="true"
+                className={`h-7 w-7 drop-shadow-[0_2px_6px_rgba(18,8,31,0.45)] md:h-9 md:w-9 ${
+                  delta < 0 ? "rotate-180" : ""
+                }`}
+                strokeWidth={2.5}
+              />
+            </button>
+          ))}
+
+          <IslandFrame route={route}>
           {DISCOVER_CATEGORIES.map((c, i) => {
             const at = points[i] ?? { x: 50, y: 50 };
             const on = c.id === activeId;
@@ -362,10 +407,11 @@ export function CategoryMap({
                     }`}
                   />
                 </Teardrop>
-              </button>
-            );
-          })}
-        </IslandFrame>
+                </button>
+              );
+            })}
+          </IslandFrame>
+        </div>
       }
     />
   );
