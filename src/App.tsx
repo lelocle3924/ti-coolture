@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Outlet,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
 import Header from "./components/Header";
 import Homepage from "./views/Homepage";
@@ -156,37 +162,7 @@ function SiteShell() {
           the deck under the pill on purpose. */}
       <div className={`flex-grow ${isHome || isLab ? "" : "pt-24 md:pt-28"}`}>
         <PageBody reveal={hasRevealFooter}>
-        <Routes>
-          <Route path="/" element={<Homepage />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/stores" element={<Stores />} />
-          <Route path="/stores/:storeId" element={<ShopDisplay />} />
-          <Route path="/products/:productId" element={<ProductDetail />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/open-shop" element={<OpenShop />} />
-          <Route path="/discover" element={<Discovery />} />
-          <Route path="/discover/:routeId" element={<Discovery />} />
-          <Route path="/shop-dashboard" element={<ShopDashboard />} />
-          <Route path="/user-profile" element={<UserProfile />} />
-          <Route path="/auth-gateway" element={<AuthGateway />} />
-
-          {/* Exploration. Rebuilt 28/08 for the two Collections directions and
-              the three map options the 26/08 feedback asks for. */}
-          <Route path="/lab" element={<LabIndex />} />
-          <Route path="/lab/shop-colour" element={<ShopPaletteStudies />} />
-          <Route path="/lab/discover" element={<DiscoverStudies />} />
-          <Route path="/lab/map" element={<MapStudies />} />
-          <Route path="/lab/search" element={<SearchMotionStudies />} />
-
-          {/* Renamed 26/08. Kept as redirects so anything already shared or
-              bookmarked still lands, rather than bouncing to the homepage. */}
-          <Route path="/kham-pha" element={<Navigate to="/discover" replace />} />
-          <Route path="/kham-pha/:routeId" element={<RedirectRoute to="/discover" />} />
-          <Route path="/tui-minh" element={<Navigate to="/about" replace />} />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          <Outlet />
         </PageBody>
       </div>
       {!isHome && !isLab && !hasRevealFooter && <Footer />}
@@ -213,14 +189,81 @@ function RedirectRoute({ to }: { to: string }) {
   return <Navigate to={`${to}${tail ? `/${tail}` : ""}${search}`} replace />;
 }
 
+/**
+ * Everything under one splat route.
+ *
+ * The app matches its own paths with <Routes> inside SiteShell, and that does
+ * not change — this is only about which kind of router is above it.
+ *
+ * Team 08/09 asked for the standing "view transitions are inert" finding to be
+ * fixed. It was real and it was exact: <Link viewTransition> is only honoured
+ * by a DATA router, and this mounted <BrowserRouter>, so all 32 uses of the
+ * prop across src/ did nothing. Measured before the change — clicking a
+ * product card started zero view transitions — and the only one that ever
+ * fired was the whole-page slide on a filter chip, which is the "jerky zoom"
+ * the team reported and which motion proposal 05 has since removed.
+ *
+ * createBrowserRouter puts a data router above the same tree, so a Link that
+ * asks for a transition gets one, and the root cross-fade that index.css has
+ * been carrying all along finally plays. ScrollToTop and ButtonClickTracker
+ * move inside the route element because both read useLocation.
+ */
+function Root() {
+  return (
+    <>
+      <ScrollToTop />
+      <ButtonClickTracker />
+      <SiteShell />
+    </>
+  );
+}
+
+/* A real route table, not a splat with <Routes> underneath it.
+
+   The splat was tried first and does not work: a descendant <Routes> matches
+   below the data router, so a Link's `viewTransition` never reaches the
+   router that would honour it — measured at zero transitions either way.
+   Declaring the routes here is what actually turns the prop on. */
+const router = createBrowserRouter([
+  {
+    element: <Root />,
+    children: [
+      { index: true, element: <Homepage /> },
+      { path: "products", element: <Products /> },
+      { path: "products/:productId", element: <ProductDetail /> },
+      { path: "wishlist", element: <Wishlist /> },
+      { path: "stores", element: <Stores /> },
+      { path: "stores/:storeId", element: <ShopDisplay /> },
+      { path: "about", element: <About /> },
+      { path: "open-shop", element: <OpenShop /> },
+      { path: "discover", element: <Discovery /> },
+      { path: "discover/:routeId", element: <Discovery /> },
+      { path: "shop-dashboard", element: <ShopDashboard /> },
+      { path: "user-profile", element: <UserProfile /> },
+      { path: "auth-gateway", element: <AuthGateway /> },
+
+      /* Exploration. Not linked from the nav — you get there by typing /lab. */
+      { path: "lab", element: <LabIndex /> },
+      { path: "lab/shop-colour", element: <ShopPaletteStudies /> },
+      { path: "lab/discover", element: <DiscoverStudies /> },
+      { path: "lab/map", element: <MapStudies /> },
+      { path: "lab/search", element: <SearchMotionStudies /> },
+
+      /* Renamed 26/08. Kept as redirects so anything already shared or
+         bookmarked still lands, rather than bouncing to the homepage. */
+      { path: "kham-pha", element: <Navigate to="/discover" replace /> },
+      { path: "kham-pha/:routeId", element: <RedirectRoute to="/discover" /> },
+      { path: "tui-minh", element: <Navigate to="/about" replace /> },
+
+      { path: "*", element: <Navigate to="/" replace /> },
+    ],
+  },
+]);
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <ButtonClickTracker />
-        <SiteShell />
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </AuthProvider>
   );
 }

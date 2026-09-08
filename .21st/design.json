@@ -279,7 +279,7 @@
       "status": "open",
       "date": "2026-08-21",
       "question": "How should /products carry its filters, its paging and its density?",
-      "source": "src/lab/subpages/CatalogueStudies.tsx",
+      "source": "src/lab/subpages/CatalogueStudies.tsx — deleted by a64504b (26/08); still on branch lab/direction-c-motion-revisions",
       "sharedAcrossOptions": [
         "The hardcoded category chip strip is gone; every facet is derived from the data with live counts",
         "No view transition on a filter or a sort — results swap in place",
@@ -321,12 +321,13 @@
           }
         }
       ],
-      "compare": "/lab",
-      "screenshots": "docs/directions/sub-catalog-*.png"
+      "compare": "/lab/catalog/{1,2,3} — routes removed with the lab",
+      "screenshots": "docs/directions/sub-catalog-*.png",
+      "stillOpen": "The one subpage of that batch that never got a pick. a64504b folded a direction into every other page and recorded \"/products = unchanged except the nav\" for this one, so the question was dropped rather than answered. Two thirds of it are still unanswered: where the filters live, and how dense the grid is. The paging third was settled independently on 08/09 at 36 per page, which is what option 3 (MỤC LỤC) proposed."
     },
     {
       "id": "product-page-direction",
-      "status": "open",
+      "status": "done",
       "date": "2026-08-21",
       "question": "What does a visitor meet first on a product page, and where does the order action live?",
       "source": "src/lab/subpages/ProductStudies.tsx",
@@ -371,11 +372,13 @@
         }
       ],
       "compare": "/lab",
-      "screenshots": "docs/directions/sub-product-*.png"
+      "screenshots": "docs/directions/sub-product-*.png",
+      "decidedDate": "2026-08-26",
+      "outcome": "Folded into the site by commit a64504b, which recorded the pick in its body: study 1 · TRƯƠNG BÀY, images rounded. The record was left at \"open\" and is corrected here on 08/09."
     },
     {
       "id": "shop-directory-direction",
-      "status": "open",
+      "status": "done",
       "date": "2026-08-21",
       "question": "Is area a filter, the spine of the page, or absent?",
       "source": "src/lab/subpages/ShopStudies.tsx",
@@ -413,11 +416,13 @@
         }
       ],
       "compare": "/lab",
-      "screenshots": "docs/directions/sub-shops-*.png"
+      "screenshots": "docs/directions/sub-shops-*.png",
+      "decidedDate": "2026-08-26",
+      "outcome": "Folded into the site by commit a64504b, which recorded the pick in its body: unchanged — the three shop studies were discarded. The record was left at \"open\" and is corrected here on 08/09."
     },
     {
       "id": "open-a-workshop-direction",
-      "status": "open",
+      "status": "done",
       "date": "2026-08-21",
       "question": "How much is asked of a workshop before they can start, and how much can they see of where it goes?",
       "source": "src/lab/subpages/OpenStudies.tsx",
@@ -455,13 +460,17 @@
         }
       ],
       "compare": "/lab",
-      "screenshots": "docs/directions/sub-open-*.png"
+      "screenshots": "docs/directions/sub-open-*.png",
+      "decidedDate": "2026-08-26",
+      "outcome": "Folded into the site by commit a64504b, which recorded the pick in its body: study 3 · LÁ THƯ, shipped at /open-shop. The record was left at \"open\" and is corrected here on 08/09."
     },
     {
       "id": "view-transitions-are-inert",
-      "status": "open",
+      "status": "done",
       "date": "2026-08-21",
-      "note": "Every <Link viewTransition> in src/views does nothing: React Router only honours the prop under a data router, and src/App.tsx mounts <BrowserRouter> + <Routes>. Verified by patching document.startViewTransition and clicking a product card — it was never called. So the product-image continuity the SPEC asks for has never run, and the only transition that does fire is withDirectionalTransition() on a filter chip, which slides and scales the whole page (1.06 → 1) on a spring that overshoots — the jerky zoom the team reported. The lab studies drive the transition explicitly (src/lab/subpages/shared.tsx › ContinuityLink) and name only the clicked image, so exactly one pair morphs. Whichever directions are chosen, the fix belongs in src/views too."
+      "note": "Every <Link viewTransition> in src/views does nothing: React Router only honours the prop under a data router, and src/App.tsx mounts <BrowserRouter> + <Routes>. Verified by patching document.startViewTransition and clicking a product card — it was never called. So the product-image continuity the SPEC asks for has never run, and the only transition that does fire is withDirectionalTransition() on a filter chip, which slides and scales the whole page (1.06 → 1) on a spring that overshoots — the jerky zoom the team reported. The lab studies drive the transition explicitly (src/lab/subpages/shared.tsx › ContinuityLink) and name only the clicked image, so exactly one pair morphs. Whichever directions are chosen, the fix belongs in src/views too.",
+      "decidedDate": "2026-09-08",
+      "outcome": "Fixed. src/App.tsx declares a real route table under createBrowserRouter instead of <BrowserRouter> + a descendant <Routes>. Measured before and after on the running site: a product-card click started 0 view transitions and now starts 1, and the back navigation replays it. A splat route with <Routes> underneath was tried first and does NOT work — a descendant <Routes> matches below the data router, so the Link's prop never reaches the router that would honour it. The other half of the note is also gone: withDirectionalTransition no longer fires on a filter chip, because motion proposal 05 landed in the same pass."
     },
     {
       "id": "catalogue-scale-data",

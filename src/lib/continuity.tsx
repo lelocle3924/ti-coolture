@@ -5,11 +5,17 @@
  *
  * Two things this exists to fix, both found on 21/08:
  *
- *   · <Link viewTransition> does nothing in this app. React Router honours
- *     the prop only under a data router, and src/App.tsx mounts
- *     <BrowserRouter> + <Routes> — so every viewTransition in src/views was
- *     inert and no product image had ever travelled. ContinuityLink drives
- *     the transition itself.
+ *   · <Link viewTransition> did nothing in this app. React Router honours the
+ *     prop only under a data router, and src/App.tsx mounted <BrowserRouter>
+ *     + <Routes> — so every viewTransition in src/views was inert and no
+ *     product image had ever travelled. Fixed on 08/09: App.tsx declares a
+ *     real route table under createBrowserRouter, and a card click now starts
+ *     a transition where it used to start none.
+ *
+ *     ContinuityLink still drives its own, and deliberately. The router's
+ *     transition is a root cross-fade; this one names ONE element on each
+ *     side, which is what makes a single photograph travel rather than the
+ *     whole page dissolve.
  *   · The product page fetched on mount and painted a spinner first, so at
  *     the moment the browser snapshots the new DOM there was nothing to morph
  *     into. handoff() stashes the clicked product so the page can paint its
