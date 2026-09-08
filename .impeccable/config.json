@@ -20,6 +20,12 @@
         "value": "cubic-bezier(0.34, 1.4, 0.64, 1)",
         "createdAt": "2026-08-26T14:41:48.605Z",
         "reason": "One-shot .draw stroke reveal in src/index.css, 1.35s forwards; same one-shot-landing rationale as the sanctioned --ease-brand, predates this session"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "lab-spring-contents",
+        "createdAt": "2026-09-08T10:47:45.728Z",
+        "reason": "false positive: cubic-bezier(0.16,1,0.3,1) is ease-out-expo, the curve the rule itself recommends. y never exceeds 1, so it cannot overshoot; the detector is reading y1=1 as a bounce marker. The rule's own comment in home.css states the intent (ease-out, deliberately NOT the overshooting --ease-brand)."
       }
     ]
   }
