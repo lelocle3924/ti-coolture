@@ -9,16 +9,39 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage } from "../lib/viewTransitions";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 
-const CANONICAL_CATEGORIES = [
-  "Tất cả",
-  "Thời trang",
-  "Sản phẩm sáng tạo",
-  "Văn phòng phẩm",
-  "Quà tặng",
-  "Nhà cửa",
-  "Body care",
-  "Giải trí"
-] as const;
+/**
+ * The chip strip is derived from the catalogue, not written down.
+ *
+ * It used to be a hardcoded list, and on 08/09 every one of its seven chips
+ * matched nothing: the labels were "Thời trang", "Sản phẩm sáng tạo", "Văn
+ * phòng phẩm", "Quà tặng", "Nhà cửa", "Body care", "Giải trí", while the
+ * products carried "Nghệ thuật & Ấn phẩm", "Chăm sóc cá nhân", "Thủ công &
+ * Trang trí", "Art Toy & Sưu tầm" and "Thời trang & Phụ kiện". Not one
+ * string matched, and the filter compares them with ===, so pressing any chip
+ * emptied a 137-product catalogue.
+ *
+ * Deriving them is also what /lab/subpages/CatalogueStudies.tsx (21/08) set
+ * out as shared ground across all three of its directions — "every facet is
+ * derived from the data, so a control can never again offer a filter that
+ * matches nothing". That lab was deleted before a direction was picked, and
+ * this is the half of it that was never in dispute.
+ */
+const ALL = "Tất cả";
+
+function deriveCategories(rows: Product[]): Array<{ name: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const c = (row.category || "").trim();
+    if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  return [
+    { name: ALL, count: rows.length },
+    // biggest first, then alphabetical, so the strip is stable between loads
+    ...[...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "vi")),
+  ];
+}
 
 const PRICE_BANDS = [
   { id: "all", label: "Tất cả mức giá" },
@@ -115,7 +138,7 @@ function Pager({
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeCategory = searchParams.get("category") || "Tất cả";
+  const activeCategory = searchParams.get("category") || ALL;
   const activePriceBand = searchParams.get("price") || "all";
   const activeMaterial = searchParams.get("material") || "all";
   const activeSort = searchParams.get("sort") || "newest";
@@ -160,7 +183,7 @@ export default function Products() {
      as a wave in the grid, and nothing else moves. */
   const handleCategorySelect = (cat: string) => {
     const next = new URLSearchParams(searchParams);
-    if (cat === "Tất cả") {
+    if (cat === ALL) {
       next.delete("category");
     } else {
       next.set("category", cat);
@@ -237,13 +260,15 @@ export default function Products() {
     setDemandNote("");
   };
 
+  const categories = React.useMemo(() => deriveCategories(products), [products]);
+
   // Filter Logic
   const selectedBand = PRICE_BANDS.find(b => b.id === activePriceBand);
 
   const filteredProducts = products
     .filter(prod => {
       // Category filter
-      if (activeCategory !== "Tất cả" && prod.category !== activeCategory) {
+      if (activeCategory !== ALL && prod.category !== activeCategory) {
         return false;
       }
       // Material filter
@@ -410,19 +435,21 @@ export default function Products() {
                 single scrolling row would hide the last two behind an edge
                 with nothing to say so. */}
             <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth lg:flex-wrap lg:overflow-x-visible">
-              {CANONICAL_CATEGORIES.map((cat) => {
-                const isActive = activeCategory === cat;
+              {categories.map(({ name, count }) => {
+                const isActive = activeCategory === name;
                 return (
                   <button
-                    key={cat}
-                    onClick={() => handleCategorySelect(cat)}
+                    key={name}
+                    onClick={() => handleCategorySelect(name)}
                     className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center gap-1.5 ${
                       isActive
                         ? "bg-brand text-paper shadow-md shadow-brand/20 scale-[1.02]"
                         : "text-ink/75 hover:text-ink hover:bg-black/5"
                     }`}
                   >
-                    <span>{cat}</span>
+                    <span>{name}</span>
+                    {/* the count is the promise the chip is making */}
+                    <span className={isActive ? "text-paper/70" : "text-ink/40"}>{count}</span>
                   </button>
                 );
               })}
