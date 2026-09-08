@@ -1,46 +1,47 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Check, ArrowRight, Search, X } from "lucide-react";
-import { fetchProducts, triggerWebhook } from "../lib/dbService";
+import { Check, ArrowRight, ChevronDown, Search, X } from "lucide-react";
+import { fetchCategoryTree, fetchProducts, triggerWebhook } from "../lib/dbService";
 import SaveButton from "../components/SaveButton";
-import { Product } from "../types";
+import { CategoryNode, Product } from "../types";
 import { ArcTopRight, RibbonLoop, WaveProducts } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage } from "../lib/viewTransitions";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 
 /**
- * The chip strip is derived from the catalogue, not written down.
+ * Categories, in two tiers.
  *
- * It used to be a hardcoded list, and on 08/09 every one of its seven chips
- * matched nothing: the labels were "Thời trang", "Sản phẩm sáng tạo", "Văn
- * phòng phẩm", "Quà tặng", "Nhà cửa", "Body care", "Giải trí", while the
- * products carried "Nghệ thuật & Ấn phẩm", "Chăm sóc cá nhân", "Thủ công &
- * Trang trí", "Art Toy & Sưu tầm" and "Thời trang & Phụ kiện". Not one
- * string matched, and the filter compares them with ===, so pressing any chip
- * emptied a 137-product catalogue.
+ * Team 08/09 supplied a taxonomy — seven groups, each with the kinds of
+ * product under it — and asked for the control that carries it to be redrawn
+ * with the filters and the sort ("Thêm categories như dưới cho /products.
+ * thiết kế lại tab chọn category và filter và sort").
  *
- * Deriving them is also what /lab/subpages/CatalogueStudies.tsx (21/08) set
- * out as shared ground across all three of its directions — "every facet is
- * derived from the data, so a control can never again offer a filter that
- * matches nothing". That lab was deleted before a direction was picked, and
- * this is the half of it that was never in dispute.
+ * Twenty-nine kinds cannot be a row of chips; that shape was already at its
+ * limit with six. So the groups are a tab strip and the kinds are the chips
+ * under whichever tab is open — one decision at a time, and the strip stays
+ * one line at every width.
+ *
+ * Where the list comes from matters, because this control has been wrong in
+ * both directions. It was a hardcoded list whose seven labels matched no
+ * product at all, so every chip emptied a 137-product catalogue (fixed on
+ * 08/09 by deriving the strip from the data). Deriving it, though, means the
+ * page can only ever offer what it happens to hold — and the team's list is a
+ * statement of what the site stocks, not a summary of today's inventory.
+ *
+ * So it is the taxonomy, paired with live counts, and a kind with a count of
+ * zero is shown and cannot be pressed. The strip says what the site is open
+ * to; the count says what is behind each one; and no control on this page can
+ * empty the page again.
  */
-const ALL = "Tất cả";
+const ALL_GROUP = "all";
 
-function deriveCategories(rows: Product[]): Array<{ name: string; count: number }> {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    const c = (row.category || "").trim();
-    if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
-  }
-  return [
-    { name: ALL, count: rows.length },
-    // biggest first, then alphabetical, so the strip is stable between loads
-    ...[...counts.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "vi")),
-  ];
+/** Counts are what pressing a control would actually give you, so they are
+    taken after the other filters and before the category ones. */
+function countBy(rows: Product[], key: (p: Product) => string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const row of rows) m.set(key(row), (m.get(key(row)) ?? 0) + 1);
+  return m;
 }
 
 const PRICE_BANDS = [
@@ -54,6 +55,12 @@ const PRICE_BANDS = [
 ];
 
 const MATERIALS = ["Gốm", "Gỗ", "Vải canvas", "Sơn mài", "Bạc", "Giấy thủ công", "Đá"];
+
+const SORTS = [
+  { id: "newest", label: "Mới nhất" },
+  { id: "price-asc", label: "Giá thấp đến cao" },
+  { id: "price-desc", label: "Giá cao đến thấp" },
+];
 
 const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
@@ -136,15 +143,115 @@ function Pager({
   );
 }
 
+/**
+ * One control for price, material and sort.
+ *
+ * These were three native <select>s. A select is drawn by the operating
+ * system: on Windows it is a grey 1990s listbox in the middle of a page built
+ * out of hairlines and rounded fields, and on a phone it takes over the
+ * bottom half of the screen. It also cannot show what it is for and what it
+ * is set to at the same time, so "Tất cả mức giá" was doing both jobs and
+ * reading as neither.
+ *
+ * This says the label quietly and the value loudly, opens in place, closes on
+ * an outside press or Escape, and is a listbox to a screen reader.
+ */
+function Dropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: Array<{ id: string; label: string }>;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => o.id === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs whitespace-nowrap transition-colors ${
+          open ? "border-brand text-brand" : "border-ink/15 text-ink hover:border-ink/35"
+        }`}
+      >
+        <span className="text-ink/45">{label}</span>
+        <span className="font-semibold">{current.label}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-3.5 w-3.5 text-ink/40 transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute right-0 z-30 mt-2 min-w-[14rem] overflow-hidden rounded-2xl border border-ink/10 bg-paper py-1 shadow-[0_18px_40px_-18px_rgba(18,8,31,0.45)]"
+        >
+          {options.map((o) => {
+            const on = o.id === value;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                role="option"
+                aria-selected={on}
+                onClick={() => {
+                  onChange(o.id);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between gap-6 px-4 py-2.5 text-left text-sm transition-colors ${
+                  on ? "bg-brand/10 font-semibold text-brand" : "text-ink/75 hover:bg-black/5"
+                }`}
+              >
+                {o.label}
+                {on && <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeCategory = searchParams.get("category") || ALL;
+  const activeGroup = searchParams.get("group") || ALL_GROUP;
+  const activeKind = searchParams.get("kind") || "";
   const activePriceBand = searchParams.get("price") || "all";
   const activeMaterial = searchParams.get("material") || "all";
   const activeSort = searchParams.get("sort") || "newest";
   const searchQuery = searchParams.get("q") || "";
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [tree, setTree] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(true);
   /* Motion 10: `leaving` is what gives the toast an exit. It used to be
      unmounted outright after 2500ms, so it blinked out of existence. */
@@ -163,8 +270,12 @@ export default function Products() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      const approvedProducts = await fetchProducts("Approved");
+      const [approvedProducts, categories] = await Promise.all([
+        fetchProducts("Approved"),
+        fetchCategoryTree(),
+      ]);
       setProducts(approvedProducts);
+      setTree(categories);
       setLoading(false);
     }
     loadData();
@@ -181,14 +292,21 @@ export default function Products() {
      The results now change in place. What brings them in is the grid reveal
      from proposal 02, which re-arms on the rendered count: the new set arrives
      as a wave in the grid, and nothing else moves. */
-  const handleCategorySelect = (cat: string) => {
+  const handleGroupSelect = (slug: string) => {
     const next = new URLSearchParams(searchParams);
-    if (cat === ALL) {
-      next.delete("category");
-    } else {
-      next.set("category", cat);
-    }
+    if (slug === ALL_GROUP) next.delete("group");
+    else next.set("group", slug);
+    // the kinds under the old tab mean nothing under the new one
+    next.delete("kind");
     // a new filter is a new result set, so it starts at its first page
+    next.delete("page");
+    setSearchParams(next);
+  };
+
+  const handleKindSelect = (slug: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!slug) next.delete("kind");
+    else next.set("kind", slug);
     next.delete("page");
     setSearchParams(next);
   };
@@ -251,7 +369,7 @@ export default function Products() {
     if (!demandNote.trim()) return;
 
     triggerWebhook("SEARCH_ZERO_RESULTS_DEMAND_CAPTURED", {
-      query: searchQuery || activeCategory,
+      query: searchQuery || openKind?.name || openGroup?.name || "",
       userDemandDescription: demandNote,
       timestamp: new Date().toISOString()
     });
@@ -260,36 +378,44 @@ export default function Products() {
     setDemandNote("");
   };
 
-  const categories = React.useMemo(() => deriveCategories(products), [products]);
-
   // Filter Logic
   const selectedBand = PRICE_BANDS.find(b => b.id === activePriceBand);
 
-  const filteredProducts = products
+  /* Everything except the category controls. The tabs and the chips count
+     against this, so a number on a control is what pressing it would give —
+     press "Đèn 19" with a price band on and you get those 19, not 19 minus
+     however many the band was already hiding. */
+  const baseRows = products.filter(prod => {
+    if (activeMaterial !== "all" && prod.material && !prod.material.toLowerCase().includes(activeMaterial.toLowerCase())) {
+      return false;
+    }
+    if (selectedBand && selectedBand.id !== "all") {
+      if (prod.price < selectedBand.min! || prod.price > selectedBand.max!) {
+        return false;
+      }
+    }
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchName = prod.name.toLowerCase().includes(query);
+      const matchStore = prod.storeName.toLowerCase().includes(query);
+      const matchDesc = (prod.description || "").toLowerCase().includes(query);
+      const matchCat = (prod.category || "").toLowerCase().includes(query);
+      const matchGroup = (prod.categoryGroup || "").toLowerCase().includes(query);
+      if (!matchName && !matchStore && !matchDesc && !matchCat && !matchGroup) return false;
+    }
+    return true;
+  });
+
+  const groupCounts = countBy(baseRows, p => p.categoryGroupSlug);
+  const kindCounts = countBy(baseRows, p => p.categorySlug);
+
+  const openGroup = tree.find(g => g.slug === activeGroup) ?? null;
+  const openKind = openGroup?.children.find(k => k.slug === activeKind) ?? null;
+
+  const filteredProducts = baseRows
     .filter(prod => {
-      // Category filter
-      if (activeCategory !== ALL && prod.category !== activeCategory) {
-        return false;
-      }
-      // Material filter
-      if (activeMaterial !== "all" && prod.material && !prod.material.toLowerCase().includes(activeMaterial.toLowerCase())) {
-        return false;
-      }
-      // Price filter
-      if (selectedBand && selectedBand.id !== "all") {
-        if (prod.price < selectedBand.min! || prod.price > selectedBand.max!) {
-          return false;
-        }
-      }
-      // Text query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchName = prod.name.toLowerCase().includes(query);
-        const matchStore = prod.storeName.toLowerCase().includes(query);
-        const matchDesc = (prod.description || "").toLowerCase().includes(query);
-        const matchCat = (prod.category || "").toLowerCase().includes(query);
-        if (!matchName && !matchStore && !matchDesc && !matchCat) return false;
-      }
+      if (activeGroup !== ALL_GROUP && prod.categoryGroupSlug !== activeGroup) return false;
+      if (activeKind && prod.categorySlug !== activeKind) return false;
       return true;
     })
     .sort((a, b) => {
@@ -330,9 +456,10 @@ export default function Products() {
     gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const activeFiltersCount = 
-    (activeCategory !== "Tất cả" ? 1 : 0) + 
-    (activePriceBand !== "all" ? 1 : 0) + 
+  const activeFiltersCount =
+    (activeGroup !== ALL_GROUP ? 1 : 0) +
+    (activeKind ? 1 : 0) +
+    (activePriceBand !== "all" ? 1 : 0) +
     (activeMaterial !== "all" ? 1 : 0) +
     (searchQuery ? 1 : 0);
 
@@ -419,132 +546,222 @@ export default function Products() {
           trail={[
             { label: "Trang chủ", to: "/" },
             { label: "Sản phẩm" },
-            ...(activeCategory !== "Tất cả" ? [{ label: activeCategory }] : []),
+            ...(openGroup ? [{ label: openGroup.name }] : []),
+            ...(openKind ? [{ label: openKind.name }] : []),
           ]}
         />
 
-        {/* ============ FILTERS + SORTING, ONE BAR (§4.3 bezel kept) ============
-            Was two stacked strips — categories in their own bezel, then the
-            three selects floating on a separate row. Integrated per 26/08:
-            one control, categories running left, the selects closing it on
-            the right behind a hairline. */}
-        <div className="p-1.5 rounded-[2rem] bg-black/5 ring-1 ring-black/5">
-          <div className="rounded-[1.625rem] bg-paper p-1.5 flex flex-col gap-1.5 lg:flex-row lg:items-center">
-            {/* Scrolls where there is no room and wraps where there is: at lg
-                the selects take ~490px and the categories need ~810px, so a
-                single scrolling row would hide the last two behind an edge
-                with nothing to say so. */}
-            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth lg:flex-wrap lg:overflow-x-visible">
-              {categories.map(({ name, count }) => {
-                const isActive = activeCategory === name;
+        {/* ============ CATEGORY TABS · KINDS · FILTERS · SORT ============
+            Redrawn 08/09 with the taxonomy ("thiết kế lại tab chọn category
+            và filter và sort"). It was one rounded bezel holding six chips
+            and three operating-system selects. Twenty-nine kinds do not fit
+            that shape, and the bezel was making a single object out of three
+            different questions: which part of the shop, which corner of it,
+            and how the results are ordered.
+
+            Three lines now, in the order those are asked: the groups as tabs,
+            the kinds under the open tab, then the count and the dropdowns on
+            one rule. */}
+        <div className="space-y-3 pt-1">
+          {/* The groups. Full-bleed on a phone so the strip scrolls past the
+              page gutter rather than stopping short of it. */}
+          <div className="-mx-4 border-b border-ink/12 md:-mx-8">
+            <div
+              role="tablist"
+              aria-label="Nhóm sản phẩm"
+              className="flex gap-5 overflow-x-auto no-scrollbar px-4 md:gap-7 md:px-8"
+            >
+              {[
+                { slug: ALL_GROUP, name: "Tất cả", count: baseRows.length },
+                ...tree.map((g) => ({
+                  slug: g.slug,
+                  name: g.name,
+                  count: groupCounts.get(g.slug) ?? 0,
+                })),
+              ].map((tab) => {
+                const on = tab.slug === activeGroup;
                 return (
                   <button
-                    key={name}
-                    onClick={() => handleCategorySelect(name)}
-                    className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center gap-1.5 ${
-                      isActive
-                        ? "bg-brand text-paper shadow-md shadow-brand/20 scale-[1.02]"
-                        : "text-ink/75 hover:text-ink hover:bg-black/5"
+                    key={tab.slug}
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => handleGroupSelect(tab.slug)}
+                    className={`relative shrink-0 whitespace-nowrap pb-3 pt-1 text-sm transition-colors ${
+                      on ? "font-semibold text-brand" : "text-ink/60 hover:text-ink"
                     }`}
                   >
-                    <span>{name}</span>
-                    {/* the count is the promise the chip is making */}
-                    <span className={isActive ? "text-paper/70" : "text-ink/40"}>{count}</span>
+                    {tab.name}
+                    <span
+                      className={`ml-1.5 text-[11px] tabular-nums ${
+                        on ? "text-brand/60" : "text-ink/35"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                    {/* the rule under the open tab, drawn on the strip's own
+                        hairline so the two read as one edge */}
+                    <span
+                      aria-hidden="true"
+                      className={`absolute inset-x-0 -bottom-px h-[2px] rounded-full transition-opacity duration-300 ${
+                        on ? "bg-brand opacity-100" : "opacity-0"
+                      }`}
+                    />
                   </button>
                 );
               })}
             </div>
+          </div>
 
-            <div className="flex shrink-0 items-center gap-2 overflow-x-auto no-scrollbar border-t border-ink/8 pt-1.5 lg:overflow-x-visible lg:border-t-0 lg:border-l lg:pt-0 lg:pl-2">
-              <select
+          {/* The kinds inside the open group. Nothing here while the tab is
+              "Tất cả": 29 chips at once is the shape this replaced. */}
+          {openGroup && (
+            <div className="-mx-4 md:-mx-8">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 md:flex-wrap md:overflow-x-visible md:px-8">
+                <button
+                  onClick={() => handleKindSelect("")}
+                  aria-pressed={!activeKind}
+                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
+                    !activeKind ? "bg-brand text-paper" : "bg-black/5 text-ink/70 hover:bg-black/10"
+                  }`}
+                >
+                  Tất cả {openGroup.name}
+                  <span className={`ml-1.5 ${!activeKind ? "text-paper/60" : "text-ink/35"}`}>
+                    {groupCounts.get(openGroup.slug) ?? 0}
+                  </span>
+                </button>
+
+                {openGroup.children.map((kind) => {
+                  const count = kindCounts.get(kind.slug) ?? 0;
+                  const on = kind.slug === activeKind;
+                  /* A kind the catalogue has nothing under is shown and not
+                     pressable. Shown, because the list states what the site is
+                     open to stocking; not pressable, because a control that
+                     empties the page is exactly the bug this strip had. */
+                  const empty = count === 0;
+                  return (
+                    <button
+                      key={kind.slug}
+                      onClick={() => !empty && handleKindSelect(kind.slug)}
+                      disabled={empty}
+                      aria-pressed={on}
+                      title={empty ? `Chưa có sản phẩm nào thuộc ${kind.name}` : undefined}
+                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
+                        on
+                          ? "bg-brand text-paper"
+                          : empty
+                            ? "cursor-not-allowed bg-black/[0.03] text-ink/30"
+                            : "bg-black/5 text-ink/70 hover:bg-black/10"
+                      }`}
+                    >
+                      {kind.name}
+                      <span className={`ml-1.5 ${on ? "text-paper/60" : "text-ink/35"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* How many there are, and how they are ordered. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-3">
+            <span className="text-xs text-ink/60">
+              <strong className="font-bold text-ink">{filteredProducts.length}</strong> tác phẩm
+            </span>
+
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <Dropdown
+                label="Giá"
                 value={activePriceBand}
-                onChange={(e) => handlePriceSelect(e.target.value)}
-                aria-label="Lọc theo mức giá"
-                className="bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand"
-              >
-                {PRICE_BANDS.map(b => (
-                  <option key={b.id} value={b.id}>{b.label}</option>
-                ))}
-              </select>
-
-              <select
+                options={PRICE_BANDS.map((b) => ({ id: b.id, label: b.label }))}
+                onChange={handlePriceSelect}
+              />
+              <Dropdown
+                label="Chất liệu"
                 value={activeMaterial}
-                onChange={(e) => handleMaterialSelect(e.target.value)}
-                aria-label="Lọc theo chất liệu"
-                className="bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand"
-              >
-                <option value="all">Tất cả chất liệu</option>
-                {MATERIALS.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-
-              <select
+                options={[
+                  { id: "all", label: "Tất cả" },
+                  ...MATERIALS.map((m) => ({ id: m, label: m })),
+                ]}
+                onChange={handleMaterialSelect}
+              />
+              <Dropdown
+                label="Sắp xếp"
                 value={activeSort}
-                onChange={(e) => handleSortChange(e.target.value)}
-                aria-label="Sắp xếp"
-                className="bg-paper-warm border border-ink/10 rounded-full px-4 py-2 text-xs text-ink font-medium focus:outline-none focus:border-brand"
-              >
-                <option value="newest">Mới nhất</option>
-                <option value="price-asc">Giá: Thấp đến cao</option>
-                <option value="price-desc">Giá: Cao đến thấp</option>
-              </select>
+                options={SORTS}
+                onChange={handleSortChange}
+              />
             </div>
           </div>
         </div>
 
-        {/* Result count and whatever filters are currently on */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-
-          {/* Active Filter Pills */}
+        {/* Whatever is currently on, and the way back off it */}
+        {activeFiltersCount > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-ink/60 font-medium">
-              <strong className="text-ink font-bold">{filteredProducts.length}</strong> tác phẩm
-            </span>
+            {openGroup && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+                {openGroup.name}
+                <button
+                  onClick={() => handleGroupSelect(ALL_GROUP)}
+                  aria-label={`Bỏ lọc ${openGroup.name}`}
+                >
+                  <X className="h-3 w-3 hover:text-brand-deep" />
+                </button>
+              </span>
+            )}
 
-            {activeCategory !== "Tất cả" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 text-brand px-3 py-1 text-xs font-semibold">
-                {activeCategory}
-                <button onClick={() => handleCategorySelect("Tất cả")}><X className="w-3 h-3 hover:text-brand-deep" /></button>
+            {openKind && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+                {openKind.name}
+                <button onClick={() => handleKindSelect("")} aria-label={`Bỏ lọc ${openKind.name}`}>
+                  <X className="h-3 w-3 hover:text-brand-deep" />
+                </button>
               </span>
             )}
 
             {activePriceBand !== "all" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 text-brand px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
                 {selectedBand?.label}
-                <button onClick={() => handlePriceSelect("all")}><X className="w-3 h-3 hover:text-brand-deep" /></button>
+                <button onClick={() => handlePriceSelect("all")} aria-label="Bỏ lọc giá">
+                  <X className="h-3 w-3 hover:text-brand-deep" />
+                </button>
               </span>
             )}
 
             {activeMaterial !== "all" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 text-brand px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
                 {activeMaterial}
-                <button onClick={() => handleMaterialSelect("all")}><X className="w-3 h-3 hover:text-brand-deep" /></button>
+                <button onClick={() => handleMaterialSelect("all")} aria-label="Bỏ lọc chất liệu">
+                  <X className="h-3 w-3 hover:text-brand-deep" />
+                </button>
               </span>
             )}
 
             {searchQuery && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 text-brand px-3 py-1 text-xs font-semibold">
-                "{searchQuery}"
-                <button onClick={() => {
-                  const next = new URLSearchParams(searchParams);
-                  next.delete("q");
-                  setSearchParams(next);
-                }}><X className="w-3 h-3 hover:text-brand-deep" /></button>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
+                &ldquo;{searchQuery}&rdquo;
+                <button
+                  aria-label="Bỏ từ khoá"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete("q");
+                    setSearchParams(next);
+                  }}
+                >
+                  <X className="h-3 w-3 hover:text-brand-deep" />
+                </button>
               </span>
             )}
 
-            {activeFiltersCount > 0 && (
-              <button
-                onClick={clearAllFilters}
-                className="text-xs text-brand hover:underline font-semibold ml-2"
-              >
-                Xoá bộ lọc
-              </button>
-            )}
+            <button
+              onClick={clearAllFilters}
+              className="ml-1 text-xs font-semibold text-brand hover:underline"
+            >
+              Xoá bộ lọc
+            </button>
           </div>
-
-        </div>
+        )}
 
         {/* ============ DOUBLE-BEZEL PRODUCT CARDS GRID ============ */}
         {loading ? (
@@ -609,7 +826,7 @@ export default function Products() {
               <div className="pt-4 border-t border-ink/10 space-y-2">
                 <span className="label text-ink/60 text-[10px]">Hoặc dạo xem các nhóm đang hot:</span>
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                  {["Gốm mộc thủ công", "Trang sức bạc 925", "Sổ tay da thủ công", "Trang phục linen", "Nến thơm thảo mộc"].map(chip => (
+                  {["Đèn", "Nến thơm", "Sổ tay", "Túi tote", "Đồ gốm"].map(chip => (
                     <button
                       key={chip}
                       onClick={() => {

@@ -16,8 +16,9 @@ import {
   logApprovalActivity,
   fetchApprovalLogs,
   fetchStoreById,
+  fetchCategoryTree,
 } from "../lib/dbService";
-import { StoreProfile, Product, StoreSocials, StoreSocialToggles } from "../types";
+import { CategoryNode, StoreProfile, Product, StoreSocials, StoreSocialToggles } from "../types";
 import { 
   Store, 
   UploadCloud, 
@@ -62,11 +63,19 @@ export default function ShopDashboard() {
   const [shopTaxId, setShopTaxId] = useState("");
   const [submittingReg, setSubmittingReg] = useState(false);
 
+  /* The catalogue's taxonomy, for both category selects. Fetched rather than
+     listed here so the shop form and /products can never offer different
+     answers to the same question. */
+  const [categoryTree, setCategoryTree] = useState<CategoryNode[]>([]);
+  useEffect(() => {
+    fetchCategoryTree().then(setCategoryTree).catch(console.error);
+  }, []);
+
   // Tab 2: Upload Product Form State
   const [prodName, setProdName] = useState("");
   const [prodPrice, setProdPrice] = useState(0);
   const [prodDescription, setProdDescription] = useState("");
-  const [prodCategory, setProdCategory] = useState("Tableware");
+  const [prodCategory, setProdCategory] = useState("");
   const [prodMaterial, setProdMaterial] = useState("");
   const [prodSize, setProdSize] = useState("");
   const [prodBrand, setProdBrand] = useState("");
@@ -83,7 +92,7 @@ export default function ShopDashboard() {
   const [editMaterial, setEditMaterial] = useState("");
   const [editSize, setEditSize] = useState("");
   const [editBrand, setEditBrand] = useState("");
-  const [editCategory, setEditCategory] = useState("Tableware");
+  const [editCategory, setEditCategory] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editStory, setEditStory] = useState("");
   const [editImages, setEditImages] = useState<string[]>([]);
@@ -920,10 +929,21 @@ export default function ShopDashboard() {
                     onChange={(e) => setProdCategory(e.target.value)}
                     className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none bg-white h-[38px]"
                   >
-                    <option value="Tableware">Tableware / Gốm chén bát</option>
-                    <option value="Home Decor">Home Decor / Trang trí nội thất</option>
-                    <option value="Accessories">Accessories / Túi, phụ kiện</option>
-                    <option value="Apparel">Apparel / Trang phục thổ cẩm</option>
+                    {/* The catalogue's own taxonomy, grouped. These were four
+                        hardcoded English labels — "Tableware", "Home Decor" —
+                        and none of them was a category any product could be
+                        filed under, so everything submitted here landed
+                        outside every filter on /products. */}
+                    <option value="">— Chọn nhóm —</option>
+                    {categoryTree.map((group) => (
+                      <optgroup key={group.id} label={group.name}>
+                        {group.children.map((leaf) => (
+                          <option key={leaf.id} value={leaf.name}>
+                            {leaf.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
 
@@ -1432,10 +1452,21 @@ export default function ShopDashboard() {
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full border-2 border-black p-2 focus:outline-none bg-white h-[38px]"
                   >
-                    <option value="Tableware">Tableware / Gốm chén bát</option>
-                    <option value="Home Decor">Home Decor / Trang trí nội thất</option>
-                    <option value="Textiles">Textiles / Dệt may thời trang</option>
-                    <option value="Accessories">Accessories / Phụ kiện thủ công</option>
+                    {/* The catalogue's own taxonomy, grouped. These were four
+                        hardcoded English labels — "Tableware", "Home Decor" —
+                        and none of them was a category any product could be
+                        filed under, so everything submitted here landed
+                        outside every filter on /products. */}
+                    <option value="">— Chọn nhóm —</option>
+                    {categoryTree.map((group) => (
+                      <optgroup key={group.id} label={group.name}>
+                        {group.children.map((leaf) => (
+                          <option key={leaf.id} value={leaf.name}>
+                            {leaf.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
               </div>

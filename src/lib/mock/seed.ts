@@ -32,24 +32,92 @@ import {
 const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
 const NOW = "2026-08-14T00:00:00.000Z";
 
+/** One of the seven groups the tabs are built from. */
 const cat = (slug: string, vi: string, en: string, order: number) => ({
   id: `cat-${slug}`,
   slug,
   name_vi: vi,
   name_en: en,
   icon: null,
+  parent_id: null,
+  sort_order: order,
+  is_active: true,
+});
+
+/** A kind of product inside a group — what a product is actually filed under. */
+const sub = (parent: string, slug: string, vi: string, en: string, order: number) => ({
+  id: `cat-${slug}`,
+  slug,
+  name_vi: vi,
+  name_en: en,
+  icon: null,
+  parent_id: `cat-${parent}`,
   sort_order: order,
   is_active: true,
 });
 
 export const seed: Database = {
+  /* The taxonomy the team supplied on 08/09, verbatim: seven groups, and the
+     kinds of product listed under each one. It replaces the six flat
+     categories the catalogue was written against, and every product has been
+     re-filed against a leaf.
+
+     ⚠ ONE LEAF IS NOT THEIRS. "Đặc sản" under Quà tặng/Quà lưu niệm was added
+     here, because the drawing has no group that takes food and the catalogue
+     has thirteen food products in it — muối ớt, mắm ruốc, mứt, trà, cà phê,
+     and the Tết gift boxes. Filing them under Móc khoá or Hình dán would have
+     been worse than saying so. Confirm the group with the team; if food is
+     meant to be an eighth group rather than a kind of souvenir, this is the
+     one line that changes.
+
+     Five leaves are empty on today's catalogue — Phụ kiện điện thoại, Giấy
+     ghi chú, Sổ lập kế hoạch, Hình dán, Gối chườm, Bộ trò chơi and Sách và
+     tạp chí. They stay in the list: /products shows their count, which is 0,
+     and does not let them be pressed, so the strip states what the site is
+     open to stocking without ever offering a filter that empties the page. */
   categories: [
-    cat("thu-cong-trang-tri", "Thủ công & Trang trí", "Craft & Decor", 1),
-    cat("nghe-thuat-an-pham", "Nghệ thuật & Ấn phẩm", "Art & Print", 2),
-    cat("thoi-trang-phu-kien", "Thời trang & Phụ kiện", "Fashion & Accessories", 3),
-    cat("art-toy-suu-tam", "Art Toy & Sưu tầm", "Art Toys & Collectibles", 4),
-    cat("cham-soc-ca-nhan", "Chăm sóc cá nhân", "Personal Care", 5),
-    cat("am-thuc-dac-san", "Ẩm thực & Đặc sản", "Food & Specialties", 6),
+    cat("thoi-trang", "Thời trang", "Fashion", 1),
+    sub("thoi-trang", "quan-ao", "Quần áo", "Clothing", 1),
+    sub("thoi-trang", "phu-kien", "Phụ kiện", "Accessories", 2),
+    sub("thoi-trang", "phu-kien-dien-thoai", "Phụ kiện điện thoại", "Phone accessories", 3),
+
+    cat("san-pham-sang-tao", "Sản phẩm sáng tạo", "Creative Work", 2),
+    sub("san-pham-sang-tao", "tranh-ky-thuat-so", "Tranh Kỹ thuật số", "Digital prints", 1),
+    sub("san-pham-sang-tao", "tranh-riso", "Tranh Riso", "Riso prints", 2),
+    sub("san-pham-sang-tao", "tranh-nguyen-ban", "Tranh nguyên bản", "Original prints", 3),
+    sub("san-pham-sang-tao", "zine", "Zine", "Zines", 4),
+
+    cat("van-phong-pham", "Văn phòng phẩm", "Stationery", 3),
+    sub("van-phong-pham", "so", "Sổ", "Notebooks", 1),
+    sub("van-phong-pham", "giay-ghi-chu", "Giấy ghi chú", "Sticky notes", 2),
+    sub("van-phong-pham", "so-lap-ke-hoach", "Sổ lập kế hoạch", "Planners", 3),
+    sub("van-phong-pham", "lich", "Lịch", "Calendars", 4),
+    sub("van-phong-pham", "van-phong-pham-khac", "Văn phòng phẩm khác", "Other stationery", 5),
+
+    cat("qua-tang", "Quà tặng/Quà lưu niệm", "Gifts & Souvenirs", 4),
+    sub("qua-tang", "thiep", "Thiệp", "Greeting cards", 1),
+    sub("qua-tang", "buu-thiep", "Bưu thiếp", "Postcards", 2),
+    sub("qua-tang", "nam-cham", "Nam châm", "Magnets", 3),
+    sub("qua-tang", "moc-khoa", "Móc khoá", "Keyrings", 4),
+    sub("qua-tang", "hinh-dan", "Hình dán", "Stickers", 5),
+    sub("qua-tang", "dac-san", "Đặc sản", "Regional specialties", 6),
+
+    cat("nha-cua", "Nhà cửa", "Home", 5),
+    sub("nha-cua", "dung-cu-an-uong", "Dụng cụ ăn uống", "Tableware", 1),
+    sub("nha-cua", "trang-tri", "Trang trí", "Decor", 2),
+    sub("nha-cua", "den", "Đèn", "Lighting", 3),
+    sub("nha-cua", "do-gom", "Đồ gốm", "Ceramics", 4),
+
+    cat("cham-soc-co-the", "Chăm sóc cơ thể", "Body Care", 6),
+    sub("cham-soc-co-the", "nuoc-hoa", "Nước hoa", "Fragrance", 1),
+    sub("cham-soc-co-the", "nen-thom", "Nến thơm", "Scented candles", 2),
+    sub("cham-soc-co-the", "tam-goi", "Sản phẩm tắm - gội", "Bath & hair", 3),
+    sub("cham-soc-co-the", "goi-chuom", "Gối chườm", "Heat packs", 4),
+
+    cat("giai-tri", "Giải trí", "Leisure", 7),
+    sub("giai-tri", "bo-tro-choi", "Bộ trò chơi", "Games", 1),
+    sub("giai-tri", "do-choi-thu-bong", "Đồ chơi/Thú bông", "Toys & plush", 2),
+    sub("giai-tri", "sach-tap-chi", "Sách và tạp chí", "Books & magazines", 3),
   ],
 
   materials: [
@@ -106,18 +174,18 @@ export const seed: Database = {
   // The 65k–750k spread is deliberate: cards must survive both extremes.
   products: (
     [
-      ["binh-gom-mua-thang-bay", 'Bình gốm "Mưa Tháng Bảy"', "shop-gom-mu-u", "cat-thu-cong-trang-tri", 480000, "mat-gom"],
-      ["chen-tra-nung-cui", "Chén trà nung củi (bộ 2)", "shop-gom-mu-u", "cat-thu-cong-trang-tri", 320000, "mat-gom"],
-      ["poster-sai-gon-5-gio-sang", 'Poster in lụa "Sài Gòn 5 Giờ Sáng"', "shop-xuong-lem", "cat-nghe-thuat-an-pham", 250000, "mat-giay-my-thuat"],
-      ["zine-hem-so-03", 'Zine "Hẻm" số 03', "shop-xuong-lem", "cat-nghe-thuat-an-pham", 120000, "mat-giay-tai-che"],
-      ["tui-tote-theu-cham", "Túi tote thêu tay hoa văn Chăm", "shop-chi-do", "cat-thoi-trang-phu-kien", 390000, "mat-vai-lanh"],
-      ["khan-bandana-cham", "Khăn bandana nhuộm chàm", "shop-chi-do", "cat-thoi-trang-phu-kien", 180000, "mat-cotton-cham"],
-      ["tuong-ca-ong-resin", 'Tượng "Cá Ông" resin xanh ngọc', "shop-ben-da-studio", "cat-art-toy-suu-tam", 750000, "mat-resin"],
-      ["moc-khoa-thuyen-thung", 'Móc khoá "Thuyền Thúng"', "shop-ben-da-studio", "cat-art-toy-suu-tam", 95000, "mat-resin"],
-      ["nen-cho-som-180g", 'Nến "Chợ Sớm" 180g', "shop-nha-co-dai", "cat-cham-soc-ca-nhan", 285000, "mat-sap-dau-nanh"],
-      ["xa-phong-bo-ket", "Xà phòng bồ kết", "shop-nha-co-dai", "cat-cham-soc-ca-nhan", 85000, "mat-dau-dua"],
-      ["muoi-ot-xanh-phu-quoc", "Muối ớt xanh Phú Quốc", "shop-muoi-ot-xanh", "cat-am-thuc-dac-san", 65000, "mat-thuy-tinh"],
-      ["hop-qua-4-vi-gia-vi", "Hộp quà 4 vị gia vị miền", "shop-muoi-ot-xanh", "cat-am-thuc-dac-san", 340000, "mat-hop-giay"],
+      ["binh-gom-mua-thang-bay", 'Bình gốm "Mưa Tháng Bảy"', "shop-gom-mu-u", "cat-do-gom", 480000, "mat-gom"],
+      ["chen-tra-nung-cui", "Chén trà nung củi (bộ 2)", "shop-gom-mu-u", "cat-dung-cu-an-uong", 320000, "mat-gom"],
+      ["poster-sai-gon-5-gio-sang", 'Poster in lụa "Sài Gòn 5 Giờ Sáng"', "shop-xuong-lem", "cat-tranh-nguyen-ban", 250000, "mat-giay-my-thuat"],
+      ["zine-hem-so-03", 'Zine "Hẻm" số 03', "shop-xuong-lem", "cat-zine", 120000, "mat-giay-tai-che"],
+      ["tui-tote-theu-cham", "Túi tote thêu tay hoa văn Chăm", "shop-chi-do", "cat-phu-kien", 390000, "mat-vai-lanh"],
+      ["khan-bandana-cham", "Khăn bandana nhuộm chàm", "shop-chi-do", "cat-phu-kien", 180000, "mat-cotton-cham"],
+      ["tuong-ca-ong-resin", 'Tượng "Cá Ông" resin xanh ngọc', "shop-ben-da-studio", "cat-do-choi-thu-bong", 750000, "mat-resin"],
+      ["moc-khoa-thuyen-thung", 'Móc khoá "Thuyền Thúng"', "shop-ben-da-studio", "cat-moc-khoa", 95000, "mat-resin"],
+      ["nen-cho-som-180g", 'Nến "Chợ Sớm" 180g', "shop-nha-co-dai", "cat-nen-thom", 285000, "mat-sap-dau-nanh"],
+      ["xa-phong-bo-ket", "Xà phòng bồ kết", "shop-nha-co-dai", "cat-tam-goi", 85000, "mat-dau-dua"],
+      ["muoi-ot-xanh-phu-quoc", "Muối ớt xanh Phú Quốc", "shop-muoi-ot-xanh", "cat-dac-san", 65000, "mat-thuy-tinh"],
+      ["hop-qua-4-vi-gia-vi", "Hộp quà 4 vị gia vị miền", "shop-muoi-ot-xanh", "cat-dac-san", 340000, "mat-hop-giay"],
     ] as const
   ).map(([slug, name, shopId, categoryId, price], i) => ({
     id: `prod-${slug}`,

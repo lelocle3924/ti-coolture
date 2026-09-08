@@ -64,7 +64,13 @@ export interface Product {
   currency: string; // e.g. "VND"
   description: string;
   images: string[]; // 1 main square + thumbnails
+  /** The kind of product — a leaf of the taxonomy, e.g. "Đèn". */
   category: string;
+  categorySlug: string;
+  /** The group that kind sits in, e.g. "Nhà cửa". Both, because /products
+      tabs by group and chips by kind, and the card names the kind. */
+  categoryGroup: string;
+  categoryGroupSlug: string;
   variants: string[];
   material?: string;
   size?: string;
@@ -96,6 +102,15 @@ export interface TouristRoute {
   description: string;
   mapImageUrl?: string;
   stops: RouteStop[];
+}
+
+/** One node of the two-level product taxonomy. Leaves have no children. */
+export interface CategoryNode {
+  id: string;
+  slug: string;
+  name: string;
+  nameEn: string;
+  children: CategoryNode[];
 }
 
 export interface WebhookLog {

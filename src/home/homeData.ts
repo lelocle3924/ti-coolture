@@ -257,9 +257,11 @@ export interface HomeCollection {
 
 const COLLECTION_COUNT = 4;
 
-/* Kept for the two directions that still show gift collections (A and B). */
-const FOR_HIM_CATEGORIES = ["Art Toy & Sưu tầm", "Nghệ thuật & Ấn phẩm", "Ẩm thực & Đặc sản"];
-const FOR_HER_CATEGORIES = ["Chăm sóc cá nhân", "Thời trang & Phụ kiện", "Thủ công & Trang trí"];
+/* Kept for the two directions that still show gift collections (A and B).
+   Re-pointed at the 08/09 taxonomy — the six names these used to hold were
+   deleted with it, and would have matched nothing. */
+const FOR_HIM_CATEGORIES = ["Đồ chơi/Thú bông", "Tranh nguyên bản", "Đặc sản"];
+const FOR_HER_CATEGORIES = ["Nến thơm", "Phụ kiện", "Đồ gốm"];
 
 export interface HomeData {
   loading: boolean;

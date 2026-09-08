@@ -20,7 +20,7 @@
  * src/lib/mock/seed.ts. None of it may ship to a public demo.
  */
 
-import { Product, StoreProfile, TouristRoute, UserProfile, RouteStop } from "../types";
+import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, RouteStop } from "../types";
 import { seed } from "./mock/seed";
 import type { Database, ProductRow, ShopRow } from "./mock/schema";
 
@@ -51,7 +51,10 @@ function clicksFor(productId: string): number {
 
 function toProduct(row: ProductRow): Product {
   const shop = db.shops.find((s) => s.id === row.shop_id);
+  /* A product is filed against a leaf; the group is read off the leaf rather
+     than stored on the product, so the two can never disagree. */
   const category = db.categories.find((c) => c.id === row.category_id);
+  const group = db.categories.find((c) => c.id === category?.parent_id);
   const materialLink = db.product_materials.find((m) => m.product_id === row.id);
   const material = db.materials.find((m) => m.id === materialLink?.material_id);
 
@@ -66,6 +69,9 @@ function toProduct(row: ProductRow): Product {
     description: row.short_desc_vi ?? "",
     images: imagesFor(row.id),
     category: category?.name_vi ?? "",
+    categorySlug: category?.slug ?? "",
+    categoryGroup: group?.name_vi ?? category?.name_vi ?? "",
+    categoryGroupSlug: group?.slug ?? category?.slug ?? "",
     variants: row.variants.flatMap((v) => v.values.map((val) => val.vi)),
     material: material?.name_vi,
     size: row.dimensions ?? undefined,
@@ -197,6 +203,35 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
 export async function fetchProductById(productId: string): Promise<Product | null> {
   const row = db.products.find((p) => p.id === productId);
   return delay(row ? toProduct(row) : null);
+}
+
+/**
+ * The product taxonomy as a tree — seven groups, each with its kinds.
+ *
+ * Returned whole rather than derived from the products on the page, because
+ * the team's list is a statement of what the site stocks, not a summary of
+ * what it happens to hold today: a kind with nothing in it still belongs on
+ * the strip. /products pairs it with live counts and refuses to let an empty
+ * one be pressed, which is the half of the 08/09 chip bug that mattered.
+ */
+export async function fetchCategoryTree(): Promise<CategoryNode[]> {
+  const node = (row: (typeof db.categories)[number]): CategoryNode => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name_vi,
+    nameEn: row.name_en,
+    children: db.categories
+      .filter((c) => c.parent_id === row.id && c.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(node),
+  });
+
+  return delay(
+    db.categories
+      .filter((c) => c.parent_id === null && c.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(node)
+  );
 }
 
 export async function fetchTouristRoutes(_opts?: { throwOnError?: boolean }): Promise<TouristRoute[]> {
@@ -410,14 +445,25 @@ export async function countWishlistHolders(productId: string): Promise<number> {
 }
 
 export async function createProduct(
-  productData: Omit<Product, "id" | "createdAt" | "clicks">
+  /* The three category fields beyond `category` are read off the taxonomy
+     when a product is loaded, not written by whoever creates one — asking a
+     submission form for them would be asking it to restate the tree. */
+  productData: Omit<
+    Product,
+    "id" | "createdAt" | "clicks" | "categorySlug" | "categoryGroup" | "categoryGroupSlug"
+  >
 ): Promise<string> {
   const id = `prod-local-${Date.now()}`;
   const now = new Date().toISOString();
   db.products.push({
     id,
     shop_id: productData.storeId,
-    category_id: db.categories.find((c) => c.name_vi === productData.category)?.id ?? db.categories[0].id,
+    /* A leaf, never a group: db.categories[0] is "Thời trang", which holds
+       no products directly, so falling back to it would file the product
+       somewhere no filter reaches. */
+    category_id:
+      db.categories.find((c) => c.parent_id !== null && c.name_vi === productData.category)?.id ??
+      db.categories.find((c) => c.parent_id !== null)!.id,
     slug: id,
     name_vi: productData.name,
     name_en: null,
