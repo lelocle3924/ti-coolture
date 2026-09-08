@@ -127,6 +127,17 @@ export interface RouteStopRow {
   /** Percentage coordinates on the hand-drawn SVG map — NOT lat/lng. */
   map_x: number;
   map_y: number;
+  /**
+   * Which kind of place this is, for the pins on /discover.
+   *
+   * ⚠ PLACEHOLDER COLUMN (08/09). The four values in use — an-uong,
+   * tham-quan, chup-anh, mua-sam — are the temporary set the team named, and
+   * every stop below is filed by hand against the real place it is. The real
+   * schema will want a table of its own with a Vietnamese and an English
+   * name per kind; this is the smallest thing that lets the map be built
+   * against real content instead of against a guess.
+   */
+  category: string;
   image_url: string | null;
   external_url: string | null;
   shop_id: string | null;
