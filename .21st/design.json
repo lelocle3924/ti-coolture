@@ -633,6 +633,94 @@
       "question": "Where does an editor choose what is in a collection, and what it is called?",
       "note": "Team 07/09, recorded at their request: \"sau này nhớ nhắc tôi là phải thêm chỗ trong admin dashboard để chỉnh sửa các sản phẩm xuất hiện trên collections, cũng như chỉnh sửa tên của collections.\" Not built. Today the four collections are generated in src/home/homeData.ts as \"Collection 1\"…\"Collection 4\" with their items sliced from the catalogue, and the homepage says so in type (\"Tên bộ sưu tập là placeholder\"). The editing surface belongs in src/views/ShopDashboard.tsx's admin deck, alongside the moderation queue.",
       "blocks": "Real collection names and curation. Until it exists the names cannot leave placeholder."
+    },
+    {
+      "id": "collections-page-direction",
+      "status": "open",
+      "date": "2026-09-09",
+      "question": "What is a collection for — a cut of the catalogue, or an argument about a group of objects? And does it get pages of its own?",
+      "source": "src/lab/CollectionStudies.tsx",
+      "compare": "/lab/collections",
+      "note": "Team 09/09: \"Chỉ hiển thị collections ở homepage sẽ gây giới hạn số lượng sản phẩm có thể có cho 1 collection (cùng lắm là 10 sản phẩm)\", and asked for two families — Catalogue and Curation — with three directions each. The homepage strip holds eight tiles, so a collection is currently not a thing with a size but a thing that fits in a strip: an editor cannot put twenty pieces in one, write about it, or link to it. The five lab collections hold 11–22 products each, which is the point made in numbers.",
+      "sharedAcrossOptions": [
+        "Real Approved products through dbService; collections cut from the 08/09 taxonomy",
+        "⚠ Placeholder curation — a real collection is chosen by hand, which is the product premise",
+        "Brand tokens only; square crops; hairlines and colour fields, no cards",
+        "Price note verbatim wherever a price appears",
+        "Every draft is real DOM at 1280×820 and 390×820, scaled, so nothing reflows"
+      ],
+      "options": [
+        {
+          "slug": "a1",
+          "name": "A1 · LƯỚI",
+          "en": "The Grid",
+          "axes": {
+            "navigation": "index of covers → a collection page; 2 clicks",
+            "holds": "no practical limit — 36 a page, then paging, like /products",
+            "copyPerCollection": "one line"
+          },
+          "risk": "Says nothing about why these pieces are together. A 15-piece collection looks exactly like a saved filter, so the editor loses the reason they exist.",
+          "recommended": true
+        },
+        {
+          "slug": "a2",
+          "name": "A2 · KỆ",
+          "en": "The Shelf",
+          "axes": {
+            "navigation": "one scrolling page, a rail per collection; 0 clicks to see products",
+            "holds": "7–8 per rail — the note's own complaint, with an exit",
+            "copyPerCollection": "one line"
+          },
+          "risk": "Reproduces the homepage's problem at a larger size, and three horizontal rails in a row is three separate swipes on a phone."
+        },
+        {
+          "slug": "a3",
+          "name": "A3 · BỘ LỌC",
+          "en": "The Facet",
+          "axes": {
+            "navigation": "no new page — ?collection= in the /products filter bar; 1 click",
+            "holds": "no limit, and the only one that composes with price/material/kind",
+            "copyPerCollection": "none"
+          },
+          "risk": "A collection stops being a thing with a cover, a name and an author and becomes a checkbox. Shareable as a URL, not as a page."
+        },
+        {
+          "slug": "b1",
+          "name": "B1 · BÀI VIẾT",
+          "en": "The Essay",
+          "axes": {
+            "navigation": "index of covers + standfirsts → an article; 2 clicks",
+            "holds": "12–16 before the product blocks outgrow the prose",
+            "copyPerCollection": "~200 words"
+          },
+          "risk": "Every collection needs a writer. One without copy reads as a broken page rather than an empty one."
+        },
+        {
+          "slug": "b2",
+          "name": "B2 · BÌA & LỜI",
+          "en": "The Cover",
+          "axes": {
+            "navigation": "index of posters → one screen of poster, then the grid; 2 clicks",
+            "holds": "no limit — the second screen is an ordinary grid",
+            "copyPerCollection": "~40 words"
+          },
+          "risk": "Forty words carry the whole argument, and the two halves read as two unrelated pages if the featured piece is chosen badly."
+        },
+        {
+          "slug": "b3",
+          "name": "B3 · DÒNG THỜI GIAN",
+          "en": "The Thread",
+          "axes": {
+            "navigation": "index of chapters → a numbered sequence; 2 clicks",
+            "holds": "~12 before nobody reads the captions",
+            "copyPerCollection": "one sentence per product"
+          },
+          "risk": "The most expensive direction editorially: a line per piece, multiplied by the number of collections."
+        }
+      ],
+      "recommendation": "A1 as the floor, B2 as the layer on top. A1 is the only direction that answers the note directly — a collection gets a size of its own instead of one that fits in a strip — and it reuses the filter bar, the paging and the product card that /products already has, so it costs close to nothing. B2 sits on A1 without replacing it: add a cover screen and forty words to the top of A1's collection page and A1 becomes B2. A collection with copy gets the poster; one without is still a decent catalogue page rather than a broken article, which is the failure mode B1 and B3 both have.",
+      "openAfter": "A3 is worth doing whichever family wins: ?collection= in the /products filter bar is a few lines and it buys \"Mực và giấy dưới 300k\", which no other direction can express. It does not replace the page, because a facet has no cover. Also unresolved: who writes the copy, and whether collections are seeded by hand or cut from the taxonomy — the lab cuts them from the taxonomy only so the drafts have realistic sizes.",
+      "onDecide": "Build /collections and /collections/:slug from the chosen direction, promote the collections + collection_products tables to real curated rows, and retire the homepage spring-tab panel to a teaser that links out. Set this decision to the chosen slug and delete the other five drafts from src/lab/CollectionStudies.tsx."
     }
   ],
   "evidence": [

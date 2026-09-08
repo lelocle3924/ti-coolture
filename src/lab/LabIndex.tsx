@@ -44,6 +44,13 @@ const STUDIES = [
     body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
     meta: "3 phương án · /stores/[slug]",
   },
+  {
+    to: "/lab/collections",
+    n: "05",
+    title: "Bộ sưu tập — sáu hướng, dựng lại từ UX",
+    body: "Hai câu trả lời cho “bộ sưu tập để làm gì” — Catalogue và Curation — mỗi câu ba hướng, có bản vẽ PC và mobile ở kích thước thật và bảng so sánh ba trục quyết định.",
+    meta: "6 hướng · PC + mobile · /collections",
+  },
 ];
 
 export default function LabIndex() {
