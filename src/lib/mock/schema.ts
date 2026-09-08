@@ -20,6 +20,15 @@ export interface CategoryRow {
   name_vi: string;
   name_en: string;
   icon: string | null;
+  /**
+   * NULL for one of the seven groups, the group's id for a kind inside it.
+   *
+   * Two levels, added 08/09 with the taxonomy the team drew up ("Thêm
+   * categories như dưới cho /products"). A product is always filed against a
+   * leaf; the group it belongs to is read from here rather than stored twice,
+   * so a product cannot end up in a group its own kind does not sit in.
+   */
+  parent_id: string | null;
   sort_order: number;
   is_active: boolean;
 }
