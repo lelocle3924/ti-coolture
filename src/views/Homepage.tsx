@@ -1999,10 +1999,13 @@ export default function Homepage() {
             bg-ink and the team asked for that black to go (26/08), so the two
             seams either side of it move with it. */}
         <GroundBlend from="brand" to="brand-deep" />
+        {/* One pin, and the whole island is the way through — 08/09: "Khi
+            user click vào bất cứ đâu trên bản đồ đó, sẽ redirect sang
+            /discover." It opens the region the list has selected, so the
+            choice made here survives the navigation. */}
         <DistrictMap
           routes={routes}
           onOpenRoute={(routeId) => navigate(`/discover/${routeId}`)}
-          onPin={(routeId, stopId) => navigate(`/discover/${routeId}?start=${stopId}`)}
         />
 
         {/* No blend below it any more: the map and the collaborate band are
