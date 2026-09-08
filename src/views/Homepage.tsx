@@ -799,10 +799,10 @@ function StoreLane({
 
    The desktop lanes keep the marquee: two drifting rows are the shape that
    section has, and there is no "current product" there to page between. */
-/** The share of the screen one step travels: the tile plus its two gutters. */
-const SLIDE = 0.7;
-/** Where that tile starts — which is what leaves 15% of a neighbour showing. */
-const PEEK = 0.15;
+/** The share of the screen one step travels: one photograph plus one gap. */
+const SLIDE = 0.65;
+/** Where its slide starts, which is (1 - SLIDE) / 2 — the peek, symmetric. */
+const PEEK = 0.175;
 
 function LoopingStoreLane({
   products,
@@ -816,12 +816,14 @@ function LoopingStoreLane({
      spacing." Those five figures add to the screen exactly once, and they are
      the whole geometry of this rail:
 
-         │ 15% │ 5% │        60%        │ 5% │ 15% │
-         └ prev┘    └───── current ─────┘    └ next┘
+         │ 15% │5%│        60%        │5%│ 15% │
+         └ prev┘  └───── current ─────┘  └ next┘
 
-     so one step travels 60 + 5 + 5 = 70% of the viewport, and the current
-     slide starts 15% in. The slide box below is that 70% with the two 5%
-     gutters as its own padding, which leaves the photograph at 60%. */
+     There are two gaps on screen, not four, which is what makes the five
+     figures add to 100 — so one step travels one photograph plus one gap,
+     60 + 5 = 65% of the viewport. The slide box below is that 65% carrying
+     half a gap either side, which leaves the photograph at 60% and puts a
+     full 5% between it and its neighbour. */
   const track = useLoopTrack(products.length, {
     response: 0.55,
     decelerationRate: 0.992,
@@ -859,7 +861,7 @@ function LoopingStoreLane({
               /* Percentages, not rem: both resolve against the flex
                  container, which is the viewport, so the rail holds the
                  60/15/5 split at every screen width. */
-              className="w-[70%] shrink-0 px-[5%]"
+              className="w-[65%] shrink-0 px-[2.5%]"
               /* Only the middle copy is read out. The other two are the same
                  products again, there to cover the fold. */
               aria-hidden={i < products.length || i >= products.length * 2}
