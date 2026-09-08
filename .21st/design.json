@@ -217,6 +217,16 @@
       "note": "wireframes.html MO-7 says the collections pin 'releases directly into the footer reveal - the two are consecutive, never simultaneous'. The team's 19/08 note puts the map strip between collections and the footer, which ships. The two are still consecutive, just with the strip between them; confirm this supersedes the wireframe note."
     },
     {
+      "id": "map-block-direction",
+      "status": "done",
+      "date": "2026-09-08",
+      "question": "Which of the three map blocks from /lab/map ships, and what does a pin mean?",
+      "source": "src/lab/MapStudies.tsx",
+      "decision": "2 · Kề — the region list beside the island, no carousel.",
+      "note": "Team 08/09: \"redesign bản đồ và trang /discover theo hướng 2 trong lab\". Shipped in src/home/DistrictMap.tsx, which now exports two maps rather than one variant: DistrictMap (homepage — one unnumbered bobbing pin, the whole island opens /discover) and CategoryMap (/discover — one pin per kind of place, picked pin recoloured and 15% larger). Same note fixes the size: 65% of the page on a desktop, 75% on a phone, at 4:3, with no padding either side. The three studies stay in /lab/map at the team's request (\"Giữ nguyên các option trong lab để tính sau\").",
+      "openAfter": "The four kinds of place are a placeholder taxonomy and route_stops.category is a placeholder column — see DISCOVER_CATEGORIES. Two region/kind pairs have no stops (Chợ Lớn has nothing under Ăn uống, Trung tâm nothing under Chụp ảnh) and /discover says so rather than inventing one. Removing \"chọn quận khác\" also removed the in-page region switch: the homepage map is the only chooser now."
+    },
+    {
       "id": "brand-device-treatment",
       "status": "open",
       "date": "2026-08-20",
@@ -476,7 +486,7 @@
       "id": "catalogue-scale-data",
       "status": "done",
       "date": "2026-08-21",
-      "note": "Seed extended from 12 to 77 placeholder products across the same six shops (src/lib/mock/catalogue.ts), with shops crossing categories so filter combinations mean something, three NULL prices for the Liên hệ path, three image slots per product, and a short_desc_vi for every product including the original twelve, which had none. Publication dates use a coprime stride so \"mới nhất\" interleaves the shops. Still INVENTED placeholder content — it must not ship to a public demo."
+      "note": "Seed extended from 12 to 77 placeholder products across the same six shops (src/lib/mock/catalogue.ts), with shops crossing categories so filter combinations mean something, three NULL prices for the Liên hệ path, three image slots per product, and a short_desc_vi for every product including the original twelve, which had none. Publication dates use a coprime stride so \"mới nhất\" interleaves the shops. Still INVENTED placeholder content — it must not ship to a public demo. — 08/09 settles the geometry without closing the decision: \"ảnh 1 sản phẩm chỉ chiếm 60% chiều ngang, 15% each cho mép phải và mép trái…, 5% each cho spacing\", which is option C paged one card at a time with both neighbours peeking. Shipped on useLoopTrack with slide 0.7 / lead 0.15. The three studies stay in the lab (\"Giữ nguyên các option trong lab để tính sau\"), so this stays open for the model itself rather than the measurements."
     },
     {
       "id": "store-strip-mobile-model",

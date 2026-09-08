@@ -52,6 +52,24 @@ export interface LoopTrackOptions {
   decelerationRate?: number;
   /** Cap on how many slides one flick may cross. */
   maxPagesPerFlick?: number;
+  /**
+   * How much of the viewport one step advances, as a fraction of its width.
+   *
+   * 1 is a full-width pager: each slide fills the viewport and the next one
+   * starts exactly where it ends. Below 1 the track steps by less than a
+   * screen, so the slides either side stay partly visible — see `lead`.
+   */
+  slide?: number;
+  /**
+   * Where the current slide sits, as a fraction of the viewport width from
+   * its left edge. With `slide` under 1 this is what centres the current
+   * slide and leaves the neighbours peeking symmetrically:
+   *
+   *     lead = (1 - slide) / 2
+   *
+   * Defaults to 0, which is the full-width pager's only sensible value.
+   */
+  lead?: number;
 }
 
 export interface LoopTrack {
@@ -73,7 +91,13 @@ export interface LoopTrack {
 }
 
 export function useLoopTrack(count: number, options: LoopTrackOptions = {}): LoopTrack {
-  const { response = 0.5, decelerationRate = 0.992, maxPagesPerFlick = 1 } = options;
+  const {
+    response = 0.5,
+    decelerationRate = 0.992,
+    maxPagesPerFlick = 1,
+    slide = 1,
+    lead = 0,
+  } = options;
   const reduced = useReducedMotion();
 
   const [x, setX] = useState(0);
@@ -82,6 +106,11 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
 
   const viewportRef = useRef<HTMLElement | null>(null);
   const widthRef = useRef(1);
+  /* The two derived lengths every offset is built from: how far one step
+     travels, and how far the current slide sits from the viewport's left
+     edge. Kept as refs because the pointer handlers close over them. */
+  const stepRef = useRef(1);
+  const leadRef = useRef(0);
   const xRef = useRef(0);
   const velRef = useRef(0);
   const frameRef = useRef(0);
@@ -92,30 +121,49 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
   const countRef = useRef(count);
   countRef.current = count;
 
-  const setViewport = useCallback((el: HTMLElement | null) => {
-    viewportRef.current = el;
-    if (el) widthRef.current = el.clientWidth || 1;
-  }, []);
+  /** Recompute step and lead from the viewport's current width. */
+  const remeasure = useCallback(
+    (width: number) => {
+      widthRef.current = width;
+      stepRef.current = Math.max(1, width * slide);
+      leadRef.current = width * lead;
+    },
+    [lead, slide]
+  );
+
+  const setViewport = useCallback(
+    (el: HTMLElement | null) => {
+      viewportRef.current = el;
+      if (el) remeasure(el.clientWidth || 1);
+    },
+    [remeasure]
+  );
+
+  /** Where a virtual index rests, in track pixels. */
+  const offsetFor = useCallback((vi: number) => leadRef.current - vi * stepRef.current, []);
 
   /** Put the offset where the current virtual index says, with no animation. */
-  const settleAt = useCallback((vi: number) => {
-    const at = -vi * widthRef.current;
-    xRef.current = at;
-    targetRef.current = at;
-    setX(at);
-  }, []);
+  const settleAt = useCallback(
+    (vi: number) => {
+      const at = offsetFor(vi);
+      xRef.current = at;
+      targetRef.current = at;
+      setX(at);
+    },
+    [offsetFor]
+  );
 
   useEffect(() => {
     const measure = () => {
       const el = viewportRef.current;
       if (!el) return;
-      widthRef.current = el.clientWidth || 1;
+      remeasure(el.clientWidth || 1);
       settleAt(viRef.current);
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [settleAt]);
+  }, [remeasure, settleAt]);
 
   /* Start in the middle copy whenever the list length changes. */
   useEffect(() => {
@@ -201,9 +249,9 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
       viRef.current = vi;
       const n = countRef.current;
       setPage(n > 0 ? ((vi % n) + n) % n : 0);
-      springTo(-vi * widthRef.current, velocity);
+      springTo(offsetFor(vi), velocity);
     },
-    [springTo]
+    [offsetFor, springTo]
   );
 
   const goTo = useCallback(
@@ -230,7 +278,7 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
 
       const startX = e.clientX;
       const startOffset = xRef.current;
-      const width = widthRef.current;
+      const step = stepRef.current;
       const startVi = viRef.current;
 
       let history: Array<{ t: number; x: number }> = [{ t: performance.now(), x: startX }];
@@ -282,7 +330,7 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
         const velocity = ((ev.clientX - first.x) / dt) * 1000; // px/s
 
         const projected = xRef.current + project(velocity, decelerationRate);
-        let target = Math.round(-projected / width);
+        let target = Math.round((leadRef.current - projected) / step);
         // one flick may cross at most maxPagesPerFlick slides
         const delta = Math.max(
           -maxPagesPerFlick,

@@ -22,6 +22,24 @@
    Small travel, long easing, one pass — the stagger is set per pin in
    DistrictMap, tightened to 90ms now that there is nothing to walk with. */
 
+/* Motion, 08/09: "Pin do se co animation nhap nho nhe de thu hut nguoi dung."
+   The homepage map carries one pin now, so there is no stagger to run and
+   nothing to arrive: it is already there when the section scrolls up, and the
+   bob is the whole of what makes it noticed. Small travel and a slow cycle,
+   the same restraint .lab-bob keeps — a nudge, not something demanding
+   attention while the visitor is reading the region list beside it.
+
+   The resting offset lives in the keyframes rather than in a translate
+   utility, because an animation owns every property it touches; see
+   .ti-pin-drop in src/index.css for the same trap written out. */
+@keyframes ti-pin-bob {
+  0%, 100% { transform: translate(-50%, -100%); }
+  50%      { transform: translate(-50%, calc(-100% - 9px)); }
+}
+.ti-pin-bob {
+  animation: ti-pin-bob 2.6s ease-in-out infinite;
+}
+
 @keyframes ti-pin-settle {
   from { opacity: 0; transform: translate(-50%, calc(-100% - 10px)); }
   to   { opacity: 1; transform: translate(-50%, -100%); }
@@ -133,11 +151,13 @@
   .lab-bob,
   .lab-pop,
   .lab-plate-in,
-  .ti-pin {
+  .ti-pin,
+  .ti-pin-bob {
     animation: none !important;
   }
 
   /* animation:none would leave the pins at their from-state, so the
      finished value has to be stated outright. */
-  .ti-pin   { opacity: 1; transform: translate(-50%, -100%); }
+  .ti-pin     { opacity: 1; transform: translate(-50%, -100%); }
+  .ti-pin-bob { transform: translate(-50%, -100%); }
 }

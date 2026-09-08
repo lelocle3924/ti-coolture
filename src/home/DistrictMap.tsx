@@ -1,366 +1,372 @@
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { useDragTrack } from "../lib/useDragTrack";
-import { islandBlobs, planFor } from "./homeData";
+import { useMemo, useState, type ReactNode } from "react";
+import { Camera, Landmark, ShoppingBag, Utensils } from "lucide-react";
+import { islandBlobs, planFor, pointsAlongRoute } from "./homeData";
 import "./home.css";
 import type { TouristRoute } from "../types";
 
 /**
- * The district map.
+ * The map block.
  *
- * Lifted out of the homepage on 26/08 so /discover can carry the same map —
- * the team asked for one map, in two places, behaving identically. What
- * differs is only what a tap means, which is why this component navigates
- * nowhere itself and takes onOpenRoute / onPin from its parent: on the
- * homepage a pin leaves for /discover, and on /discover it selects a stop
- * without a navigation.
+ * Direction 2 from /lab/map — "Kề: danh sách quận cạnh đảo" — picked by the
+ * team on 08/09 ("redesign bản đồ và trang /discover theo hướng 2 trong
+ * lab"). The carousel goes with it. The districts used to sit behind arrows,
+ * dots and a drag, and none of those said what the other districts *were*;
+ * they are a list beside the island now, all three named and on screen at
+ * once, and the list is the control. There is nothing left to swipe, so there
+ * is nothing left to explain.
+ *
+ * The same note rewrites the map itself:
+ *
+ *   · 65% of the page wide on a desktop, 75% on a phone, at its own ratio,
+ *     with no padding either side taking that width back.
+ *   · On the homepage: one pin, unnumbered, bobbing — and a tap anywhere on
+ *     the island goes to /discover.
+ *   · On /discover: one pin per kind of place rather than per stop. Tapping
+ *     one scrolls to that list and marks the pin.
+ *
+ * Which is why this file exports two maps rather than taking a variant. They
+ * share a layout and an island and agree on nothing else: one chooses a
+ * region and leaves, the other stays on the page and filters it. The old
+ * `variant` prop was already carrying that split, and had started to carry a
+ * second one — which ground, which heading level — on top of it.
  */
-/* ── map strip ──────────────────────────────────────────────────────────
-   After bangkokartcity.org's "Discover Bangkok Art City": flat illustrated
-   island on a dark ground, teardrop pins, nothing else.
 
-   Team 20/08: the districts must be reachable by dragging with a mouse,
-   swiping, or pressing the buttons — and all three must move the same way.
-   So all districts live on one track and every input drives the same spring
-   (see useDragTrack): 1:1 while held, released at the pointer's own velocity,
-   landing on the district the flick was heading for. */
+/* ── the kinds of place ───────────────────────────────────────────────────
+   ⚠ PLACEHOLDER TAXONOMY. Team 08/09: "mỗi pin là 1 category điểm đến khác
+   nhau (tạm thời để 4 pin là Ăn uống, Tham quan, Chụp ảnh, Mua sắm)" — the
+   four below are that temporary set, stated once so the map and /discover
+   cannot drift apart. `route_stops` carries no category column yet, so a pin
+   names a kind of place rather than pointing at one; see pointsAlongRoute in
+   homeData for where they are put and why. When the column lands, the pins
+   move onto their stops and this list comes out of the dataset. */
 
-function DistrictSlide({
-  route,
-  plan,
-  onOpen,
-  onPin,
-  active,
-}: {
-  key?: string;
-  route: TouristRoute;
-  plan: ReturnType<typeof planFor>;
-  onOpen: () => void;
-  onPin: (stopId: string) => void;
-  /** True while this is the district on screen — see the pin drop below. */
-  active: boolean;
-}) {
-  const island = islandBlobs(route.stops);
-  const clipId = `ti-island-clip-${route.id}`;
+export const DISCOVER_CATEGORIES = [
+  { id: "an-uong", name: "Ăn uống", Icon: Utensils },
+  { id: "tham-quan", name: "Tham quan", Icon: Landmark },
+  { id: "chup-anh", name: "Chụp ảnh", Icon: Camera },
+  { id: "mua-sam", name: "Mua sắm", Icon: ShoppingBag },
+] as const;
 
+export type DiscoverCategory = (typeof DISCOVER_CATEGORIES)[number];
+
+/* ── shared parts ─────────────────────────────────────────────────────── */
+
+/**
+ * The "kề" arrangement: an index on the left, the island on the right.
+ *
+ * 35/65 with no gap and no padding on the grid itself, so the island column
+ * *is* the 65% the team asked for — the list carries the page gutter on its
+ * own side and the island runs out to the edge of the page. Any padding here
+ * would come off the map's width, which is the thing 08/09 asks not to happen
+ * ("nhớ xoá margin hay padding ở 2 bên").
+ *
+ * On a phone the two stack and the island takes 75%, centred.
+ */
+function KeLayout({ index, island }: { index: ReactNode; island: ReactNode }) {
   return (
-    <div className="w-full shrink-0 px-2 md:px-6">
-      {/* The island is clickable but is NOT a button: each pin inside it is
-          one, and a button inside a button is invalid HTML that React refuses
-          to hydrate. Mouse users can hit anywhere on the island; keyboard and
-          screen-reader users get the pins, which are real buttons and go
-          somewhere more specific anyway, plus the "Mở lộ trình" link below. */}
-      <div
-        onClick={onOpen}
-        aria-hidden="true"
-        className="group block w-full cursor-pointer"
-      >
-        {/* Sized by height, not by width (26/08: "everything should fit
-            neatly on the page" at 100% zoom) — but it is the *width* that gets
-            capped, which is the correction the hero already had to make on
-            28/08.
-
-            `aspect-[16/9]` paired with a fixed `h-` and `max-w-full` cannot
-            all hold at once. On a phone the height rule won at 309px,
-            aspect-ratio asked for 549px of width, `max-w-full` clamped that to
-            the 239px slide, and the box came out 0.78:1 instead of 1.78:1.
-            With preserveAspectRatio="none" below, the 800×600 artwork was then
-            squashed to 58% of its intended width — the island that reads as
-            broken in the 31/08 screenshot ("Ồ map bị lỗi").
-
-            Capping max-width instead keeps aspect-ratio in charge: the width
-            is the smaller of the column and (allowed height × ratio), and the
-            height follows from it. The ratio is now 4:3 — the artwork's own —
-            so "none" is a no-op rather than a distortion, and the pins, which
-            are positioned as percentages of this box, land exactly on their
-            stops at every size. */}
-        <div
-          className="relative mx-auto aspect-[4/3] w-full [--map-h:clamp(11rem,34vh,19rem)]"
-          style={{ maxWidth: "calc(var(--map-h) * 4 / 3)" }}
-        >
-          <svg
-            viewBox="0 0 800 600"
-            preserveAspectRatio="none"
-            className="h-full w-full overflow-visible transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
-            aria-hidden="true"
-          >
-            <defs>
-              <clipPath id={clipId}>
-                {island.map((b, i) => (
-                  <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
-                ))}
-              </clipPath>
-            </defs>
-            {/* One landmass derived from the stops, so every pin stands on
-                land. The blobs share a fill, so they merge into a single
-                silhouette instead of stacking edges. */}
-            <g fill="var(--color-wave)">
-              {island.map((b, i) => (
-                <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
-              ))}
-            </g>
-            <g clipPath={`url(#${clipId})`}>
-              {plan.shapes.map((d, i) => (
-                <path key={i} d={d} fill="var(--color-wave-ink)" fillOpacity={0.16 + i * 0.05} />
-              ))}
-              {/* The waterway. It used to be the loudest mark on the map —
-                  stroke 20, full brand violet, opacity .85, running out past
-                  both edges of the island. It is a geographic hint, not a
-                  route, so it sits inside the island with the rest of the
-                  terrain. It is what is left after the connecting line went
-                  (07/09) and it is deliberately kept: it joins nothing, it
-                  just stops the island reading as a flat teal shape. */}
-              <path
-                d={plan.axis}
-                fill="none"
-                stroke="var(--color-wave-ink)"
-                strokeWidth="9"
-                strokeLinecap="round"
-                opacity="0.28"
-              />
-            </g>
-
-          </svg>
-
-          {/* Teardrop pins, tip on the coordinate. Each pin is its own control
-              (26/08): tapping one goes to /discover and opens that stop, not
-              just the district. They sit above the island button, so a pin
-              press never falls through to the whole-map link.
-
-              A pin is positioned as a percentage of this box while the island
-              is drawn in an 800×600 viewBox, so the two only agree when the
-              SVG fills the box exactly — hence preserveAspectRatio="none"
-              above. With the default "meet" the artwork letterboxed and every
-              pin drifted outward from its stop. Since 31/08 the box carries
-              the artwork's own 4:3, so "none" neither letterboxes nor
-              stretches; it just keeps the pin maths exact. */}
-          {/* Motion 06: the pins drop in along the route, 70ms apart, rather
-              than arriving with the island as if painted on it.
-
-              Keyed on `active`, so the run restarts when the carousel settles
-              on this district — React remounts the span, which is the only
-              reliable way to replay a CSS animation. The resting -50%/-100%
-              offset moves into the keyframes with it: an animation owns every
-              property it touches, so the translate utilities would be
-              overridden mid-flight and snap back at the end.
-
-              The stagger no longer has a line to walk with — the route trail
-              was removed on 07/09 ("Xoá đường nối các điểm ở map") — so 70ms is
-              the proposal's own figure rather than a pace matched to it. */}
-          {route.stops.map((stop, i) => (
-            <span
-              key={`${stop.id}-${active}`}
-              style={{
-                left: `${stop.x}%`,
-                top: `${stop.y}%`,
-                animationDelay: `${i * 70}ms`,
-              }}
-              className="ti-pin-drop absolute z-10 block"
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPin(stop.id);
-                }}
-                aria-label={`Điểm ${i + 1}: ${stop.name} — mở trên trang Khám phá`}
-                className="group/pin relative block h-11 w-8 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 md:h-14 md:w-10"
-              >
-                <svg
-                  viewBox="0 0 40 52"
-                  aria-hidden="true"
-                  className="h-full w-full drop-shadow-[0_6px_10px_rgba(18,8,31,0.45)]"
-                >
-                  <path
-                    d="M20 0C31 0 40 9 40 20c0 12-13 24-18 31a2.5 2.5 0 0 1-4 0C13 44 0 32 0 20 0 9 9 0 20 0Z"
-                    fill="var(--color-paper)"
-                    className="transition-[fill] duration-300 group-hover/pin:fill-[var(--color-wave)]"
-                  />
-                </svg>
-                <span className="absolute inset-x-0 top-[14%] text-center text-sm font-bold text-ink md:text-base">
-                  {i + 1}
-                </span>
-              </button>
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* the keyboard route into the district, and the one screen readers get */}
-      <div className="mt-4 text-center">
-        <button
-          onClick={onOpen}
-          className="inline-flex items-center gap-2 border-b border-white/40 pb-1 text-sm text-paper transition-colors hover:border-wave hover:text-wave"
-        >
-          Mở lộ trình {plan.district}
-          <ArrowUpRight className="h-4 w-4" />
-        </button>
-      </div>
+    <div className="md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] md:items-center">
+      <div className="px-5 md:px-10">{index}</div>
+      <div className="mx-auto mt-8 w-[75%] md:mx-0 md:mt-0 md:w-full">{island}</div>
     </div>
   );
 }
 
+/**
+ * The landmass, with whatever pins the caller puts on it.
+ *
+ * A pin is placed as a percentage of this box while the island is drawn in an
+ * 800×600 viewBox, so the two only agree when the SVG fills the box exactly —
+ * hence preserveAspectRatio="none". The box carries the artwork's own 4:3, so
+ * "none" neither letterboxes nor stretches; it just keeps the pin maths
+ * exact. That is also the whole of "giữ nguyên aspect ratio": the width is
+ * set, the height follows from 4:3, and nothing squashes the drawing to fit.
+ */
+function IslandFrame({ route, children }: { route: TouristRoute; children: ReactNode }) {
+  const plan = planFor(route.id);
+  const island = islandBlobs(route.stops);
+  const clipId = `ti-island-clip-${route.id}`;
+
+  return (
+    <div className="relative aspect-[4/3] w-full">
+      <svg
+        viewBox="0 0 800 600"
+        preserveAspectRatio="none"
+        className="h-full w-full overflow-visible transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]"
+        aria-hidden="true"
+      >
+        <defs>
+          <clipPath id={clipId}>
+            {island.map((b, i) => (
+              <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
+            ))}
+          </clipPath>
+        </defs>
+        {/* One landmass derived from the stops, so every pin stands on land.
+            The blobs share a fill, so they merge into a single silhouette
+            instead of stacking edges. */}
+        <g fill="var(--color-wave)">
+          {island.map((b, i) => (
+            <ellipse key={i} cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} />
+          ))}
+        </g>
+        <g clipPath={`url(#${clipId})`}>
+          {plan.shapes.map((d, i) => (
+            <path key={i} d={d} fill="var(--color-wave-ink)" fillOpacity={0.16 + i * 0.05} />
+          ))}
+          {/* The waterway — a geographic hint, not a route. It is what is left
+              after the connecting line went (07/09) and it is deliberately
+              kept: it joins nothing, it just stops the island reading as a
+              flat teal shape. */}
+          <path
+            d={plan.axis}
+            fill="none"
+            stroke="var(--color-wave-ink)"
+            strokeWidth="9"
+            strokeLinecap="round"
+            opacity="0.28"
+          />
+        </g>
+      </svg>
+      {children}
+    </div>
+  );
+}
+
+/** The teardrop itself, tip at the bottom of its own box. */
+function Teardrop({ fill, children }: { fill: string; children?: ReactNode }) {
+  return (
+    <span className="relative block h-11 w-8 md:h-14 md:w-10">
+      <svg
+        viewBox="0 0 40 52"
+        aria-hidden="true"
+        className="h-full w-full drop-shadow-[0_6px_10px_rgba(18,8,31,0.45)]"
+      >
+        <path
+          d="M20 0C31 0 40 9 40 20c0 12-13 24-18 31a2.5 2.5 0 0 1-4 0C13 44 0 32 0 20 0 9 9 0 20 0Z"
+          fill={fill}
+          className="transition-[fill] duration-300"
+        />
+      </svg>
+      {children}
+    </span>
+  );
+}
+
+/* ── the homepage map ─────────────────────────────────────────────────── */
+
 export default function DistrictMap({
   routes,
   onOpenRoute,
-  onPin,
   heading = "Khám phá Sài Gòn",
-  variant = "section",
 }: {
   routes: TouristRoute[];
-  /** The island was tapped — open this district. */
+  /** The island was tapped — open this region on /discover. */
   onOpenRoute: (routeId: string) => void;
-  /** A single pin was tapped — open this stop of this district. */
-  onPin: (routeId: string, stopId: string) => void;
   heading?: string;
-  /**
-   * "section" is the homepage: the map owns a band of the page, brings its
-   * own deeper-violet ground and titles itself.
-   *
-   * "inline" is /discover (07/09), where the map sits *inside* the route
-   * hero rather than after it. It takes no ground of its own — so the violet
-   * runs unbroken from the top of the page through the map and into the wave
-   * seam — and its title drops to a label, because the page already has an
-   * h1 two lines above it and two display headings stacked is the noise the
-   * "hài hoà hơn" note is about.
-   */
-  variant?: "section" | "inline";
 }) {
-  /* Softened on 31/08: "đang trôi khá nhanh, khiến người xem hơi nhức mắt".
-     The map is a picture you read, not a list you flick through, so it now
-     lands slower than the default track (0.72s against 0.42s), throws about a
-     quarter as far on the same flick (deceleration 0.992 against 0.998), and
-     never crosses more than one district per swipe. The collections track on
-     the homepage keeps the original figures. */
-  const track = useDragTrack(routes.length, {
-    response: 0.72,
-    decelerationRate: 0.992,
-    maxPagesPerFlick: 1,
-  });
-  const inline = variant === "inline";
+  /* Null until someone picks, because `routes` arrives empty on the first
+     render — seeding the state from routes[0] would lock the map to whatever
+     was there before the fetch resolved. */
+  const [picked, setPicked] = useState<string | null>(null);
+  const route = routes.find((r) => r.id === picked) ?? routes[0];
 
-  const route = routes[track.page];
-  const plan = route ? planFor(route.id) : null;
-  if (!route || !plan) return null;
+  /* One pin, in the middle of the walk. Team 08/09: "trên đó chỉ có 1 pin đại
+     diện, không đánh số gì hết" — it stands for the region, so it belongs
+     where the region is rather than on any one stop, and there is no order
+     left for it to number. */
+  const centre = useMemo(() => (route ? pointsAlongRoute(route.stops, 1)[0] : null), [route]);
+
+  if (!route || !centre) return null;
+  const plan = planFor(route.id);
 
   return (
-    /* Ground is brand-deep, not ink (26/08: "DO NOT use black background,
-       especially for this section"). It stays dark on purpose — the pins are
-       white teardrops and the island is teal, and both need a dark field to
-       read on — but it is now the deeper violet from the palette rather than
-       near-black, which also separates it from the violet section above.
+    /* Ground stays brand-deep (26/08: "DO NOT use black background,
+       especially for this section") — the island is teal and the pin is
+       white, and both need a dark field to read on. */
+    <section id="dong-map" className="bg-brand-deep py-12 text-paper md:py-16">
+      <KeLayout
+        index={
+          <>
+            <h2 className="display text-[clamp(1.75rem,3.4vw,3rem)] normal-case leading-[1.15] text-wave">
+              {heading}
+            </h2>
 
-       Vertical rhythm is roughly halved throughout: py-16/24 → py-10/14, the
-       heading clamp tops out at 3.5rem instead of 5rem, and the gaps between
-       heading, label, map and dots go from 4/10/8 to 2/5/5. That plus the
-       height-led island is what brings the section under one screen. */
-    <section
-      id="dong-map"
-      className={
-        inline
-          ? "pb-2 pt-4 text-paper"
-          : "bg-brand-deep py-10 text-paper md:py-14"
-      }
-    >
-      <div className="px-5 text-center md:px-10">
-        {inline ? (
-          <p className="label text-wave">{heading}</p>
-        ) : (
-          <h2 className="display text-[clamp(1.75rem,4.6vw,3.5rem)] normal-case leading-[1.15] text-wave">
-            {heading}
-          </h2>
-        )}
-        {/* the label crossfades on the key, so the district name never cuts */}
-        <p
-          key={route.id}
-          className="lab-plate-in mt-2 text-[12px] tracking-[0.16em] text-white/60"
-        >
-          {plan.district.toUpperCase()} · {route.stops.length} ĐIỂM · {plan.walk}
-        </p>
-      </div>
-
-      {/* Inline, the map shares the hero's column, so its arrows come in to
-          sit beside the island instead of being stranded on the far edges of
-          the viewport with the page's brand shapes behind them. */}
-      <div
-        className={`relative flex items-center gap-2 md:gap-5 ${
-          inline ? "mx-auto mt-3 max-w-4xl px-2 md:px-4" : "mt-5 px-2 md:px-8"
-        }`}
-      >
-        <button
-          onClick={track.prev}
-          disabled={track.page === 0}
-          aria-label="Quận trước"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-12 md:w-12"
-        >
-          <ArrowRight className="h-5 w-5 rotate-180" />
-        </button>
-
-        <div
-          ref={track.setViewport}
-          {...track.handlers}
-          className={`min-w-0 flex-1 overflow-hidden touch-pan-y ${
-            track.dragging ? "cursor-grabbing" : "cursor-grab"
-          }`}
-          role="group"
-          aria-roledescription="carousel"
-          aria-label="Bản đồ các quận"
-        >
-          <div
-            className="flex"
-            style={{
-              transform: `translate3d(${track.x}px, 0, 0)`,
-              willChange: "transform",
-            }}
-          >
-            {routes.map((r) => (
-              <DistrictSlide
-                key={r.id}
-                route={r}
-                plan={planFor(r.id)}
-                active={r.id === route.id}
-                onOpen={() => {
-                  // a flick that ends over the island must not also open it
-                  if (track.didDrag()) return;
-                  onOpenRoute(r.id);
-                }}
-                onPin={(stopId) => {
-                  if (track.didDrag()) return;
-                  onPin(r.id, stopId);
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={track.next}
-          disabled={track.page === routes.length - 1}
-          aria-label="Quận sau"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/25 transition-colors hover:border-wave hover:text-wave disabled:opacity-25 md:h-12 md:w-12"
-        >
-          <ArrowRight className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="mt-5 flex items-center justify-center gap-3">
-        {routes.map((r, i) => (
+            {/* Every region named and on screen. This is the control that
+                replaced the arrows and the dots: you can see what the other
+                two are before deciding to look at one. */}
+            <ul className="mt-6 border-t border-white/15">
+              {routes.map((r, i) => {
+                const on = r.id === route.id;
+                return (
+                  <li key={r.id} className="border-b border-white/15">
+                    <button
+                      type="button"
+                      onClick={() => setPicked(r.id)}
+                      aria-current={on}
+                      className={`flex w-full items-center gap-3 py-3.5 text-left transition-colors ${
+                        on ? "text-wave" : "text-white/65 hover:text-paper"
+                      }`}
+                    >
+                      <span className="w-6 shrink-0 text-[11px] tabular-nums tracking-[0.14em] opacity-60">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      {/* The region, and nothing else. The stop count and the
+                          walking distance came off on 08/09. */}
+                      <span className="min-w-0 flex-1 truncate text-lg font-medium">
+                        {planFor(r.id).region}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                          on ? "w-8" : "w-0"
+                        }`}
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        }
+        island={
+          /* A real button this time. The island used to be a clickable div
+             because it had buttons inside it — one per stop — and a button
+             inside a button is invalid HTML that React refuses to hydrate.
+             It carries one decorative pin now and no controls, so the whole
+             map can be the control it already behaved like, and the "Mở lộ
+             trình…" link that existed to give the keyboard a way in is not
+             needed any more (08/09: Xoá dòng "Mở lộ trình Quận 5 · Chợ Lớn"). */
           <button
-            key={r.id}
-            onClick={() => track.goTo(i)}
-            aria-label={`Xem ${planFor(r.id).district}`}
-            aria-current={i === track.page}
-            className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              i === track.page ? "w-10 bg-wave" : "w-1.5 bg-white/30 hover:bg-white/60"
-            }`}
-          />
-        ))}
-      </div>
-
-      {/* No caption. Team 26/08: "Show don't tell. Remove 'kéo vuốt hoặc bấm
-          mũi tên…' The user can see for themselves." The arrows, the dots and
-          the grab cursor are the affordance; the sentence was describing
-          controls that are already on screen. */}
+            type="button"
+            onClick={() => onOpenRoute(route.id)}
+            aria-label={`Xem ${plan.region} trên trang Khám phá`}
+            className="group block w-full cursor-pointer"
+          >
+            <IslandFrame route={route}>
+              {/* Keyed on the region so the bob restarts where the island
+                  changes — otherwise the pin appears to stay put while the
+                  ground under it swaps. */}
+              <span
+                key={route.id}
+                style={{ left: `${centre.x}%`, top: `${centre.y}%` }}
+                className="ti-pin-bob absolute z-10 block"
+              >
+                <Teardrop fill="var(--color-paper)">
+                  {/* A dot, not a number: nothing is being counted. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-1/2 top-[30%] h-2 w-2 -translate-x-1/2 rounded-full bg-brand md:h-2.5 md:w-2.5"
+                  />
+                </Teardrop>
+              </span>
+            </IslandFrame>
+          </button>
+        }
+      />
     </section>
+  );
+}
+
+/* ── the /discover map ────────────────────────────────────────────────── */
+
+/**
+ * The same island, pinned by kind of place instead of by stop.
+ *
+ * Team 08/09: "Người dùng bấm vào pin sẽ kéo trang xuống dưới chỗ phần list
+ * địa điểm, đồng thời pin đó trên map được phóng lớn 15% hoặc đổi màu để
+ * người dùng biết mình đang xem category nào." Both marks, not one — the
+ * scroll takes the pin off screen, so it has to be findable again when you
+ * come back up, and 15% on its own is easy to miss at this size.
+ *
+ * The colour it changes to is the brand violet, not the teal the list uses
+ * for the same state. Teal is what the island is drawn in, so a teal pin on
+ * it disappears — which is what the first build of this did. Each mark takes
+ * the strongest colour available on the ground it sits on: teal on the violet
+ * field beside the map, violet on the teal island.
+ *
+ * The names are not on the pins. They are in the list beside them, which is
+ * direction 2's whole argument, and it keeps four labels off an island where
+ * they would collide wherever two stops sit close together.
+ */
+export function CategoryMap({
+  route,
+  activeId,
+  onSelect,
+}: {
+  route: TouristRoute;
+  activeId: string;
+  onSelect: (categoryId: string) => void;
+}) {
+  const points = useMemo(
+    () => pointsAlongRoute(route.stops, DISCOVER_CATEGORIES.length),
+    [route]
+  );
+
+  return (
+    <KeLayout
+      index={
+        <ul className="border-t border-white/15">
+          {DISCOVER_CATEGORIES.map((c) => {
+            const on = c.id === activeId;
+            return (
+              <li key={c.id} className="border-b border-white/15">
+                <button
+                  type="button"
+                  onClick={() => onSelect(c.id)}
+                  aria-current={on}
+                  className={`flex w-full items-center gap-3 py-3.5 text-left transition-colors ${
+                    on ? "text-wave" : "text-white/65 hover:text-paper"
+                  }`}
+                >
+                  <c.Icon aria-hidden="true" className="h-4 w-4 shrink-0 opacity-80" />
+                  <span className="min-w-0 flex-1 truncate text-lg font-medium">{c.name}</span>
+                  <span
+                    aria-hidden="true"
+                    className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                      on ? "w-8" : "w-0"
+                    }`}
+                  />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      }
+      island={
+        <IslandFrame route={route}>
+          {DISCOVER_CATEGORIES.map((c, i) => {
+            const at = points[i] ?? { x: 50, y: 50 };
+            const on = c.id === activeId;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onSelect(c.id)}
+                aria-label={`Xem địa điểm ${c.name}`}
+                aria-current={on}
+                style={{
+                  left: `${at.x}%`,
+                  top: `${at.y}%`,
+                  /* The scale composes with the tip offset rather than
+                     replacing it, and origin-bottom keeps the tip on its
+                     coordinate while the pin grows. */
+                  transform: `translate(-50%, -100%) scale(${on ? 1.15 : 1})`,
+                }}
+                className="absolute z-10 block origin-bottom transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              >
+                <Teardrop fill={on ? "var(--color-brand)" : "var(--color-paper)"}>
+                  <c.Icon
+                    aria-hidden="true"
+                    className={`absolute left-1/2 top-[30%] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 transition-colors duration-300 md:h-4 md:w-4 ${
+                      on ? "text-paper" : "text-ink"
+                    }`}
+                  />
+                </Teardrop>
+              </button>
+            );
+          })}
+        </IslandFrame>
+      }
+    />
   );
 }

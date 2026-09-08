@@ -73,6 +73,16 @@ export interface HeroFrame {
 
 export interface DistrictPlan {
   district: string;
+  /**
+   * What the map is labelled with.
+   *
+   * Team 08/09: 'Thay "Quận 5 · Chợ Lớn · 4 điểm · ~1,8 km" thành "Chợ Lớn",
+   * "Thủ Đức" và "Trung tâm" cho 3 bản đồ hiện tại.' So the label is the part
+   * of the city a visitor would say out loud, not the administrative unit —
+   * `district` is still the full name and is what the route pages and the
+   * lab studies read.
+   */
+  region: string;
   /** Rough walking distance across the route — route metadata per UX-TASKS 5.2. */
   walk: string;
   /** Block outlines for the district plan drawing (800×600 viewBox). */
@@ -84,6 +94,7 @@ export interface DistrictPlan {
 export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
   "route-cho-lon": {
     district: "Quận 5 · Chợ Lớn",
+    region: "Chợ Lớn",
     walk: "~1,8 km",
     shapes: [
       "M60,300 L210,236 L330,268 L392,392 L296,486 L142,452 Z",
@@ -95,6 +106,7 @@ export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
   },
   "route-thu-duc": {
     district: "TP Thủ Đức",
+    region: "Thủ Đức",
     walk: "~4,2 km",
     shapes: [
       "M96,190 L286,150 L370,262 L268,352 L120,318 Z",
@@ -106,6 +118,7 @@ export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
   },
   "route-quan-1": {
     district: "Quận 1",
+    region: "Trung tâm",
     walk: "~1,1 km",
     shapes: [
       "M140,240 L330,200 L392,320 L276,398 L152,352 Z",
@@ -164,6 +177,54 @@ export function islandBlobs(stops: Array<{ x: number; y: number }>): IslandBlob[
   }
 
   return blobs;
+}
+
+/**
+ * `n` points spread evenly along the walk through a district's stops.
+ *
+ * The map stopped pinning stops on 08/09 — the homepage carries one pin for
+ * the whole district and /discover carries one per kind of place — so both
+ * need somewhere on the island to put a pin that is not a stop's own
+ * coordinate.
+ *
+ * Walking the polyline through the stops is the answer that cannot go wrong:
+ * islandBlobs lays a blob on every stop and two more along every leg between
+ * them, so every point on that line is inside the landmass by construction. A
+ * pin placed here can no more fall into the water than one placed on a stop.
+ *
+ * Points sit at (k + 0.5) / n of the total length, so they are inset from
+ * both ends rather than sitting on the first and last stop.
+ */
+export function pointsAlongRoute(
+  stops: Array<{ x: number; y: number }>,
+  n: number
+): Array<{ x: number; y: number }> {
+  if (n < 1) return [];
+  if (stops.length === 0) return Array.from({ length: n }, () => ({ x: 50, y: 50 }));
+  if (stops.length === 1) return Array.from({ length: n }, () => ({ ...stops[0] }));
+
+  const legs = stops.slice(1).map((b, i) => {
+    const a = stops[i];
+    return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y) };
+  });
+  const total = legs.reduce((sum, l) => sum + l.len, 0);
+  if (total === 0) return Array.from({ length: n }, () => ({ ...stops[0] }));
+
+  return Array.from({ length: n }, (_, k) => {
+    let want = ((k + 0.5) / n) * total;
+    for (const leg of legs) {
+      if (want > leg.len && leg !== legs[legs.length - 1]) {
+        want -= leg.len;
+        continue;
+      }
+      const t = leg.len === 0 ? 0 : Math.min(1, want / leg.len);
+      return {
+        x: leg.a.x + (leg.b.x - leg.a.x) * t,
+        y: leg.a.y + (leg.b.y - leg.a.y) * t,
+      };
+    }
+    return { ...stops[0] };
+  });
 }
 
 /* ── the walking trail, removed ───────────────────────────────────

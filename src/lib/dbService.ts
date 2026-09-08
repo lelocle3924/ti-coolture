@@ -139,6 +139,7 @@ function toRoute(routeId: string): TouristRoute {
       description: s.description_vi ?? "",
       x: s.map_x,
       y: s.map_y,
+      category: s.category,
     }));
 
   return {

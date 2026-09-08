@@ -222,23 +222,28 @@ export const seed: Database = {
     },
   ],
 
+  /* The last column is the kind of place — see RouteStopRow.category. Filed
+     by hand against what each place actually is, not spread evenly to make
+     the map look full: Chợ Lớn has no eating stop in the dataset and Quận 1
+     has nothing filed under chụp ảnh, and /discover says so rather than
+     inventing one. */
   route_stops: [
     // Vòng Chợ Lớn
-    ["route-cho-lon", 1, "Bưu điện Chợ Lớn", 14, 74, null],
-    ["route-cho-lon", 2, "Hội quán Tuệ Thành", 36, 52, null],
-    ["route-cho-lon", 3, "Chợ vải Soái Kình Lâm", 62, 60, null],
-    ["route-cho-lon", 4, "Xưởng thêu Chỉ Đỏ", 84, 34, "shop-chi-do"],
+    ["route-cho-lon", 1, "Bưu điện Chợ Lớn", 14, 74, null, "tham-quan"],
+    ["route-cho-lon", 2, "Hội quán Tuệ Thành", 36, 52, null, "chup-anh"],
+    ["route-cho-lon", 3, "Chợ vải Soái Kình Lâm", 62, 60, null, "mua-sam"],
+    ["route-cho-lon", 4, "Xưởng thêu Chỉ Đỏ", 84, 34, "shop-chi-do", "mua-sam"],
     // Sáng tạo Thủ Đức
-    ["route-thu-duc", 1, "Ga Metro Bến Thành", 10, 66, null],
-    ["route-thu-duc", 2, "Bảo tàng Áo Dài", 32, 44, null],
-    ["route-thu-duc", 3, "Lò gốm Mù U", 52, 62, "shop-gom-mu-u"],
-    ["route-thu-duc", 4, "Cà phê Xưởng", 72, 38, null],
-    ["route-thu-duc", 5, "Chợ đêm Thủ Đức", 90, 58, null],
+    ["route-thu-duc", 1, "Ga Metro Bến Thành", 10, 66, null, "chup-anh"],
+    ["route-thu-duc", 2, "Bảo tàng Áo Dài", 32, 44, null, "tham-quan"],
+    ["route-thu-duc", 3, "Lò gốm Mù U", 52, 62, "shop-gom-mu-u", "mua-sam"],
+    ["route-thu-duc", 4, "Cà phê Xưởng", 72, 38, null, "an-uong"],
+    ["route-thu-duc", 5, "Chợ đêm Thủ Đức", 90, 58, null, "an-uong"],
     // Một buổi chiều Quận 1
-    ["route-quan-1", 1, "Đường sách Nguyễn Văn Bình", 18, 60, null],
-    ["route-quan-1", 2, "Xưởng Lem", 50, 38, "shop-xuong-lem"],
-    ["route-quan-1", 3, "Chung cư 42 Nguyễn Huệ", 82, 56, null],
-  ].map(([routeId, n, name, x, y, shopId]) => ({
+    ["route-quan-1", 1, "Đường sách Nguyễn Văn Bình", 18, 60, null, "tham-quan"],
+    ["route-quan-1", 2, "Xưởng Lem", 50, 38, "shop-xuong-lem", "mua-sam"],
+    ["route-quan-1", 3, "Chung cư 42 Nguyễn Huệ", 82, 56, null, "an-uong"],
+  ].map(([routeId, n, name, x, y, shopId, category]) => ({
     id: `stop-${routeId}-${n}`,
     route_id: routeId as string,
     stop_number: n as number,
@@ -252,6 +257,7 @@ export const seed: Database = {
     image_url: null,
     external_url: null,
     shop_id: (shopId as string | null) ?? null,
+    category: category as string,
   })),
 
   // ⚠ INVENTED — content pack Part B, "3 nội dung Hidden Gems".

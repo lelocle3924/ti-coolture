@@ -640,6 +640,7 @@ function StoreTile({
   onOpen,
   blocked,
   full = false,
+  quiet = false,
 }: {
   key?: string;
   product: Product;
@@ -648,6 +649,16 @@ function StoreTile({
   blocked?: () => boolean;
   /** Fill the slide it is in, for the phone lane's one-per-screen paging. */
   full?: boolean;
+  /**
+   * Show the photograph only.
+   *
+   * The phone rail leaves 15% of the neighbour either side showing, and what
+   * the team asked to see there is the picture — "mép phải và mép trái của
+   * hình ảnh của 2 sản phẩm ở 2 bên". A caption cut off 15% in is not a
+   * peek, it is a sentence with its end missing, twice, at both screen
+   * edges. The space is kept so nothing moves as it fades back in.
+   */
+  quiet?: boolean;
 }) {
   return (
     <div
@@ -688,7 +699,11 @@ function StoreTile({
           <SaveButton product={product} revealOnHover />
         </span>
       </div>
-      <div className="mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3">
+      <div
+        className={`mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3 transition-opacity duration-300 ${
+          quiet ? "opacity-0" : "opacity-100"
+        }`}
+      >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[11px] tracking-[0.16em] text-white/70">
             {product.storeName.toUpperCase()}
@@ -799,6 +814,11 @@ function StoreLane({
 
    The desktop lanes keep the marquee: two drifting rows are the shape that
    section has, and there is no "current product" there to page between. */
+/** The share of the screen one step travels: one photograph plus one gap. */
+const SLIDE = 0.65;
+/** Where its slide starts, which is (1 - SLIDE) / 2 — the peek, symmetric. */
+const PEEK = 0.175;
+
 function LoopingStoreLane({
   products,
   onOpen,
@@ -806,10 +826,25 @@ function LoopingStoreLane({
   products: Product[];
   onOpen: (p: Product) => void;
 }) {
+  /* Team 08/09: "ảnh 1 sản phẩm chỉ chiếm 60% chiều ngang, 15% each cho mép
+     phải và mép trái của hình ảnh của 2 sản phẩm ở 2 bên, 5% each cho
+     spacing." Those five figures add to the screen exactly once, and they are
+     the whole geometry of this rail:
+
+         │ 15% │5%│        60%        │5%│ 15% │
+         └ prev┘  └───── current ─────┘  └ next┘
+
+     There are two gaps on screen, not four, which is what makes the five
+     figures add to 100 — so one step travels one photograph plus one gap,
+     60 + 5 = 65% of the viewport. The slide box below is that 65% carrying
+     half a gap either side, which leaves the photograph at 60% and puts a
+     full 5% between it and its neighbour. */
   const track = useLoopTrack(products.length, {
     response: 0.55,
     decelerationRate: 0.992,
     maxPagesPerFlick: 1,
+    slide: SLIDE,
+    lead: PEEK,
   });
   const laid = Array.from({ length: LOOP_COPIES }, () => products).flat();
 
@@ -838,12 +873,21 @@ function LoopingStoreLane({
           {laid.map((p, i) => (
             <div
               key={`${i}-${p.id}`}
-              className="w-full shrink-0 px-5"
+              /* Percentages, not rem: both resolve against the flex
+                 container, which is the viewport, so the rail holds the
+                 60/15/5 split at every screen width. */
+              className="w-[65%] shrink-0 px-[2.5%]"
               /* Only the middle copy is read out. The other two are the same
                  products again, there to cover the fold. */
               aria-hidden={i < products.length || i >= products.length * 2}
             >
-              <StoreTile product={p} onOpen={onOpen} blocked={track.didDrag} full />
+              <StoreTile
+                product={p}
+                onOpen={onOpen}
+                blocked={track.didDrag}
+                full
+                quiet={i % products.length !== track.page}
+              />
             </div>
           ))}
         </div>
@@ -1999,10 +2043,13 @@ export default function Homepage() {
             bg-ink and the team asked for that black to go (26/08), so the two
             seams either side of it move with it. */}
         <GroundBlend from="brand" to="brand-deep" />
+        {/* One pin, and the whole island is the way through — 08/09: "Khi
+            user click vào bất cứ đâu trên bản đồ đó, sẽ redirect sang
+            /discover." It opens the region the list has selected, so the
+            choice made here survives the navigation. */}
         <DistrictMap
           routes={routes}
           onOpenRoute={(routeId) => navigate(`/discover/${routeId}`)}
-          onPin={(routeId, stopId) => navigate(`/discover/${routeId}?start=${stopId}`)}
         />
 
         {/* No blend below it any more: the map and the collaborate band are
