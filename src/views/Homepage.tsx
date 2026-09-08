@@ -799,6 +799,11 @@ function StoreLane({
 
    The desktop lanes keep the marquee: two drifting rows are the shape that
    section has, and there is no "current product" there to page between. */
+/** The share of the screen one step travels: the tile plus its two gutters. */
+const SLIDE = 0.7;
+/** Where that tile starts — which is what leaves 15% of a neighbour showing. */
+const PEEK = 0.15;
+
 function LoopingStoreLane({
   products,
   onOpen,
@@ -806,10 +811,23 @@ function LoopingStoreLane({
   products: Product[];
   onOpen: (p: Product) => void;
 }) {
+  /* Team 08/09: "ảnh 1 sản phẩm chỉ chiếm 60% chiều ngang, 15% each cho mép
+     phải và mép trái của hình ảnh của 2 sản phẩm ở 2 bên, 5% each cho
+     spacing." Those five figures add to the screen exactly once, and they are
+     the whole geometry of this rail:
+
+         │ 15% │ 5% │        60%        │ 5% │ 15% │
+         └ prev┘    └───── current ─────┘    └ next┘
+
+     so one step travels 60 + 5 + 5 = 70% of the viewport, and the current
+     slide starts 15% in. The slide box below is that 70% with the two 5%
+     gutters as its own padding, which leaves the photograph at 60%. */
   const track = useLoopTrack(products.length, {
     response: 0.55,
     decelerationRate: 0.992,
     maxPagesPerFlick: 1,
+    slide: SLIDE,
+    lead: PEEK,
   });
   const laid = Array.from({ length: LOOP_COPIES }, () => products).flat();
 
@@ -838,7 +856,10 @@ function LoopingStoreLane({
           {laid.map((p, i) => (
             <div
               key={`${i}-${p.id}`}
-              className="w-full shrink-0 px-5"
+              /* Percentages, not rem: both resolve against the flex
+                 container, which is the viewport, so the rail holds the
+                 60/15/5 split at every screen width. */
+              className="w-[70%] shrink-0 px-[5%]"
               /* Only the middle copy is read out. The other two are the same
                  products again, there to cover the fold. */
               aria-hidden={i < products.length || i >= products.length * 2}
