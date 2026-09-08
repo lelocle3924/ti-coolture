@@ -87,7 +87,21 @@ function WaveOnEnd({ className = "" }: { className?: string }) {
   );
 }
 
-export default function BrandSurround({ className = "" }: { className?: string }) {
+export default function BrandSurround({
+  className = "",
+  arc = true,
+}: {
+  className?: string;
+  /**
+   * Draw the arc sweeping out of the bottom-left corner.
+   *
+   * False only in src/lab/HeroWaveStudies.tsx (09/09), where the arc is the
+   * thing being replaced — "cái arc đang chỉ vào hư vô" — and the study needs
+   * the rest of the surround exactly as the homepage draws it rather than a
+   * lookalike. The homepage passes nothing and keeps the arc.
+   */
+  arc?: boolean;
+}) {
   return (
     <div
       aria-hidden="true"
@@ -120,15 +134,17 @@ export default function BrandSurround({ className = "" }: { className?: string }
           pushed down and left far enough that only the descending limb is
           inside the field — the rest leaves through the bottom-left corner,
           which is what the drawing shows. */}
-      <ArcTopRight
-        className="absolute rotate-180"
-        style={{
-          left: `${ARC.left}%`,
-          top: `${ARC.top}%`,
-          width: `${ARC.width}%`,
-        }}
-        fill="var(--color-wave)"
-      />
+      {arc && (
+        <ArcTopRight
+          className="absolute rotate-180"
+          style={{
+            left: `${ARC.left}%`,
+            top: `${ARC.top}%`,
+            width: `${ARC.width}%`,
+          }}
+          fill="var(--color-wave)"
+        />
+      )}
 
       {/* ── top right: the loop, twice the size, a quarter turn anticlockwise
           The offsets are not arbitrary. The deck covers everything but a
