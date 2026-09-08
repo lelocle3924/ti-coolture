@@ -317,7 +317,7 @@ export default function Header() {
       >
         <div
           ref={pillRef}
-          className={`mx-auto flex max-w-6xl items-center gap-2 rounded-full px-2 py-2 transition-all duration-500 md:gap-4 md:px-3 ${
+          className={`mx-auto flex max-w-6xl items-center gap-2 rounded-full px-2 py-2 transition-all duration-[220ms] md:gap-4 md:px-3 ${
             atTop ? `${tone.pillTop} backdrop-blur-md` : `${tone.pill} backdrop-blur-xl`
           }`}
         >
@@ -338,7 +338,7 @@ export default function Header() {
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
-                  `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-500 ${
+                  `rounded-full px-4 py-2 text-sm font-semibold transition-all duration-[220ms] ${
                     isActive ? tone.active : tone.idle
                   }`
                 }
@@ -353,7 +353,7 @@ export default function Header() {
               onClick={() => setSearchOpen(true)}
               aria-label="Tìm kiếm"
               aria-haspopup="dialog"
-              className={`grid h-11 w-11 place-items-center rounded-full transition-colors duration-500 ${tone.icon}`}
+              className={`grid h-11 w-11 place-items-center rounded-full transition-colors duration-[220ms] ${tone.icon}`}
             >
               <Search className="h-[18px] w-[18px]" />
             </button>
@@ -405,7 +405,7 @@ export default function Header() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
               aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-              className={`grid h-11 w-11 place-items-center rounded-full transition-colors duration-500 md:hidden ${tone.burger}`}
+              className={`grid h-11 w-11 place-items-center rounded-full transition-colors duration-[220ms] md:hidden ${tone.burger}`}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>

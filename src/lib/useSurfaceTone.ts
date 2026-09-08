@@ -40,10 +40,19 @@ export function useSurfaceTone(
       const probe = probeRef.current;
       if (!probe) return;
 
-      /* The pill's own middle. Measured rather than assumed, because the bar
-         sits at a different offset on mobile and moves while it hides. */
+      /* The pill's own middle, measured rather than assumed — the bar sits at
+         a different offset on mobile and moves while it hides — plus a lead.
+
+         Motion proposal 07 (approved 31/08): the tone has to follow the
+         ground, not a clock. Probing exactly at the middle means the swap
+         begins only once the boundary is already halfway across the pill, and
+         with a colour transition on top of that the contrast is briefly wrong
+         in the worst way — violet type on a dark ground. Probing 40px ahead of
+         the middle starts the change before the boundary arrives, so the
+         transition finishes about when the eye says it should. */
       const box = probe.getBoundingClientRect();
-      const y = box.top + box.height / 2;
+      const LEAD = 40;
+      const y = box.top + box.height / 2 + LEAD;
 
       let found: SurfaceTone | null = null;
 

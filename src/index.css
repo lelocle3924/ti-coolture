@@ -77,19 +77,28 @@
 /* ---------------------------------------------------------------
    Exaggerated Interactive Micro-Motion Physics
    --------------------------------------------------------------- */
+/* Motion proposal 01 (/lab/motion, approved 31/08).
+   Was translateY(-10px) scale(1.035) over 450ms on an overshooting curve, with
+   a violet and a teal shadow layer. On the 77-card catalogue grid, running a
+   cursor along one row of four set off four overlapping bounces, and the scale
+   made each card lean on its neighbours.
+
+   Keep the bounce for buttons, drop it for cards: 4px of lift, no scale, 220ms
+   on the site's non-overshooting curve, one shadow. The image inside the card
+   still zooms on hover — that is the part worth watching, and it is clipped by
+   the frame so it cannot push anything around. */
 .hover-elastic {
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              box-shadow 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-              border-color 0.3s ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 220ms ease;
   will-change: transform;
 }
 .hover-elastic:hover {
-  transform: translateY(-10px) scale(1.035);
-  box-shadow: 0 28px 56px -14px rgba(117, 32, 247, 0.38),
-              0 0 24px rgba(57, 214, 207, 0.25);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px -12px rgba(117, 32, 247, 0.30);
 }
 .hover-elastic:active {
-  transform: translateY(2px) scale(0.96);
+  transform: translateY(0);
 }
 
 .btn-pop {
@@ -104,6 +113,25 @@
 }
 .btn-pop:active {
   transform: scale(0.92) translateY(2px);
+}
+
+/* Motion proposal 12 (approved 31/08): same language, lower volume.
+   scale(1.09) translateY(-3px) is right for a primary call to action sitting
+   in its own space. On a small control inside a paragraph it shoves the text
+   around it. This variant is for secondary buttons: a little larger under the
+   cursor, no travel, and short enough to read as a response rather than as an
+   animation. Declared after .btn-pop so it wins when both classes are set. */
+.btn-pop--quiet {
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 160ms ease;
+  will-change: transform;
+}
+.btn-pop--quiet:hover {
+  transform: scale(1.03);
+  box-shadow: none;
+}
+.btn-pop--quiet:active {
+  transform: scale(0.99);
 }
 
 body {
@@ -222,8 +250,23 @@ body {
     animation: draw 1.35s cubic-bezier(0.34, 1.4, 0.64, 1) 0.35s forwards;
   }
 
+  /* Motion proposal 03 (approved 31/08): beat three times, then rest.
+     Was `2s ... infinite` with three stacked drop-shadows, on a mark fixed to
+     the right edge for the whole page — so it never left peripheral vision and
+     never stopped asking for attention. Anything that loops has to survive its
+     hundredth repeat; this did not.
+
+     Three beats and done. To say something new later, restart it from the
+     consumer by re-keying the element — when the gem itself changes, or when
+     the tab is focused again — rather than by looping forever.
+
+     NOTE: nothing in src/views carries .gem-star today. The Hidden Gems tab
+     renders a plain StarIcon (Homepage > HiddenGems), so this changes nothing
+     currently on screen; it makes the rule right for whoever reaches for it
+     next. Applying it to that tab would be adding motion the team has not
+     asked for. */
   .gem-star {
-    animation: gem-pulse 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+    animation: gem-pulse 1.6s var(--ease-brand) 3;
   }
 }
 
@@ -234,9 +277,9 @@ body {
   }
   50% {
     transform: scale(1.45) rotate(15deg);
-    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 1))
-      drop-shadow(0 0 35px rgba(57, 214, 207, 0.95))
-      drop-shadow(0 0 60px rgba(117, 32, 247, 0.8));
+    /* one layer, not three — a stacked drop-shadow is re-rasterised every
+       frame, and this one ran forever */
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 1));
   }
 }
 
@@ -265,59 +308,68 @@ body {
   navigation: auto;
 }
 
-/* Shared element transition animation with elastic pop */
+/* Motion proposal 05 (approved 31/08): a page change goes straight there.
+
+   The group ran 520ms on an overshooting curve and the incoming root came in
+   from scale(1.04) over 450ms on the same curve — so every navigation
+   overshot twice, once for the page and once for any shared element riding
+   along with it. Overshoot belongs to things the visitor is dragging
+   directly; a page change is not one of those.
+
+   260ms, no scale, and a 24px slide in the direction of travel. */
 ::view-transition-group(*) {
-  animation-duration: 520ms;
-  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Root cross-fade with expressive travel */
 ::view-transition-old(root) {
-  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both vt-fade-out;
+  animation: 260ms cubic-bezier(0.16, 1, 0.3, 1) both vt-fade-out;
 }
 ::view-transition-new(root) {
-  animation: 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both vt-fade-in;
+  animation: 260ms cubic-bezier(0.16, 1, 0.3, 1) both vt-fade-in;
 }
 
 @keyframes vt-fade-out {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.96); }
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 @keyframes vt-fade-in {
-  from { opacity: 0; transform: scale(1.04); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Exaggerated Sibling Directional Slide */
+/* Directional slide — 24px, no scale, one duration both ways (proposal 05).
+   Was 60px of travel plus a scale on an overshooting curve, which is what made
+   a chip press read as the whole page lurching. */
 html[data-vt-dir="forward"]::view-transition-old(root) {
-  animation: 360ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-left;
+  animation: 260ms cubic-bezier(0.16, 1, 0.3, 1) both vt-slide-out-left;
 }
 html[data-vt-dir="forward"]::view-transition-new(root) {
-  animation: 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both vt-slide-in-right;
+  animation: 260ms cubic-bezier(0.16, 1, 0.3, 1) both vt-slide-in-right;
 }
 
 html[data-vt-dir="backward"]::view-transition-old(root) {
-  animation: 360ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out-right;
+  animation: 260ms cubic-bezier(0.16, 1, 0.3, 1) both vt-slide-out-right;
 }
 html[data-vt-dir="backward"]::view-transition-new(root) {
-  animation: 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both vt-slide-in-left;
+  animation: 260ms cubic-bezier(0.16, 1, 0.3, 1) both vt-slide-in-left;
 }
 
 @keyframes vt-slide-out-left {
-  from { transform: translateX(0) scale(1); opacity: 1; }
-  to { transform: translateX(-60px) scale(0.94); opacity: 0; }
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-24px); opacity: 0; }
 }
 @keyframes vt-slide-in-right {
-  from { transform: translateX(60px) scale(1.06); opacity: 0; }
-  to { transform: translateX(0) scale(1); opacity: 1; }
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 @keyframes vt-slide-out-right {
-  from { transform: translateX(0) scale(1); opacity: 1; }
-  to { transform: translateX(60px) scale(0.94); opacity: 0; }
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(24px); opacity: 0; }
 }
 @keyframes vt-slide-in-left {
-  from { transform: translateX(-60px) scale(1.06); opacity: 0; }
-  to { transform: translateX(0) scale(1); opacity: 1; }
+  from { transform: translateX(-24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 /* ---------------------------------------------------------------
@@ -347,19 +399,29 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   to { transform: scaleX(1); }
 }
 
-/* D2 · Exaggerated Staggered Reveal */
-@supports (animation-timeline: view()) {
-  .rev {
-    animation: revup linear both;
-    animation-timeline: view(block);
-    animation-range: entry 5% entry 65%;
-  }
-  .rev:nth-child(2n) {
-    animation-range: entry 12% entry 72%;
-  }
-  .rev:nth-child(3n) {
-    animation-range: entry 18% entry 78%;
-  }
+/* D2 · Staggered reveal — motion proposal 02 (approved 31/08).
+
+   Was a scroll timeline whose stagger came from :nth-child(2n) and (3n)
+   shifting animation-range, so the order followed a card's place in the DOM
+   rather than on screen: in a four-column grid, 1 and 3 arrived together while
+   2 and 4 lagged. That reads as a glitch, not a rhythm.
+
+   The wave is now driven by lib/useStaggerReveal.ts — whatever crosses the
+   threshold together is one row, 45ms apart, stopping at the fourth card.
+
+   The hidden state is scoped to [data-rev-ready], which the hook sets on the
+   container, so cards stay visible if the script never runs. */
+[data-rev-ready] .rev {
+  opacity: 0;
+}
+[data-rev-ready] .rev.rev-in {
+  animation: revup 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* Arrived. Nothing is animating any more, so transform belongs to :hover
+   again — a finished animation with fill-mode: both keeps hold of every
+   property it touched, which is what stopped the cards lifting on hover. */
+[data-rev-ready] .rev.rev-done {
+  opacity: 1;
 }
 @keyframes revup {
   from {
@@ -414,16 +476,25 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
     animation-range: entry 0% cover 100%;
   }
 }
+/* Motion proposal 04 (approved 31/08): same effect, different mechanism.
+
+   This used to scrub letter-spacing from 0.1em to -0.04em. letter-spacing is
+   about the most expensive thing to animate — the browser re-shapes and
+   re-lays-out the line on every frame — and it was doing it on the largest
+   text on the site, at clamp(5rem, 18vw, 15rem), tied to a scroll timeline so
+   it ran on every frame of the scroll.
+
+   letter-spacing now stays at its final value on .footer-wordmark, and the
+   widening is scrubbed with scaleX 1.06 -> 1 instead. The eye reads the same
+   movement; it runs on the compositor. */
 @keyframes wm-rise {
   from {
     opacity: 0.05;
-    transform: translateY(80px) scale(0.8);
-    letter-spacing: 0.1em;
+    transform: translateY(80px) scale(0.8) scaleX(1.06);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1.05);
-    letter-spacing: -0.04em;
+    transform: translateY(0) scale(1.05) scaleX(1);
   }
 }
 
@@ -471,6 +542,56 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   animation: ti-blink-b 7s ease-in-out infinite;
 }
 
+/* Motion proposal 06 (approved 31/08): the pins land on the island.
+
+   Changing district slid the island across and the pins simply appeared with
+   it — nothing said a pin belonged to the ground underneath it. They now drop
+   in along the route, 70ms apart, with a small bounce as each one lands, which
+   also states the order of the stops without writing it out. Four pins are
+   done in 480ms, before a visitor has finished taking the island in. */
+@keyframes ti-pin-drop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 26px));
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% + 3px));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+/* The pin's resting offset lives in the keyframes, not in a utility class:
+   an animation owns every property it touches, so a Tailwind -translate-y-full
+   would be overridden mid-flight and then snap back at the end. */
+.ti-pin-drop {
+  animation: ti-pin-drop 480ms var(--ease-brand) both;
+}
+
+/* Motion proposal 10 (approved 31/08): the toast leaves the way it arrived.
+
+   It used to fade in and then simply be removed from the DOM after 2500ms —
+   no exit at all, so it blinked out. Now it comes in from the right edge it
+   sits against, and goes back that way. The exit is shorter than the entrance
+   on purpose: something arriving wants to be read, something leaving does
+   not. */
+@keyframes ti-toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ti-toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(24px); }
+}
+.ti-toast {
+  animation: ti-toast-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ti-toast--out {
+  animation: ti-toast-out 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* D6 · Elastic Momentum Snap Strip */
 .snap-strip {
   display: flex;
@@ -512,6 +633,44 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   .ti-eye-lid-b {
     animation: none !important;
     transform: translateY(38px) !important;
+  }
+
+  /* The "CHUNG" notes on /lab/motion: the guard below covers the entrance and
+     scroll-driven animations but never covered the interactive hovers, so
+     .hover-elastic, .btn-pop and .snap-strip > * kept moving for a visitor who
+     had asked for stillness. Handled separately from the block underneath
+     because these need their transition and transform neutralised, not their
+     opacity forced to 1. */
+  .hover-elastic,
+  .btn-pop,
+  .btn-pop--quiet,
+  .snap-strip > * {
+    transition: none !important;
+  }
+
+  /* the pin still needs its resting offset, so this cannot go in the
+     transform: none block below */
+  .ti-pin-drop {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: translate(-50%, -100%) !important;
+  }
+
+  /* the toast still has to appear and disappear, it just does not travel */
+  .ti-toast,
+  .ti-toast--out {
+    animation: none !important;
+    transform: none !important;
+  }
+  .ti-toast--out { opacity: 0 !important; }
+  .hover-elastic:hover,
+  .hover-elastic:active,
+  .btn-pop:hover,
+  .btn-pop:active,
+  .btn-pop--quiet:hover,
+  .btn-pop--quiet:active,
+  .snap-strip > *:hover {
+    transform: none !important;
   }
 
   ::view-transition-group(*),

@@ -6,6 +6,7 @@ import { StoreProfile, Product } from "../types";
 import { ArcTopRight, RibbonLoop, WaveStores } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtShopLogo, vtShopCover, vtProductImage } from "../lib/viewTransitions";
+import { useStaggerReveal } from "../lib/useStaggerReveal";
 
 export default function Stores() {
   const [stores, setStores] = useState<StoreProfile[]>([]);
@@ -38,6 +39,10 @@ export default function Stores() {
     }
     return true;
   });
+
+  /* Motion 02: same wave as /products — re-armed on the rendered count so a
+     search brings its results in rather than leaving them at opacity 0. */
+  const revealRef = useStaggerReveal<HTMLDivElement>(filteredStores.length);
 
   return (
     /* Same reason as /products: the negative margin belongs on the clipping
@@ -137,7 +142,10 @@ export default function Stores() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+          <div
+            ref={revealRef}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2"
+          >
             {filteredStores.map((store) => {
               const storeProducts = products.filter(p => p.storeId === store.id).slice(0, 3);
               const mapUrl = store.address

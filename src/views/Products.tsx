@@ -6,7 +6,8 @@ import SaveButton from "../components/SaveButton";
 import { Product } from "../types";
 import { ArcTopRight, RibbonLoop, WaveProducts } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
-import { vtProductImage, withDirectionalTransition } from "../lib/viewTransitions";
+import { vtProductImage } from "../lib/viewTransitions";
+import { useStaggerReveal } from "../lib/useStaggerReveal";
 
 const CANONICAL_CATEGORIES = [
   "Tất cả",
@@ -122,7 +123,14 @@ export default function Products() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [wishlistToast, setWishlistToast] = useState<{ show: boolean; name: string } | null>(null);
+  /* Motion 10: `leaving` is what gives the toast an exit. It used to be
+     unmounted outright after 2500ms, so it blinked out of existence. */
+  const [wishlistToast, setWishlistToast] = useState<
+    { name: string; leaving: boolean } | null
+  >(null);
+  const toastTimers = useRef<number[]>([]);
+
+  useEffect(() => () => toastTimers.current.forEach(clearTimeout), []);
 
 
   // Flow B: zero-result demand note capture
@@ -139,21 +147,27 @@ export default function Products() {
     loadData();
   }, []);
 
-  const handleCategorySelect = (cat: string) => {
-    const currentIdx = CANONICAL_CATEGORIES.indexOf(activeCategory as any);
-    const nextIdx = CANONICAL_CATEGORIES.indexOf(cat as any);
-    const dir = nextIdx >= currentIdx ? "forward" : "backward";
+  /* Motion proposal 05 (approved 31/08): "không chạy view transition cho đổi
+     bộ lọc — đó là cập nhật danh sách, không phải rời trang."
 
-    withDirectionalTransition(dir, () => {
-      const next = new URLSearchParams(searchParams);
-      if (cat === "Tất cả") {
-        next.delete("category");
-      } else {
-        next.set("category", cat);
-      }
-      next.delete("page");
-      setSearchParams(next);
-    });
+     Pressing a category chip used to run withDirectionalTransition, which
+     slides and fades the entire document. Nothing about the page is being left
+     — the heading, the filters and the chrome all stay — so the whole screen
+     moving to swap the results below it was the jerky zoom the team reported.
+
+     The results now change in place. What brings them in is the grid reveal
+     from proposal 02, which re-arms on the rendered count: the new set arrives
+     as a wave in the grid, and nothing else moves. */
+  const handleCategorySelect = (cat: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (cat === "Tất cả") {
+      next.delete("category");
+    } else {
+      next.set("category", cat);
+    }
+    // a new filter is a new result set, so it starts at its first page
+    next.delete("page");
+    setSearchParams(next);
   };
 
   const handlePriceSelect = (priceId: string) => {
@@ -187,6 +201,26 @@ export default function Products() {
 
   const clearAllFilters = () => {
     setSearchParams(new URLSearchParams());
+  };
+
+  /* Motion proposal 10 (approved 31/08): the toast leaves the way it arrived.
+
+     It used to fade in and then simply be dropped from the DOM after 2500ms,
+     so it blinked out. It now travels back to the right edge it sits against.
+
+     The toggle itself is no longer here — SaveButton owns it since 07/09, and
+     tells this page what happened — so what is left of the proposal is the
+     timing, which is the part that was wrong. A second save while one is
+     still up restarts the run rather than stacking two sets of timers on the
+     same toast. */
+  const showSavedToast = (name: string) => {
+    toastTimers.current.forEach(clearTimeout);
+    setWishlistToast({ name, leaving: false });
+    toastTimers.current = [
+      window.setTimeout(() => setWishlistToast((t) => (t ? { ...t, leaving: true } : null)), 2500),
+      // 180ms later — the length of the exit — it is gone
+      window.setTimeout(() => setWishlistToast(null), 2680),
+    ];
   };
 
   const handleDemandSubmit = (e: React.FormEvent) => {
@@ -249,7 +283,15 @@ export default function Products() {
   const pageStart = (page - 1) * PAGE_SIZE;
   const visibleProducts = filteredProducts.slice(pageStart, pageStart + PAGE_SIZE);
 
-  const gridRef = useRef<HTMLDivElement>(null);
+  /* Motion 02: the reveal re-arms whenever the rendered set changes, so a
+     filter, a sort or a page turn brings its results in as a wave rather than
+     leaving the new cards sitting at opacity 0.
+
+     Keyed on the page as well as the count, which the proposal could not know
+     about: two pages of a full grid hold the same 36 cards, so a count alone
+     would not notice the turn. The same ref is the scroll target below — the
+     grid is both the thing that reveals and the thing to come back to. */
+  const gridRef = useStaggerReveal<HTMLDivElement>(`${page}:${filteredProducts.length}`);
 
   const goToPage = (next: number) => {
     const clamped = Math.min(pageCount, Math.max(1, next));
@@ -278,7 +320,13 @@ export default function Products() {
     <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
       {/* Toast Notification (Flow E) */}
       {wishlistToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-brand text-paper px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in backdrop-blur-md">
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 bg-brand text-paper px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 backdrop-blur-md ${
+            wishlistToast.leaving ? "ti-toast--out" : "ti-toast"
+          }`}
+        >
           <div className="w-6 h-6 rounded-full bg-wave text-ink grid place-items-center font-bold">
             <Check className="w-3.5 h-3.5 stroke-[3]" />
           </div>
@@ -555,7 +603,10 @@ export default function Products() {
         ) : (
           
           /* DOUBLE-BEZEL PRODUCT GRID WITH VIEW TRANSITIONS */
-          <div ref={gridRef} className="scroll-mt-28 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2">
+          <div
+            ref={gridRef}
+            className="scroll-mt-28 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-2"
+          >
             {visibleProducts.map((product) => {
               const primaryImg = product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
               const hoverImg = product.images?.[1] || primaryImg;
@@ -610,11 +661,7 @@ export default function Products() {
                         product={product}
                         revealOnHover
                         className="absolute right-1.5 top-1.5 z-10"
-                        onToggled={(now) => {
-                          if (!now) return;
-                          setWishlistToast({ show: true, name: product.name });
-                          setTimeout(() => setWishlistToast(null), 2500);
-                        }}
+                        onToggled={(now) => now && showSavedToast(product.name)}
                       />
                     </div>
 

@@ -7,6 +7,7 @@ import { useImageTone, type ImageTone } from "../lib/useImageTone";
 import { BendingSeam } from "../home/BendingSeam";
 import { useMarqueeTrack } from "../lib/useMarqueeTrack";
 import { useLoopTrack, LOOP_COPIES } from "../lib/useLoopTrack";
+import { usePauseOffscreen } from "../lib/usePauseOffscreen";
 import {
   formatPrice,
   PRICE_NOTE,
@@ -509,6 +510,24 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
             const lead = dragging ? dragX : 0;
             const progress = Math.min(1, Math.abs(lead) / 160);
 
+            /* Motion proposal 08 (approved 31/08): deal the card, do not
+               dissolve it.
+
+               Every frame used to fade out where it stood, so mid-change two
+               photographs occupied the same rectangle and the deck read as one
+               frame crossfading rather than as a stack being dealt from.
+
+               The frame that was on top a moment ago — the one that has just
+               wrapped round to the back — now lifts off the top of the deck
+               instead: 3% across, 3% up, rotated 3 degrees, fading, and drawn
+               ABOVE the new front so it reads as being pulled off it. The card
+               underneath rises into place on its own, which it already did.
+
+               Only when there are more frames than stack positions. With three
+               or fewer the outgoing frame is still a visible part of the
+               stack, and lifting it off would delete a card from the deck. */
+            const outgoing = count > 3 && rel === count - 1;
+
             const style =
               rel === 0
                 ? {
@@ -528,7 +547,14 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                         opacity: 1,
                         zIndex: 10,
                       }
-                    : { transform: "translate3d(0,-5%,0) scale(0.9)", opacity: 0, zIndex: 0 };
+                    : outgoing
+                      ? {
+                          transform: "translate3d(3%,-3%,0) rotate(3deg) scale(1)",
+                          opacity: 0,
+                          // above the front card, below the attribution chrome
+                          zIndex: 35,
+                        }
+                      : { transform: "translate3d(0,-5%,0) scale(0.9)", opacity: 0, zIndex: 0 };
 
             return (
               <figure
@@ -690,18 +716,21 @@ function StoreLane({
   products,
   direction,
   speed,
+  offscreen,
   onOpen,
 }: {
   products: Product[];
   direction: "left" | "right";
   /** Ambient drift in px/s. */
   speed: number;
+  /** The section is off screen or the tab is hidden — Motion 11. */
+  offscreen?: boolean;
   onOpen: (p: Product) => void;
 }) {
   const [held, setHeld] = useState(false);
   const lane = useMarqueeTrack({
     speed: direction === "left" ? speed : -speed,
-    paused: held,
+    paused: held || !!offscreen,
   });
 
   if (products.length === 0) return null;
@@ -844,9 +873,19 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
   /* Team 20/08: one lane is enough on a phone — two stacked marquees eat the
      screen and neither can be read while both are moving. */
   const twoLanes = useMediaQuery("(min-width: 768px)");
+  /* Motion 11: the lanes drift forever, so they stop when the section is off
+     screen or the tab is hidden. Nothing changes on screen.
+
+     The proposal did this with `[data-marquee-paused] .lab-marquee` in CSS,
+     which stopped working when the CSS marquee was replaced by
+     useMarqueeTrack (07/09) — there is no .lab-marquee left to select. The
+     state is handed to the lane instead, which already knows how to hold
+     still because hovering does the same thing. */
+  const { ref: sectionRef, paused } = usePauseOffscreen<HTMLElement>();
 
   return (
     <section
+      ref={sectionRef}
       id="dong-store"
       /* pb is max(4rem, 7.875%) — 7.875% is half the collapsed seam band, so
          the band never reaches the price note; the 4rem floor keeps a sane gap
@@ -883,12 +922,14 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
               products={products.slice(0, half)}
               direction="left"
               speed={34}
+              offscreen={paused}
               onOpen={onOpen}
             />
             <StoreLane
               products={products.slice(half)}
               direction="right"
               speed={28}
+              offscreen={paused}
               onOpen={onOpen}
             />
           </>
