@@ -278,6 +278,12 @@ export default function DistrictMap({
  * scroll takes the pin off screen, so it has to be findable again when you
  * come back up, and 15% on its own is easy to miss at this size.
  *
+ * The colour it changes to is the brand violet, not the teal the list uses
+ * for the same state. Teal is what the island is drawn in, so a teal pin on
+ * it disappears — which is what the first build of this did. Each mark takes
+ * the strongest colour available on the ground it sits on: teal on the violet
+ * field beside the map, violet on the teal island.
+ *
  * The names are not on the pins. They are in the list beside them, which is
  * direction 2's whole argument, and it keeps four labels off an island where
  * they would collide wherever two stops sit close together.
@@ -348,10 +354,12 @@ export function CategoryMap({
                 }}
                 className="absolute z-10 block origin-bottom transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
               >
-                <Teardrop fill={on ? "var(--color-wave)" : "var(--color-paper)"}>
+                <Teardrop fill={on ? "var(--color-brand)" : "var(--color-paper)"}>
                   <c.Icon
                     aria-hidden="true"
-                    className="absolute left-1/2 top-[30%] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-ink md:h-4 md:w-4"
+                    className={`absolute left-1/2 top-[30%] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 transition-colors duration-300 md:h-4 md:w-4 ${
+                      on ? "text-paper" : "text-ink"
+                    }`}
                   />
                 </Teardrop>
               </button>
