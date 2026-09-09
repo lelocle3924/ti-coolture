@@ -1032,9 +1032,27 @@ const SEAM_SAGITTA = 0.075;
 function HowMarks() {
   return (
     <>
+      {/* Team 09/09: "trên giao diện mobile, cái loop ở chỗ Cách đặt hàng bị
+          khuất bởi các thẻ steps. Phóng to 1.5 lần, canh khoảng cách để loop
+          không bị che khuất."
+
+          Two numbers change, and only below md — the desktop composition is
+          the lab's and is not in question.
+
+          32% → 48% is the 1.5×. And the drop shrinks from 40% to 12%: at 40%
+          most of the mark hung below the section's foot, where the section's
+          own overflow-hidden simply cut it off, so scaling it up would have
+          made a bigger thing more of which was invisible. At 12% the mark
+          sits inside the band instead, and the section's foot padding is
+          what opens that band — see pb-[46%] below, which is where the
+          "canh khoảng cách" half of the note lives.
+
+          The drop travels as a custom property because it is in a style
+          prop, which has no breakpoints; Tailwind's arbitrary-property
+          syntax does. */}
       <RibbonLoop
-        className="pointer-events-none absolute bottom-0 left-[-19%] z-0 w-[32%] max-w-[30rem]"
-        style={{ transform: "translateY(40%) scaleX(-1)" }}
+        className="pointer-events-none absolute bottom-0 left-[-19%] z-0 w-[48%] max-w-[30rem] [--loop-drop:12%] md:w-[32%] md:[--loop-drop:40%]"
+        style={{ transform: "translateY(var(--loop-drop)) scaleX(-1)" }}
         ribbon="var(--color-wave)"
         dot="var(--color-brand)"
         blink
@@ -1165,8 +1183,17 @@ function HowItWorks() {
         /* pb clears the crest exactly rather than by guess: the crest is 25%
            of the width at 486:266, so it stands 0.25/1.827 = 13.7% of the
            width tall. In the lab the crest simply follows the cards in normal
-           flow; here it is absolute, so the padding has to stand in for it. */
-        className="relative overflow-hidden bg-paper pb-[14%] pt-[max(2.75rem,7.875%)] text-ink"
+           flow; here it is absolute, so the padding has to stand in for it.
+
+           Below md it has a second thing to clear, and that one is larger.
+           The ribbon is 48% of the width and drops 12% of its own height, so
+           it reaches 0.88 × 48% = 42.2% of the width above the foot — and
+           the step cards end where this padding starts. 46% leaves the mark
+           a little under 4% of clear air below the last card; anything less
+           and the cards are back on top of it, which is the 09/09 report.
+           Percentages of the width throughout, so the clearance holds from a
+           320px phone to a tablet. */
+        className="relative overflow-hidden bg-paper pb-[46%] pt-[max(2.75rem,7.875%)] text-ink md:pb-[14%]"
       >
         <HowMarks />
         <div className="relative z-10">
