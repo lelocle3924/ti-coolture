@@ -3,8 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
 import { fetchTouristRoutes } from "../lib/dbService";
 import { TouristRoute } from "../types";
 import { Compass, ArrowUpRight, MapPin } from "lucide-react";
-import { ArcTopRight, RibbonLoop, WaveBlog } from "../components/BrandShapes";
-import Breadcrumbs from "../components/Breadcrumbs";
+import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import { CategoryMap, DISCOVER_CATEGORIES } from "../home/DistrictMap";
 import { planFor } from "../home/homeData";
 
@@ -17,8 +16,12 @@ import { planFor } from "../home/homeData";
  *     Khám phá thành phố
  *          Chợ Lớn
  *     [ the places | ‹ the map › ]
- *     ~ wave ~
- *     paper — the breadcrumb, and the footer under it
+ *
+ * — and then the footer. There is no paper band and no wave seam: 09/09,
+ * "bỏ phần trắng và breadcrumb này ở trang /discover luôn". The band had one
+ * line of breadcrumb left in it after the itinerary moved up beside the map,
+ * which bought a whole change of ground for a trail the header already gives
+ * you. The page is one violet field now, top to bottom.
  *
  * That shape is the 09/09 note read end to end:
  *
@@ -180,8 +183,11 @@ export default function Discovery() {
        the shell's pt-24 pill clearance on the element that clips, so the
        violet runs to y=0 and the header does not sit on a strip of the
        shell's ink. */
-    <div className="relative w-full overflow-x-hidden bg-paper text-ink md:-mt-28 -mt-24">
-      <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
+    <div className="relative w-full overflow-x-hidden bg-brand text-paper md:-mt-28 -mt-24">
+      <section
+        data-surface="dark"
+        className="relative z-10 overflow-hidden bg-brand pb-10 text-paper md:pb-16"
+      >
         <ArcTopRight
           className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-[0.3]"
           style={{ width: "clamp(16rem, 34vw, 28rem)" }}
@@ -208,15 +214,20 @@ export default function Discovery() {
           </p>
         </div>
 
-        {/* "Giảm khoảng cách từ Title đến ảnh map còn ⅓."
-            Two thirds of that gap was never a margin: the island is drawn in
-            a 4:3 box and its own artwork starts about an eighth of the way
-            down, so there was ~90px of empty SVG under the title that no
-            spacing rule could reach. The map block is pulled up by roughly
-            that much instead. A percentage, not a pixel count, because the
-            empty top scales with the map's width — which is 65% of the page
-            on a desktop and 75% on a phone, hence the two figures. */}
-        <div className="relative z-10 -mt-[6%] md:-mt-[3.6%]">
+        {/* Cut twice, on the same principle. Most of this gap was never a
+            margin: the island is drawn in a 4:3 box and its own artwork
+            starts about an eighth of the way down, so there is a band of
+            empty SVG under the region name that no spacing rule can reach.
+            The map block is pulled up into it.
+
+            08/09 took the title-to-map gap from 167px to 50px; 09/09 asks
+            for a third of what is left ("Giảm khoảng cách từ tên bản đồ đến
+            ảnh bản đồ xuống còn 1/3"). The pull itself lives on the island
+            inside CategoryMap rather than on this block, so that the column
+            beside it starts level with the artwork rather than with the
+            empty box above it — which is the other half of the same note.
+            What is left here is the gap itself, stated plainly. */}
+        <div className="relative z-10 mt-2 md:mt-4">
           <CategoryMap
             route={route}
             activeId={activeId}
@@ -245,26 +256,7 @@ export default function Discovery() {
           />
         </div>
 
-        <div className="relative z-10 mt-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden md:mt-14">
-          <WaveBlog className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
-        </div>
       </section>
-
-      {/* Paper, and only the trail on it. The itinerary that used to fill this
-          band is beside the map now; what is left is the page's place in the
-          site, which the site puts on paper under the wave everywhere else. */}
-      <div data-surface="light" className="relative z-10 pb-10 md:pb-14">
-        <div className="mx-auto max-w-4xl px-5 md:px-8">
-          <Breadcrumbs
-            className="mt-2"
-            trail={[
-              { label: "Trang chủ", to: "/" },
-              { label: "Khám phá", to: "/discover" },
-              { label: plan.region },
-            ]}
-          />
-        </div>
-      </div>
     </div>
   );
 }

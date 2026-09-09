@@ -66,6 +66,7 @@ function KeLayout({
   index,
   island,
   islandFirst = false,
+  align = "center",
 }: {
   index: ReactNode;
   island: ReactNode;
@@ -81,9 +82,22 @@ function KeLayout({
    * on a desktop and the index stays in the first column.
    */
   islandFirst?: boolean;
+  /**
+   * Where the column sits against the island.
+   *
+   * "center" is the homepage, where a three-line list beside a tall map wants
+   * to be on its middle. "start" is /discover (09/09) — "mép trên list địa
+   * điểm để ngang với mép trên bản đồ" — where the list is long enough to
+   * have a top edge of its own and the two should agree on it.
+   */
+  align?: "center" | "start";
 }) {
   return (
-    <div className="flex flex-col md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] md:items-center">
+    <div
+      className={`flex flex-col md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] ${
+        align === "start" ? "md:items-start" : "md:items-center"
+      }`}
+    >
       <div
         className={`px-5 md:order-none md:px-10 ${
           islandFirst ? "order-2 mt-8 md:mt-0" : "order-1"
@@ -349,9 +363,24 @@ export function CategoryMap({
   return (
     <KeLayout
       islandFirst
+      align="start"
       index={aside}
       island={
-        <div className="relative">
+        /* The island is pulled up by the height of its own empty top.
+           islandBlobs never reaches the top of the 4:3 box — the highest stop
+           on any of the three regions sits about an eighth of the way down —
+           so the box carries a band of nothing above the artwork. Pulling the
+           island rather than the whole block is what lets the column beside
+           it top-align to the *picture* (09/09: "mép trên list địa điểm để
+           ngang với mép trên bản đồ") instead of to the box.
+
+           10.9% of this column, measured: the column is 65% of the page on a
+           desktop and 75% on a phone, the box is three quarters of that, and
+           the empty band is about an eighth of the box. It is a percentage so
+           it holds at every width; it is off by up to ~28px on the two
+           regions whose highest stop sits a little lower, which is the price
+           of one number for three hand-placed maps. */
+        <div className="relative -mt-[10.9%]">
           {/* On the map's own edges, as drawn: they belong to the map, not to
               a control strip under it, and there is nowhere else to put them
               once the region list is gone. */}
