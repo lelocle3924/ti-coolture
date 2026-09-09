@@ -25,6 +25,7 @@ import DiscoverStudies from "./lab/DiscoverStudies";
 import MapStudies from "./lab/MapStudies";
 import SearchMotionStudies from "./lab/SearchMotionStudies";
 import HeroWaveStudies from "./lab/HeroWaveStudies";
+import CollectionStudies from "./lab/CollectionStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, type ReactNode } from "react";
@@ -250,6 +251,7 @@ const router = createBrowserRouter([
       { path: "lab/map", element: <MapStudies /> },
       { path: "lab/search", element: <SearchMotionStudies /> },
       { path: "lab/hero-wave", element: <HeroWaveStudies /> },
+      { path: "lab/collections", element: <CollectionStudies /> },
 
       /* Renamed 26/08. Kept as redirects so anything already shared or
          bookmarked still lands, rather than bouncing to the homepage. */

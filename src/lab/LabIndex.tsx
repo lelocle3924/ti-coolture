@@ -51,6 +51,13 @@ const STUDIES = [
     body: "Một dải teal chạy suốt từ mép trái sang mép phải, thay cho cái arc đang chỉ vào hư vô. Cùng một đường cong, khác nhau đúng ở chỗ nó động thế nào: vẽ ra một lần, chảy mãi, hay nhồi như sóng biển.",
     meta: "3 phương án · PC + mobile · trang chủ",
   },
+  {
+    to: "/lab/collections",
+    n: "06",
+    title: "Bộ sưu tập — sáu hướng, dựng lại từ UX",
+    body: "Hai câu trả lời cho “bộ sưu tập để làm gì” — Catalogue và Curation — mỗi câu ba hướng, có bản vẽ PC và mobile ở kích thước thật và bảng so sánh ba trục quyết định.",
+    meta: "6 hướng · PC + mobile · /collections",
+  },
 ];
 
 export default function LabIndex() {
