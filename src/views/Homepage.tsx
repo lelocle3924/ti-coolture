@@ -1422,19 +1422,25 @@ function GemBookmark({
 
   return (
     <div
-      className="fixed right-0 top-1/2 z-50 flex w-[21rem] items-start will-change-transform"
+      className="fixed right-0 top-1/2 z-50 flex w-[21rem] items-center will-change-transform"
       style={{
-        /* The object hangs from the chip rather than being centred on itself,
-           so the chip's own centre is on the viewport's midline in every one
-           of the three states — which is what "nhất quán" asks for. Centring
-           the whole object put the chip half a card above the midline the
-           moment the card arrived.
+        /* The chip's centre is on the viewport's midline in every one of the
+           three states — which is what "nhất quán" (08/09) asks for. It used
+           to get there by hanging the whole object from the chip, so the card
+           grew downward from the midline and had half a screen to do it in.
+           A square photograph (09/09) made the card taller than that half and
+           its bottom edge went under the fold.
 
-           The vertical half of this lives in the transform, not in a
-           -translate-y utility: Tailwind v4 compiles those to the standalone
-           `translate` property, which composes with `transform` rather than
-           being overridden by it. */
-        transform: `translate3d(${x}, -${GEM_TAB.h / 2}px, 0)`,
+           items-center plus a -50% here gets the same chip position out of a
+           different arrangement: the object is centred on the midline and the
+           chip is centred within it, so the card grows in both directions and
+           has the whole screen rather than half of it.
+
+           The vertical half lives in the transform, not in a -translate-y
+           utility: Tailwind v4 compiles those to the standalone `translate`
+           property, which composes with `transform` rather than being
+           overridden by it. */
+        transform: `translate3d(${x}, -50%, 0)`,
         transition: reduced ? "none" : `transform ${open ? GEM_IN : GEM_OUT}ms var(--ease-brand)`,
       }}
     >
@@ -1451,9 +1457,12 @@ function GemBookmark({
         <StarIcon className="h-6 w-6" />
       </button>
 
+      {/* The cap is the last guard: on a window too short for the card even
+          centred, the card scrolls rather than running off the edge. Nothing
+          scrolls at ordinary heights. */}
       <div
         aria-hidden={!open}
-        className="min-w-0 flex-1 overflow-hidden bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave"
+        className="max-h-[calc(100dvh-2rem)] min-w-0 flex-1 overflow-y-auto bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave"
       >
         <GemCardBody gem={gem} onOpenProduct={onOpenProduct} />
       </div>
@@ -1521,7 +1530,10 @@ function GemTravellingStar({
         ref={card}
         role="dialog"
         aria-label="Viên ngọc ẩn"
-        className="fixed z-50 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave will-change-transform"
+        /* Same cap as the desktop card. This one grows upward from the
+           bottom inset rather than downward, so it runs out of room at the
+           top instead — the guard is the same either way. */
+        className="fixed z-50 max-h-[calc(100dvh-2rem)] w-[min(340px,calc(100vw-2rem))] overflow-y-auto rounded-[1.5rem] bg-paper text-ink shadow-[0_25px_60px_rgba(18,8,31,0.4)] ring-[3px] ring-wave will-change-transform"
         style={{
           bottom: GEM_CARD_INSET.bottom,
           right: GEM_CARD_INSET.right,
