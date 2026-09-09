@@ -162,8 +162,15 @@ function Collaborate() {
   return (
     <section className="bg-brand-deep px-5 pb-16 pt-6 text-center text-paper md:px-10 md:pb-20">
       <p className="text-[11px] tracking-[0.22em] text-white/75">DÀNH CHO CÁC SHOP</p>
-      <h2 className="display mx-auto mt-4 max-w-[18ch] text-[clamp(1.9rem,4.6vw,3.5rem)] normal-case leading-[1.05]">
-        Bạn làm đồ đẹp? Kể Tí nghe
+      {/* Two lines, always — team 09/09. The question and the invitation are
+          doing different jobs, and at max-w-[18ch] the break landed wherever
+          the measure happened to put it: "Bạn làm đồ đẹp? Kể" / "Tí nghe" at
+          some widths, one line at others. A <br> states it instead of hoping
+          for it. */}
+      <h2 className="display mx-auto mt-4 text-[clamp(1.9rem,4.6vw,3.5rem)] normal-case leading-[1.05]">
+        Bạn làm đồ đẹp?
+        <br />
+        Kể Tí nghe
       </h2>
       <p className="mx-auto mt-4 max-w-[48ch] text-sm leading-relaxed text-white/70">
         Tí không bán hàng và không lấy hoa hồng. Tụi mình chọn, viết, và đưa shop lên trang chủ.
