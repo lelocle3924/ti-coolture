@@ -1568,11 +1568,41 @@ function GemTravellingStar({
   );
 }
 
+/** A different index from the one showing. Falls back when there is only one. */
+function anotherGem(current: number | null, count: number): number {
+  if (count <= 1) return 0;
+  const pool = Array.from({ length: count }, (_, i) => i).filter((i) => i !== current);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const wide = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useState(false);
+
+  /* Team 09/09: "thẻ hidden gem phải được refresh 1 sản phẩm mới ngẫu nhiên
+     mỗi khi người dùng tắt đi và mở ra lại. Sản phẩm hiện ban đầu cũng là
+     ngẫu nhiên."
+
+     Null until the gems land, because they arrive from a fetch: seeding the
+     state with Math.random() * 0 on the first render would pin it to index 0,
+     which is the fixed pick this replaces.
+
+     The re-pick happens on the way *open*, not on the way closed — the card
+     is on screen while it closes, and swapping the product mid-animation
+     would show the change happening. Behind a closed card nobody sees it
+     arrive.
+
+     The first open is the exception: it shows the seed, because that seed is
+     the random pick the note asks for and the card starts closed, so a
+     re-pick on the first open would mean it was never seen at all. */
+  const [index, setIndex] = useState<number | null>(null);
+  const seen = useRef(false);
+
+  useEffect(() => {
+    if (index === null && gems.length > 0) setIndex(anotherGem(null, gems.length));
+  }, [gems.length, index]);
 
   // Team direction (26/08): the tab does the OPPOSITE of the nav. Scrolling
   // down hides the nav and pushes this out; scrolling up brings the nav back
@@ -1580,14 +1610,23 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   // This deliberately reverses UX-TASKS 2.3, which had the tab hiding with the
   // rest of the chrome.
   const { hidden } = useAutoHideChrome({ locked: open });
-  const gem = gems[0];
+  const gem = index === null ? undefined : gems[index];
 
   const toggle = useCallback(() => {
-    setOpen((v) => {
-      if (!v && gem) triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
-      return !v;
-    });
-  }, [gem]);
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    /* The next index is computed here rather than inside a state updater:
+       updaters run twice under StrictMode, and this one both picks a random
+       value and reports it. */
+    const next = seen.current || index === null ? anotherGem(index, gems.length) : index;
+    seen.current = true;
+    setIndex(next);
+    const opening = gems[next];
+    if (opening) triggerWebhook("CURATED_GEM_OPENED", { productId: opening.product.id });
+    setOpen(true);
+  }, [gems, index, open]);
 
   const openProduct = useCallback(() => {
     if (!gem) return;
