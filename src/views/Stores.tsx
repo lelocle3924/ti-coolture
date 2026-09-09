@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { MapPin, Store, ArrowRight, ArrowUpRight, Search } from "lucide-react";
 import { fetchStores, fetchProducts } from "../lib/dbService";
 import { StoreProfile, Product } from "../types";
-import { ArcTopRight, RibbonLoop, WaveStores } from "../components/BrandShapes";
+import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtShopLogo, vtShopCover, vtProductImage } from "../lib/viewTransitions";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
@@ -76,16 +76,26 @@ export default function Stores() {
           fill="var(--color-paper)"
         />
 
-        <div className="relative z-10 mx-auto max-w-7xl px-4 pt-24 pb-4 md:px-8 md:pt-28 md:pb-6">
+        {/* Team 09/09: "Căn giữa title… Khoảng cách từ thanh nav bar đến
+            title phải bằng khoảng cách từ title đến ranh giới."
+
+            Both gaps are stated in pixels because the thing they are measured
+            against is: the nav pill is a fixed height and floats at a fixed
+            offset, so its bottom edge sits at 93px on a desktop and 81px on a
+            phone whatever the page does. Padding-top is that plus the gap;
+            padding-bottom is the gap. Change the pill and these two numbers
+            change with it — there is no way to write this relationship in
+            ems or in a spacing scale.
+
+            Measured against the h1's box rather than its glyphs, which is the
+            same thing here: the box carries equal half-leading top and
+            bottom, so equal box gaps are equal ink gaps. */}
+        <div className="relative z-10 mx-auto max-w-7xl px-4 pb-10 pt-[121px] md:px-8 md:pb-14 md:pt-[149px]">
           {/* leading-[1.25] rather than .display's 1.02 — see index.css on
               how far Vietnamese uppercase reaches in DFVN. */}
-          <h1 className="display max-w-3xl text-4xl normal-case font-medium leading-[1.25] text-paper md:text-6xl">
+          <h1 className="display mx-auto max-w-3xl text-center text-4xl normal-case font-medium leading-[1.25] text-paper md:text-6xl">
             Các bạn đồng hành
           </h1>
-        </div>
-
-        <div className="relative z-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden">
-          <WaveStores className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
         </div>
       </section>
 
