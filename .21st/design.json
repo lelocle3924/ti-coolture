@@ -633,6 +633,65 @@
       "question": "Where does an editor choose what is in a collection, and what it is called?",
       "note": "Team 07/09, recorded at their request: \"sau này nhớ nhắc tôi là phải thêm chỗ trong admin dashboard để chỉnh sửa các sản phẩm xuất hiện trên collections, cũng như chỉnh sửa tên của collections.\" Not built. Today the four collections are generated in src/home/homeData.ts as \"Collection 1\"…\"Collection 4\" with their items sliced from the catalogue, and the homepage says so in type (\"Tên bộ sưu tập là placeholder\"). The editing surface belongs in src/views/ShopDashboard.tsx's admin deck, alongside the moderation queue.",
       "blocks": "Real collection names and curation. Until it exists the names cannot leave placeholder."
+    },
+    {
+      "id": "hero-wave-motion",
+      "status": "open",
+      "date": "2026-09-09",
+      "question": "The teal arc leaves the hero pointing at nothing. A band crossing the whole width replaces it — but does it move once, move forever, or breathe?",
+      "source": "src/lab/HeroWaveStudies.tsx",
+      "compare": "/lab/hero-wave",
+      "note": "Team 09/09: “hiện tại cái arc đang chỉ vào hư vô”. All three draw the SAME curve at the same thickness in the same place, so the only variable is motion. The band is a stroke rather than a filled shape: thickness stays exactly constant through every turn, and it is what makes option 1 possible at all.",
+      "sharedAcrossOptions": [
+        "One hand-drawn curve, 11 nodes through a 1200×120 box, Catmull-Rom",
+        "Thickness 17% of the page height on desktop, 5% on a phone (the note's 15–20% / 5%)",
+        "vector-effect=non-scaling-stroke, so the thickness holds at every window width",
+        "--color-wave only; behind the deck, in front of BrandSurround",
+        "Ends run off both edges; round caps never visible",
+        "prefers-reduced-motion: the band is drawn, and nothing moves",
+        "Ambient options stop when the hero is off screen or the tab is hidden"
+      ],
+      "options": [
+        {
+          "slug": "net-but",
+          "name": "NÉT BÚT",
+          "en": "The Pen Stroke",
+          "recommended": true,
+          "axes": {
+            "when": "once, on arrival — then still forever",
+            "what": "how much of the curve is shown",
+            "mechanism": "stroke-dashoffset, 1700ms, ease-out-expo",
+            "cost": "no rAF at all; the dash comes off when it lands"
+          },
+          "risk": "A one-shot is missed by anyone who lands below the hero, and it is the least memorable of the three on a screenshot."
+        },
+        {
+          "slug": "dong-chay",
+          "name": "DÒNG CHẢY",
+          "en": "The Flow",
+          "axes": {
+            "when": "always",
+            "what": "the curve itself, by translation",
+            "mechanism": "3 harmonics, integer multipliers on both position and phase, so shift+1 is pixel-identical",
+            "cost": "one rAF, 17 samples a frame"
+          },
+          "risk": "A translating curve puts every height at every x eventually, so its right end rises into the ribbon loop and the two teals fuse for a few seconds each loop. Fixing that means a taper, and a taper is no longer a translation. Also: continuous left-to-right motion here, and a marquee drifting the same way two sections down."
+        },
+        {
+          "slug": "song-bien",
+          "name": "SÓNG BIỂN",
+          "en": "The Sea",
+          "axes": {
+            "when": "always",
+            "what": "the height of each node",
+            "mechanism": "amplitude bell across the width: 4 units at the ends, 28 in the middle; two sines per node, deterministic",
+            "cost": "one rAF, 11 samples a frame"
+          },
+          "risk": "The loudest of the three, and it moves next to the deck's own carousel. The quiet ends are what keep it from reading as a banner — raise them and it does."
+        }
+      ],
+      "recommendation": "1 · NÉT BÚT. The hero already has three moving things on it — the deck's carousel, the ribbon's blink, and the marquee below the fold — and BrandSurround's own header argues that the deck is the moving thing on this screen. A band that never stops is a fourth. Drawing itself in once says everything a wave has to say and then gets out of the way, and it is the only option that costs nothing for the rest of the visit. If the team wants the hero to feel alive at rest, 3 · SÓNG BIỂN is the one to take, not 2 — it does not fight the ribbon loop.",
+      "onDecide": "Fold the chosen wave into src/components/BrandSurround.tsx in place of ArcTopRight, delete the other two from src/lab/HeroWaveStudies.tsx, drop the `arc` prop that only the study uses, and set this decision to the chosen slug. The thickness moves from the study's pixel figures to 17vh / 5vh."
     }
   ],
   "evidence": [

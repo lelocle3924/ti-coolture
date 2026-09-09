@@ -44,6 +44,13 @@ const STUDIES = [
     body: "Nền trắng, violet và teal mỗi màu ≥20%, và không một lớp phủ nào lên ảnh của shop. Tỉ lệ được đo thật.",
     meta: "3 phương án · /stores/[slug]",
   },
+  {
+    to: "/lab/hero-wave",
+    n: "05",
+    title: "Con sóng ở hero — ba kiểu chuyển động",
+    body: "Một dải teal chạy suốt từ mép trái sang mép phải, thay cho cái arc đang chỉ vào hư vô. Cùng một đường cong, khác nhau đúng ở chỗ nó động thế nào: vẽ ra một lần, chảy mãi, hay nhồi như sóng biển.",
+    meta: "3 phương án · PC + mobile · trang chủ",
+  },
 ];
 
 export default function LabIndex() {
