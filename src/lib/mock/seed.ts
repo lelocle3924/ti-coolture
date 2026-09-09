@@ -13,14 +13,6 @@
 import type { Database } from "./schema";
 import { placeholderImage } from "./placeholder";
 import {
-  buildExtraImages,
-  buildExtraMaterials,
-  buildExtraProducts,
-  buildFillerImages,
-  describe as describeProduct,
-  dimensionFor,
-} from "./catalogue";
-import {
   REAL_MATERIAL_ROWS,
   realProductImageRows,
   realProductMaterialRows,
@@ -133,122 +125,39 @@ export const seed: Database = {
     { id: "mat-hop-giay", slug: "hop-giay", name_vi: "Hộp giấy", name_en: "Paperboard" },
   ],
 
-  // ⚠ INVENTED — content pack Part B. Six placeholder shops.
-  shops: [
-    ["gom-mu-u", "Gốm Mù U", "Men rạn, nung củi, mỗi cái một khác", "Thủ Đức"],
-    ["xuong-lem", "Xưởng Lem", "In lụa thủ công. Mực lem là chuyện thường.", "Quận 1"],
-    ["chi-do", "Chỉ Đỏ", "Thêu tay trên vải lanh nhuộm chàm", "Chợ Lớn"],
-    ["ben-da-studio", "Bến Đá Studio", "Tượng resin đúc thủ công, mỗi mẻ 30 con", "Bình Thạnh"],
-    ["nha-co-dai", "Nhà Cỏ Dại", "Nến sáp đậu nành, mùi lấy từ chợ quê", "Gò Vấp"],
-    ["muoi-ot-xanh", "Muối Ớt Xanh", "Gia vị vùng miền, đóng lọ nhỏ để tặng", "Tân Bình"],
-  ].map(([slug, name, tagline, area]) => ({
-    id: `shop-${slug}`,
-    slug,
-    name,
-    tagline_vi: tagline,
-    tagline_en: null,
-    story_vi: null,
-    story_en: null,
-    logo_url: placeholderImage("LOGO SHOP"),
-    cover_url: placeholderImage("ẢNH BÌA SHOP", "21:9"),
-    contact_email: null,
-    is_online_only: false,
-    address: null,
-    area_tag: area,
-    status: "published" as const,
-    is_featured: false,
-    created_at: NOW,
-    updated_at: NOW,
-  })),
+  /* The six placeholder shops that used to sit here are gone (09/09), with
+     the products they hosted — see `products` below. Their logos and covers
+     were placeholderImage() blocks too, so keeping them would have left six
+     shops in the directory with a grey cover, a grey logo and nothing to
+     sell. The thirteen photographed shops are unshifted in at the bottom of
+     this file. */
+  shops: [],
 
-  shop_socials: [
-    { id: "soc-1", shop_id: "shop-gom-mu-u", platform: "instagram", url: "https://instagram.com/", handle: null, is_visible: true },
-    { id: "soc-2", shop_id: "shop-xuong-lem", platform: "instagram", url: "https://instagram.com/", handle: null, is_visible: true },
-    { id: "soc-3", shop_id: "shop-chi-do", platform: "tiktok", url: "https://tiktok.com/", handle: null, is_visible: true },
-    { id: "soc-4", shop_id: "shop-ben-da-studio", platform: "instagram", url: "https://instagram.com/", handle: null, is_visible: true },
-    { id: "soc-5", shop_id: "shop-nha-co-dai", platform: "facebook", url: "https://facebook.com/", handle: null, is_visible: true },
-    { id: "soc-6", shop_id: "shop-muoi-ot-xanh", platform: "instagram", url: "https://instagram.com/", handle: null, is_visible: true },
-  ],
+  shop_socials: [],
 
-  // ⚠ INVENTED — content pack Part B. Twelve placeholder products.
-  // The 65k–750k spread is deliberate: cards must survive both extremes.
-  products: (
-    [
-      ["binh-gom-mua-thang-bay", 'Bình gốm "Mưa Tháng Bảy"', "shop-gom-mu-u", "cat-do-gom", 480000, "mat-gom"],
-      ["chen-tra-nung-cui", "Chén trà nung củi (bộ 2)", "shop-gom-mu-u", "cat-dung-cu-an-uong", 320000, "mat-gom"],
-      ["poster-sai-gon-5-gio-sang", 'Poster in lụa "Sài Gòn 5 Giờ Sáng"', "shop-xuong-lem", "cat-tranh-nguyen-ban", 250000, "mat-giay-my-thuat"],
-      ["zine-hem-so-03", 'Zine "Hẻm" số 03', "shop-xuong-lem", "cat-zine", 120000, "mat-giay-tai-che"],
-      ["tui-tote-theu-cham", "Túi tote thêu tay hoa văn Chăm", "shop-chi-do", "cat-phu-kien", 390000, "mat-vai-lanh"],
-      ["khan-bandana-cham", "Khăn bandana nhuộm chàm", "shop-chi-do", "cat-phu-kien", 180000, "mat-cotton-cham"],
-      ["tuong-ca-ong-resin", 'Tượng "Cá Ông" resin xanh ngọc', "shop-ben-da-studio", "cat-do-choi-thu-bong", 750000, "mat-resin"],
-      ["moc-khoa-thuyen-thung", 'Móc khoá "Thuyền Thúng"', "shop-ben-da-studio", "cat-moc-khoa", 95000, "mat-resin"],
-      ["nen-cho-som-180g", 'Nến "Chợ Sớm" 180g', "shop-nha-co-dai", "cat-nen-thom", 285000, "mat-sap-dau-nanh"],
-      ["xa-phong-bo-ket", "Xà phòng bồ kết", "shop-nha-co-dai", "cat-tam-goi", 85000, "mat-dau-dua"],
-      ["muoi-ot-xanh-phu-quoc", "Muối ớt xanh Phú Quốc", "shop-muoi-ot-xanh", "cat-dac-san", 65000, "mat-thuy-tinh"],
-      ["hop-qua-4-vi-gia-vi", "Hộp quà 4 vị gia vị miền", "shop-muoi-ot-xanh", "cat-dac-san", 340000, "mat-hop-giay"],
-    ] as const
-  ).map(([slug, name, shopId, categoryId, price], i) => ({
-    id: `prod-${slug}`,
-    shop_id: shopId,
-    category_id: categoryId,
-    slug,
-    name_vi: name,
-    name_en: null,
-    short_desc_vi: null,
-    short_desc_en: null,
-    story_vi: null,
-    story_en: null,
-    price_vnd: price,
-    price_note_vi: PRICE_NOTE,
-    price_updated_at: "2026-08-01",
-    dimensions: null,
-    status: "published" as const,
-    is_featured: i < 4,
-    published_at: NOW,
-    created_at: NOW,
-    updated_at: NOW,
-    variants: [],
-  })),
+  /* Empty on purpose since 09/09: "xoá các sản phẩm mock mà hình ảnh đang
+     để là placeholder… Tôi muốn thấy ảnh sản phẩm thực sự thì sẽ render chỗ
+     hidden gems như thế nào."
 
-  product_images: [
-    "binh-gom-mua-thang-bay",
-    "chen-tra-nung-cui",
-    "poster-sai-gon-5-gio-sang",
-    "zine-hem-so-03",
-    "tui-tote-theu-cham",
-    "khan-bandana-cham",
-    "tuong-ca-ong-resin",
-    "moc-khoa-thuyen-thung",
-    "nen-cho-som-180g",
-    "xa-phong-bo-ket",
-    "muoi-ot-xanh-phu-quoc",
-    "hop-qua-4-vi-gia-vi",
-  ].map((slug, i) => ({
-    id: `img-${slug}`,
-    product_id: `prod-${slug}`,
-    url: placeholderImage("ẢNH SẢN PHẨM 1:1"),
-    alt_vi: "Ảnh sản phẩm mẫu — chưa có ảnh thật",
-    alt_en: "Sample product image — real photography pending",
-    is_cover: true,
-    sort_order: i,
-    width: 1200,
-    height: 1200,
-  })),
+     There were twelve rows here and sixty-five more in src/lib/mock/catalogue.ts,
+     and every one of them rendered as a labelled --paper-warm block reading
+     "ẢNH SẢN PHẨM 1:1". That was the right answer while there was no
+     photography — docs/01-ART-DIRECTION-BRIEF.md §8 bans stock, so an
+     unfilled slot states what it is waiting for. It stopped being the right
+     answer once thirteen shops sent real photographs: a grey block tells you
+     nothing about how a card, a gem or a rail actually looks.
 
-  product_materials: [
-    { product_id: "prod-binh-gom-mua-thang-bay", material_id: "mat-gom" },
-    { product_id: "prod-chen-tra-nung-cui", material_id: "mat-gom" },
-    { product_id: "prod-poster-sai-gon-5-gio-sang", material_id: "mat-giay-my-thuat" },
-    { product_id: "prod-zine-hem-so-03", material_id: "mat-giay-tai-che" },
-    { product_id: "prod-tui-tote-theu-cham", material_id: "mat-vai-lanh" },
-    { product_id: "prod-khan-bandana-cham", material_id: "mat-cotton-cham" },
-    { product_id: "prod-tuong-ca-ong-resin", material_id: "mat-resin" },
-    { product_id: "prod-moc-khoa-thuyen-thung", material_id: "mat-resin" },
-    { product_id: "prod-nen-cho-som-180g", material_id: "mat-sap-dau-nanh" },
-    { product_id: "prod-xa-phong-bo-ket", material_id: "mat-dau-dua" },
-    { product_id: "prod-muoi-ot-xanh-phu-quoc", material_id: "mat-thuy-tinh" },
-    { product_id: "prod-hop-qua-4-vi-gia-vi", material_id: "mat-hop-giay" },
-  ],
+     catalogue.ts is deleted rather than left unimported. The catalogue is 60
+     products now, which is still two pages at 36 a page, so the paging it
+     was built to exercise is still exercised.
+
+     placeholderImage() stays. It is still what an unfilled slot renders as
+     for any shop that has not sent a picture yet. */
+  products: [],
+
+  product_images: [],
+
+  product_materials: [],
 
   // ⚠ INVENTED — content pack Part B. Three placeholder routes.
   routes: [
@@ -329,12 +238,18 @@ export const seed: Database = {
   })),
 
   // ⚠ INVENTED — content pack Part B, "3 nội dung Hidden Gems".
+  /* ⚠ INVENTED editorial notes, same standing as the rest of this file.
+     All three used to point at placeholder products, so the card the 09/09
+     note is asking about — "Tôi muốn thấy ảnh sản phẩm thực sự thì sẽ render
+     chỗ hidden gems như thế nào" — could only ever show a grey block. Three
+     photographed products from three different shops now, so opening the
+     card twice shows two real pictures. */
   featured_items: [
     {
       id: "gem-1",
       placement: "hidden_gem",
-      product_id: "prod-binh-gom-mua-thang-bay",
-      note_vi: "Cái bình này Tí giữ lại một cái cho mình. Nói vậy đủ hiểu.",
+      product_id: "prod-so-tay-da-bo-khoa-gai",
+      note_vi: "Da bò khâu tay. Dùng vài tháng là quyển sổ lên màu của riêng bạn.",
       note_en: null,
       sort_order: 1,
       is_active: true,
@@ -342,8 +257,8 @@ export const seed: Database = {
     {
       id: "gem-2",
       placement: "hidden_gem",
-      product_id: "prod-zine-hem-so-03",
-      note_vi: "Zine bán hết trong 3 ngày mỗi lần ra số. Số 03 vừa in lại.",
+      product_id: "prod-nen-ca-phe-sua-da",
+      note_vi: "Mùi cà phê sữa đá, đựng trong đúng cái ly quen thuộc.",
       note_en: null,
       sort_order: 2,
       is_active: true,
@@ -351,8 +266,8 @@ export const seed: Database = {
     {
       id: "gem-3",
       placement: "hidden_gem",
-      product_id: "prod-tuong-ca-ong-resin",
-      note_vi: "Chỉ làm 30 con mỗi mẻ. Mẻ này còn 7.",
+      product_id: "prod-den-ban-nam-do",
+      note_vi: "Bật lên một cái là góc bàn đổi hẳn tông.",
       note_en: null,
       sort_order: 3,
       is_active: true,
@@ -455,17 +370,16 @@ export const seed: Database = {
     },
   ],
 
+  /* Re-pointed 09/09 onto photographed products. Nothing renders these
+     yet — fetchCollections has no caller, and the homepage builds its own
+     placeholder collections in src/home/homeData.ts — but a row pointing at
+     a deleted product is a trap for whoever wires the real page up. */
   collection_products: [
-    { collection_id: "coll-gom", product_id: "prod-binh-gom-mua-thang-bay", sort_order: 1 },
-    { collection_id: "coll-gom", product_id: "prod-chen-tra-nung-cui", sort_order: 2 },
-    { collection_id: "coll-in-an", product_id: "prod-poster-sai-gon-5-gio-sang", sort_order: 1 },
-    { collection_id: "coll-in-an", product_id: "prod-zine-hem-so-03", sort_order: 2 },
-    { collection_id: "coll-qua-tang", product_id: "prod-moc-khoa-thuyen-thung", sort_order: 1 },
-    { collection_id: "coll-qua-tang", product_id: "prod-xa-phong-bo-ket", sort_order: 2 },
-    { collection_id: "coll-qua-tang", product_id: "prod-muoi-ot-xanh-phu-quoc", sort_order: 3 },
-    { collection_id: "coll-qua-tang", product_id: "prod-khan-bandana-cham", sort_order: 4 },
-    { collection_id: "coll-cho-lon", product_id: "prod-tui-tote-theu-cham", sort_order: 1 },
-    { collection_id: "coll-cho-lon", product_id: "prod-khan-bandana-cham", sort_order: 2 },
+    { collection_id: "coll-gom", product_id: "prod-vit-gom-hoa-tiet-xanh", sort_order: 1 },
+    { collection_id: "coll-in-an", product_id: "prod-tranh-di-nhe-noi-khe", sort_order: 1 },
+    { collection_id: "coll-qua-tang", product_id: "prod-moc-khoa-tron-ven", sort_order: 1 },
+    { collection_id: "coll-qua-tang", product_id: "prod-thiep-mica-du-day-hanh-phuc", sort_order: 2 },
+    { collection_id: "coll-cho-lon", product_id: "prod-so-tay-da-bo-bo-mau", sort_order: 1 },
   ],
 
   site_settings: [
@@ -479,24 +393,6 @@ export const seed: Database = {
   click_events: [],
 };
 
-/* ── catalogue-scale extension (2026-08-21) ───────────────────────────────
-   The original twelve rows stay exactly as written; everything below is
-   appended so the catalogue can be judged at real scale. See
-   src/lib/mock/catalogue.ts for why, and for the same INVENTED warning. */
-
-const baseCount = seed.products.length;
-
-seed.products.forEach((row, i) => {
-  if (!row.short_desc_vi) {
-    row.short_desc_vi = describeProduct(row.name_vi, row.shop_id, row.category_id, i);
-  }
-  if (!row.dimensions) row.dimensions = dimensionFor(row.category_id, i);
-});
-
-seed.products.push(...buildExtraProducts(baseCount));
-seed.product_images.push(...buildExtraImages());
-seed.product_images.push(...buildFillerImages(seed.products.slice(0, baseCount).map((p) => p.id)));
-seed.product_materials.push(...buildExtraMaterials());
 
 /* ── the photographed shops (2026-08-28) ──────────────────────────────────
    Thirteen real shops with their own photography, from the drop the team
