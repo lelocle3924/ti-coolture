@@ -1338,7 +1338,13 @@ function GemCardBody({
 }) {
   return (
     <>
-      <div className="relative aspect-video overflow-hidden bg-paper-warm">
+      {/* Square, because that is the ratio the product photographs are shot
+          at — the same 26/08 decision the catalogue tiles and What's in store
+          are built on. This box was 16:9, which cropped the top and bottom
+          off every gem. It went unnoticed for as long as the gems pointed at
+          placeholder blocks: any crop of a flat grey block looks like any
+          other. Real photographs made it visible the same day they landed. */}
+      <div className="relative aspect-square overflow-hidden bg-paper-warm">
         <img
           src={gem.product.images[0]}
           alt={gem.product.name}
