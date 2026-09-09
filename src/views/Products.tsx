@@ -4,7 +4,7 @@ import { Check, ArrowRight, ChevronDown, Search, X } from "lucide-react";
 import { fetchCategoryTree, fetchProducts, triggerWebhook } from "../lib/dbService";
 import SaveButton from "../components/SaveButton";
 import { CategoryNode, Product } from "../types";
-import { ArcTopRight, RibbonLoop, WaveProducts } from "../components/BrandShapes";
+import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { vtProductImage } from "../lib/viewTransitions";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
@@ -654,8 +654,9 @@ export default function Products() {
           starts at y=0 — the negative margin cancels the shell's pt-24
           clearance and the section re-adds it as its own padding — so the
           pill floats on violet instead of on the shell's ink, which is the
-          black band the note calls out. The band is then only as tall as the
-          title needs, and WaveProducts closes it into the paper below. */}
+          black band the note calls out. The band is only as tall as the title
+          and its two equal gaps need, and it ends on a straight line — the
+          wave that used to close it into the paper came off on 09/09. */}
       <section data-surface="dark" className="relative z-10 overflow-hidden bg-brand text-paper">
         {/* The faded identity, as /stores carries it — team 08/09: "Thêm brand
             identity đã làm mờ giống bên /stores." This hero had one arc and
@@ -678,23 +679,27 @@ export default function Products() {
           fill="var(--color-wave)"
         />
 
-        <div className="relative z-10 px-4 pt-24 pb-3 md:px-8 md:pt-28 md:pb-5">
+        {/* Team 09/09, the same note /stores got: the violet ends on a line,
+            and the title sits the same distance from the nav pill as from
+            that line.
+
+            Both gaps are stated in pixels because the thing they are measured
+            against is: the pill is a fixed height floating at a fixed offset,
+            so its bottom edge is at 93px on a desktop and 81px on a phone
+            whatever the page does. Padding-top is that plus the gap;
+            padding-bottom is the gap. There is no way to write that
+            relationship in a spacing scale.
+
+            The wave seam that used to close this band is gone with it. It was
+            the paper below reaching up — a good device, and not one that
+            survives a straight boundary. */}
+        <div className="relative z-10 px-4 pb-10 pt-[121px] md:px-8 md:pb-14 md:pt-[149px]">
           {/* leading-[1.25], not the .display default of 1.02: uppercase
               Vietnamese spans ~1.18em in DFVN (see the note in index.css), so
               Ả and Ẩ lose their marks at anything tighter. */}
           <h1 className="display text-center text-4xl normal-case font-medium leading-[1.25] text-paper md:text-6xl">
             Sản phẩm
           </h1>
-        </div>
-
-        {/* The seam, not a decoration: this is the paper below reaching up.
-            The band is height-capped and the SVG hangs off its bottom, so the
-            curve keeps its drawn proportions and the wrapper crops the flat
-            run off the top — squashing the viewBox would draw a different
-            curve (same technique as WaveBottom). Team 26/08: the violet is
-            only ever as tall as the title needs. */}
-        <div className="relative z-10 -mb-px h-[clamp(2.5rem,5vw,4.5rem)] overflow-hidden">
-          <WaveProducts className="absolute inset-x-0 bottom-0" fill="var(--color-paper)" />
         </div>
       </section>
 
