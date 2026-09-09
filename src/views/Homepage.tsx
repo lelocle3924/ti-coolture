@@ -480,8 +480,23 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
           ref={cardRef}
           className="relative mx-auto w-full touch-pan-y [--hero-cap:100%] [--hero-reserve:8.25rem] md:[--hero-cap:74.6%] md:[--hero-reserve:9.75rem]"
           style={{
-            ["--hero-ar" as string]:
-              "clamp(1.25, calc(1.25 + (100vw - 375px) / 1562.5px), 1.7778)",
+            /* 16:9 at every width, chosen 09/09 off the demo on
+               demo/hero-deck-16-9-mobile.
+
+               What it replaces is option C from /lab/hero (07/09): a ramp
+               from 5:4 at 375px to 16:9 at 1200, so that no width existed
+               where the shape jumped because the window moved a pixel. The
+               ramp's reason was that a phone could not afford a 16:9 deck;
+               seeing it, the team decided it can.
+
+               Flat rather than pinned below md, and that is not a widened
+               scope — it is the only continuous form. The ramp only ever
+               bridged 375→1200, and ≥1200 was already 16:9. Pinning the
+               phone alone would leave 1.7778 at 767px and 1.5015 at 768px —
+               a jump at the breakpoint — and make a tablet narrower than both
+               a phone and a desktop. So the ramp goes rather than gets a
+               second exception; ≥1200 is unchanged. */
+            ["--hero-ar" as string]: "1.7778",
             aspectRatio: "var(--hero-ar)",
             /* Two caps, whichever bites first.
 
