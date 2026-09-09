@@ -67,7 +67,7 @@ export interface Product {
   /** The kind of product — a leaf of the taxonomy, e.g. "Đèn". */
   category: string;
   categorySlug: string;
-  /** The group that kind sits in, e.g. "Nhà cửa". Both, because /products
+  /** The group that kind sits in, e.g. "Nội thất". Both, because /products
       tabs by group and chips by kind, and the card names the kind. */
   categoryGroup: string;
   categoryGroupSlug: string;
