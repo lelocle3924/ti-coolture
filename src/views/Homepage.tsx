@@ -447,7 +447,16 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
   return (
     <section
       id="dong-hero"
-      className="relative overflow-hidden bg-brand px-5 pb-7 pt-[6.5rem] md:px-10 md:pt-32 lg:px-12"
+      /* pb-2 below md, not pb-7. Team 10/09: "giảm khoảng cách từ thanh
+         slider dưới cái chrome chỗ hero đến title What's in store trên
+         mobile. Giảm còn 1 nửa."
+
+         That gap is two paddings, not one — 40px of it is this foot and 40px
+         is the store section's head — so halving it means halving both, 20px
+         each. 28px here reads as 40 because the dot row carries its own
+         margin above this padding; taking 20 off leaves pb-2. Desktop keeps
+         pb-7. */
+      className="relative overflow-hidden bg-brand px-5 pb-2 pt-[6.5rem] md:px-10 md:pb-7 md:pt-32 lg:px-12"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
@@ -958,7 +967,9 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
          on a phone, where half a band is only ~30px. It reads larger than the
          old md:pb-24, but the band no longer adds its own ~113px on top, so
          the gap from the note down to the seam roughly halves. */
-      className="bg-brand pb-[max(4rem,7.875%)] pt-10 text-paper md:pt-12"
+      /* pt-5 below md — the other half of the 10/09 gap. See the note on
+         the hero section's pb. */
+      className="bg-brand pb-[max(4rem,7.875%)] pt-5 text-paper md:pt-12"
     >
       {/* the title *is* the link through to the catalogue */}
       <div className="px-5 text-center md:px-10">
