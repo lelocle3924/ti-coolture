@@ -1,4 +1,5 @@
-import { ArcTopRight, RibbonLoop } from "./BrandShapes";
+import { RibbonLoop } from "./BrandShapes";
+import HeroWave from "./HeroWave";
 
 /**
  * The identity layer that sits in the violet field around the hero.
@@ -51,6 +52,9 @@ import { ArcTopRight, RibbonLoop } from "./BrandShapes";
    diffed against each other without reading the JSX. All values are
    percentages of the hero section. */
 const PLATE = { left: 0, top: 21.4, width: 9.9, height: 54 };
+/* Kept as the record of the arc the 07/09 drawing asked for, which the band
+   replaced on 09/09. Not referenced any more; see the note at its old site. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ARC = { left: -8.0, top: 69.5, width: 67.0 };
 const LOOP = { right: -18.0, top: -13.5, width: 32.4 };
 
@@ -89,18 +93,18 @@ function WaveOnEnd({ className = "" }: { className?: string }) {
 
 export default function BrandSurround({
   className = "",
-  arc = true,
+  mark = "wave",
 }: {
   className?: string;
   /**
-   * Draw the arc sweeping out of the bottom-left corner.
+   * What crosses the lower half of the field.
    *
-   * False only in src/lab/HeroWaveStudies.tsx (09/09), where the arc is the
-   * thing being replaced — "cái arc đang chỉ vào hư vô" — and the study needs
-   * the rest of the surround exactly as the homepage draws it rather than a
-   * lookalike. The homepage passes nothing and keeps the arc.
+   * "wave" is the page: direction C from /lab/hero-wave, pinned to the foot
+   * of the white plate. "none" is that study itself, which brings its own
+   * three waves and needs the rest of the surround exactly as the homepage
+   * draws it rather than a lookalike.
    */
-  arc?: boolean;
+  mark?: "wave" | "none";
 }) {
   return (
     <div
@@ -129,22 +133,20 @@ export default function BrandSurround({
         <WaveOnEnd className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)]" />
       </div>
 
-      {/* ── left: the arc over both ──────────────────────────────────────
-          Sized by width, so its own 555:597 ratio sets the height. It is
-          pushed down and left far enough that only the descending limb is
-          inside the field — the rest leaves through the bottom-left corner,
-          which is what the drawing shows. */}
-      {arc && (
-        <ArcTopRight
-          className="absolute rotate-180"
-          style={{
-            left: `${ARC.left}%`,
-            top: `${ARC.top}%`,
-            width: `${ARC.width}%`,
-          }}
-          fill="var(--color-wave)"
-        />
-      )}
+      {/* ── the band across the field ────────────────────────────────────
+          What used to be here was an arc pushed down and left until only its
+          descending limb was inside the field. Team 09/09: "hiện tại cái arc
+          đang chỉ vào hư vô" — and it did, being a fragment of a shape whose
+          rest was off the page, so the eye followed it out of the frame and
+          found no reason for the trip.
+
+          The band that replaces it crosses the whole width and does a second
+          job on the way: both its ends rest on 75.4%, which is where the
+          white plate above stops, so the plate's bare horizontal edge is
+          inside the stroke rather than sitting on the violet unexplained.
+          ARC's measurements are kept below as the record of what the
+          drawing asked for before this. */}
+      {mark === "wave" && <HeroWave />}
 
       {/* ── top right: the loop, twice the size, a quarter turn anticlockwise
           The offsets are not arbitrary. The deck covers everything but a

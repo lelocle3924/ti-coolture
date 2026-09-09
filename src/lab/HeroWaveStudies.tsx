@@ -471,7 +471,7 @@ function HeroMock({
         ["--wave-top" as string]: phone ? "44%" : "46%",
       }}
     >
-      <BrandSurround arc={false} />
+      <BrandSurround mark="none" />
       {wave}
 
       {deck && (

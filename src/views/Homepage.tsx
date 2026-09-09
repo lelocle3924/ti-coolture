@@ -162,8 +162,15 @@ function Collaborate() {
   return (
     <section className="bg-brand-deep px-5 pb-16 pt-6 text-center text-paper md:px-10 md:pb-20">
       <p className="text-[11px] tracking-[0.22em] text-white/75">DÀNH CHO CÁC SHOP</p>
-      <h2 className="display mx-auto mt-4 max-w-[18ch] text-[clamp(1.9rem,4.6vw,3.5rem)] normal-case leading-[1.05]">
-        Bạn làm đồ đẹp? Kể Tí nghe
+      {/* Two lines, always — team 09/09. The question and the invitation are
+          doing different jobs, and at max-w-[18ch] the break landed wherever
+          the measure happened to put it: "Bạn làm đồ đẹp? Kể" / "Tí nghe" at
+          some widths, one line at others. A <br> states it instead of hoping
+          for it. */}
+      <h2 className="display mx-auto mt-4 text-[clamp(1.9rem,4.6vw,3.5rem)] normal-case leading-[1.05]">
+        Bạn làm đồ đẹp?
+        <br />
+        Kể Tí nghe
       </h2>
       <p className="mx-auto mt-4 max-w-[48ch] text-sm leading-relaxed text-white/70">
         Tí không bán hàng và không lấy hoa hồng. Tụi mình chọn, viết, và đưa shop lên trang chủ.
@@ -1331,7 +1338,13 @@ function GemCardBody({
 }) {
   return (
     <>
-      <div className="relative aspect-video overflow-hidden bg-paper-warm">
+      {/* Square, because that is the ratio the product photographs are shot
+          at — the same 26/08 decision the catalogue tiles and What's in store
+          are built on. This box was 16:9, which cropped the top and bottom
+          off every gem. It went unnoticed for as long as the gems pointed at
+          placeholder blocks: any crop of a flat grey block looks like any
+          other. Real photographs made it visible the same day they landed. */}
+      <div className="relative aspect-square overflow-hidden bg-paper-warm">
         <img
           src={gem.product.images[0]}
           alt={gem.product.name}
@@ -1561,11 +1574,41 @@ function GemTravellingStar({
   );
 }
 
+/** A different index from the one showing. Falls back when there is only one. */
+function anotherGem(current: number | null, count: number): number {
+  if (count <= 1) return 0;
+  const pool = Array.from({ length: count }, (_, i) => i).filter((i) => i !== current);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const wide = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useState(false);
+
+  /* Team 09/09: "thẻ hidden gem phải được refresh 1 sản phẩm mới ngẫu nhiên
+     mỗi khi người dùng tắt đi và mở ra lại. Sản phẩm hiện ban đầu cũng là
+     ngẫu nhiên."
+
+     Null until the gems land, because they arrive from a fetch: seeding the
+     state with Math.random() * 0 on the first render would pin it to index 0,
+     which is the fixed pick this replaces.
+
+     The re-pick happens on the way *open*, not on the way closed — the card
+     is on screen while it closes, and swapping the product mid-animation
+     would show the change happening. Behind a closed card nobody sees it
+     arrive.
+
+     The first open is the exception: it shows the seed, because that seed is
+     the random pick the note asks for and the card starts closed, so a
+     re-pick on the first open would mean it was never seen at all. */
+  const [index, setIndex] = useState<number | null>(null);
+  const seen = useRef(false);
+
+  useEffect(() => {
+    if (index === null && gems.length > 0) setIndex(anotherGem(null, gems.length));
+  }, [gems.length, index]);
 
   // Team direction (26/08): the tab does the OPPOSITE of the nav. Scrolling
   // down hides the nav and pushes this out; scrolling up brings the nav back
@@ -1573,14 +1616,23 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
   // This deliberately reverses UX-TASKS 2.3, which had the tab hiding with the
   // rest of the chrome.
   const { hidden } = useAutoHideChrome({ locked: open });
-  const gem = gems[0];
+  const gem = index === null ? undefined : gems[index];
 
   const toggle = useCallback(() => {
-    setOpen((v) => {
-      if (!v && gem) triggerWebhook("CURATED_GEM_OPENED", { productId: gem.product.id });
-      return !v;
-    });
-  }, [gem]);
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    /* The next index is computed here rather than inside a state updater:
+       updaters run twice under StrictMode, and this one both picks a random
+       value and reports it. */
+    const next = seen.current || index === null ? anotherGem(index, gems.length) : index;
+    seen.current = true;
+    setIndex(next);
+    const opening = gems[next];
+    if (opening) triggerWebhook("CURATED_GEM_OPENED", { productId: opening.product.id });
+    setOpen(true);
+  }, [gems, index, open]);
 
   const openProduct = useCallback(() => {
     if (!gem) return;
