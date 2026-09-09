@@ -16,16 +16,37 @@ import {
 /**
  * Trang shop — /stores/:storeId
  *
- * Team direction (26/08): the "MỞ RA" layout explored as product-page
- * direction 2 is right, but not for a product — it belongs here. So this page
- * takes it: the cover opens full-bleed with the shop's name set over it, the
- * story and the details are read underneath, and a rail stays docked at the
- * bottom at every width with the shop's own channel in it.
+ * Direction C from /lab/shop-colour — "Chia đôi" — picked by the team on
+ * 09/09, with one correction: "tiết chế việc dùng màu teal làm background quá
+ * nhiều, chỉ cần chiếm 10% tổng diện tích thôi cũng được. màu violet chiếm
+ * 20% ok."
  *
- * It suits a shop better than a product for a simple reason: a shop cover is
- * shot landscape (21:9 desktop / 3:2 mobile per UX-TASKS 6.1), which is the
- * ratio that layout wants. A product photograph is square, and forcing it to
- * 21:9 cropped the top and bottom off the piece.
+ * So the page is:
+ *
+ *     ┌──────────────┬──────────────────────┐
+ *     │  violet      │  the cover, whole    │   the split
+ *     │  name, place │  no crop, no scrim   │
+ *     └──────────────┴──────────────────────┘
+ *     ═══════════ teal rule ═══════════════════
+ *      paper — the story, the details, the products
+ *     ═══════════ teal band ═══════════════════   the notes
+ *
+ * Two things changed from the page this replaces, and both are the point.
+ *
+ * The cover no longer carries the shop's name. It used to be full-bleed with
+ * two gradients laid over it so the name had something to sit on, which is
+ * the one thing /lab/shop-colour was set up to stop: a shop's photograph is
+ * the shop's, and a scrim is a page taking a photograph and using it as a
+ * ground. The name has a violet field of its own now, beside the picture
+ * rather than on top of it.
+ *
+ * And the page ground is paper, not violet. Everything below the split — the
+ * story, the details, the grid — reads on white, which is what makes 20%
+ * violet a proportion rather than a description of the whole page.
+ *
+ * Teal comes to two marks: the rule under the split, and the band that
+ * carries the price note at the end. C in the lab spent 22% of the frame on
+ * it, mostly as a field behind the product grid; that field is gone.
  */
 
 function useShopPage(storeId: string | undefined) {
@@ -67,7 +88,7 @@ function ShopCard({ product }: { product: Product }) {
         className="block"
       >
         {/* square and rounded, matching What's in store on the homepage */}
-        <div className="relative aspect-square overflow-hidden rounded-[1.25rem] bg-white/10">
+        <div className="relative aspect-square overflow-hidden rounded-[1.25rem] bg-black/5">
           <img
             ref={ref}
             src={product.images?.[0]}
@@ -76,10 +97,10 @@ function ShopCard({ product }: { product: Product }) {
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
-        <h3 className="pt-2.5 text-sm leading-snug text-paper transition-colors group-hover:text-wave">
+        <h3 className="pt-2.5 text-sm leading-snug text-ink transition-colors group-hover:text-brand">
           {product.name}
         </h3>
-        <p className="pt-0.5 text-sm font-semibold text-wave">{formatPrice(product.price)}</p>
+        <p className="pt-0.5 text-sm font-semibold text-brand">{formatPrice(product.price)}</p>
       </ContinuityLink>
 
       {/* everywhere a product photograph is (07/09) */}
@@ -144,128 +165,104 @@ export default function ShopDisplay() {
 
   return (
     /* The same move /products, /stores and /discover already make: the shell
-       clears the floating nav pill with pt-24, and a page whose first element
-       is a photograph has to give that back or the pill sits on a strip of the
-       shell's own ink — the black bar above the cover in the 07/09 feedback.
-       The cover runs to y=0 now and the pill floats on the photograph, which
-       is what it is built to do. */
-    <div className="min-h-[100dvh] -mt-24 bg-brand pb-24 text-paper md:-mt-28">
-      {/* ── the opening frame ─────────────────────────────────────────── */}
-      <header className="relative" data-surface="dark">
-        {/* 5:4 on phones rather than the 3:2 of UX-TASKS 6.1. That spec was
-            written when a black band held the nav and the whole cover was
-            free; with the pill and the back link now floating on the
-            photograph, 3:2 leaves 260px at 390 wide and the shop name lands
-            6px under the back link — it fits today and breaks on the first
-            name that wraps. 5:4 buys 52px and costs 17% of the source's
-            width, which is the cheapest crop that makes the frame breathe.
-            Desktop is untouched: 21:9 is tall enough to carry both. */}
-        <div className="relative aspect-[5/4] w-full overflow-hidden bg-brand-deep md:aspect-[21/9]">
-          <img
-            src={store.coverUrl}
-            alt={`Ảnh bìa của ${store.name}`}
-            className="h-full w-full object-cover"
-          />
-
-          {/* Colour, per the same note. The scrim used to be three stops of
-              near-black over the whole frame, which left every cover reading
-              as a muddy grey plate with no relation to the violet page under
-              it — and the team have already ruled black grounds out once
-              (26/08, the district map).
-
-              So the scrim is the palette's own deep violet, and it resolves to
-              exactly --color-brand at the bottom edge: the photograph does not
-              stop at a hard line, it becomes the page. Above 55% it is gone
-              altogether, so the top half of the cover is a photograph again.
-
-              Two layers rather than one because they do different jobs — the
-              lower one carries the name, the short upper one gives the nav
-              pill something to sit on over a bright cover. */}
+       clears the floating nav pill with pt-24, and the page gives it back so
+       the split runs to y=0 and the pill floats on the violet half rather
+       than on a strip of the shell's own ink. */
+    <div className="min-h-[100dvh] -mt-24 bg-paper pb-28 text-ink md:-mt-28">
+      {/* ── the split ──────────────────────────────────────────────────── */}
+      <header className="relative">
+        <div className="flex flex-col md:h-[clamp(26rem,68vh,38rem)] md:flex-row">
+          {/* The violet half. justify-end, so the block of type sits on the
+              bottom edge and the empty violet above it is what the nav pill
+              floats on — the pill is centred and would otherwise land on the
+              shop's name. */}
           <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to top, var(--color-brand) 0%, color-mix(in srgb, var(--color-brand-deep) 78%, transparent) 26%, transparent 55%)",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-deep/55 to-transparent"
-          />
+            data-surface="dark"
+            className="relative order-2 flex flex-col justify-end bg-brand px-5 pb-8 pt-8 text-paper md:order-1 md:w-[46%] md:px-10 md:pb-12 md:pt-32"
+          >
+            {store.logoUrl && (
+              <img
+                src={store.logoUrl}
+                alt=""
+                className="h-14 w-14 rounded-2xl border border-white/25 object-cover md:h-16 md:w-16"
+              />
+            )}
 
-          <div className="absolute inset-x-0 bottom-0 p-5 pb-7 md:p-10 md:pb-12">
-            <div className="mx-auto flex max-w-6xl items-end gap-4">
-              {store.logoUrl && (
-                <img
-                  src={store.logoUrl}
-                  alt=""
-                  className="hidden h-16 w-16 shrink-0 rounded-2xl border border-white/25 object-cover sm:block"
-                />
-              )}
-              <div className="min-w-0 space-y-2">
-                <p className="label text-wave">{store.address || "Việt Nam"}</p>
-                <h1 className="display max-w-3xl text-4xl leading-[1.05] normal-case md:text-6xl">
-                  {store.name}
-                </h1>
-                {store.vibe && (
-                  <p className="max-w-2xl text-sm text-white/80 md:text-base">{store.vibe}</p>
-                )}
-              </div>
-            </div>
+            <p className="label mt-4 text-wave">{store.address || "Việt Nam"}</p>
+            <h1 className="display mt-1.5 text-4xl normal-case leading-[1.08] md:text-5xl">
+              {store.name}
+            </h1>
+            {store.vibe && (
+              <p className="mt-3 max-w-[40ch] text-sm leading-relaxed text-white/80 md:text-base">
+                {store.vibe}
+              </p>
+            )}
+
+            {/* Below the pill, and on the violet rather than on the shop's
+                photograph — which is the whole argument of this direction. */}
+            <Link
+              to="/stores"
+              className="absolute left-5 top-24 inline-flex items-center gap-1.5 rounded-full border border-white/25 px-3 py-1.5 text-[11px] text-paper transition-colors hover:border-wave hover:text-wave md:left-10 md:top-28"
+            >
+              <ArrowLeft className="h-3 w-3" /> Danh bạ shop
+            </Link>
           </div>
 
-          {/* Below the pill, not beside it: the cover starts at y=0 now, so
-              top-5 would put this under the nav. */}
-          <Link
-            to="/stores"
-            className="absolute left-5 top-24 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-brand-deep/45 px-3 py-1.5 text-[11px] text-paper backdrop-blur-md transition-colors hover:border-wave hover:bg-brand-deep/70 hover:text-wave md:left-10 md:top-28"
-          >
-            <ArrowLeft className="h-3 w-3" /> Danh bạ shop
-          </Link>
+          {/* The photograph, whole. No crop beyond the box, no scrim, nothing
+              set over it. 5:4 on a phone, and on a desktop it simply fills
+              its half of the split. */}
+          <div className="order-1 aspect-[5/4] w-full overflow-hidden bg-brand-deep md:order-2 md:aspect-auto md:h-full md:w-[54%]">
+            <img
+              src={store.coverUrl}
+              alt={`Ảnh bìa của ${store.name}`}
+              className="h-full w-full object-cover"
+            />
+          </div>
         </div>
+
+        {/* Teal, mark one of two. */}
+        <div aria-hidden="true" className="h-1.5 w-full bg-wave md:h-2" />
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-14 px-5 py-12 md:px-10">
+      <main data-surface="light" className="mx-auto max-w-6xl space-y-14 px-5 py-12 md:px-10">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="space-y-6 md:col-span-7">
-            <nav className="flex flex-wrap items-center gap-1.5 text-[11px] text-white/60">
-              <Link to="/" className="hover:text-wave">
+            <nav className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink/50">
+              <Link to="/" className="hover:text-brand">
                 Trang chủ
               </Link>
               <span>›</span>
-              <Link to="/stores" className="hover:text-wave">
+              <Link to="/stores" className="hover:text-brand">
                 Shop
               </Link>
               <span>›</span>
-              <span className="text-white/80">{store.name}</span>
+              <span className="font-semibold text-ink/80">{store.name}</span>
             </nav>
 
             {store.story ? (
               <>
-                <h2 className="label text-white/55">Câu chuyện của xưởng</h2>
+                <h2 className="label text-ink/45">Câu chuyện của xưởng</h2>
                 <Clamp
                   text={store.story}
                   lines={6}
-                  tone="paper"
-                  className="text-base leading-relaxed text-white/85"
+                  className="text-base leading-relaxed text-ink/80"
                 />
               </>
             ) : (
-              <p className="text-sm text-white/55">Shop chưa gửi phần giới thiệu.</p>
+              <p className="text-sm text-ink/50">Shop chưa gửi phần giới thiệu.</p>
             )}
           </div>
 
           <aside className="space-y-6 md:col-span-5">
-            <div className="border border-white/20 p-5">
-              <p className="label text-white/55">Đang bán trên Tí</p>
-              <p className="display mt-1 text-4xl normal-case text-wave">
+            <div className="border border-ink/12 p-5">
+              <p className="label text-ink/45">Đang bán trên Tí</p>
+              <p className="display mt-1 text-4xl normal-case text-brand">
                 {products.length} sản phẩm
               </p>
-              <p className="mt-2 text-[11px] text-white/60">{PRICE_NOTE}</p>
+              <p className="mt-2 text-[11px] text-ink/50">{PRICE_NOTE}</p>
             </div>
 
-            <dl className="border-t border-white/15">
+            <dl className="border-t border-ink/12">
               {[
                 ["Khu vực", store.address || "—"],
                 ["Email", store.email || "—"],
@@ -273,10 +270,10 @@ export default function ShopDisplay() {
               ].map(([k, v]) => (
                 <div
                   key={k}
-                  className="flex items-baseline justify-between gap-4 border-b border-white/15 py-2.5"
+                  className="flex items-baseline justify-between gap-4 border-b border-ink/12 py-2.5"
                 >
-                  <dt className="label text-white/55">{k}</dt>
-                  <dd className="text-right text-xs font-medium">{v}</dd>
+                  <dt className="label text-ink/45">{k}</dt>
+                  <dd className="text-right text-xs font-medium text-ink">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -291,7 +288,7 @@ export default function ShopDisplay() {
               className={`w-full rounded-full border px-5 py-3 text-xs font-semibold transition-colors ${
                 following
                   ? "border-wave bg-wave text-ink"
-                  : "border-white/35 text-paper hover:border-wave hover:text-wave"
+                  : "border-ink/25 text-ink hover:border-brand hover:text-brand"
               }`}
             >
               {following ? "Đang theo dõi shop" : "Theo dõi shop"}
@@ -301,13 +298,13 @@ export default function ShopDisplay() {
 
         {/* ── everything the shop has ─────────────────────────────────── */}
         <section className="space-y-6">
-          <div className="flex items-baseline justify-between gap-4 border-b border-white/15 pb-3">
-            <h2 className="display text-2xl normal-case md:text-3xl">Sản phẩm của shop</h2>
-            <span className="label shrink-0 text-white/50">{products.length} món</span>
+          <div className="flex items-baseline justify-between gap-4 border-b border-ink/12 pb-3">
+            <h2 className="display text-2xl normal-case text-ink md:text-3xl">Sản phẩm của shop</h2>
+            <span className="label shrink-0 text-ink/45">{products.length} món</span>
           </div>
 
           {products.length === 0 ? (
-            <p className="py-10 text-center text-sm text-white/55">
+            <p className="py-10 text-center text-sm text-ink/50">
               Shop chưa đăng sản phẩm nào lên Tí.
             </p>
           ) : (
@@ -320,14 +317,25 @@ export default function ShopDisplay() {
             </div>
           )}
         </section>
-
-        <p className="text-[11px] text-white/50">{NO_TRANSACTION}</p>
       </main>
 
+      {/* Teal, mark two of two — and the last thing on the page before the
+          rail. The two notes have to appear verbatim wherever they apply, so
+          they may as well be the thing the second teal field is for. */}
+      <div data-surface="light" className="bg-wave">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-10 md:px-10 md:py-14">
+          <p className="max-w-[52ch] text-[13px] leading-relaxed text-ink/80">{NO_TRANSACTION}</p>
+          <Link
+            to="/products"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-ink px-5 py-3 text-xs font-semibold text-paper transition-colors hover:bg-brand"
+          >
+            Xem sản phẩm khác
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+
       {/* ── docked contact rail — every width ───────────────────────────── */}
-      {/* The rail was a second black bar under the first (bg-ink/90). It is
-          the palette's deep violet now, so the page has one colour family from
-          the cover down to the bottom edge. */}
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/20 bg-brand-deep/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3 md:px-10">
           <div className="min-w-0 flex-1">
