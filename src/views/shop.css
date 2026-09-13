@@ -39,3 +39,15 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* The loop's pupil changes colour with the ground under the eye; ease it
+   rather than cut it. The second <path> in the mark is the pupil. */
+.ti-shop-loop path:nth-of-type(2) {
+  transition: fill 240ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ti-shop-loop path:nth-of-type(2) {
+    transition: none;
+  }
+}

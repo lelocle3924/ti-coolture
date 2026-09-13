@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
 import { NO_TRANSACTION, PRICE_NOTE } from "../lib/continuity";
+import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import { useMediaQuery } from "../lib/useAutoHideChrome";
 import { Dropdown, PRICE_BANDS, ProductCard, SORTS } from "./Products";
 import "./shop.css";
@@ -56,6 +57,36 @@ import "./shop.css";
  * floors under their sizes, and the buttons move into the floating bar.
  */
 
+/* The two marks, fitted the way the hero's were: each mark's real path drawn
+   over the drawing at the brief's rotation, placement kept where its
+   silhouette best overlaps the drawing's teal (IoU 0.978 arc, 0.987 loop).
+
+   They are fixed to the screen, so the screen is what they are placed
+   against: on a desktop, the centre of each mark's box and its width in
+   percent of the viewport, exactly as measured, with a floor so a narrow
+   window cannot shrink them to a smudge.
+
+   A phone has no margin beside the column to hold them, and the drawing does
+   not show one. Placed by the desktop numbers, the arc ran straight through
+   the shop's words and the loop's pupil sat on a filter chip. So there they
+   are pushed out to the edges: the arc to a crescent about 28px deep in the
+   left gutter (its ring's centre sits 51.7px left of its box's at -150°), the
+   loop's head to the right edge, low, where the first row of products passes
+   over it rather than the filters. */
+const SHOP_MARKS = {
+  wide: {
+    arc: { left: "-1.34%", top: "41.9%", width: "max(31.2%, 15rem)" },
+    loop: { left: "100.54%", top: "15.15%", width: "max(33.3%, 16rem)" },
+  },
+  phone: {
+    arc: { left: "-5rem", top: "45%", width: "15rem" },
+    loop: { left: "calc(100% + 2.4rem)", top: "72%", width: "13rem" },
+  },
+} as const;
+
+/** The loop's eye, below the loop's centre, in loop widths — at -90°. */
+const EYE_BELOW_CENTRE = 0.275;
+
 /* In the order the drawing gives them. Brand colours, because a button that
    says INSTAGRAM in Instagram's colours is found before it is read. */
 const PLATFORMS = [
@@ -105,6 +136,80 @@ function useShopPage(storeId: string | undefined) {
   }, [storeId]);
 
   return { store, products, resolved };
+}
+
+/**
+ * The arc and the loop, fixed to the screen.
+ *
+ * Painted between the page's ground and its content: the root is clipped
+ * (clip-path: inset(0)), which contains a fixed descendant's painting the way
+ * overflow cannot, so the marks end with the page instead of riding over the
+ * footer.
+ *
+ * The loop's pupil is white while the eye looks onto the violet and turns
+ * violet once it looks onto paper, as the drawing shows it in both places —
+ * a white dot on white would be an eye with nothing in it. The switch is at
+ * the middle of the ramp, where neither colour is the ground.
+ */
+function ShopMarks({ coverRef }: { coverRef: { current: HTMLElement | null } }) {
+  const wide = useMediaQuery("(min-width: 768px)");
+  const loopRef = useRef<HTMLDivElement>(null);
+  const [onPaper, setOnPaper] = useState(false);
+
+  useEffect(() => {
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const cover = coverRef.current;
+      const loop = loopRef.current;
+      if (!cover || !loop) return;
+      /* Read off the rendered loop rather than re-derived from the
+         placement: the box turns about its centre, so the centre of its
+         bounding rect is the centre of the mark, and offsetWidth is its
+         unturned width. */
+      const box = loop.getBoundingClientRect();
+      const eyeY = box.top + box.height / 2 + EYE_BELOW_CENTRE * loop.offsetWidth;
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      // the same clamp as --ramp on the page root
+      const ramp = Math.min(17.25 * rem, Math.max(11 * rem, 0.18 * window.innerWidth));
+      setOnPaper(cover.getBoundingClientRect().bottom + ramp / 2 < eyeY);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [coverRef, wide]);
+
+  const marks = wide ? SHOP_MARKS.wide : SHOP_MARKS.phone;
+  const place = (at: { left: string; top: string; width: string }, rotate: number) => ({
+    left: at.left,
+    top: at.top,
+    width: at.width,
+    transform: `translate(-50%, -50%) rotate(${rotate}deg)`,
+  });
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none">
+      <div className="fixed z-[1]" style={place(marks.arc, -150)}>
+        <ArcTopRight className="w-full" fill="var(--color-wave)" />
+      </div>
+      <div ref={loopRef} className="fixed z-[1]" style={place(marks.loop, -90)}>
+        <RibbonLoop
+          className="ti-shop-loop w-full"
+          ribbon="var(--color-wave)"
+          dot={onPaper ? "var(--color-brand)" : "var(--color-paper)"}
+          blink
+        />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -251,6 +356,8 @@ export default function ShopDisplay() {
             "linear-gradient(to bottom, var(--color-brand) 0, var(--color-brand) calc(var(--pill) + var(--u) + var(--cover-h)), var(--color-paper) calc(var(--pill) + var(--u) + var(--cover-h) + var(--ramp)))",
         }}
       >
+        <ShopMarks coverRef={coverRef} />
+
         <div className="relative z-[2]">
           <header data-surface="dark" className="pt-[calc(var(--pill)_+_var(--u))]">
             <div
