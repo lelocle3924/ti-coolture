@@ -1130,3 +1130,7 @@ export default function Products() {
     </div>
   );
 }
+
+/* The shop page draws its products with the catalogue's own card and filter
+   control (13/09), so a product looks the same wherever it is listed. */
+export { Dropdown, PRICE_BANDS, ProductCard, SORTS };
