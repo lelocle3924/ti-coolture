@@ -415,9 +415,24 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   <ArrowUpRight className="h-4 w-4 text-brand" />
                 </Link>
               ) : (
-                <span className="inline-flex items-center gap-3 rounded-full bg-wave py-2.5 pl-4 pr-5 text-ink">
-                  <span className="text-sm font-black">Tí Coolture</span>
-                  <span className="text-[11px] font-medium">{frame!.caption}</span>
+                /* Team 13/09: "Style chrome của 'Tí Coolture  Mỗi người một
+                   Tí chất riêng' nên match với style chrome của các thẻ khác
+                   trong deck, để có background separation tốt hơn."
+
+                   It was a teal pill, and on the house frame it sits over the
+                   teal of the boat's wave — the one ground in the deck it
+                   could not be told apart from. It is now the partner frames'
+                   pill exactly: paper, the numbered teal disc, name over
+                   caption. The only thing left off is the arrow, because
+                   this frame opens nothing and an arrow would say it does. */
+                <span className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink">
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
+                    {String(active + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-left">
+                    <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
+                    <span className="block text-[11px] font-medium text-ink/55">{frame!.caption}</span>
+                  </span>
                 </span>
               )}
             </div>
