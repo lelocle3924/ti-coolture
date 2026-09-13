@@ -371,13 +371,14 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
                 </div>
               )}
               <figure className="min-w-0 flex-1">
-                {/* The frame travels, not the <img>: it carries the rounded
-                    corners, and a snapshot of the image alone would arrive
-                    square. Named only while a continuity change is landing
-                    here — see useContinuityLanding. */}
+                {/* The frame travels, not the image inside it: it carries the
+                    rounded corners, and a snapshot of the image alone would
+                    arrive square. Named only while a continuity change is
+                    landing here — see useContinuityLanding. Never as a style
+                    prop: a name that stays on would be a second ti-hero the
+                    moment a sibling card is pressed (14/09). */}
                 <div
                   ref={heroFrameRef}
-                  style={{ viewTransitionName: 'ti-hero' }}
                   className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm"
                 >
                   <img

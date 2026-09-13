@@ -93,13 +93,26 @@ type StartViewTransition = (update: () => Promise<void>) => {
   finished: Promise<void>;
 };
 
-/** Only one element may carry the name, or the browser drops the transition. */
+/**
+ * Only one element may carry the name, or the browser drops the whole
+ * transition — "Unexpected duplicate view-transition-name: ti-hero", and the
+ * page changes with no motion at all.
+ *
+ * Found by the name, not only by the marker nameHero leaves (14/09). The
+ * product page's hero once carried the name as a style prop, which set no
+ * marker; opened directly, that page had a named hero this sweep could not
+ * see, so pressing a sibling card named a second element and the transition
+ * was thrown away. Anything the browser would count, this counts.
+ */
 function clearHeroNames(except?: Element | null) {
-  document.querySelectorAll<HTMLElement>("[data-ti-hero]").forEach((node) => {
-    if (node === except) return;
-    node.style.viewTransitionName = "";
-    node.removeAttribute("data-ti-hero");
-  });
+  document
+    .querySelectorAll<HTMLElement>('[data-ti-hero], [style*="view-transition-name"]')
+    .forEach((node) => {
+      if (node === except) return;
+      if (!node.hasAttribute("data-ti-hero") && node.style.viewTransitionName !== HERO_NAME) return;
+      node.style.viewTransitionName = "";
+      node.removeAttribute("data-ti-hero");
+    });
 }
 
 function nameHero(el: HTMLElement) {
@@ -143,7 +156,7 @@ function trackPresses() {
  * The product's photograph, found by walking up from where the press landed.
  *
  * Every product tile on the site draws its picture from images[0], so the
- * first visible <img> with that source on the way up is the one that was
+ * first visible image with that source on the way up is the one that was
  * pressed — the tile's own copy, not another copy of the same product further
  * along a looping lane, because the walk starts inside the tile.
  */
@@ -298,7 +311,7 @@ export function ContinuityLink({
 /**
  * The product page's half of the handshake.
  *
- * Names the hero FRAME — the rounded, clipping box, not the <img> inside it,
+ * Names the hero FRAME — the rounded, clipping box, not the image inside it,
  * so the snapshot carries its corners — and lets the transition take the new
  * snapshot once the photograph is decoded. A layout effect, so it runs in the
  * commit that mounts the page, before anything can be painted or captured.
