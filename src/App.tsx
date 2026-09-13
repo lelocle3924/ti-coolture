@@ -29,12 +29,16 @@ import CollectionStudies from "./lab/CollectionStudies";
 import HomeMapStudies from "./lab/HomeMapStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-  useEffect(() => {
+  /* A layout effect (13/09), so the reset lands in the commit that mounts the
+     new page. As a passive effect it could run after a view transition had
+     already snapshotted that page — measuring the product hero's destination
+     at the previous page's scroll offset, and then jumping. */
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;

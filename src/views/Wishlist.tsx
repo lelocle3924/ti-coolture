@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ContinuityLink } from "../lib/continuity";
 import { ArrowUpRight, Heart, X } from "lucide-react";
 import { fetchProductById } from "../lib/dbService";
 import { useSavedProducts } from "../lib/useSavedProducts";
@@ -130,9 +131,9 @@ export default function Wishlist() {
                     {/* The image is the link; the remove button is its sibling,
                         not its child — a button inside a link is invalid and
                         swallows the tap. Same shape /products settled on. */}
-                    <Link
+                    <ContinuityLink
+                      product={product}
                       to={`/products/${product.id}`}
-                      viewTransition
                       className="group block aspect-square overflow-hidden bg-paper-warm"
                     >
                       <img
@@ -141,7 +142,7 @@ export default function Wishlist() {
                         loading="lazy"
                         className="h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
                       />
-                    </Link>
+                    </ContinuityLink>
 
                     <button
                       onClick={() => saved.toggle(product.id)}

@@ -5,7 +5,8 @@ import { fetchStores, fetchProducts } from "../lib/dbService";
 import { StoreProfile, Product } from "../types";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
-import { vtShopLogo, vtShopCover, vtProductImage } from "../lib/viewTransitions";
+import { vtShopLogo, vtShopCover } from "../lib/viewTransitions";
+import { ContinuityLink } from "../lib/continuity";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 
 export default function Stores() {
@@ -248,20 +249,19 @@ export default function Stores() {
                         <span className="label text-ink/50 text-[9px] block">TÁC PHẨM TIÊU BIỂU TỪ XƯỞNG:</span>
                         <div className="grid grid-cols-3 gap-2">
                           {storeProducts.map((prod) => (
-                            <Link
+                            <ContinuityLink
                               key={prod.id}
+                              product={prod}
                               to={`/products/${prod.id}`}
-                              viewTransition
                               className="aspect-square rounded-xl overflow-hidden bg-paper-warm border border-ink/5 hover:border-brand transition-all block group/thumb"
                             >
                               <img
                                 src={prod.images?.[0]}
                                 alt={prod.name}
                                 referrerPolicy="no-referrer"
-                                style={{ viewTransitionName: vtProductImage(prod.id) }}
                                 className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300"
                               />
-                            </Link>
+                            </ContinuityLink>
                           ))}
                         </div>
                       </div>

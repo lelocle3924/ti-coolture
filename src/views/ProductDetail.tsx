@@ -35,11 +35,11 @@ import SaveButton from "../components/SaveButton";
 import {
   Clamp,
   ContinuityLink,
-  HERO_NAME,
   NO_TRANSACTION,
   PRICE_NOTE,
   formatPrice,
   readHandoff,
+  useContinuityLanding,
 } from "../lib/continuity";
 
 /* ── data ───────────────────────────────────────────────────────────────── */
@@ -311,9 +311,24 @@ function NotFound({ index }: { index: 1 | 2 | 3 }) {
 
 export default function ProductDetail() {
   const { productId } = useParams();
+  /* Keyed on the product (13/09). A sibling card opens another product on
+     this same route, and unkeyed, React re-renders the previous product's
+     page for one commit while useProductPage's effect catches up — the very
+     commit a continuity transition snapshots, so the photograph travelled
+     into the previous product's hero. A fresh page reads the handoff on its
+     first render instead. */
+  return <ProductPage key={productId} productId={productId} />;
+}
+
+function ProductPage({ productId }: { key?: string; productId: string | undefined }) {
   const { product, store, siblings, resolved } = useProductPage(productId);
   const inquiry = useInquiry(product, store);
   const [active, setActive] = useState(0);
+  const heroFrameRef = useRef<HTMLDivElement>(null);
+  const heroImgRef = useRef<HTMLImageElement>(null);
+
+  /* The landing half of the continuity transition — src/lib/continuity. */
+  useContinuityLanding(productId, heroFrameRef, heroImgRef);
 
   useEffect(() => setActive(0), [productId]);
 
@@ -355,13 +370,19 @@ export default function ProductDetail() {
                 </div>
               )}
               <figure className="min-w-0 flex-1">
-                <div className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm">
+                {/* The frame travels, not the <img>: it carries the rounded
+                    corners, and a snapshot of the image alone would arrive
+                    square. Named only while a continuity change is landing
+                    here — see useContinuityLanding. */}
+                <div
+                  ref={heroFrameRef}
+                  className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm"
+                >
                   <img
+                    ref={active === 0 ? heroImgRef : undefined}
                     key={active}
                     src={images[active]}
                     alt={product.name}
-                    data-ti-hero={active === 0 ? "" : undefined}
-                    style={active === 0 ? { viewTransitionName: HERO_NAME } : undefined}
                     className="h-full w-full object-cover"
                   />
                 </div>

@@ -23,6 +23,7 @@ import BrandSurround from "../components/BrandSurround";
 import RevealFooterLayout from "../components/RevealFooter";
 import { RibbonLoop, WaveBottomCropped } from "../components/BrandShapes";
 import DistrictMap from "../home/DistrictMap";
+import { useOpenProduct } from "../lib/continuity";
 import "../home/home.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1666,7 +1667,6 @@ function anotherGem(current: number | null, count: number): number {
 }
 
 function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> }) {
-  const navigate = useNavigate();
   const reduced = useReducedMotion();
   const wide = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useState(false);
@@ -1718,11 +1718,12 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
     setOpen(true);
   }, [gems, index, open]);
 
+  const openWithImage = useOpenProduct();
   const openProduct = useCallback(() => {
     if (!gem) return;
     triggerWebhook("CURATED_GEM_CLICKED", { productId: gem.product.id });
-    navigate(`/products/${gem.product.id}`, { viewTransition: true });
-  }, [gem, navigate]);
+    openWithImage(gem.product);
+  }, [gem, openWithImage]);
 
   if (!gem) return null;
 
@@ -2181,10 +2182,10 @@ export default function Homepage() {
   const navigate = useNavigate();
   const { loading, error, reload, heroFrames, popular, collections, routes, gems } = useHomeData();
 
-  const open = useCallback(
-    (p: Product) => navigate(`/products/${p.id}`, { viewTransition: true }),
-    [navigate]
-  );
+  /* Every product a tile opens travels into its page (13/09) — see
+     src/lib/continuity.tsx. The tiles call back with the product alone; the
+     photograph that was pressed is found from the press. */
+  const open = useOpenProduct();
 
   /* The sheet's bottom margin must equal the footer height, or the last row of
      the footer is unreachable (UX-FOUNDATIONS §4.2, open note 2). */

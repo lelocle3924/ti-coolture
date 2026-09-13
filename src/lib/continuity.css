@@ -13,41 +13,46 @@
 }
 
 /* ── continuity transition ──────────────────────────────────────────────────
-   The clicked image is renamed `ti-hero` for the length of one navigation,
-   so exactly one pair morphs and it can be targeted by name. Everything else
-   about the default transition in src/index.css is overridden inside this
-   scope:
+   Team 13/09: "Tôi muốn cái ảnh từ cỡ ở trang trước, phóng to/thu nhỏ, đồng
+   thời di chuyển đến đúng vị trí ở trang tiếp theo. Tất cả các element xung
+   quanh fade out, sau đó các element ở trang sau fade in."
 
-   · the root no longer scales (the whole-page zoom the team reported), it
-     only cross-fades, and quickly, so the travelling image is what reads;
-   · the group easing loses its overshoot. A spring that overshoots is right
-     for a button landing and wrong for a photo settling into a frame — it
-     reads as the image missing its slot and coming back;
-   · the two snapshots of the image stop cross-fading and are drawn at the
-     group's size with object-fit: cover, so a square card growing into a
-     wide plate crops rather than stretches.
+   One press, as a timeline:
+
+     0 ─── the page round the photograph fades out ─── 160ms
+     0 ──────── the photograph travels and resizes into the hero ──────── 440ms
+                       200ms ─── the product page fades in ─── 440ms
+
+   The old page is gone before the new one starts, so for a beat the
+   photograph is the only thing moving on an empty ground — which is when its
+   journey reads — and it lands as the page arrives round it.
+
+     · Travel: ease-in-out, cubic-bezier(0.77, 0, 0.175, 1). An object crossing
+       the screen, not one arriving; its slow first beat falls inside the
+       fade-out, where nothing competes with it.
+     · Fades: the site's ease-out, cubic-bezier(0.16, 1, 0.3, 1), opacity only.
+       No scale on the page — that was the "zoom" of 21/08 and 31/08.
+     · Ground: paper, because every continuity change lands on the product
+       page's paper. Without a ground of its own the transition showed the
+       body's violet through two half-faded white pages: the flash.
+     · The photograph: both snapshots fill the travelling box, crossfade in
+       its first 240ms and are clipped to the hero's corners. A crossfade
+       because on a desktop the card under the cursor is usually showing its
+       second photograph (the hover view) while the hero opens on the first;
+       drawing only one would swap the picture on the very first frame.
+     · The nav is its own group (ti-nav, on the header): the same bar on both
+       sides, so it holds still while the page under it changes.
    ------------------------------------------------------------------------- */
 
-::view-transition-group(ti-hero) {
-  animation-duration: 520ms;
-  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
-}
-::view-transition-image-pair(ti-hero) {
-  isolation: auto;
-}
-::view-transition-old(ti-hero),
-::view-transition-new(ti-hero) {
-  animation: none;
-  mix-blend-mode: normal;
-  height: 100%;
-  object-fit: cover;
+html[data-vt-kind="continuity"]::view-transition {
+  background: var(--color-paper);
 }
 
 html[data-vt-kind="continuity"]::view-transition-old(root) {
-  animation: 200ms ease both ti-vt-out;
+  animation: 160ms cubic-bezier(0.16, 1, 0.3, 1) both ti-vt-out;
 }
 html[data-vt-kind="continuity"]::view-transition-new(root) {
-  animation: 320ms 60ms ease both ti-vt-in;
+  animation: 240ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both ti-vt-in;
 }
 @keyframes ti-vt-out {
   from { opacity: 1; }
@@ -56,6 +61,34 @@ html[data-vt-kind="continuity"]::view-transition-new(root) {
 @keyframes ti-vt-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+html[data-vt-kind="continuity"]::view-transition-group(ti-hero) {
+  animation-duration: 440ms;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+html[data-vt-kind="continuity"]::view-transition-image-pair(ti-hero) {
+  overflow: hidden;
+  border-radius: 1.75rem;
+}
+html[data-vt-kind="continuity"]::view-transition-old(ti-hero),
+html[data-vt-kind="continuity"]::view-transition-new(ti-hero) {
+  /* fill the travelling box and crop, rather than stretch, where a card's
+     ratio is not the hero's square */
+  height: 100%;
+  object-fit: cover;
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Above everything else on every page change, so a photograph travelling up
+   the screen passes under the bar, as it would on the page itself. */
+::view-transition-group(ti-nav) {
+  z-index: 1;
+}
+html[data-vt-kind="continuity"]::view-transition-group(ti-nav) {
+  animation-duration: 440ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── shared page furniture ──────────────────────────────────────────────── */
