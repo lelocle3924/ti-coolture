@@ -118,7 +118,23 @@ const RESTING_D = pathThrough(NODE_X, NODE_Y);
 /** How fast the sea runs. */
 const SPEED = 0.9;
 
-export default function HeroWave({ className = "" }: { className?: string }) {
+export default function HeroWave({
+  className = "",
+  stroke = "var(--color-wave)",
+  boxTop = `${TOP}%`,
+  boxHeight = `${HEIGHT}%`,
+}: {
+  className?: string;
+  /** The band's colour. Teal in the hero. */
+  stroke?: string;
+  /**
+   * Where the curve's box sits in the host, and how tall it is. The hero's
+   * own numbers unless a caller places the band somewhere else — the pinning
+   * arithmetic above only holds for those.
+   */
+  boxTop?: string;
+  boxHeight?: string;
+}) {
   const pathRef = useRef<SVGPathElement>(null);
   const reduced = useReducedMotion();
   const { ref: host, paused } = usePauseOffscreen<HTMLDivElement>();
@@ -165,13 +181,13 @@ export default function HeroWave({ className = "" }: { className?: string }) {
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         preserveAspectRatio="none"
         className="absolute inset-x-0 overflow-visible"
-        style={{ top: `${TOP}%`, height: `${HEIGHT}%` }}
+        style={{ top: boxTop, height: boxHeight }}
       >
         <path
           ref={pathRef}
           d={RESTING_D}
           fill="none"
-          stroke="var(--color-wave)"
+          stroke={stroke}
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
           /* 5% of the page height on a phone, 17% on a desktop — the middle
