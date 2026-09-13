@@ -63,16 +63,21 @@ html[data-vt-kind="continuity"]::view-transition-new(root) {
   to { opacity: 1; }
 }
 
-::view-transition-group(ti-hero) {
+/* Scoped to a continuity change, and only that (14/09). Unscoped, these rules
+   dressed any transition that found a ti-hero on the page: leaving a product
+   page by the breadcrumb or the shop link lifted the hero into a layer of its
+   own with nowhere to land, and at 440ms it sat over the next page well after
+   the 260ms crossfade under it had finished. */
+html[data-vt-kind="continuity"]::view-transition-group(ti-hero) {
   animation-duration: 440ms;
   animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
 }
-::view-transition-image-pair(ti-hero) {
+html[data-vt-kind="continuity"]::view-transition-image-pair(ti-hero) {
   overflow: hidden;
   border-radius: 1.75rem;
 }
-::view-transition-old(ti-hero),
-::view-transition-new(ti-hero) {
+html[data-vt-kind="continuity"]::view-transition-old(ti-hero),
+html[data-vt-kind="continuity"]::view-transition-new(ti-hero) {
   /* fill the travelling box and crop, rather than stretch, where a card's
      ratio is not the hero's square */
   height: 100%;
