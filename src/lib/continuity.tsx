@@ -30,8 +30,20 @@ import "./continuity.css";
 
 /* ── formatting ─────────────────────────────────────────────────────────── */
 
+/* Team 13/09: "Ký tự 'đ' trong chỗ hiển thị giá bị lỗi."
+
+   The tail was U+20AB, the currency sign ₫, and Alexandria draws that one as
+   a d with a bar AND an underline squeezed into the same x-height. At 500 it
+   survives; at the 600 and 700 every price on the site is set in, the bar and
+   the underline close up into the bowl and the glyph reads as a d with a
+   smudge in it. Rendered both ways from fonts/ to check, weights 500–700.
+
+   U+0111, the letter đ, is what Vietnamese prices are written with anyway
+   ("320.000đ"), it is what the team's own drawings show, and Alexandria's đ
+   is clean at every weight. DFVN Some Time Later has no ₫ at all, so a price
+   in the display face would have fallen back to a system font — it has đ. */
 export const formatPrice = (value: number) =>
-  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+  value > 0 ? `${value.toLocaleString("vi-VN")}đ` : "Liên hệ";
 
 export const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
 export const NO_TRANSACTION =

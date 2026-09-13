@@ -4,8 +4,9 @@ import { incrementProductClick } from "../lib/dbService";
 import { Product } from "../types";
 import { CoverflowCarousel } from "./ui/coverflow-carousel";
 
+/* đ, not ₫ — see the note on formatPrice in src/lib/continuity.tsx. */
 const formatPrice = (value: number) =>
-  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+  value > 0 ? `${value.toLocaleString("vi-VN")}đ` : "Liên hệ";
 
 export default function FilmStrip({ products }: { products: Product[] }) {
   const navigate = useNavigate();

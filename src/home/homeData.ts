@@ -392,7 +392,8 @@ export function useHomeData(): HomeData {
   };
 }
 
+/* đ, not ₫ — see the note on formatPrice in src/lib/continuity.tsx. */
 export const formatPrice = (value: number) =>
-  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+  value > 0 ? `${value.toLocaleString("vi-VN")}đ` : "Liên hệ";
 
 export const PRICE_NOTE = "Giá tham khảo · cập nhật 08/2026 · giá cuối do shop quyết định";

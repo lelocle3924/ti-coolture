@@ -162,7 +162,7 @@ export default function Wishlist() {
                       </div>
                       <p className="text-sm font-bold text-ink">
                         {product.price > 0
-                          ? `${product.price.toLocaleString("vi-VN")}₫`
+                          ? `${product.price.toLocaleString("vi-VN")}đ`
                           : "Liên hệ"}
                       </p>
                     </div>
