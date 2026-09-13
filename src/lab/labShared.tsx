@@ -2,8 +2,10 @@
    in explicitly before React.ReactNode resolves — same reason BrandShapes.tsx
    does it, and the same reason `key` is declared as an ordinary prop below. */
 import type React from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, SlidersHorizontal, X } from "lucide-react";
+import { useMediaQuery } from "../lib/useAutoHideChrome";
 import "./lab.css";
 
 /**
@@ -105,5 +107,112 @@ export function Spec({ property, duration, easing, trigger }: SpecProps) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/* ── switches on a real page ───────────────────────────────────────────────
+   The panel a study floats over the real page it is changing, the way
+   /lab/home-map does it — so every study that runs on a real page reads the
+   same, and a new one does not grow its own copy. Folded on a phone, where
+   an open panel would cover what it controls. */
+
+export function LabPanel({
+  label,
+  actions,
+  children,
+}: {
+  /** What the folded chip says, e.g. "Lab · tiêu đề". */
+  label: string;
+  /** Buttons beside the fold control. */
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const wide = useMediaQuery("(min-width: 768px)");
+  const [open, setOpen] = useState(true);
+  useEffect(() => setOpen(wide), [wide]);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed bottom-4 left-4 z-[65] inline-flex items-center gap-2 rounded-full bg-ink/85 px-4 py-2.5 text-xs font-semibold text-paper shadow-[0_18px_40px_-18px_rgba(18,8,31,0.85)] ring-1 ring-white/10 backdrop-blur-md"
+      >
+        <SlidersHorizontal aria-hidden="true" className="h-4 w-4 text-wave" />
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      role="region"
+      aria-label={`Công tắc thử nghiệm · ${label}`}
+      className="fixed bottom-4 left-4 z-[65] flex max-h-[calc(100dvh-2rem)] w-[min(22rem,calc(100vw-2rem))] flex-col rounded-[1.25rem] bg-ink/85 p-4 text-paper shadow-[0_24px_48px_-24px_rgba(18,8,31,0.9)] ring-1 ring-white/10 backdrop-blur-md"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to="/lab"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.12em] text-white/55 transition-colors hover:text-wave"
+        >
+          <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+          LAB
+        </Link>
+        <span className="flex items-center gap-1">
+          {actions}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Thu gọn bảng công tắc"
+            className="grid h-8 w-8 place-items-center rounded-full text-paper/70 transition-colors hover:bg-white/10"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </span>
+      </div>
+      <div className="mt-3 min-h-0 space-y-3 overflow-y-auto overscroll-contain">{children}</div>
+    </div>
+  );
+}
+
+/** One group of switches in a LabPanel. */
+export function LabChoices<T extends string>({
+  label,
+  value,
+  choices,
+  onChange,
+  disabled = false,
+  columns = false,
+}: {
+  label: string;
+  value: T;
+  choices: ReadonlyArray<readonly [T, string]>;
+  onChange: (value: T) => void;
+  disabled?: boolean;
+  /** Two columns of buttons, for a list too long for a row of chips. */
+  columns?: boolean;
+}) {
+  return (
+    <fieldset disabled={disabled} className={disabled ? "opacity-40" : ""}>
+      <legend className="text-[11px] tracking-[0.12em] text-white/55">{label}</legend>
+      <div className={`mt-1.5 ${columns ? "grid grid-cols-2 gap-1.5" : "flex flex-wrap gap-1.5"}`}>
+        {choices.map(([choice, text]) => {
+          const on = choice === value;
+          return (
+            <button
+              key={choice}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange(choice)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                columns ? "text-left" : ""
+              } ${on ? "bg-wave text-ink" : "bg-white/10 text-paper/85 hover:bg-white/20"}`}
+            >
+              {text}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
