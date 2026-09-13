@@ -1777,7 +1777,14 @@ function HiddenGems({ gems }: { gems: Array<{ product: Product; note: string }> 
    The spring is --ease-brand on flex-grow, which overshoots slightly on the
    way open; that overshoot is the "springs open" the sketch names. The
    contents ride in on a curve that only decelerates, so one gesture does not
-   read as two. See home.css. */
+   read as two. See home.css.
+
+   No top border. Team 13/09: "Cái con sóng màu tím ngay dưới how steps có 1
+   viền trắng cỡ 1px ngăn cách nó với nền tím của phần sau." The section
+   carried border-t border-white/20 from when it met a different ground; since
+   31/08 it meets the crest rising out of its own violet, and a 20% white rule
+   on violet is exactly the #914DF9 line measured in the team's screenshot,
+   running the full width under the wave. The crest is the whole seam now. */
 
 /* A closed spine keeps the colour of the panel it opens into — that is what
    makes the row read as a row of collections rather than as decoration.
@@ -1964,7 +1971,7 @@ function CollectionsSpringTabs({
      wide. */
   if (!wide) {
     return (
-      <section id="dong-collections" className="border-t border-white/20 bg-brand text-paper">
+      <section id="dong-collections" className="bg-brand text-paper">
         {heading}
         <div className="mt-10 space-y-3 px-5">
           {collections.map((c, i) => {
@@ -2022,7 +2029,7 @@ function CollectionsSpringTabs({
   }
 
   return (
-    <section id="dong-collections" className="border-t border-white/20 bg-brand text-paper">
+    <section id="dong-collections" className="bg-brand text-paper">
       {heading}
 
       {/* One row, panels sharing it by flex-grow. The open one takes the room
