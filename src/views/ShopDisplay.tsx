@@ -451,7 +451,7 @@ export default function ShopDisplay() {
                       href={channel.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`grid h-[7.6cqw] min-h-12 place-items-center rounded-[0.7rem] text-[length:clamp(0.875rem,2.1cqw,1.25rem)] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_2px_rgba(18,8,31,0.3)] transition-[filter] duration-200 hover:brightness-110 ${channel.fill}`}
+                      className={`grid h-[7.6cqw] min-h-12 place-items-center rounded-[0.7rem] text-[length:clamp(0.875rem,2.1cqw,1.25rem)] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_3px_rgba(18,8,31,0.45)] transition-[filter] duration-200 hover:brightness-110 ${channel.fill}`}
                     >
                       {channel.label}
                     </a>
@@ -559,7 +559,7 @@ export default function ShopDisplay() {
                   href={channel.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`grid h-11 place-items-center rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_2px_rgba(18,8,31,0.3)] ${channel.fill}`}
+                  className={`grid h-11 place-items-center rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_3px_rgba(18,8,31,0.45)] ${channel.fill}`}
                 >
                   {channel.label}
                 </a>
