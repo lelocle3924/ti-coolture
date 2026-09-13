@@ -69,18 +69,19 @@ import "./shop.css";
    A phone has no margin beside the column to hold them, and the drawing does
    not show one. Placed by the desktop numbers, the arc ran straight through
    the shop's words and the loop's pupil sat on a filter chip. So there they
-   are pushed out to the edges: the arc to a crescent about 28px deep in the
-   left gutter (its ring's centre sits 51.7px left of its box's at -150°), the
-   loop's head to the right edge, low, where the first row of products passes
-   over it rather than the filters. */
+   are pushed out to the edges: the arc to a crescent about 12px deep, inside
+   the 16px gutter so no line of text starts on it (its ring's centre sits
+   51.7px left of its box's at -150°), and the loop's head to the right edge,
+   low, below the filters, where the products pass over it and its eye shows
+   in the space the page leaves at its foot. */
 const SHOP_MARKS = {
   wide: {
     arc: { left: "-1.34%", top: "41.9%", width: "max(31.2%, 15rem)" },
     loop: { left: "100.54%", top: "15.15%", width: "max(33.3%, 16rem)" },
   },
   phone: {
-    arc: { left: "-5rem", top: "45%", width: "15rem" },
-    loop: { left: "calc(100% + 2.4rem)", top: "72%", width: "13rem" },
+    arc: { left: "-6rem", top: "45%", width: "15rem" },
+    loop: { left: "calc(100% + 2.4rem)", top: "80%", width: "13rem" },
   },
 } as const;
 
