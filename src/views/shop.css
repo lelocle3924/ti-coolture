@@ -1,0 +1,41 @@
+/* ---------------------------------------------------------------------------
+   The shop page, /stores/:storeId (13/09). Imported by ShopDisplay.tsx.
+   Every colour resolves to a token from src/index.css.
+   --------------------------------------------------------------------------- */
+
+/* The shop's words: three lines, and "… xem thêm" at the end of the third.
+
+   The control cannot simply follow the text — the clamp would cut it off with
+   the rest — so it is floated into the clamped box. An empty float one line
+   short of the box's height takes the right edge of every line but the last;
+   the control floats right, clears it, and lands at the end of line three.
+   The percentage height needs a definite parent height, which the flex
+   wrapper in ShopIntro provides. */
+.ti-shop-intro {
+  line-height: 1.5;
+}
+.ti-shop-intro.is-clamped {
+  max-height: 4.5em;
+  overflow: hidden;
+}
+.ti-shop-intro.is-clamped::before {
+  content: "";
+  float: right;
+  height: calc(100% - 1.5em);
+}
+.ti-shop-intro-more {
+  float: right;
+  clear: both;
+  margin-left: 0.5ch;
+  font-weight: 600;
+  color: var(--color-brand);
+}
+.ti-shop-intro-less {
+  font-weight: 600;
+  color: var(--color-brand);
+}
+.ti-shop-intro-more:hover,
+.ti-shop-intro-less:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
