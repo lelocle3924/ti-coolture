@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, StarIcon, X } from "lucide-react";
 import { useAutoHideChrome, useMediaQuery, useReducedMotion } from "../lib/useAutoHideChrome";
@@ -769,6 +769,26 @@ function StoreTile({
   );
 }
 
+/* The lanes' ambient drift in px/s — the two speeds the old CSS durations
+   worked out to on a laptop (see StoreMarquee). */
+export const LANE_SPEEDS = { top: 34, bottom: 28 } as const;
+
+/**
+ * How fast the lanes drift, and what a hovering cursor does to them.
+ *
+ * Always null on the site, which drifts at LANE_SPEEDS and holds a lane still
+ * under the cursor. /lab/store-speed sets it to try the lanes faster, slowing
+ * under the cursor rather than stopping, on the real homepage (14/09).
+ */
+export interface LaneTuning {
+  /** Multiplies both lanes' drift. */
+  scale: number;
+  /** A hovered lane holds still, or slows to hoverScale × LANE_SPEEDS. */
+  hover: "hold" | "slow";
+  hoverScale: number;
+}
+export const LaneTuningOverride = createContext<LaneTuning | null>(null);
+
 /* Team feedback (07/09): "Thao tác vuốt ở What's in store trên PC chưa ổn."
 
    The lane keeps its ambient drift, but the drift is no longer the only thing
@@ -782,6 +802,7 @@ function StoreLane({
   products,
   direction,
   speed,
+  hoverSpeed,
   offscreen,
   onOpen,
 }: {
@@ -789,14 +810,21 @@ function StoreLane({
   direction: "left" | "right";
   /** Ambient drift in px/s. */
   speed: number;
+  /** Drift in px/s under a hovering cursor. Unset, the cursor holds the lane. */
+  hoverSpeed?: number;
   /** The section is off screen or the tab is hidden — Motion 11. */
   offscreen?: boolean;
   onOpen: (p: Product) => void;
 }) {
-  const [held, setHeld] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  /* Focus holds the lane whatever a cursor does: a keyboard user reading a
+     tile should not have it slide away. */
+  const [focused, setFocused] = useState(false);
+  const slowed = hovered && hoverSpeed !== undefined;
+  const drift = hovered && hoverSpeed !== undefined ? hoverSpeed : speed;
   const lane = useMarqueeTrack({
-    speed: direction === "left" ? speed : -speed,
-    paused: held || !!offscreen,
+    speed: direction === "left" ? drift : -drift,
+    paused: focused || (hovered && !slowed) || !!offscreen,
   });
 
   if (products.length === 0) return null;
@@ -807,12 +835,12 @@ function StoreLane({
          claims the horizontal axis. */
       className={`overflow-hidden touch-pan-y ${lane.dragging ? "cursor-grabbing" : "cursor-grab"}`}
       onPointerEnter={(e) => {
-        // a finger "enters" on touch down; only a hovering cursor should hold
-        if (e.pointerType === "mouse") setHeld(true);
+        // a finger "enters" on touch down; only a hovering cursor counts
+        if (e.pointerType === "mouse") setHovered(true);
       }}
-      onPointerLeave={() => setHeld(false)}
-      onFocusCapture={() => setHeld(true)}
-      onBlurCapture={() => setHeld(false)}
+      onPointerLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={() => setFocused(false)}
       {...lane.handlers}
       role="group"
       aria-roledescription="carousel"
@@ -965,6 +993,11 @@ function LoopingStoreLane({
 
 function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
   const half = Math.ceil(products.length / 2);
+  /* Null on the site — see LaneTuningOverride. */
+  const tuning = useContext(LaneTuningOverride);
+  const scale = tuning?.scale ?? 1;
+  const hoverSpeed = (base: number) =>
+    tuning?.hover === "slow" ? base * tuning.hoverScale : undefined;
   /* Team 20/08: one lane is enough on a phone — two stacked marquees eat the
      screen and neither can be read while both are moving. */
   const twoLanes = useMediaQuery("(min-width: 768px)");
@@ -1018,14 +1051,16 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
             <StoreLane
               products={products.slice(0, half)}
               direction="left"
-              speed={34}
+              speed={LANE_SPEEDS.top * scale}
+              hoverSpeed={hoverSpeed(LANE_SPEEDS.top)}
               offscreen={paused}
               onOpen={onOpen}
             />
             <StoreLane
               products={products.slice(half)}
               direction="right"
-              speed={28}
+              speed={LANE_SPEEDS.bottom * scale}
+              hoverSpeed={hoverSpeed(LANE_SPEEDS.bottom)}
               offscreen={paused}
               onOpen={onOpen}
             />

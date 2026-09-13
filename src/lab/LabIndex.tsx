@@ -72,6 +72,13 @@ const STUDIES = [
     body: "Chạy trên trang thật: trang chủ, sản phẩm, một sản phẩm, danh bạ shop, một shop, khám phá. Mỗi tiêu đề h1/h2 diễn khi cuộn tới — trồi lên, trượt dòng, bật từ, gợn sóng, xáo chữ, rèm teal, mắt chớp, gõ phím, rơi & nảy, mờ về nét, lật 3D, tụ lại, cuộn số, mực teal. Đổi hiệu ứng, trang và nhịp ngay trên trang.",
     meta: "14 hiệu ứng · 6 trang · PC + mobile",
   },
+  {
+    to: "/lab/store-speed",
+    n: "09",
+    title: "What's in store — nhanh 1.5×, chậm lại khi rê chuột",
+    body: "Trang chủ thật, chỉ khác hai dòng sản phẩm: chạy nhanh gấp rưỡi, và dòng đang rê chuột chậm về tốc độ hiện tại thay vì đứng yên. Bật qua lại để so với 1×, 1.25×, 2× và kiểu dừng hẳn như bây giờ.",
+    meta: "2 công tắc · PC · trang chủ",
+  },
 ];
 
 export default function LabIndex() {
