@@ -9,7 +9,9 @@ import {
   spring,
   stagger,
   utils,
+  type JSAnimation,
   type TextSplitterParams,
+  type Timeline,
 } from "animejs";
 import Header from "../components/Header";
 import RevealFooterLayout from "../components/RevealFooter";
@@ -42,6 +44,12 @@ import { LabChoices, LabPanel } from "./labShared";
        "Địa điểm …" changes with the pin. Only headings made of text and line
        breaks are touched, so there is nothing else in them React could reach
        for while they are split.
+     · Every animation is built inside the splitter's addEffect, never straight
+       after splitText returns. A split by lines is not there yet at that
+       moment — splitText waits for document.fonts.ready first — so an
+       animation built on the spot had no targets, and the late split then
+       landed on a heading already handed back, leaving it cut up for good.
+       The title is shown only once its effect has set the first frame.
      · Anything that rides out of a clip is clipped with clip-path, reaching
        0.3em past the line: Vietnamese capitals stand ~1.18em tall (see
        .display in index.css), and a clip the height of the line would shave
@@ -52,10 +60,12 @@ import { LabChoices, LabPanel } from "./labShared";
 
 /* ── the effects ───────────────────────────────────────────────────────── */
 
-interface Playing {
-  finished: Promise<void>;
-  /** Stop, and hand the heading back exactly as React rendered it. */
-  revert: () => void;
+type Anim = JSAnimation | Timeline;
+
+interface Parts {
+  chars: HTMLElement[];
+  words: HTMLElement[];
+  lines: HTMLElement[];
 }
 
 interface Effect {
@@ -63,42 +73,47 @@ interface Effect {
   name: string;
   /** One line for the panel: what the visitor sees. */
   note: string;
-  run: (el: HTMLElement, rate: number) => Playing;
+  split: TextSplitterParams;
+  /** Sets the first frame on the parts and returns the animation. */
+  build: (parts: Parts, el: HTMLElement, rate: number) => Anim;
 }
 
-interface Split {
-  chars: HTMLElement[];
-  words: HTMLElement[];
-  lines: HTMLElement[];
-  restore: () => void;
+interface Playing {
+  finished: Promise<void>;
+  /** Stop, and hand the heading back exactly as React rendered it. */
+  revert: () => void;
 }
 
-/** splitText, holding on to the nodes React rendered so they can go back. */
-function split(el: HTMLElement, params: TextSplitterParams): Split {
+/** The longest a title may wait, hidden, for a split that never comes. */
+const GIVE_UP_MS = 4000;
+
+function playEffect(el: HTMLElement, effect: Effect, rate: number): Playing {
   const original = Array.from(el.childNodes);
-  const splitter = splitText(el, { accessible: true, ...params });
-  return {
-    chars: splitter.chars as HTMLElement[],
-    words: splitter.words as HTMLElement[],
-    lines: splitter.lines as HTMLElement[],
-    restore: () => {
-      splitter.revert();
-      el.replaceChildren(...original);
-    },
-  };
-}
+  let settle = () => {};
+  const finished = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
+  const giveUp = window.setTimeout(() => settle(), GIVE_UP_MS);
 
-function playing(
-  anim: { then: (callback: () => void) => unknown; revert: () => unknown },
-  restore: () => void
-): Playing {
+  const splitter = splitText(el, { accessible: true, ...effect.split });
+  // runs as soon as the split exists — at once for words and characters,
+  // after document.fonts.ready for lines — and again if a resize re-splits
+  splitter.addEffect((self: Parts) => {
+    const anim = effect.build({ chars: self.chars, words: self.words, lines: self.lines }, el, rate);
+    el.removeAttribute("data-tm-wait");
+    void anim.then(() => settle());
+    return anim;
+  });
+
   return {
-    finished: new Promise<void>((resolve) => {
-      void anim.then(() => resolve());
-    }),
+    finished,
     revert: () => {
-      anim.revert();
-      restore();
+      window.clearTimeout(giveUp);
+      splitter.revert();
+      // a split still waiting on fonts.ready finds nothing left to split
+      splitter.html = "";
+      el.replaceChildren(...original);
+      el.removeAttribute("data-tm-wait");
     },
   };
 }
@@ -139,46 +154,32 @@ const EFFECTS: Effect[] = [
     id: "rise",
     name: "Trồi lên",
     note: "Từng chữ trồi lên từ sau một đường cắt — rất nhanh, rồi chậm dần vào chỗ.",
-    run: (el, rate) => {
-      const s = split(el, { chars: { wrap: "clip" } });
-      roomForMarks(s.chars);
-      utils.set(s.chars, { y: clearOf(el) });
-      const anim = animate(s.chars, {
-        y: 0,
-        duration: 760,
-        delay: stagger(22),
-        ease: "out(4)",
-        playbackRate: rate,
-      });
-      return playing(anim, s.restore);
+    split: { chars: { wrap: "clip" } },
+    build: ({ chars }, el, rate) => {
+      roomForMarks(chars);
+      utils.set(chars, { y: clearOf(el) });
+      return animate(chars, { y: 0, duration: 760, delay: stagger(22), ease: "out(4)", playbackRate: rate });
     },
   },
   {
     id: "lines",
     name: "Trượt từng dòng",
     note: "Cả dòng trượt lên một lượt, dòng sau theo dòng trước — như lật sang trang mới.",
-    run: (el, rate) => {
-      const s = split(el, { lines: { wrap: "clip" } });
-      roomForMarks(s.lines);
-      utils.set(s.lines, { y: clearOf(el) });
-      const anim = animate(s.lines, {
-        y: 0,
-        duration: 900,
-        delay: stagger(130),
-        ease: "out(4)",
-        playbackRate: rate,
-      });
-      return playing(anim, s.restore);
+    split: { lines: { wrap: "clip" } },
+    build: ({ lines }, el, rate) => {
+      roomForMarks(lines);
+      utils.set(lines, { y: clearOf(el) });
+      return animate(lines, { y: 0, duration: 900, delay: stagger(130), ease: "out(4)", playbackRate: rate });
     },
   },
   {
     id: "pop",
     name: "Bật từng từ",
     note: "Mỗi từ bật ra từ nhỏ xíu, hơi nghiêng, nảy một nhịp lò xo rồi đứng yên.",
-    run: (el, rate) => {
-      const s = split(el, { words: true });
-      utils.set(s.words, { opacity: 0, scale: 0.45, rotate: () => utils.random(-12, 12) });
-      const anim = animate(s.words, {
+    split: { words: true },
+    build: ({ words }, _el, rate) => {
+      utils.set(words, { opacity: 0, scale: 0.45, rotate: () => utils.random(-12, 12) });
+      return animate(words, {
         opacity: { to: 1, duration: 220, ease: "out(2)" },
         scale: 1,
         rotate: 0,
@@ -186,17 +187,16 @@ const EFFECTS: Effect[] = [
         delay: stagger(85),
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "wave",
     name: "Gợn sóng",
     note: "Chữ nhô lên rồi hạ xuống thành một con sóng chạy từ trái sang phải — dải sóng của hero, bằng chữ.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      utils.set(s.chars, { opacity: 0, y: "0.45em" });
-      const anim = animate(s.chars, {
+    split: { chars: true },
+    build: ({ chars }, _el, rate) => {
+      utils.set(chars, { opacity: 0, y: "0.45em" });
+      return animate(chars, {
         opacity: { to: 1, duration: 240, ease: "out(2)" },
         y: [
           { to: "-0.3em", duration: 320, ease: "out(3)" },
@@ -205,22 +205,21 @@ const EFFECTS: Effect[] = [
         delay: stagger(36),
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "scramble",
     name: "Xáo chữ",
     note: "Ký tự ngẫu nhiên chạy qua từng từ rồi dừng đúng chữ — kiểu bảng giờ tàu ở ga.",
-    run: (el, rate) => {
-      const s = split(el, { words: true });
+    split: { words: true },
+    build: ({ words }, _el, rate) => {
       // a scrambling word keeps the width of the word it will become
-      for (const word of s.words) {
+      for (const word of words) {
         word.style.minWidth = `${word.getBoundingClientRect().width}px`;
         word.style.whiteSpace = "nowrap";
       }
-      utils.set(s.words, { opacity: 0 });
-      const anim = animate(s.words, {
+      utils.set(words, { opacity: 0 });
+      return animate(words, {
         opacity: { to: 1, duration: 1, delay: stagger(110) },
         textContent: scrambleText({
           chars: "uppercase",
@@ -231,17 +230,16 @@ const EFFECTS: Effect[] = [
         }),
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "curtain",
     name: "Rèm teal",
     note: "Một dải teal quét qua từng dòng; chữ đã nằm sẵn phía sau khi dải rút đi.",
-    run: (el, rate) => {
-      const s = split(el, { lines: true });
+    split: { lines: true },
+    build: ({ lines }, el, rate) => {
       const align = window.getComputedStyle(el).textAlign;
-      const curtains = s.lines.map((line) => {
+      const curtains = lines.map((line) => {
         // the line hugs its words, so the curtain does too
         line.style.position = "relative";
         line.style.width = "fit-content";
@@ -256,7 +254,7 @@ const EFFECTS: Effect[] = [
         return curtain;
       });
       const timeline = createTimeline({ playbackRate: rate });
-      s.lines.forEach((line, i) => {
+      lines.forEach((line, i) => {
         const at = i * 140;
         const curtain = curtains[i];
         timeline
@@ -267,17 +265,17 @@ const EFFECTS: Effect[] = [
           }, at + 430)
           .add(curtain, { scaleX: 0, duration: 460, ease: "inOut(3)" }, at + 440);
       });
-      return playing(timeline, s.restore);
+      return timeline;
     },
   },
   {
     id: "blink",
     name: "Mắt chớp",
     note: "Chữ mở ra từ giữa theo chiều dọc rồi chớp một cái — như con mắt trên dải loop.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      utils.set(s.chars, { opacity: 0, scaleY: 0 });
-      const anim = animate(s.chars, {
+    split: { chars: true },
+    build: ({ chars }, _el, rate) => {
+      utils.set(chars, { opacity: 0, scaleY: 0 });
+      return animate(chars, {
         opacity: { to: 1, duration: 120, ease: "linear" },
         scaleY: [
           { to: 1, duration: 380, ease: "out(3)" },
@@ -287,31 +285,30 @@ const EFFECTS: Effect[] = [
         delay: stagger(24, { from: "center" }),
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "type",
     name: "Gõ phím",
     note: "Từng chữ hiện ra sau một con trỏ teal; gõ xong, con trỏ nháy hai lần rồi đi.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      utils.set(s.chars, { opacity: 0 });
+    split: { chars: true },
+    build: ({ chars }, _el, rate) => {
+      utils.set(chars, { opacity: 0 });
       const caret = document.createElement("span");
       caret.setAttribute("aria-hidden", "true");
       // takes no room: its margin gives back the width it adds
       caret.style.cssText =
         "display:inline-block;width:0.09em;height:0.92em;margin-right:-0.09em;vertical-align:-0.06em;background:var(--color-wave);";
-      s.chars[0]?.before(caret);
+      chars[0]?.before(caret);
       const step = 55;
       const timeline = createTimeline({ playbackRate: rate });
-      s.chars.forEach((char, i) => {
+      chars.forEach((char, i) => {
         timeline.call(() => {
           char.style.opacity = "1";
           char.after(caret);
         }, 120 + i * step);
       });
-      timeline.add(
+      return timeline.add(
         caret,
         {
           opacity: [
@@ -323,22 +320,18 @@ const EFFECTS: Effect[] = [
           ],
           ease: "linear",
         },
-        120 + s.chars.length * step + 160
+        120 + chars.length * step + 160
       );
-      return playing(timeline, () => {
-        caret.remove();
-        s.restore();
-      });
     },
   },
   {
     id: "drop",
     name: "Rơi & nảy",
     note: "Chữ rơi xuống theo thứ tự ngẫu nhiên, nghiêng lệch, nảy lò xo khi chạm dòng.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      utils.set(s.chars, { opacity: 0, y: "-1.2em", rotate: () => utils.random(-28, 28) });
-      const anim = animate(s.chars, {
+    split: { chars: true },
+    build: ({ chars }, _el, rate) => {
+      utils.set(chars, { opacity: 0, y: "-1.2em", rotate: () => utils.random(-28, 28) });
+      return animate(chars, {
         opacity: { to: 1, duration: 160, ease: "linear" },
         y: "0em",
         rotate: 0,
@@ -346,17 +339,16 @@ const EFFECTS: Effect[] = [
         delay: stagger(36, { from: "random" }),
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "blur",
     name: "Mờ về nét",
     note: "Chữ từ nhoè và hơi lệch phải trôi về chỗ, rõ dần — dịu nhất trong cả bộ.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      utils.set(s.chars, { opacity: 0, filter: "blur(12px)", x: "0.35em" });
-      const anim = animate(s.chars, {
+    split: { chars: true },
+    build: ({ chars }, _el, rate) => {
+      utils.set(chars, { opacity: 0, filter: "blur(12px)", x: "0.35em" });
+      return animate(chars, {
         opacity: 1,
         filter: "blur(0px)",
         x: "0em",
@@ -365,24 +357,18 @@ const EFFECTS: Effect[] = [
         ease: "out(3)",
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "flip",
     name: "Lật 3D",
     note: "Mỗi chữ lật từ nằm ngửa dựng đứng lên quanh chân chữ, như bảng lật số.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      const parents = new Set(
-        s.chars.map((char) => char.parentElement).filter((p): p is HTMLElement => !!p)
-      );
-      const before = new Map(Array.from(parents, (p) => [p, p.style.perspective] as const));
-      parents.forEach((p) => {
-        p.style.perspective = "10em";
-      });
-      utils.set(s.chars, { opacity: 0, rotateX: -100, transformOrigin: "50% 100%" });
-      const anim = animate(s.chars, {
+    split: { chars: true },
+    build: ({ chars, words }, _el, rate) => {
+      // the depth lives on the words the characters sit in, which go with the split
+      for (const word of words) word.style.perspective = "10em";
+      utils.set(chars, { opacity: 0, rotateX: -100, transformOrigin: "50% 100%" });
+      return animate(chars, {
         opacity: { to: 1, duration: 200, ease: "linear" },
         rotateX: 0,
         duration: 820,
@@ -390,28 +376,22 @@ const EFFECTS: Effect[] = [
         ease: "out(3)",
         playbackRate: rate,
       });
-      return playing(anim, () => {
-        before.forEach((value, p) => {
-          p.style.perspective = value;
-        });
-        s.restore();
-      });
     },
   },
   {
     id: "gather",
     name: "Tụ lại",
     note: "Chữ bay vào từ mọi hướng, vừa xoay vừa lớn dần, tụ về đúng chỗ.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
-      utils.set(s.chars, {
+    split: { chars: true },
+    build: ({ chars }, _el, rate) => {
+      utils.set(chars, {
         opacity: 0,
         scale: 0.3,
         x: () => `${utils.random(-3, 3, 2)}em`,
         y: () => `${utils.random(-2, 2, 2)}em`,
         rotate: () => utils.random(-140, 140),
       });
-      const anim = animate(s.chars, {
+      return animate(chars, {
         opacity: { to: 1, duration: 320, ease: "linear" },
         scale: 1,
         x: "0em",
@@ -422,48 +402,46 @@ const EFFECTS: Effect[] = [
         ease: "out(4)",
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "roll",
     name: "Cuộn số",
     note: "Mỗi chữ cuộn qua một vòng như đồng hồ đếm số và dừng đúng mặt chữ.",
-    run: (el, rate) => {
-      const s = split(el, { chars: { wrap: "clip", clone: "bottom" } });
-      roomForMarks(s.chars);
+    split: { chars: { wrap: "clip", clone: "bottom" } },
+    build: ({ chars }, el, rate) => {
+      roomForMarks(chars);
       const gap = (MARKS + 0.05) * fontSize(el);
       // the copy waits below the reach of the marks, not just below the line
-      for (const char of s.chars) {
+      for (const char of chars) {
         const copy = char.querySelector<HTMLElement>("[inert]");
         if (copy) copy.style.top = `calc(100% + ${gap}px)`;
       }
       const step = (char: HTMLElement) => char.offsetHeight + gap;
-      utils.set(s.chars, { y: step });
-      const anim = animate(s.chars, {
+      utils.set(chars, { y: step });
+      return animate(chars, {
         y: (char: HTMLElement) => -step(char),
         duration: 1000,
         delay: stagger(30),
         ease: "inOut(3)",
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
   {
     id: "ink",
     name: "Mực teal",
     note: "Chữ hiện lên màu teal, phồng nhẹ rồi ngấm dần về màu thật của tiêu đề.",
-    run: (el, rate) => {
-      const s = split(el, { chars: true });
+    split: { chars: true },
+    build: ({ chars }, el, rate) => {
       const final = window.getComputedStyle(el).color;
       const tokens = window.getComputedStyle(document.documentElement);
       const wave = tokens.getPropertyValue("--color-wave").trim() || "#39d6cf";
       const paper = tokens.getPropertyValue("--color-paper").trim() || "#ffffff";
       // a title that is already teal — a shop's name — inks in from paper
       const start = sameColour(final, wave) ? paper : wave;
-      utils.set(s.chars, { opacity: 0, color: start, y: "0.2em" });
-      const anim = animate(s.chars, {
+      utils.set(chars, { opacity: 0, color: start, y: "0.2em" });
+      return animate(chars, {
         opacity: { to: 1, duration: 160, ease: "linear" },
         y: { to: "0em", duration: 520, ease: "out(3)" },
         scale: [
@@ -474,7 +452,6 @@ const EFFECTS: Effect[] = [
         delay: stagger(30),
         playbackRate: rate,
       });
-      return playing(anim, s.restore);
     },
   },
 ];
@@ -509,9 +486,8 @@ function useTitleMotion(
     const play = (el: HTMLElement) => {
       const state = live.get(el);
       if (!alive || !active || !state || state.playing || !el.isConnected) return;
-      const run = active.run(el, rate);
+      const run = playEffect(el, active, rate);
       state.playing = run;
-      el.removeAttribute("data-tm-wait");
       void run.finished.then(() => {
         if (live.get(el) !== state || state.playing !== run) return;
         run.revert();
