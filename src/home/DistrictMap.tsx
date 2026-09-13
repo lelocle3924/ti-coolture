@@ -243,7 +243,9 @@ function MapArrows({ onStep }: { onStep: (delta: number) => void }) {
  * The marks /discover composes its field with, at the same size, place and
  * weight: the arc off the top-right corner, the ribbon loop off the bottom-left.
  * 13/09: "Nền của map ở homepage bị trống… Đem cái element trang trí giống
- * bên trang /discover sang." Stated once so the two fields cannot drift.
+ * bên trang /discover sang." They came off the homepage again later the same
+ * day (see HomeDistrictMap), so /discover is their one user; kept here beside
+ * the map they were drawn for.
  */
 export function DiscoverMarks() {
   return (
@@ -270,8 +272,10 @@ export function DiscoverMarks() {
  *
  * Team 13/09, read end to end:
  *
- *   · "Nền của map ở homepage bị trống" — the field carries /discover's two
- *     marks now (DiscoverMarks).
+ *   · "Nền của map ở homepage bị trống" — the field carried /discover's two
+ *     marks for one round. 13/09 took them off again: "bỏ giúp tôi 2 cái
+ *     element là brand loop với cái arc top right ở homepage đi, nhìn lạc
+ *     lõng quá".
  *   · "Cho title Khám phá thành phố lên trên, căn giữa" — the heading left
  *     the column and is centred over the whole section, with the region's
  *     name under it, reading off the selection the way /discover's does.
@@ -333,8 +337,6 @@ export default function DistrictMap({
           "linear-gradient(to bottom, var(--color-brand) 55%, var(--color-brand-deep) 100%)",
       }}
     >
-      <DiscoverMarks />
-
       <div className="relative z-20 mx-auto max-w-4xl px-5 text-center md:px-8">
         {/* The homepage's own heading scale rather than /discover's h1, so
             this title sits in the same step as "What's in store" and "Chưa
