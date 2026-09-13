@@ -58,6 +58,13 @@ const STUDIES = [
     body: "Hai câu trả lời cho “bộ sưu tập để làm gì” — Catalogue và Curation — mỗi câu ba hướng, có bản vẽ PC và mobile ở kích thước thật và bảng so sánh ba trục quyết định.",
     meta: "6 hướng · PC + mobile · /collections",
   },
+  {
+    to: "/lab/home-map",
+    n: "07",
+    title: "Map trang chủ — sóng, arc và map ở giữa",
+    body: "Trang chủ thật, chỉ khác phần map. Con sóng của hero nằm ngang map hoặc dọc mép dưới map, xanh hoặc trắng; arc góc phải nối vào mép dưới Bộ sưu tập; bỏ danh sách vùng để map vào giữa. Bật tắt từng thứ ngay trên trang.",
+    meta: "4 công tắc · PC + mobile · trang chủ",
+  },
 ];
 
 export default function LabIndex() {

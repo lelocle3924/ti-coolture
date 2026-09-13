@@ -3,8 +3,7 @@ import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
 import { fetchTouristRoutes } from "../lib/dbService";
 import { TouristRoute } from "../types";
 import { Compass, ArrowUpRight, MapPin } from "lucide-react";
-import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
-import { CategoryMap, DISCOVER_CATEGORIES } from "../home/DistrictMap";
+import { CategoryMap, DISCOVER_CATEGORIES, DiscoverMarks } from "../home/DistrictMap";
 import { planFor } from "../home/homeData";
 
 /**
@@ -188,17 +187,8 @@ export default function Discovery() {
         data-surface="dark"
         className="relative z-10 overflow-hidden bg-brand pb-10 text-paper md:pb-16"
       >
-        <ArcTopRight
-          className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-[0.3]"
-          style={{ width: "clamp(16rem, 34vw, 28rem)" }}
-          fill="var(--color-wave)"
-        />
-        <RibbonLoop
-          className="pointer-events-none absolute -left-28 bottom-0 z-0 opacity-[0.3] -scale-x-100"
-          style={{ width: "clamp(16rem, 30vw, 24rem)" }}
-          ribbon="var(--color-wave)"
-          dot="var(--color-paper)"
-        />
+        {/* Shared with the homepage map since 13/09 — see DiscoverMarks. */}
+        <DiscoverMarks />
 
         {/* pt is deeper than the other pages': the title is centred, so it
             runs under the middle of the floating nav pill rather than

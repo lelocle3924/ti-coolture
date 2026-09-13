@@ -1,6 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { ArrowRight, Camera, Landmark, ShoppingBag, Utensils } from "lucide-react";
 import { islandBlobs, planFor, pointsAlongRoute } from "./homeData";
+import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import "./home.css";
 import type { TouristRoute } from "../types";
 
@@ -62,7 +63,7 @@ export type DiscoverCategory = (typeof DISCOVER_CATEGORIES)[number];
  *
  * On a phone the two stack and the island takes 75%, centred.
  */
-function KeLayout({
+export function KeLayout({
   index,
   island,
   islandFirst = false,
@@ -74,9 +75,10 @@ function KeLayout({
    * Phone only: put the map above the column beside it.
    *
    * Team 09/09 for /discover — "Trên mobile, để map nằm trên và list địa điểm
-   * nằm dưới." The homepage keeps the other order, because its column opens
-   * with the section's own heading and a map arriving above the title would
-   * be a section with no name.
+   * nằm dưới." The homepage used to keep the other order, because its column
+   * opened with the section's heading and a map above it would have been a
+   * section with no name. Since 13/09 the heading sits centred over the whole
+   * section, as on /discover, so both maps come first.
    *
    * order-* on a phone and order-none at md, so the grid places by DOM order
    * on a desktop and the index stays in the first column.
@@ -85,10 +87,11 @@ function KeLayout({
   /**
    * Where the column sits against the island.
    *
-   * "center" is the homepage, where a three-line list beside a tall map wants
-   * to be on its middle. "start" is /discover (09/09) — "mép trên list địa
-   * điểm để ngang với mép trên bản đồ" — where the list is long enough to
-   * have a top edge of its own and the two should agree on it.
+   * "start" is /discover (09/09) — "mép trên list địa điểm để ngang với mép
+   * trên bản đồ" — and, since 13/09, the homepage, which took that layout
+   * whole. "center" is what the homepage did before: a three-line list on
+   * the middle of a tall map, which is what left its title floating halfway
+   * down an empty field.
    */
   align?: "center" | "start";
 }) {
@@ -126,7 +129,7 @@ function KeLayout({
  * exact. That is also the whole of "giữ nguyên aspect ratio": the width is
  * set, the height follows from 4:3, and nothing squashes the drawing to fit.
  */
-function IslandFrame({ route, children }: { route: TouristRoute; children: ReactNode }) {
+export function IslandFrame({ route, children }: { route: TouristRoute; children: ReactNode }) {
   const plan = planFor(route.id);
   const island = islandBlobs(route.stops);
   const clipId = `ti-island-clip-${route.id}`;
@@ -178,7 +181,7 @@ function IslandFrame({ route, children }: { route: TouristRoute; children: React
 }
 
 /** The teardrop itself, tip at the bottom of its own box. */
-function Teardrop({ fill, children }: { fill: string; children?: ReactNode }) {
+export function Teardrop({ fill, children }: { fill: string; children?: ReactNode }) {
   return (
     <span className="relative block h-11 w-8 md:h-14 md:w-10">
       <svg
@@ -197,117 +200,280 @@ function Teardrop({ fill, children }: { fill: string; children?: ReactNode }) {
   );
 }
 
+/* ── the arrows on the map's edges ─────────────────────────────────────── */
+
+/**
+ * Previous and next region, on the island's own edges.
+ *
+ * /discover's 09/09 note put them there ("Thêm 2 nút mũi tên 2 bên cái map để
+ * đổi giữa các quận"), and 13/09 carries that layout onto the homepage whole,
+ * so both maps draw the same pair from here rather than two copies.
+ *
+ * They belong to the map, not to a control strip under it. The map runs out
+ * to the page edge on its right, so the forward arrow comes inside; the back
+ * one has violet to its left and can sit off the island.
+ */
+export function MapArrows({ onStep }: { onStep: (delta: number) => void }) {
+  return (
+    <>
+      {[-1, 1].map((delta) => (
+        <button
+          key={delta}
+          type="button"
+          onClick={() => onStep(delta)}
+          aria-label={delta < 0 ? "Vùng trước" : "Vùng sau"}
+          className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-paper transition-colors hover:text-wave md:h-14 md:w-14 ${
+            delta < 0 ? "left-0 md:-left-3" : "right-1 md:right-4"
+          }`}
+        >
+          <ArrowRight
+            aria-hidden="true"
+            className={`h-7 w-7 drop-shadow-[0_2px_6px_rgba(18,8,31,0.45)] md:h-9 md:w-9 ${
+              delta < 0 ? "rotate-180" : ""
+            }`}
+            strokeWidth={2.5}
+          />
+        </button>
+      ))}
+    </>
+  );
+}
+
+/**
+ * The marks /discover composes its field with, at the same size, place and
+ * weight: the arc off the top-right corner, the ribbon loop off the bottom-left.
+ * 13/09: "Nền của map ở homepage bị trống… Đem cái element trang trí giống
+ * bên trang /discover sang." They came off the homepage again later the same
+ * day (see HomeDistrictMap), so /discover is their one user; kept here beside
+ * the map they were drawn for.
+ */
+export function DiscoverMarks() {
+  return (
+    <>
+      <ArcTopRight
+        className="pointer-events-none absolute -right-20 -top-24 z-0 opacity-[0.3]"
+        style={{ width: "clamp(16rem, 34vw, 28rem)" }}
+        fill="var(--color-wave)"
+      />
+      <RibbonLoop
+        className="pointer-events-none absolute -left-28 bottom-0 z-0 opacity-[0.3] -scale-x-100"
+        style={{ width: "clamp(16rem, 30vw, 24rem)" }}
+        ribbon="var(--color-wave)"
+        dot="var(--color-paper)"
+      />
+    </>
+  );
+}
+
 /* ── the homepage map ─────────────────────────────────────────────────── */
 
-export default function DistrictMap({
-  routes,
-  onOpenRoute,
-  heading = "Khám phá Sài Gòn",
-}: {
+export interface DistrictMapProps {
   routes: TouristRoute[];
   /** The island was tapped — open this region on /discover. */
   onOpenRoute: (routeId: string) => void;
   heading?: string;
-}) {
-  /* Null until someone picks, because `routes` arrives empty on the first
-     render — seeding the state from routes[0] would lock the map to whatever
-     was there before the fetch resolved. */
+}
+
+/**
+ * A stand-in for the homepage's map section, for a study that has to be seen
+ * inside the real homepage rather than beside it — /lab/home-map mounts the
+ * Homepage view with this set. Always null on the site.
+ */
+export const HomeMapOverride = createContext<ComponentType<DistrictMapProps> | null>(null);
+
+export default function DistrictMap(props: DistrictMapProps) {
+  const Override = useContext(HomeMapOverride);
+  return Override ? <Override {...props} /> : <HomeDistrictMap {...props} />;
+}
+
+/** The homepage map's ground: the collections' violet, ramping into
+    brand-deep under the island to meet the collaborate band. */
+export const MAP_GROUND =
+  "linear-gradient(to bottom, var(--color-brand) 55%, var(--color-brand-deep) 100%)";
+
+/**
+ * Which region the homepage map shows, and the two ways to change it.
+ *
+ * Null until someone picks, because `routes` arrives empty on the first
+ * render — seeding the state from routes[0] would lock the map to whatever
+ * was there before the fetch resolved. `step` wraps, as on /discover.
+ */
+export function useRegionPicker(routes: TouristRoute[]) {
   const [picked, setPicked] = useState<string | null>(null);
   const route = routes.find((r) => r.id === picked) ?? routes[0];
+  const step = (delta: number) => {
+    if (!route) return;
+    const here = routes.findIndex((r) => r.id === route.id);
+    const next = routes[(here + delta + routes.length) % routes.length];
+    if (next) setPicked(next.id);
+  };
+  return { route, pick: setPicked, step };
+}
 
+/**
+ * The three maps, by name. Hairlines on the violet and the row measure of
+ * /discover's place list; the selected one takes the teal and the short rule,
+ * which is what says this list is the control for the map beside it.
+ */
+export function RegionList({
+  routes,
+  current,
+  onPick,
+}: {
+  routes: TouristRoute[];
+  current: string;
+  onPick: (routeId: string) => void;
+}) {
+  return (
+    <ul className="border-t border-white/15">
+      {routes.map((r) => {
+        const on = r.id === current;
+        return (
+          <li key={r.id} className="border-b border-white/15">
+            <button
+              type="button"
+              onClick={() => onPick(r.id)}
+              aria-current={on}
+              className={`flex w-full items-center gap-3 py-3.5 text-left transition-colors ${
+                on ? "text-wave" : "text-white/65 hover:text-paper"
+              }`}
+            >
+              <span className="min-w-0 flex-1 truncate text-base font-medium leading-snug md:text-lg">
+                {planFor(r.id).region}
+              </span>
+              <span
+                aria-hidden="true"
+                className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  on ? "w-8" : "w-0"
+                }`}
+              />
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * The island, with its one pin, as a single button to /discover.
+ *
+ * A real button: the island carries one decorative pin and no controls — the
+ * arrows are its siblings, not its children — so the whole map can be the
+ * control it behaves like.
+ */
+export function HomeIsland({
+  route,
+  onOpenRoute,
+}: {
+  route: TouristRoute;
+  onOpenRoute: (routeId: string) => void;
+}) {
   /* One pin, in the middle of the walk. Team 08/09: "trên đó chỉ có 1 pin đại
      diện, không đánh số gì hết" — it stands for the region, so it belongs
-     where the region is rather than on any one stop, and there is no order
-     left for it to number. */
-  const centre = useMemo(() => (route ? pointsAlongRoute(route.stops, 1)[0] : null), [route]);
-
-  if (!route || !centre) return null;
+     where the region is rather than on any one stop. */
+  const centre = useMemo(() => pointsAlongRoute(route.stops, 1)[0], [route]);
   const plan = planFor(route.id);
 
   return (
-    /* Ground stays brand-deep (26/08: "DO NOT use black background,
-       especially for this section") — the island is teal and the pin is
-       white, and both need a dark field to read on. */
-    <section id="dong-map" className="bg-brand-deep py-12 text-paper md:py-16">
-      <KeLayout
-        index={
-          <>
-            <h2 className="display text-[clamp(1.75rem,3.4vw,3rem)] normal-case leading-[1.15] text-wave">
-              {heading}
-            </h2>
+    <button
+      type="button"
+      onClick={() => onOpenRoute(route.id)}
+      aria-label={`Xem ${plan.region} trên trang Khám phá`}
+      className="group block w-full cursor-pointer"
+    >
+      <IslandFrame route={route}>
+        {/* Keyed on the region so the bob restarts where the island changes —
+            otherwise the pin appears to stay put while the ground under it
+            swaps. */}
+        <span
+          key={route.id}
+          style={{ left: `${centre.x}%`, top: `${centre.y}%` }}
+          className="ti-pin-bob absolute z-10 block"
+        >
+          <Teardrop fill="var(--color-paper)">
+            {/* A dot, not a number: nothing is being counted. */}
+            <span
+              aria-hidden="true"
+              className="absolute left-1/2 top-[30%] h-2 w-2 -translate-x-1/2 rounded-full bg-brand md:h-2.5 md:w-2.5"
+            />
+          </Teardrop>
+        </span>
+      </IslandFrame>
+    </button>
+  );
+}
 
-            {/* Every region named and on screen. This is the control that
-                replaced the arrows and the dots: you can see what the other
-                two are before deciding to look at one. */}
-            <ul className="mt-6 border-t border-white/15">
-              {routes.map((r, i) => {
-                const on = r.id === route.id;
-                return (
-                  <li key={r.id} className="border-b border-white/15">
-                    <button
-                      type="button"
-                      onClick={() => setPicked(r.id)}
-                      aria-current={on}
-                      className={`flex w-full items-center gap-3 py-3.5 text-left transition-colors ${
-                        on ? "text-wave" : "text-white/65 hover:text-paper"
-                      }`}
-                    >
-                      <span className="w-6 shrink-0 text-[11px] tabular-nums tracking-[0.14em] opacity-60">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                      {/* The region, and nothing else. The stop count and the
-                          walking distance came off on 08/09. */}
-                      <span className="min-w-0 flex-1 truncate text-lg font-medium">
-                        {planFor(r.id).region}
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                          on ? "w-8" : "w-0"
-                        }`}
-                      />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        }
-        island={
-          /* A real button this time. The island used to be a clickable div
-             because it had buttons inside it — one per stop — and a button
-             inside a button is invalid HTML that React refuses to hydrate.
-             It carries one decorative pin now and no controls, so the whole
-             map can be the control it already behaved like, and the "Mở lộ
-             trình…" link that existed to give the keyboard a way in is not
-             needed any more (08/09: Xoá dòng "Mở lộ trình Quận 5 · Chợ Lớn"). */
-          <button
-            type="button"
-            onClick={() => onOpenRoute(route.id)}
-            aria-label={`Xem ${plan.region} trên trang Khám phá`}
-            className="group block w-full cursor-pointer"
-          >
-            <IslandFrame route={route}>
-              {/* Keyed on the region so the bob restarts where the island
-                  changes — otherwise the pin appears to stay put while the
-                  ground under it swaps. */}
-              <span
-                key={route.id}
-                style={{ left: `${centre.x}%`, top: `${centre.y}%` }}
-                className="ti-pin-bob absolute z-10 block"
-              >
-                <Teardrop fill="var(--color-paper)">
-                  {/* A dot, not a number: nothing is being counted. */}
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-1/2 top-[30%] h-2 w-2 -translate-x-1/2 rounded-full bg-brand md:h-2.5 md:w-2.5"
-                  />
-                </Teardrop>
-              </span>
-            </IslandFrame>
-          </button>
-        }
-      />
+/**
+ * /discover's layout, with the three maps in the column instead of the places.
+ *
+ * Team 13/09, read end to end:
+ *
+ *   · "Cho title Khám phá thành phố lên trên, căn giữa" — the heading left
+ *     the column and is centred over the whole section, with the region's
+ *     name under it, reading off the selection the way /discover's does.
+ *   · "Mang y nguyên layout của trang /discover… Chỉ khác nhau ở chỗ là: phần
+ *     bên trái ở homepage hiện 3 cái bản đồ" — the same KeLayout, the same
+ *     island pulled up into its own empty top, the same arrows on its edges,
+ *     the same map-first order on a phone. The column is the list of the
+ *     three maps by name, and only by name.
+ *   · "Empty space từ cuối phần collections đến title và map… quá nhiều" —
+ *     the 10vh ramp above the section is gone and the title opens it.
+ *   · "Nền của map ở homepage bị trống" — the field carried /discover's two
+ *     marks for one round; the second note that day took them off again
+ *     ("nhìn lạc lõng quá"). What fills it instead — the hero's wave under
+ *     the map, the arc joined to the collections, a centred map — is being
+ *     tried inside the real homepage at /lab/home-map.
+ *
+ * The ground still has to arrive at brand-deep, because the collaborate band
+ * below is brand-deep and 20/08 asked that no two grounds meet on a hard
+ * edge. So the ramp happens inside this section, under the island, where it
+ * costs no height.
+ */
+export function HomeDistrictMap({
+  routes,
+  onOpenRoute,
+  heading = "Khám phá thành phố",
+}: DistrictMapProps) {
+  const { route, pick, step } = useRegionPicker(routes);
+  if (!route) return null;
+  const plan = planFor(route.id);
+
+  return (
+    <section
+      id="dong-map"
+      data-surface="dark"
+      className="relative overflow-hidden pb-12 pt-12 text-paper md:pb-16 md:pt-16"
+      style={{ background: MAP_GROUND }}
+    >
+      <div className="relative z-20 mx-auto max-w-4xl px-5 text-center md:px-8">
+        {/* The homepage's own heading scale rather than /discover's h1, so
+            this title sits in the same step as "What's in store" and "Chưa
+            biết mua gì?" above it. leading-[1.25] for the stacked marks on
+            PHỐ — see index.css on how far Vietnamese uppercase reaches. */}
+        <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-[1.25] text-paper">
+          {heading}
+        </h2>
+        <p key={route.id} className="lab-plate-in mt-3 text-base tracking-[0.12em] text-wave md:text-lg">
+          {plan.region}
+        </p>
+      </div>
+
+      <div className="relative z-10 mt-2 md:mt-4">
+        <KeLayout
+          islandFirst
+          align="start"
+          index={<RegionList routes={routes} current={route.id} onPick={pick} />}
+          island={
+            /* Pulled up by its own empty top, exactly as on /discover — see
+               the note on CategoryMap for the 10.9%. */
+            <div className="relative -mt-[10.9%]">
+              <MapArrows onStep={step} />
+              <HomeIsland route={route} onOpenRoute={onOpenRoute} />
+            </div>
+          }
+        />
+      </div>
     </section>
   );
 }
@@ -381,31 +547,7 @@ export function CategoryMap({
            regions whose highest stop sits a little lower, which is the price
            of one number for three hand-placed maps. */
         <div className="relative -mt-[10.9%]">
-          {/* On the map's own edges, as drawn: they belong to the map, not to
-              a control strip under it, and there is nowhere else to put them
-              once the region list is gone. */}
-          {[-1, 1].map((delta) => (
-            <button
-              key={delta}
-              type="button"
-              onClick={() => onStep(delta)}
-              aria-label={delta < 0 ? "Vùng trước" : "Vùng sau"}
-              className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-paper transition-colors hover:text-wave md:h-14 md:w-14 ${
-                /* The map runs out to the page edge on its right, so the
-                   forward arrow comes inside; the back one has violet to its
-                   left and can sit off the island. */
-                delta < 0 ? "left-0 md:-left-3" : "right-1 md:right-4"
-              }`}
-            >
-              <ArrowRight
-                aria-hidden="true"
-                className={`h-7 w-7 drop-shadow-[0_2px_6px_rgba(18,8,31,0.45)] md:h-9 md:w-9 ${
-                  delta < 0 ? "rotate-180" : ""
-                }`}
-                strokeWidth={2.5}
-              />
-            </button>
-          ))}
+          <MapArrows onStep={onStep} />
 
           <IslandFrame route={route}>
           {DISCOVER_CATEGORIES.map((c, i) => {

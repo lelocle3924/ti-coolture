@@ -2175,44 +2175,6 @@ function CollectionsSpringTabs({
   );
 }
 
-/* ── ground blend ───────────────────────────────────────────────────────
-   Team 20/08: "NEVER allow abrupt transitions, always aim for CONTINUITY."
-
-   Every place two section grounds meet used to be a hard 1px edge. This is a
-   band of the two colours ramping into each other, so the page changes ground
-   the way the hero already does — by arriving somewhere, not by cutting. The
-   brand variants layer their wave on top of the same seams. */
-
-const GROUND: Record<string, string> = {
-  brand: "var(--color-brand)",
-  "brand-deep": "var(--color-brand-deep)",
-  paper: "var(--color-paper)",
-  ink: "var(--color-ink)",
-};
-
-function GroundBlend({
-  from,
-  to,
-  height = "10vh",
-}: {
-  from: keyof typeof GROUND;
-  to: keyof typeof GROUND;
-  height?: string;
-}) {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none w-full"
-      style={{
-        height,
-        marginBottom: -1,
-        background: `linear-gradient(to bottom, ${GROUND[from]} 0%, ${GROUND[to]} 100%)`,
-      }}
-    />
-  );
-}
-
-
 /* ── page ───────────────────────────────────────────────────────────────── */
 
 export default function Homepage() {
@@ -2277,11 +2239,14 @@ export default function Homepage() {
             than on a fade. */}
         <CollectionsSpringTabs collections={collections} onOpen={open} />
 
-        {/* violet → the deeper violet the map now sits on. The map used to be
-            bg-ink and the team asked for that black to go (26/08), so the two
-            seams either side of it move with it. */}
-        <GroundBlend from="brand" to="brand-deep" />
-        {/* One pin, and the whole island is the way through — 08/09: "Khi
+        {/* No ramp above the map any more (13/09). It was a 10vh band from
+            this violet into brand-deep, and with the map's title centred
+            halfway down the island beside it, most of the empty space the
+            team called out between the collections and the map. The map
+            opens on this same violet and ramps into brand-deep inside
+            itself — see DistrictMap.
+
+            One pin, and the whole island is the way through — 08/09: "Khi
             user click vào bất cứ đâu trên bản đồ đó, sẽ redirect sang
             /discover." It opens the region the list has selected, so the
             choice made here survives the navigation. */}
@@ -2290,8 +2255,8 @@ export default function Homepage() {
           onOpenRoute={(routeId) => navigate(`/discover/${routeId}`)}
         />
 
-        {/* No blend below it any more: the map and the collaborate band are
-            both brand-deep, so there is no ground change left to ramp. */}
+        {/* The map ends on brand-deep, the collaborate band's own ground, so
+            the two meet on no edge at all. */}
         <Collaborate />
         </div>
       </RevealFooterLayout>
