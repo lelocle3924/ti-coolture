@@ -373,7 +373,13 @@ export default function ShopDisplay() {
                 {/* The photograph, whole, one unit under the pill. */}
                 <div
                   ref={coverRef}
-                  className="aspect-[16/9] overflow-hidden rounded-t-[0.875rem] bg-brand-deep md:aspect-[702/256]"
+                  className="aspect-[16/9] overflow-hidden rounded-[0.875rem] bg-brand-deep md:aspect-[702/256]"
+                  style={{
+                    maskImage:
+                      "radial-gradient(circle at var(--avatar-x) 100%, transparent calc(var(--avatar-outer) / 2), black calc(var(--avatar-outer) / 2 + 0.5px))",
+                    WebkitMaskImage:
+                      "radial-gradient(circle at var(--avatar-x) 100%, transparent calc(var(--avatar-outer) / 2), black calc(var(--avatar-outer) / 2 + 0.5px))",
+                  }}
                 >
                   {store.coverUrl && (
                     <img
@@ -384,17 +390,6 @@ export default function ShopDisplay() {
                   )}
                 </div>
 
-                {/* "nút '<- danh bạ shop' thay thành mũi tên chỉ sang trái,
-                    không cần chữ." On the photograph's corner, because the gap
-                    above it is one unit and nothing fits in it. */}
-                <Link
-                  to="/stores"
-                  aria-label="Về danh bạ shop"
-                  className="absolute left-3 top-3 grid h-11 w-11 place-items-center rounded-full bg-ink/45 text-paper backdrop-blur-md transition-colors hover:bg-ink/70 md:left-4 md:top-4"
-                >
-                  <ArrowLeft aria-hidden="true" className="h-5 w-5" />
-                </Link>
-
                 {/* Centre on the cover's foot; the ring is one unit of the
                     page's own violet, so it reads as the ground reaching round
                     the face rather than as a border drawn on it.
@@ -403,7 +398,7 @@ export default function ShopDisplay() {
                     to whole pixels, so 7.66px drew as 7, while padding is
                     laid out at the width it is given. */}
                 <div
-                  className="absolute bottom-0 z-10 rounded-full bg-brand"
+                  className="absolute bottom-0 z-10 rounded-full bg-transparent"
                   style={{
                     left: "var(--avatar-x)",
                     width: "var(--avatar-outer)",
