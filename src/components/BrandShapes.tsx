@@ -281,14 +281,26 @@ export function RibbonLoop({
                 the hole's edge is under solid lid instead of under a second
                 antialiased one. 7 units is ~1.9px at the smallest the mark is
                 drawn (a phone's "Cách đặt hàng") and the ribbon round the eye
-                is 40+ units thick, so the margin never reaches its far side. */}
+                is 40+ units thick, so the margin never reaches its far side.
+
+                Team 14/09: "vạch màu teal nhỏ bên cạnh con mắt" on
+                /stores/[slug]. The mask's region was the mark's own box,
+                0,0 → 700×695, and the lids' rectangles cross its top edge
+                while they wait outside the eye. Chrome let one row of device
+                pixels through where the region's edge met the masked lids — a
+                teal hairline along that edge of the mark, which the shop
+                page turns into a vertical line beside the eye. Measured
+                there: 349 teal pixels in a 3px column on the edge, none with
+                the lids hidden, none with this region. It reaches well past
+                anything a lid can cover, so its edge falls outside the
+                drawing, where there is nothing to let through. */}
             <mask
               id={eyeClipId}
               maskUnits="userSpaceOnUse"
-              x="0"
-              y="0"
-              width="700"
-              height="695"
+              x="-200"
+              y="-200"
+              width="1100"
+              height="1095"
             >
               <path
                 d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z"
