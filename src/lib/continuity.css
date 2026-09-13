@@ -27,14 +27,20 @@
    photograph is the only thing moving on an empty ground — which is when its
    journey reads — and it lands as the page arrives round it.
 
+   A Back (14/09) is the same timeline run the other way: the product page
+   fades, the photograph travels back into the card it left, and the page it
+   came from fades in round it. See "and back" in src/lib/continuity.tsx.
+
      · Travel: ease-in-out, cubic-bezier(0.77, 0, 0.175, 1). An object crossing
        the screen, not one arriving; its slow first beat falls inside the
        fade-out, where nothing competes with it.
      · Fades: the site's ease-out, cubic-bezier(0.16, 1, 0.3, 1), opacity only.
        No scale on the page — that was the "zoom" of 21/08 and 31/08.
-     · Ground: paper, because every continuity change lands on the product
-       page's paper. Without a ground of its own the transition showed the
-       body's violet through two half-faded white pages: the flash.
+     · Ground: paper, because every press lands on the product page's
+       paper. Without a ground of its own the transition showed the body's
+       violet through two half-faded white pages: the flash. A Back lands on
+       the page it returns to, so it sets --ti-vt-ground to the colour round
+       the card it flies into — the homepage's violet as much as paper.
      · The photograph: both snapshots fill the travelling box, crossfade in
        its first 240ms and are clipped to the hero's corners. A crossfade
        because on a desktop the card under the cursor is usually showing its
@@ -45,7 +51,7 @@
    ------------------------------------------------------------------------- */
 
 html[data-vt-kind="continuity"]::view-transition {
-  background: var(--color-paper);
+  background: var(--ti-vt-ground, var(--color-paper));
 }
 
 html[data-vt-kind="continuity"]::view-transition-old(root) {
@@ -63,16 +69,21 @@ html[data-vt-kind="continuity"]::view-transition-new(root) {
   to { opacity: 1; }
 }
 
-::view-transition-group(ti-hero) {
+/* Scoped to a continuity change, and only that (14/09). Unscoped, these rules
+   dressed any transition that found a ti-hero on the page: leaving a product
+   page by the breadcrumb or the shop link lifted the hero into a layer of its
+   own with nowhere to land, and at 440ms it sat over the next page well after
+   the 260ms crossfade under it had finished. */
+html[data-vt-kind="continuity"]::view-transition-group(ti-hero) {
   animation-duration: 440ms;
   animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
 }
-::view-transition-image-pair(ti-hero) {
+html[data-vt-kind="continuity"]::view-transition-image-pair(ti-hero) {
   overflow: hidden;
   border-radius: 1.75rem;
 }
-::view-transition-old(ti-hero),
-::view-transition-new(ti-hero) {
+html[data-vt-kind="continuity"]::view-transition-old(ti-hero),
+html[data-vt-kind="continuity"]::view-transition-new(ti-hero) {
   /* fill the travelling box and crop, rather than stretch, where a card's
      ratio is not the hero's square */
   height: 100%;
