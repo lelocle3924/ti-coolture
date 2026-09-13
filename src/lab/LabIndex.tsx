@@ -65,6 +65,13 @@ const STUDIES = [
     body: "Trang chủ thật, chỉ khác phần map. Con sóng của hero nằm ngang map hoặc dọc mép dưới map, xanh hoặc trắng; arc góc phải nối vào mép dưới Bộ sưu tập; bỏ danh sách vùng để map vào giữa. Bật tắt từng thứ ngay trên trang.",
     meta: "4 công tắc · PC + mobile · trang chủ",
   },
+  {
+    to: "/lab/titles",
+    n: "08",
+    title: "Tiêu đề xuất hiện — 14 kiểu với anime.js",
+    body: "Chạy trên trang thật: trang chủ, sản phẩm, một sản phẩm, danh bạ shop, một shop, khám phá. Mỗi tiêu đề h1/h2 diễn khi cuộn tới — trồi lên, trượt dòng, bật từ, gợn sóng, xáo chữ, rèm teal, mắt chớp, gõ phím, rơi & nảy, mờ về nét, lật 3D, tụ lại, cuộn số, mực teal. Đổi hiệu ứng, trang và nhịp ngay trên trang.",
+    meta: "14 hiệu ứng · 6 trang · PC + mobile",
+  },
 ];
 
 export default function LabIndex() {

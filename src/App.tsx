@@ -28,6 +28,7 @@ import SearchMotionStudies from "./lab/SearchMotionStudies";
 import HeroWaveStudies from "./lab/HeroWaveStudies";
 import CollectionStudies from "./lab/CollectionStudies";
 import HomeMapStudies from "./lab/HomeMapStudies";
+import TitleMotionStudies from "./lab/TitleMotionStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, type ReactNode } from "react";
@@ -307,6 +308,19 @@ const router = createBrowserRouter([
       { path: "lab/hero-wave", element: <HeroWaveStudies /> },
       { path: "lab/collections", element: <CollectionStudies /> },
       { path: "lab/home-map", element: <HomeMapStudies /> },
+      {
+        path: "lab/titles",
+        element: <TitleMotionStudies />,
+        /* The real views, so every title plays where it actually sits. */
+        children: [
+          { index: true, element: <Homepage /> },
+          { path: "products", element: <Products /> },
+          { path: "products/:productId", element: <ProductDetail /> },
+          { path: "stores", element: <Stores /> },
+          { path: "stores/:storeId", element: <ShopDisplay /> },
+          { path: "discover", element: <Discovery /> },
+        ],
+      },
 
       /* Renamed 26/08. Kept as redirects so anything already shared or
          bookmarked still lands, rather than bouncing to the homepage. */
