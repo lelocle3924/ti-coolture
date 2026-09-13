@@ -508,11 +508,13 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
    onto that axis in BrandShapes and translated along the perpendicular —
    which, inside the rotated group, is a plain translateY.
 
-   38 is the parked distance, and it is measured rather than picked: sampling
+   40 is the parked distance, and it is measured rather than picked: sampling
    the almond's two curves and its straight leg puts its perpendicular extent
-   at -34.8 .. +36.0 about the axis, so a lid held 38 out is just clear of the
-   opening and the eye's clip path makes "clear of the opening" mean
-   invisible. It was 130 first, which parked the lids so far out that seven
+   at -34.8 .. +36.0 about the axis. It was 38, just clear of the opening; the
+   lids now overlap each other by a unit on the axis (13/09, see BrandShapes),
+   which brings each parked edge a unit closer, so they park 2 further out to
+   stay as clear as they were. The eye's mask makes "clear of the opening"
+   mean invisible. It was 130 first, which parked the lids so far out that seven
    tenths of the travel happened where nothing could be seen and the blink
    arrived as a snap at the very end. At 0 the two meet on the axis and the
    eye is shut, over the pupil rather than beside it.
@@ -520,20 +522,20 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
    The cycle is 7s: both blinks land inside the first 800ms, and the remaining
    6.2s is the eye simply open. Percentages against 7000ms — 2.9% = 200ms. */
 @keyframes ti-blink-a {
-  0%    { transform: translateY(-38px); }
+  0%    { transform: translateY(-40px); }
   2.9%  { transform: translateY(0); }
-  5.7%  { transform: translateY(-38px); }
+  5.7%  { transform: translateY(-40px); }
   8.6%  { transform: translateY(0); }
-  11.4% { transform: translateY(-38px); }
-  100%  { transform: translateY(-38px); }
+  11.4% { transform: translateY(-40px); }
+  100%  { transform: translateY(-40px); }
 }
 @keyframes ti-blink-b {
-  0%    { transform: translateY(38px); }
+  0%    { transform: translateY(40px); }
   2.9%  { transform: translateY(0); }
-  5.7%  { transform: translateY(38px); }
+  5.7%  { transform: translateY(40px); }
   8.6%  { transform: translateY(0); }
-  11.4% { transform: translateY(38px); }
-  100%  { transform: translateY(38px); }
+  11.4% { transform: translateY(40px); }
+  100%  { transform: translateY(40px); }
 }
 .ti-eye-lid-a {
   animation: ti-blink-a 7s ease-in-out infinite;
@@ -628,11 +630,11 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
      the identity transform, which would leave the eye shut for good. */
   .ti-eye-lid-a {
     animation: none !important;
-    transform: translateY(-38px) !important;
+    transform: translateY(-40px) !important;
   }
   .ti-eye-lid-b {
     animation: none !important;
-    transform: translateY(38px) !important;
+    transform: translateY(40px) !important;
   }
 
   /* The "CHUNG" notes on /lab/motion: the guard below covers the entrance and
