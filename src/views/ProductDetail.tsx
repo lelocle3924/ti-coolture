@@ -268,9 +268,26 @@ function SiblingCard({ product, index }: { product: Product; index: 1 | 2 | 3 })
   );
 }
 
+/* Team 13/09: "bị dư text ngay phần header, dưới thanh nav bar floating. Có vẻ
+   như nav bar cũ còn tồn đọng."
+
+   It was not an old nav. It was the reveal footer. The shell clears the
+   floating pill with pt-24/md:pt-28 OUTSIDE the paper sheet, and the footer
+   is a fixed full-viewport underlay — so that strip was a window onto the
+   footer's top row: its tagline on the left and its sitemap on the right.
+   /products, /stores and /discover already give the clearance back on their
+   own ground and re-add it as padding; this page did not.
+
+   Every state of the page takes it, the loading and not-found ones included,
+   or the strip comes back for a frame before the product resolves. */
+const UNDER_PILL = "-mt-24 pt-24 md:-mt-28 md:pt-28";
+
 function NotFound({ index }: { index: 1 | 2 | 3 }) {
   return (
-    <div className="grid min-h-[60dvh] place-items-center bg-paper px-6 text-center text-ink">
+    <div
+      data-surface="light"
+      className={`grid min-h-[60dvh] place-items-center bg-paper px-6 text-center text-ink ${UNDER_PILL}`}
+    >
       <div className="space-y-4">
         <h1 className="display text-2xl normal-case">Không tìm thấy sản phẩm</h1>
         <Link
@@ -300,11 +317,16 @@ export default function ProductDetail() {
 
   useEffect(() => setActive(0), [productId]);
 
-  if (!product) return resolved ? <NotFound index={1} /> : <div className="min-h-[60dvh] bg-paper" />;
+  if (!product)
+    return resolved ? (
+      <NotFound index={1} />
+    ) : (
+      <div data-surface="light" className={`min-h-[60dvh] bg-paper ${UNDER_PILL}`} />
+    );
   const images = product.images?.length ? product.images : [""];
 
   return (
-    <div data-surface="light" className="min-h-[100dvh] bg-paper text-ink">
+    <div data-surface="light" className={`min-h-[100dvh] bg-paper text-ink ${UNDER_PILL}`}>
       <InquiryModal inquiry={inquiry} storeName={store?.name ?? product.storeName} />
 
       <div className="mx-auto max-w-6xl px-5 py-6 md:px-8">
