@@ -539,6 +539,34 @@ export default function ShopDisplay() {
         </div>
       </div>
 
+      {/* "Trên mobile: thanh floating ở dưới chứa link đến social media của
+          shop." Outside the clipped root, or the page's own clip would cut it
+          off as the footer comes up. The pill is the nav's material, so the
+          two floating bars on a phone read as one family. */}
+      {channels.length > 0 && (
+        <nav
+          aria-label={`Kênh của ${store.name}`}
+          className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 md:hidden"
+        >
+          <ul className="flex gap-1.5 rounded-full bg-ink/55 p-1.5 shadow-[0_18px_40px_-22px_rgba(18,8,31,0.9)] ring-1 ring-white/12 backdrop-blur-xl">
+            {channels.map((channel) => (
+              /* flex-auto, not equal shares: INSTAGRAM is nine letters and
+                 THREADS seven, and four equal quarters of a phone cut the
+                 longest label against its own edges. */
+              <li key={channel.key} className="min-w-0 flex-auto">
+                <a
+                  href={channel.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`grid h-11 place-items-center rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_2px_rgba(18,8,31,0.3)] ${channel.fill}`}
+                >
+                  {channel.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </>
   );
 }
