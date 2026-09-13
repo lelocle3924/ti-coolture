@@ -148,17 +148,11 @@ function SiteShell() {
 
      Decided here rather than in each page, so the four cannot drift apart and
      a fifth is one entry away. The homepage wraps itself, because its sheet is
-     violet and it has chrome of its own to sit outside the sheet.
-
-     /stores/:storeId is deliberately not on this list. It docks a contact rail
-     to the bottom of the viewport at z-50, which would sit on top of a footer
-     that is revealed by scrolling the page off — the two want the same edge.
-     Worth raising separately rather than breaking one to add the other. */
+     violet and it has chrome of its own to sit outside the sheet. */
   const REVEAL_FOOTER = ["/products", "/stores", "/discover"];
   const hasRevealFooter =
     !isLab &&
-    REVEAL_FOOTER.some((base) => pathname === base || pathname.startsWith(`${base}/`)) &&
-    !pathname.startsWith("/stores/");
+    REVEAL_FOOTER.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 
   return (
     <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
