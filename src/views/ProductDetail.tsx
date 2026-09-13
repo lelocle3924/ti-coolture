@@ -40,7 +40,6 @@ import {
   formatPrice,
   readHandoff,
   useContinuityLanding,
-  getReturningProduct,
 } from "../lib/continuity";
 
 /* ── data ───────────────────────────────────────────────────────────────── */
@@ -374,11 +373,13 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
                 {/* The frame travels, not the image inside it: it carries the
                     rounded corners, and a snapshot of the image alone would
                     arrive square. Named only while a continuity change is
-                    landing here — see useContinuityLanding. Never as a style
-                    prop: a name that stays on would be a second ti-hero the
-                    moment a sibling card is pressed (14/09). */}
+                    landing here, or leaving by Back — src/lib/continuity
+                    finds it by data-ti-hero-frame. Never as a style prop: a
+                    name that stays on would be a second ti-hero the moment a
+                    sibling card is pressed (14/09). */}
                 <div
                   ref={heroFrameRef}
+                  data-ti-hero-frame={product.id}
                   className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm"
                 >
                   <img

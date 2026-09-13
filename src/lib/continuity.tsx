@@ -1,7 +1,7 @@
 /**
  * Continuity transition — a product photograph travelling from wherever it was
- * pressed into the hero of its product page — plus the reading helpers that go
- * with it.
+ * pressed into the hero of its product page, and back into its card on Back —
+ * plus the reading helpers that go with it.
  *
  * Team 13/09: "Continuity transition ở trên cả mobile và PC đều đang khá khựng
  * và lỗi… Tôi muốn cái ảnh từ cỡ ở trang trước, phóng to/thu nhỏ, đồng thời di
@@ -34,6 +34,27 @@
  *      photograph (useContinuityLanding). Capped at LANDING_CAP_MS, so a slow
  *      page can never hold the navigation hostage.
  *   3. continuity.css runs the choreography; the header is its own group.
+ *
+ * And on Back (14/09 — "Hiệu ứng khi Back chưa chạy"). The first attempt was a
+ * hook in the app's root with no dependencies, so it ran once, when the app
+ * mounted, and never met a Back; and nothing started a transition on Back to
+ * begin with. The router answers a popstate the moment it arrives, before any
+ * snapshot could be taken, and the list it returns to has not fetched its
+ * cards by then. So:
+ *
+ *   4. A press leaves a note against the history entry it leaves — which
+ *      product, which photograph, where on the screen (rememberDeparture).
+ *   5. A popstate that arrives at an entry with a note, from that product's
+ *      page, with its hero on screen, is held back from the router. The hero
+ *      is named, the old snapshot taken, and only inside the update callback
+ *      is the popstate handed on (onPopState). The browser's own scroll
+ *      restoration has to be off for this (SmartScrollRestoration, App.tsx):
+ *      it scrolls the page being left the instant the popstate fires, which
+ *      is before that snapshot is taken.
+ *   6. The new snapshot waits, up to RETURN_CAP_MS, for the list to render,
+ *      the scroll to be back where it was and the card's photograph to be
+ *      ready; the visible copy nearest the press is named and the photograph
+ *      flies back into it.
  */
 
 import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
@@ -80,6 +101,10 @@ export const HERO_NAME = "ti-hero";
 /** The longest the new snapshot may wait for the product page to be ready. */
 const LANDING_CAP_MS = 450;
 
+/** The longest the new snapshot may wait for the page a Back returns to. It
+ *  fetches its cards first, so it is given a little longer than a landing. */
+const RETURN_CAP_MS = 600;
+
 /** The change in flight, if any: where it is heading, and how the product
  *  page tells the transition it may take the new snapshot. */
 let landing: { productId: string; ready: () => void } | null = null;
@@ -88,10 +113,13 @@ let landing: { productId: string; ready: () => void } | null = null;
  *  first one finishing. */
 let currentRun = 0;
 
-type StartViewTransition = (update: () => Promise<void>) => {
+interface ViewTransitionLike {
   ready: Promise<void>;
   finished: Promise<void>;
-};
+  skipTransition: () => void;
+}
+
+type StartViewTransition = (update: () => Promise<void>) => ViewTransitionLike;
 
 /**
  * Only one element may carry the name, or the browser drops the whole
@@ -152,6 +180,17 @@ function trackPresses() {
   );
 }
 
+/** The box that clips a photograph — its rounded frame — or else its parent. */
+function clippingFrame(image: HTMLImageElement): HTMLElement | null {
+  for (let parent = image.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+    const style = window.getComputedStyle(parent);
+    if (style.overflow === "hidden" || style.overflowX === "hidden" || style.overflowY === "hidden") {
+      return parent;
+    }
+  }
+  return image.parentElement;
+}
+
 /**
  * The product's photograph, found by walking up from where the press landed.
  *
@@ -178,30 +217,10 @@ function findProductFrame(product: Product, from: Element | null): HTMLElement |
     }
     if (image) break;
   }
-  
-  if (!image) return null;
-
-  let parent = image.parentElement;
-  while (parent && parent !== document.body) {
-    const style = window.getComputedStyle(parent);
-    if (style.overflow === "hidden" || style.overflowX === "hidden" || style.overflowY === "hidden") {
-      return parent;
-    }
-    parent = parent.parentElement;
-  }
-  
-  return image.parentElement;
+  return image ? clippingFrame(image) : null;
 }
 
 /* ── the transition ─────────────────────────────────────────────────────── */
-
-/** The product we are returning from, so the list knows to catch it. */
-let returningProduct: string | null = null;
-let returningFrame: HTMLElement | null = null;
-
-export function getReturningProduct() {
-  return returningProduct;
-}
 
 export function openWithContinuity(
   navigate: (to: string) => void,
@@ -222,10 +241,19 @@ export function openWithContinuity(
 
   const run = ++currentRun;
   landing?.ready();
-  
-  returningProduct = product.id;
-  returningFrame = image;
-  
+
+  // the note a Back will look for, against the entry this press is leaving
+  const src = product.images?.[0];
+  if (src) {
+    const box = image.getBoundingClientRect();
+    rememberDeparture(entryKey(), {
+      productId: product.id,
+      src,
+      x: box.left + box.width / 2,
+      y: box.top + box.height / 2,
+    });
+  }
+
   nameHero(image);
   const html = document.documentElement;
   html.setAttribute("data-vt-kind", "continuity");
@@ -245,6 +273,7 @@ export function openWithContinuity(
       })
   );
 
+  // a skipped transition rejects `ready`; the navigation has happened anyway
   transition.ready.catch(() => {});
   transition.finished.finally(() => {
     if (run !== currentRun) return;
@@ -343,66 +372,291 @@ export function useContinuityLanding(
   }, [productId, frameRef, imgRef]);
 }
 
+/* ── and back ───────────────────────────────────────────────────────────── */
+
+/** What a press left behind, against the history entry it left. */
+interface Departure {
+  productId: string;
+  /** The card's photograph, images[0] — whichever one the hero shows by then. */
+  src: string;
+  /** The centre of the pressed frame, in the viewport, at the press. */
+  x: number;
+  y: number;
+}
+
+/* In sessionStorage rather than in memory: history entries outlive a reload,
+   and a Back from a reloaded product page should still find its card. */
+const DEPARTURES_KEY = "ti-continuity-departures";
+const DEPARTURES_KEPT = 40;
+
 /**
- * The list's half of the return handshake.
- * 
- * When returning from a product page, this names the product's frame in the list
- * so the view transition has a target to land on.
+ * The router's key for the history entry on screen — "default" for the entry
+ * the tab opened on, which is what the router itself calls that one, and so
+ * the name SmartScrollRestoration saved its scroll position under.
  */
-export function useContinuityReturn() {
-  useLayoutEffect(() => {
-    if (!returningProduct) return;
-    
-    // Find any product card matching the returning product
-    // We could use returningFrame if it's still attached, but it's likely a new DOM element
-    // So we search by product ID
-    
-    // Since we don't have a reliable data attribute for product ID on the card itself yet,
-    // we can find the image by src from handoffCache, or add a data attribute.
-    // The easiest is to use the handoffCache.
-    const product = handoffCache.get(returningProduct);
-    if (!product) return;
-    
-    // Find a frame that matches this product (by walking up from its image)
-    const src = product.images?.[0];
-    if (!src) return;
-    
-    let frameToName = returningFrame;
-    if (!frameToName || !document.contains(frameToName)) {
-      // Find the image in the new DOM
-      const imgs = Array.from(document.querySelectorAll("img")).filter(
-        (img) => img.getAttribute("src") === src
-      );
-      // Pick the one that is most likely the card (visible)
-      const img = imgs.find((i) => i.getBoundingClientRect().width > 0) || imgs[0];
-      if (!img) return;
-      
-      let parent = img.parentElement;
-      while (parent && parent !== document.body) {
-        const style = window.getComputedStyle(parent);
-        if (style.overflow === "hidden" || style.overflowX === "hidden" || style.overflowY === "hidden") {
-          frameToName = parent;
-          break;
-        }
-        parent = parent.parentElement;
-      }
-      if (!frameToName) frameToName = img.parentElement;
+function entryKey(): string {
+  const state = window.history.state as { key?: unknown } | null;
+  return typeof state?.key === "string" ? state.key : "default";
+}
+
+function readDepartures(): Array<[string, Departure]> {
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(DEPARTURES_KEY) ?? "[]");
+    return Array.isArray(parsed) ? (parsed as Array<[string, Departure]>) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberDeparture(key: string, departure: Departure) {
+  const kept = readDepartures().filter(([k]) => k !== key);
+  kept.push([key, departure]);
+  try {
+    sessionStorage.setItem(DEPARTURES_KEY, JSON.stringify(kept.slice(-DEPARTURES_KEPT)));
+  } catch {
+    /* storage full or blocked: that Back simply will not fly */
+  }
+}
+
+function departureFor(key: string): Departure | null {
+  return readDepartures().find(([k]) => k === key)?.[1] ?? null;
+}
+
+function onScreen(el: Element) {
+  const box = el.getBoundingClientRect();
+  return (
+    box.width > 0 &&
+    box.bottom > 0 &&
+    box.right > 0 &&
+    box.top < window.innerHeight &&
+    box.left < window.innerWidth
+  );
+}
+
+/** Where SmartScrollRestoration saved an entry's scroll, if it did. */
+function savedScroll(key: string): number | null {
+  try {
+    const y = parseInt(sessionStorage.getItem(`scroll-${key}`) ?? "", 10);
+    return Number.isFinite(y) ? y : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Puts the page back where it was left, as far as it can yet go. True once
+ * the saved position is reachable.
+ *
+ * SmartScrollRestoration does the same in a layout effect and retries from a
+ * ResizeObserver, but observers do not run while a transition is holding
+ * rendering, and a list that fetches its cards starts out too short to
+ * scroll that far.
+ */
+function restoreScroll(target: number | null) {
+  if (target === null) return true;
+  const reachable = document.documentElement.scrollHeight - window.innerHeight;
+  const y = Math.max(0, Math.min(target, reachable));
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+  return reachable >= target - 1;
+}
+
+/**
+ * The card to land in: the visible copy of the photograph nearest to where
+ * the press was. Nearest, because a page can show one product twice — the
+ * homepage lanes carry two copies of every tile, and a lane does not keep its
+ * offset across the visit.
+ */
+function findReturnFrame(departure: Departure) {
+  let best: { frame: HTMLElement; image: HTMLImageElement } | null = null;
+  let bestDistance = Infinity;
+  for (const image of document.querySelectorAll("img")) {
+    if (image.getAttribute("src") !== departure.src) continue;
+    const frame = clippingFrame(image);
+    if (!frame || !onScreen(frame)) continue;
+    const box = frame.getBoundingClientRect();
+    const distance = Math.hypot(
+      box.left + box.width / 2 - departure.x,
+      box.top + box.height / 2 - departure.y
+    );
+    if (distance < bestDistance) {
+      best = { frame, image };
+      bestDistance = distance;
     }
-    
-    if (frameToName) {
-      nameHero(frameToName);
-      // Clear it after the transition completes
-      setTimeout(() => {
-        if (frameToName) {
-          frameToName.style.viewTransitionName = "";
-          frameToName.removeAttribute("data-ti-hero");
+  }
+  return best;
+}
+
+function isOpaque(colour: string) {
+  if (!colour || colour === "transparent") return false;
+  const alpha =
+    colour.match(/\/\s*([\d.]+)(%?)\s*\)$/) ?? colour.match(/^rgba\((?:[^,]+,){3}\s*([\d.]+)()\s*\)$/);
+  if (!alpha) return true;
+  return parseFloat(alpha[1]) >= (alpha[2] === "%" ? 99 : 0.99);
+}
+
+/**
+ * The first solid colour at or behind an element. On the way in the ground
+ * between the two pages is paper, because every press lands on the product
+ * page's paper; a Back lands on whatever its card sits on — the homepage's
+ * violet as much as the catalogue's paper — so it takes this instead.
+ */
+function groundAt(el: Element | null) {
+  for (let node = el; node; node = node.parentElement) {
+    const colour = window.getComputedStyle(node).backgroundColor;
+    if (isOpaque(colour)) return colour;
+  }
+  return "";
+}
+
+/**
+ * Keeps the router from starting a view transition of its own while a Back
+ * is already inside one.
+ *
+ * React Router gives a POP a transition whenever the path it returns to has
+ * ever used a `viewTransition` link — one press of a catalogue card's shop
+ * link is enough, and it remembers for the rest of the session. Its
+ * startViewTransition would skip this transition halfway through its update.
+ * For that window a call runs its update at once with no transition round
+ * it, which is all the router needs: its update commits the page, and the
+ * transition already running is what animates it.
+ */
+function holdRouterTransitions() {
+  const doc = document as unknown as Record<string, unknown>;
+  Object.defineProperty(doc, "startViewTransition", {
+    configurable: true,
+    writable: true,
+    value: (update?: () => unknown) => {
+      const done = Promise.resolve()
+        .then(() => update?.())
+        .then(
+          () => undefined,
+          () => undefined
+        );
+      return { ready: done, finished: done, updateCallbackDone: done, skipTransition() {} };
+    },
+  });
+  return () => {
+    delete doc.startViewTransition;
+  };
+}
+
+/** The Back in flight, if any. */
+let returning: { cancelled: boolean; transition: ViewTransitionLike | null } | null = null;
+/** Set while a held popstate is handed on, so the listener lets it through. */
+let handingOn = false;
+
+function onPopState(event: PopStateEvent) {
+  if (handingOn) return;
+
+  /* A second Back before the first has landed: the router takes both steps
+     at once, and nothing waits any longer for a card that will not come. */
+  if (returning) {
+    returning.cancelled = true;
+    returning.transition?.skipTransition();
+    returning = null;
+    return;
+  }
+
+  const start = (document as unknown as { startViewTransition?: StartViewTransition })
+    .startViewTransition;
+  if (typeof start !== "function") return;
+  // a swipe the browser has already animated needs no second animation
+  if ((event as PopStateEvent & { hasUAVisualTransition?: boolean }).hasUAVisualTransition) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const key = entryKey();
+  const departure = departureFor(key);
+  const hero = document.querySelector<HTMLElement>("[data-ti-hero-frame]");
+  if (!departure || !hero || hero.dataset.tiHeroFrame !== departure.productId || !onScreen(hero)) {
+    return;
+  }
+
+  // the router hears this one from inside the transition, below
+  event.stopImmediatePropagation();
+
+  const run = ++currentRun;
+  landing?.ready();
+  const flight: { cancelled: boolean; transition: ViewTransitionLike | null } = {
+    cancelled: false,
+    transition: null,
+  };
+  returning = flight;
+
+  nameHero(hero);
+  const html = document.documentElement;
+  html.setAttribute("data-vt-kind", "continuity");
+
+  const transition = start.call(
+    document,
+    () =>
+      new Promise<void>((resolve) => {
+        if (flight.cancelled) {
+          resolve();
+          return;
         }
-      }, 500);
-    }
-    
-    returningProduct = null;
-    returningFrame = null;
-  }, []);
+
+        const release = holdRouterTransitions();
+        handingOn = true;
+        try {
+          window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+        } finally {
+          handingOn = false;
+        }
+
+        const began = performance.now();
+        const target = savedScroll(key);
+        const land = (frame: HTMLElement | null) => {
+          release();
+          if (frame) nameHero(frame);
+          const ground = groundAt(
+            frame?.parentElement ??
+              document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
+          );
+          if (ground) html.style.setProperty("--ti-vt-ground", ground);
+          resolve();
+        };
+
+        const tick = () => {
+          if (flight.cancelled) return land(null);
+          const late = performance.now() - began > RETURN_CAP_MS;
+          /* Nothing to look for until the router has taken the product page
+             down: its hero can be showing the very photograph being sought. */
+          if (hero.isConnected) {
+            if (late) return land(null);
+          } else {
+            const settled = restoreScroll(target);
+            const found = findReturnFrame(departure);
+            // a lazy image off screen when the list was left has not loaded
+            if (found && found.image.loading === "lazy") found.image.loading = "eager";
+            const decoded = !!found && found.image.complete && found.image.naturalWidth > 0;
+            if (found && settled && decoded) return land(found.frame);
+            if (late) return land(found?.frame ?? null);
+          }
+          window.setTimeout(tick, 16);
+        };
+        tick();
+      })
+  );
+  flight.transition = transition;
+
+  transition.ready.catch(() => {});
+  transition.finished.finally(() => {
+    if (returning === flight) returning = null;
+    if (run !== currentRun) return;
+    html.removeAttribute("data-vt-kind");
+    html.style.removeProperty("--ti-vt-ground");
+    clearHeroNames();
+  });
+}
+
+/* Installed as the module loads, which is before the router exists, and in
+   the capture phase, which runs ahead of the router's own listener on window
+   either way. Replaced rather than doubled when the module hot-reloads. */
+if (typeof window !== "undefined") {
+  const slot = window as unknown as { __tiContinuityPop?: (event: PopStateEvent) => void };
+  if (slot.__tiContinuityPop) window.removeEventListener("popstate", slot.__tiContinuityPop, true);
+  slot.__tiContinuityPop = onPopState;
+  window.addEventListener("popstate", onPopState, true);
 }
 
 /* ── reading ────────────────────────────────────────────────────────────── */

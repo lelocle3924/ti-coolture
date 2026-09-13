@@ -32,11 +32,19 @@ import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
-import { useContinuityReturn } from "./lib/continuity";
 
 function SmartScrollRestoration() {
   const location = useLocation();
   const navType = useNavigationType();
+
+  /* Every entry's position is restored here, so the browser's own restoration
+     is switched off (14/09). Left on, it ran the instant a popstate fired — on
+     the page being left, still on screen — and scrolled a product page to the
+     list's saved offset just before the Back transition photographed it, so
+     the photograph set off from above the top of the screen. */
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+  }, []);
 
   // Save scroll position on scroll
   useEffect(() => {
@@ -257,7 +265,6 @@ function RedirectRoute({ to }: { to: string }) {
  * move inside the route element because both read useLocation.
  */
 function Root() {
-  useContinuityReturn();
   return (
     <>
       <SmartScrollRestoration />

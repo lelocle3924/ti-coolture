@@ -42,8 +42,14 @@ export function useStaggerReveal<T extends HTMLElement = HTMLDivElement>(
 
     root.setAttribute("data-rev-ready", "");
 
+    /* Or the page is arriving by a continuity Back (14/09), being put back
+       the way it was left while a photograph flies into one of these cards.
+       Then the cards are simply there: one still at opacity 0 when the new
+       snapshot is taken is a hole where the photograph lands, and one rising
+       into place under it as it lands is a flash. */
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
+    const returning = document.documentElement.getAttribute("data-vt-kind") === "continuity";
+    if (reduced || returning) {
       items.forEach((el) => el.classList.add("rev-done"));
       return;
     }
