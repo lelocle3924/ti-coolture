@@ -47,12 +47,12 @@ function countBy(rows: Product[], key: (p: Product) => string): Map<string, numb
 
 const PRICE_BANDS = [
   { id: "all", label: "Tất cả mức giá" },
-  { id: "under-100", label: "Dưới 100.000₫", min: 0, max: 100000 },
-  { id: "100-200", label: "100k – 200.000₫", min: 100000, max: 200000 },
-  { id: "200-300", label: "200k – 300.000₫", min: 200000, max: 300000 },
-  { id: "300-500", label: "300k – 500.000₫", min: 300000, max: 500000 },
-  { id: "500-1m", label: "500k – 1.000.000₫", min: 500000, max: 1000000 },
-  { id: "over-1m", label: "Trên 1.000.000₫", min: 1000000, max: Infinity }
+  { id: "under-100", label: "Dưới 100.000đ", min: 0, max: 100000 },
+  { id: "100-200", label: "100k – 200.000đ", min: 100000, max: 200000 },
+  { id: "200-300", label: "200k – 300.000đ", min: 200000, max: 300000 },
+  { id: "300-500", label: "300k – 500.000đ", min: 300000, max: 500000 },
+  { id: "500-1m", label: "500k – 1.000.000đ", min: 500000, max: 1000000 },
+  { id: "over-1m", label: "Trên 1.000.000đ", min: 1000000, max: Infinity }
 ];
 
 const MATERIALS = ["Gốm", "Gỗ", "Vải canvas", "Sơn mài", "Bạc", "Giấy thủ công", "Đá"];
@@ -63,8 +63,11 @@ const SORTS = [
   { id: "price-desc", label: "Giá cao đến thấp" },
 ];
 
+/* đ, not ₫ — see the note on formatPrice in src/lib/continuity.tsx. The
+   price bands above take the same letter so a filter and the prices it
+   narrows to are written the same way. */
 const formatPrice = (value: number) =>
-  value > 0 ? `${value.toLocaleString("vi-VN")}₫` : "Liên hệ";
+  value > 0 ? `${value.toLocaleString("vi-VN")}đ` : "Liên hệ";
 
 /**
  * The phone grid's three display ratios.
