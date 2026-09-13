@@ -65,6 +65,13 @@ const STUDIES = [
     body: "Trang chủ thật, chỉ khác phần map. Con sóng của hero nằm ngang map hoặc dọc mép dưới map, xanh hoặc trắng; arc góc phải nối vào mép dưới Bộ sưu tập; bỏ danh sách vùng để map vào giữa. Bật tắt từng thứ ngay trên trang.",
     meta: "4 công tắc · PC + mobile · trang chủ",
   },
+  {
+    to: "/lab/store-speed",
+    n: "09",
+    title: "What's in store — nhanh 1.5×, chậm lại khi rê chuột",
+    body: "Trang chủ thật, chỉ khác hai dòng sản phẩm: chạy nhanh gấp rưỡi, và dòng đang rê chuột chậm về tốc độ hiện tại thay vì đứng yên. Bật qua lại để so với 1×, 1.25×, 2× và kiểu dừng hẳn như bây giờ.",
+    meta: "2 công tắc · PC · trang chủ",
+  },
 ];
 
 export default function LabIndex() {
