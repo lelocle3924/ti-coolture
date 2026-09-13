@@ -311,9 +311,15 @@ export default function Header() {
 
   return (
     <>
+      {/* Its own view-transition group (13/09): the same bar on both sides of
+          every page change, so it holds still while the page under it fades.
+          See src/lib/continuity.css. */}
       <header
         className="fixed inset-x-0 top-0 z-50 px-3 pt-3 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] md:px-6 md:pt-5"
-        style={{ transform: hidden ? "translateY(-140%)" : "translateY(0)" }}
+        style={{
+          transform: hidden ? "translateY(-140%)" : "translateY(0)",
+          viewTransitionName: "ti-nav",
+        }}
       >
         <div
           ref={pillRef}

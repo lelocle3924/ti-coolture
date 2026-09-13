@@ -6,7 +6,7 @@ import SaveButton from "../components/SaveButton";
 import { CategoryNode, Product } from "../types";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
-import { vtProductImage } from "../lib/viewTransitions";
+import { ContinuityLink } from "../lib/continuity";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 import { useMediaQuery } from "../lib/useAutoHideChrome";
 
@@ -289,6 +289,9 @@ function ProductCard({
   const primaryImg =
     product.images?.[0] || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500";
   const hoverImg = product.images?.[1] || primaryImg;
+  /* The photograph that travels into the product page, whichever of the
+     card's three links is pressed (13/09). */
+  const imageRef = useRef<HTMLImageElement>(null);
 
   return (
     <div
@@ -314,17 +317,21 @@ function ProductCard({
             a touch screen: the tap opens the product about as often as it
             saves it. That is "tim chỗ này ko sử dụng được" (31/08). */}
         <div className="relative">
-          <Link
+          {/* Was a <Link viewTransition> naming the picture product-<id>,
+              a name the product page never uses — so nothing ever travelled
+              from here, and the picture faded where it stood (13/09). */}
+          <ContinuityLink
+            product={product}
             to={`/products/${product.id}`}
-            viewTransition
+            imgRef={imageRef}
             className="relative block overflow-hidden bg-paper-warm"
             style={{ aspectRatio: String(ratio) }}
           >
             <img
+              ref={imageRef}
               src={primaryImg}
               alt={product.name}
               referrerPolicy="no-referrer"
-              style={{ viewTransitionName: vtProductImage(product.id) }}
               className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
             />
             {hoverImg !== primaryImg && (
@@ -341,7 +348,7 @@ function ProductCard({
             <span className="absolute bottom-3 left-3 rounded-full border border-ink/5 bg-paper/90 px-2.5 py-1 text-[10px] font-semibold text-ink shadow-xs backdrop-blur-md">
               {product.category}
             </span>
-          </Link>
+          </ContinuityLink>
 
           {/* 44×44 of tap target around a 32px mark. */}
           <SaveButton
@@ -362,11 +369,16 @@ function ProductCard({
               {product.storeName}
             </Link>
 
-            <Link to={`/products/${product.id}`} viewTransition className="block">
+            <ContinuityLink
+              product={product}
+              to={`/products/${product.id}`}
+              imgRef={imageRef}
+              className="block"
+            >
               <h3 className="line-clamp-2 text-xs font-medium leading-snug text-ink transition-colors group-hover:text-brand md:text-sm">
                 {product.name}
               </h3>
-            </Link>
+            </ContinuityLink>
           </div>
 
           <div className={`flex items-center justify-between border-t border-ink/5 ${dense ? "pt-1.5" : "pt-2"}`}>
@@ -374,13 +386,14 @@ function ProductCard({
               {formatPrice(product.price)}
             </span>
 
-            <Link
+            <ContinuityLink
+              product={product}
               to={`/products/${product.id}`}
-              viewTransition
+              imgRef={imageRef}
               className="flex h-7 w-7 items-center justify-center rounded-full bg-paper-warm text-brand transition-all duration-300 group-hover:bg-brand group-hover:text-paper"
             >
               <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            </ContinuityLink>
           </div>
         </div>
       </div>
