@@ -175,8 +175,12 @@ function Collaborate() {
       <p className="mx-auto mt-4 max-w-[48ch] text-sm leading-relaxed text-white/70">
         Tí không bán hàng và không lấy hoa hồng. Tụi mình chọn, viết, và đưa shop lên trang chủ.
       </p>
+      {/* Team 13/09: "Nút 'Hợp tác với tụi mình' ở trang chủ phải dẫn đến
+          trang open-shop." It pointed at /about, which is hidden from the
+          nav until it is past its rough state — and the band is addressed to
+          shops, so the page it owes them is the one where they apply. */}
       <Link
-        to="/about"
+        to="/open-shop"
         className="group mt-8 inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-6 pr-2 text-sm font-semibold text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
       >
         Hợp tác với tụi mình
