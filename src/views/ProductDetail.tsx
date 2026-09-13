@@ -40,6 +40,7 @@ import {
   formatPrice,
   readHandoff,
   useContinuityLanding,
+  getReturningProduct,
 } from "../lib/continuity";
 
 /* ── data ───────────────────────────────────────────────────────────────── */
@@ -376,6 +377,7 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
                     here — see useContinuityLanding. */}
                 <div
                   ref={heroFrameRef}
+                  style={{ viewTransitionName: 'ti-hero' }}
                   className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm"
                 >
                   <img

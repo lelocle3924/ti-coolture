@@ -4,6 +4,7 @@ import {
   Outlet,
   Navigate,
   useLocation,
+  useNavigationType,
 } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
 import Header from "./components/Header";
@@ -31,16 +32,62 @@ import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
+import { useContinuityReturn } from "./lib/continuity";
 
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  /* A layout effect (13/09), so the reset lands in the commit that mounts the
-     new page. As a passive effect it could run after a view transition had
-     already snapshotted that page — measuring the product hero's destination
-     at the previous page's scroll offset, and then jumping. */
+function SmartScrollRestoration() {
+  const location = useLocation();
+  const navType = useNavigationType();
+
+  // Save scroll position on scroll
+  useEffect(() => {
+    let timeoutId: number;
+    const handleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        sessionStorage.setItem(`scroll-${location.key}`, window.scrollY.toString());
+      }, 50);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(timeoutId);
+    };
+  }, [location.key]);
+
+  // Restore scroll position
   useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    if (navType === "POP") {
+      const saved = sessionStorage.getItem(`scroll-${location.key}`);
+      if (saved) {
+        const targetY = parseInt(saved, 10);
+        
+        const attemptScroll = () => {
+          // Allow some pixel tolerance
+          if (document.documentElement.scrollHeight >= targetY + window.innerHeight - 10) {
+            window.scrollTo(0, targetY);
+            return true;
+          }
+          window.scrollTo(0, targetY);
+          return false;
+        };
+        
+        if (!attemptScroll()) {
+          const observer = new ResizeObserver(() => {
+            if (attemptScroll()) {
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.body);
+          
+          setTimeout(() => observer.disconnect(), 4000);
+          return () => observer.disconnect();
+        }
+      }
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.key, navType]);
+
   return null;
 }
 
@@ -210,9 +257,10 @@ function RedirectRoute({ to }: { to: string }) {
  * move inside the route element because both read useLocation.
  */
 function Root() {
+  useContinuityReturn();
   return (
     <>
-      <ScrollToTop />
+      <SmartScrollRestoration />
       <ButtonClickTracker />
       <SiteShell />
     </>
