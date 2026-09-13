@@ -135,29 +135,49 @@ function trackPresses() {
  * pressed — the tile's own copy, not another copy of the same product further
  * along a looping lane, because the walk starts inside the tile.
  */
-function findProductImage(product: Product, from: Element | null): HTMLElement | null {
+function findProductFrame(product: Product, from: Element | null): HTMLElement | null {
   const src = product.images?.[0];
   if (!src || !from) return null;
+  let image: HTMLImageElement | null = null;
   let node: Element | null = from;
   for (let depth = 0; node && depth < 8; depth += 1, node = node.parentElement) {
-    if (node instanceof HTMLImageElement && node.getAttribute("src") === src) return node;
-    for (const img of node.querySelectorAll("img")) {
-      if (img.getAttribute("src") === src && img.getBoundingClientRect().width > 0) return img;
+    if (node instanceof HTMLImageElement && node.getAttribute("src") === src) {
+      image = node;
+      break;
     }
+    for (const img of node.querySelectorAll("img")) {
+      if (img.getAttribute("src") === src && img.getBoundingClientRect().width > 0) {
+        image = img as HTMLImageElement;
+        break;
+      }
+    }
+    if (image) break;
   }
-  return null;
+  
+  if (!image) return null;
+
+  let parent = image.parentElement;
+  while (parent && parent !== document.body) {
+    const style = window.getComputedStyle(parent);
+    if (style.overflow === "hidden" || style.overflowX === "hidden" || style.overflowY === "hidden") {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  
+  return image.parentElement;
 }
 
 /* ── the transition ─────────────────────────────────────────────────────── */
 
-/**
- * Open a product with its photograph travelling.
- *
- * With no photograph to carry, no view transitions in the browser, or reduced
- * motion asked for, this is an ordinary navigation — the site's reduced-motion
- * rule already holds page changes still (index.css), and a transition with
- * nothing travelling is only a crossfade.
- */
+/** The product we are returning from, so the list knows to catch it. */
+let returningProduct: string | null = null;
+let returningFrame: HTMLElement | null = null;
+
+export function getReturningProduct() {
+  return returningProduct;
+}
+
 export function openWithContinuity(
   navigate: (to: string) => void,
   product: Product,
@@ -168,7 +188,7 @@ export function openWithContinuity(
 
   const start = (document as unknown as { startViewTransition?: StartViewTransition })
     .startViewTransition;
-  const image = findProductImage(product, from ?? lastPress);
+  const image = findProductFrame(product, from ?? lastPress);
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!image || reduced || typeof start !== "function") {
     navigate(to);
@@ -177,6 +197,10 @@ export function openWithContinuity(
 
   const run = ++currentRun;
   landing?.ready();
+  
+  returningProduct = product.id;
+  returningFrame = image;
+  
   nameHero(image);
   const html = document.documentElement;
   html.setAttribute("data-vt-kind", "continuity");
@@ -196,7 +220,6 @@ export function openWithContinuity(
       })
   );
 
-  // a skipped transition rejects `ready`; the navigation has happened anyway
   transition.ready.catch(() => {});
   transition.finished.finally(() => {
     if (run !== currentRun) return;
@@ -293,6 +316,68 @@ export function useContinuityLanding(
     }
     img.decode().then(arriving.ready, arriving.ready);
   }, [productId, frameRef, imgRef]);
+}
+
+/**
+ * The list's half of the return handshake.
+ * 
+ * When returning from a product page, this names the product's frame in the list
+ * so the view transition has a target to land on.
+ */
+export function useContinuityReturn() {
+  useLayoutEffect(() => {
+    if (!returningProduct) return;
+    
+    // Find any product card matching the returning product
+    // We could use returningFrame if it's still attached, but it's likely a new DOM element
+    // So we search by product ID
+    
+    // Since we don't have a reliable data attribute for product ID on the card itself yet,
+    // we can find the image by src from handoffCache, or add a data attribute.
+    // The easiest is to use the handoffCache.
+    const product = handoffCache.get(returningProduct);
+    if (!product) return;
+    
+    // Find a frame that matches this product (by walking up from its image)
+    const src = product.images?.[0];
+    if (!src) return;
+    
+    let frameToName = returningFrame;
+    if (!frameToName || !document.contains(frameToName)) {
+      // Find the image in the new DOM
+      const imgs = Array.from(document.querySelectorAll("img")).filter(
+        (img) => img.getAttribute("src") === src
+      );
+      // Pick the one that is most likely the card (visible)
+      const img = imgs.find((i) => i.getBoundingClientRect().width > 0) || imgs[0];
+      if (!img) return;
+      
+      let parent = img.parentElement;
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent);
+        if (style.overflow === "hidden" || style.overflowX === "hidden" || style.overflowY === "hidden") {
+          frameToName = parent;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      if (!frameToName) frameToName = img.parentElement;
+    }
+    
+    if (frameToName) {
+      nameHero(frameToName);
+      // Clear it after the transition completes
+      setTimeout(() => {
+        if (frameToName) {
+          frameToName.style.viewTransitionName = "";
+          frameToName.removeAttribute("data-ti-hero");
+        }
+      }, 500);
+    }
+    
+    returningProduct = null;
+    returningFrame = null;
+  }, []);
 }
 
 /* ── reading ────────────────────────────────────────────────────────────── */
