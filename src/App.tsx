@@ -32,7 +32,7 @@ import TitleMotionStudies from "./lab/TitleMotionStudies";
 import StoreSpeedStudies from "./lab/StoreSpeedStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
-import { useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
 
 function SmartScrollRestoration() {
@@ -64,8 +64,16 @@ function SmartScrollRestoration() {
     };
   }, [location.key]);
 
-  // Restore scroll position
+  /* Restore scroll position — and start a new page at its top, but only a new
+     page (14/09). Reset on every location change, a switch that rewrites
+     nothing but the query string threw the page back to its top: a catalogue
+     filter or sort, a lab panel's switches. It also cut off the catalogue's
+     own smooth scroll to its grid when paging (goToPage in Products). The
+     reset keys on the pathname again, as ScrollToTop did before it. */
+  const lastPathname = useRef(location.pathname);
   useLayoutEffect(() => {
+    const samePage = lastPathname.current === location.pathname;
+    lastPathname.current = location.pathname;
     if (navType === "POP") {
       const saved = sessionStorage.getItem(`scroll-${location.key}`);
       if (saved) {
@@ -93,7 +101,7 @@ function SmartScrollRestoration() {
           return () => observer.disconnect();
         }
       }
-    } else {
+    } else if (!samePage) {
       window.scrollTo(0, 0);
     }
   }, [location.pathname, location.key, navType]);
