@@ -263,21 +263,54 @@ export function RibbonLoop({
       {blink && (
         <>
           <defs>
-            {/* Everything the lids do is clipped to the eye's own opening, so
-                a lid parked "outside the eye" is genuinely invisible and no
-                lid can ever spill onto the ribbon. */}
-            <clipPath id={eyeClipId}>
-              <path d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z" />
-            </clipPath>
+            {/* Everything the lids do is confined to the eye's opening, so a
+                lid parked "outside the eye" is invisible and no lid can spill
+                past the ribbon.
+
+                Team 13/09: "thấy 1 viền trắng nhỏ (tôi nghi là do có khoảng
+                cách cỡ 1px giữa con mắt và 2 cái eye lids)". Right, and not a
+                gap in the geometry: the lids were clipped to EXACTLY the edge
+                of the hole they cover, so two antialiased edges sat on the
+                same line and each let a fraction of the ground through. That
+                fraction is the white outline of the almond mid-blink.
+
+                So the region is a mask now rather than a clipPath, because a
+                mask can be stroked: the same almond, filled, plus a 14-unit
+                stroke that pushes its edge 7 units out onto the ribbon. A lid
+                covering that margin is teal on teal and cannot be seen, and
+                the hole's edge is under solid lid instead of under a second
+                antialiased one. 7 units is ~1.9px at the smallest the mark is
+                drawn (a phone's "Cách đặt hàng") and the ribbon round the eye
+                is 40+ units thick, so the margin never reaches its far side. */}
+            <mask
+              id={eyeClipId}
+              maskUnits="userSpaceOnUse"
+              x="0"
+              y="0"
+              width="700"
+              height="695"
+            >
+              <path
+                d="M85.4,69.87s67.36-22.82,114.07,60.79l30.29,53S88.48,175.34,85.4,69.87Z"
+                fill="#fff"
+                stroke="#fff"
+                strokeWidth="14"
+                strokeLinejoin="round"
+              />
+            </mask>
           </defs>
-          <g clipPath={`url(#${eyeClipId})`}>
+          <g mask={`url(#${eyeClipId})`}>
             {/* Rotated onto the eye's own axis, so "perpendicular to the
                 centre line" is a plain translateY in here. The rects are
-                deliberately larger than the opening — the clip decides what
-                shows, so their size only has to be generous. */}
+                deliberately larger than the opening — the mask decides what
+                shows, so their size only has to be generous.
+
+                They overlap by a unit either side of the axis for the same
+                13/09 reason: two edges that merely touch at y=0 leave a
+                hairline of ground along the shut eye. */}
             <g transform="translate(157.58 126.77) rotate(38.25)">
-              <rect className="ti-eye-lid-a" x="-140" y="-130" width="280" height="130" fill={ribbon} />
-              <rect className="ti-eye-lid-b" x="-140" y="0" width="280" height="130" fill={ribbon} />
+              <rect className="ti-eye-lid-a" x="-140" y="-130" width="280" height="131" fill={ribbon} />
+              <rect className="ti-eye-lid-b" x="-140" y="-1" width="280" height="131" fill={ribbon} />
             </g>
           </g>
         </>
