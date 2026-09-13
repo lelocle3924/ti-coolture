@@ -136,6 +136,20 @@
   animation: lab-spring-contents 380ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
 }
 
+/* ── collections on a phone: the rail ─────────────────────────────────────
+   See CollectionRail in Homepage.tsx for why this is a native scroller. The
+   snap point is the tile's leading edge, offset by the rail's 1rem gutter so a
+   settled tile lines up with the panel's heading above it rather than with
+   the panel's edge. */
+.ti-swipe-rail {
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1rem;
+  overscroll-behavior-x: contain;
+}
+.ti-swipe-tile {
+  scroll-snap-align: start;
+}
+
 /* ── motion budget ───────────────────────────────────────────────────────
    docs/01-ART-DIRECTION-BRIEF.md: scroll-triggered movement and the wave drift
    stop entirely when the visitor asks for reduced motion. */

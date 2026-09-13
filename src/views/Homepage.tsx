@@ -1902,6 +1902,130 @@ function CollectionShelf({
   );
 }
 
+/* ── collections on a phone: the rail ────────────────────────────────────
+   Team 13/09: "Trên Mobile, Collections chưa xem được toàn bộ sản phẩm trong
+   collection (vì không có mũi tên) -> Thay thế bằng thao tác vuốt ngang. Lưu ý
+   tối ưu để không bị rối với thao tác kéo xuống."
+
+   The open collection showed its first three pieces in a fixed grid and
+   nothing else — the arrows that page through the rest exist only on the
+   desktop shelf. It is every piece now, on a rail you swipe.
+
+   A native scroll container, deliberately, and not one of the site's JS
+   tracks. The note's second half is the reason: the one thing that must not
+   go wrong is a thumb that meant to scroll the page catching the rail
+   instead. The browser already decides that at the start of every touch — it
+   locks a pan to whichever axis the gesture opens on, and only a horizontal
+   one ever reaches this element. A pointer-driven track has to re-implement
+   that guess with its own thresholds (the hero deck's is 8px) and it is
+   never quite the platform's. Here the platform does it, on iOS and Android
+   alike, with its own momentum.
+
+   The rest is what keeps it from feeling like a bare overflow:
+
+     · the tiles are 38% of the rail, so the third one is always cut by the
+       edge — the cut is what says "there is more" before anyone swipes;
+     · mandatory snapping, on the tile's leading edge, so a flick settles on
+       a whole picture rather than halfway across two;
+     · overscroll-behavior-x: contain, so pulling past either end does not
+       hand the gesture on to the browser's back/forward swipe;
+     · the proportional bar the desktop shelf carries, reading the scroll
+       position instead of a page index — the same mark for "how much more"
+       at both widths. It only draws when there is something off screen. */
+function CollectionRail({
+  collection,
+  tone,
+  onOpen,
+}: {
+  collection: HomeCollection;
+  tone: (typeof PANEL_TONES)[number];
+  onOpen: (p: Product) => void;
+}) {
+  const railRef = useRef<HTMLDivElement>(null);
+  /** What the rail is showing, as fractions of everything it holds. */
+  const [view, setView] = useState({ start: 0, size: 1 });
+
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const total = el.scrollWidth || 1;
+      setView({ start: el.scrollLeft / total, size: Math.min(1, el.clientWidth / total) });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    el.addEventListener("scroll", schedule, { passive: true });
+    const observer = new ResizeObserver(schedule);
+    observer.observe(el);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", schedule);
+      observer.disconnect();
+    };
+  }, [collection.items.length]);
+
+  const overflowing = view.size < 0.995;
+
+  return (
+    <div className="lab-spring-contents pb-4">
+      <div
+        ref={railRef}
+        role="group"
+        aria-label={`${collection.name} — ${collection.items.length} món, vuốt ngang để xem hết`}
+        className="ti-swipe-rail no-scrollbar @container overflow-x-auto"
+      >
+        {/* The padding lives on an inner row rather than on the scroller, so
+            the trailing gutter is part of what scrolls — a scroll container's
+            own end padding is the part browsers have disagreed about. */}
+        <div className="flex w-max gap-2 px-4">
+          {collection.items.map((p) => (
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onOpen(p)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                onOpen(p);
+              }}
+              aria-label={p.name}
+              className={`ti-swipe-tile group/tile relative aspect-square w-[38cqw] shrink-0 cursor-pointer overflow-hidden ${tone.tile}`}
+            >
+              <img
+                src={p.images[0]}
+                alt={p.name}
+                loading="lazy"
+                draggable={false}
+                className="h-full w-full object-cover"
+              />
+              <span className="absolute right-0 top-0 z-10">
+                <SaveButton product={p} revealOnHover />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {overflowing && (
+        <div aria-hidden="true" className="mx-4 mt-3 h-[3px] rounded-full bg-current/15">
+          <div
+            className="h-full rounded-full bg-current/60"
+            style={{
+              width: `${view.size * 100}%`,
+              transform: `translateX(${(view.start / view.size) * 100}%)`,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CollectionsSpringTabs({
   collections,
   onOpen,
@@ -1963,36 +2087,7 @@ function CollectionsSpringTabs({
                     {String(c.items.length).padStart(2, "0")} MÓN
                   </span>
                 </button>
-                {isOpen && (
-                  <div className="lab-spring-contents grid grid-cols-3 gap-2 px-4 pb-4">
-                    {c.items.slice(0, 3).map((p) => (
-                      <div
-                        key={p.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => onOpen(p)}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter" && e.key !== " ") return;
-                          e.preventDefault();
-                          onOpen(p);
-                        }}
-                        aria-label={p.name}
-                        className={`group/tile relative aspect-square cursor-pointer overflow-hidden ${tone.tile}`}
-                      >
-                        <img
-                          src={p.images[0]}
-                          alt={p.name}
-                          loading="lazy"
-                          draggable={false}
-                          className="h-full w-full object-cover"
-                        />
-                        <span className="absolute right-0 top-0 z-10">
-                          <SaveButton product={p} revealOnHover />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {isOpen && <CollectionRail collection={c} tone={tone} onOpen={onOpen} />}
               </div>
             );
           })}
