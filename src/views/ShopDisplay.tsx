@@ -67,21 +67,28 @@ import "./shop.css";
    window cannot shrink them to a smudge.
 
    A phone has no margin beside the column to hold them, and the drawing does
-   not show one. Placed by the desktop numbers, the arc ran straight through
-   the shop's words and the loop's pupil sat on a filter chip. So there they
-   are pushed out to the edges: the arc to a crescent about 12px deep, inside
-   the 16px gutter so no line of text starts on it (its ring's centre sits
-   51.7px left of its box's at -150°), and the loop's head to the right edge,
-   low, below the filters, where the products pass over it and its eye shows
-   in the space the page leaves at its foot. */
+   not show one. The first answer pushed them out to the screen's edges and
+   left them fixed there, so the page scrolled a crescent of arc past the
+   shop's words and a length of ribbon across the grid and the price note —
+   the "2 cái element đang bị lỗi hiển thị" of 14/09. On a phone the loop now
+   belongs to the header instead: it scrolls with the page, comes out from
+   behind the cover's lower right corner beside the shop's name with its eye
+   on the violet, and is gone by the time the products arrive. The arc has no
+   room of its own there — tried behind the cover, round the avatar and beside
+   the product count, it crossed the photograph, the face or the words every
+   time — so it is the desktop's alone. */
 const SHOP_MARKS = {
   wide: {
     arc: { left: "-1.34%", top: "41.9%", width: "max(31.2%, 15rem)" },
     loop: { left: "100.54%", top: "15.15%", width: "max(33.3%, 16rem)" },
   },
   phone: {
-    arc: { left: "-6rem", top: "45%", width: "15rem" },
-    loop: { left: "calc(100% + 2.4rem)", top: "80%", width: "13rem" },
+    // just inside the right edge, half a rem above the cover's foot
+    loop: {
+      left: "calc(100% - 0.375rem)",
+      top: "calc(var(--pill) + var(--u) + var(--cover-h) - 0.5rem)",
+      width: "9.5rem",
+    },
   },
 } as const;
 
@@ -140,7 +147,8 @@ function useShopPage(storeId: string | undefined) {
 }
 
 /**
- * The arc and the loop, fixed to the screen.
+ * The arc and the loop, fixed to the screen — on a desktop. A phone gets the
+ * loop alone, pinned to the header (see SHOP_MARKS).
  *
  * Painted between the page's ground and its content: the root is clipped
  * (clip-path: inset(0)), which contains a fixed descendant's painting the way
@@ -188,7 +196,6 @@ function ShopMarks({ coverRef }: { coverRef: { current: HTMLElement | null } }) 
     };
   }, [coverRef, wide]);
 
-  const marks = wide ? SHOP_MARKS.wide : SHOP_MARKS.phone;
   const place = (at: { left: string; top: string; width: string }, rotate: number) => ({
     left: at.left,
     top: at.top,
@@ -196,18 +203,35 @@ function ShopMarks({ coverRef }: { coverRef: { current: HTMLElement | null } }) 
     transform: `translate(-50%, -50%) rotate(${rotate}deg)`,
   });
 
+  const loop = (
+    <RibbonLoop
+      className="ti-shop-loop w-full"
+      ribbon="var(--color-wave)"
+      dot={onPaper ? "var(--color-brand)" : "var(--color-paper)"}
+      blink
+    />
+  );
+
+  if (!wide) {
+    /* Pinned to the page, not the screen, in a box that clips what runs past
+       the right edge. The root's clip-path hides that part from view but
+       still counts it as overflow, and a phone would scroll sideways to it. */
+    return (
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
+        <div ref={loopRef} className="absolute" style={place(SHOP_MARKS.phone.loop, -90)}>
+          {loop}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div aria-hidden="true" className="pointer-events-none">
-      <div className="fixed z-[1]" style={place(marks.arc, -150)}>
+      <div className="fixed z-[1]" style={place(SHOP_MARKS.wide.arc, -150)}>
         <ArcTopRight className="w-full" fill="var(--color-wave)" />
       </div>
-      <div ref={loopRef} className="fixed z-[1]" style={place(marks.loop, -90)}>
-        <RibbonLoop
-          className="ti-shop-loop w-full"
-          ribbon="var(--color-wave)"
-          dot={onPaper ? "var(--color-brand)" : "var(--color-paper)"}
-          blink
-        />
+      <div ref={loopRef} className="fixed z-[1]" style={place(SHOP_MARKS.wide.loop, -90)}>
+        {loop}
       </div>
     </div>
   );
@@ -417,9 +441,10 @@ export default function ShopDisplay() {
 
               {/* The name starts where the ring ends and sits in the ring's
                   lower half, as drawn; the row is exactly that half tall, so
-                  whatever follows starts at the ring's foot. */}
+                  whatever follows starts at the ring's foot. On a phone it
+                  also stops short of the loop at the right edge (14/09). */}
               <div
-                className="flex items-center"
+                className="flex items-center pr-16 md:pr-0"
                 style={{
                   minHeight: "calc(var(--avatar-outer) / 2)",
                   paddingLeft: "calc(var(--avatar-x) + var(--avatar-outer) / 2)",
@@ -537,24 +562,35 @@ export default function ShopDisplay() {
 
       {/* "Trên mobile: thanh floating ở dưới chứa link đến social media của
           shop." Outside the clipped root, or the page's own clip would cut it
-          off as the footer comes up. The pill is the nav's material, so the
-          two floating bars on a phone read as one family. */}
+          off as the footer comes up.
+
+          14/09: the buttons sat in a tray of the nav's dark glass, and on the
+          page's white that tray read as a thick grey outline round them — the
+          other thing on the phone page that looked broken. They float on
+          their own now, each with a soft shadow and a hairline of light to
+          lift it off paper and violet alike. One platform is one button of
+          its own width, centred, rather than a bar across the screen; more
+          share the width. */}
       {channels.length > 0 && (
         <nav
           aria-label={`Kênh của ${store.name}`}
-          className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 md:hidden"
+          className="pointer-events-none fixed inset-x-4 bottom-[max(0.875rem,env(safe-area-inset-bottom))] z-40 flex justify-center md:hidden"
         >
-          <ul className="flex gap-1.5 rounded-full bg-ink/55 p-1.5 shadow-[0_18px_40px_-22px_rgba(18,8,31,0.9)] ring-1 ring-white/12 backdrop-blur-xl">
+          <ul className={`pointer-events-auto flex gap-2 ${channels.length > 1 ? "w-full" : ""}`}>
             {channels.map((channel) => (
               /* flex-auto, not equal shares: INSTAGRAM is nine letters and
                  THREADS seven, and four equal quarters of a phone cut the
                  longest label against its own edges. */
-              <li key={channel.key} className="min-w-0 flex-auto">
+              <li key={channel.key} className={channels.length > 1 ? "min-w-0 flex-auto" : ""}>
                 <a
                   href={channel.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`grid h-11 place-items-center rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_3px_rgba(18,8,31,0.45)] ${channel.fill}`}
+                  className={`grid h-12 place-items-center rounded-full font-bold uppercase text-paper shadow-[0_10px_24px_-10px_rgba(18,8,31,0.65),inset_0_0_0_1px_rgba(255,255,255,0.22)] [text-shadow:0_1px_3px_rgba(18,8,31,0.45)] ${
+                    channels.length > 1
+                      ? "px-3 text-[11px] tracking-[0.04em]"
+                      : "min-w-[13rem] px-10 text-[13px] tracking-[0.08em]"
+                  } ${channel.fill}`}
                 >
                   {channel.label}
                 </a>
