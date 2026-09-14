@@ -12,10 +12,10 @@ import { LabChoices, LabPanel } from "./labShared";
     chuột lên 1 dòng thì sẽ chậm lại như tốc độ hiện tại"
 
    This page IS the homepage — the real view, header and data — with the two
-   desktop lanes tuned through LaneTuningOverride, which is null on the site:
-   the site keeps today's speeds and still holds a lane still under the
-   cursor. The page opens on what the note asks for, both lanes at 1.5× and a
-   hovered lane easing back to today's speed instead of stopping; today's
+   desktop lanes tuned through LaneTuningOverride, which is null on the site.
+   The page opens on what the note asks for, both lanes at 1.5× and a hovered
+   lane easing back to the old speed instead of stopping — which the team
+   chose on 14/09, and which the site now runs as SITE_LANES. The old
    behaviour is one switch away, with 1.25× and 2× either side of the step.
 
    Only the lane under the cursor slows — the other keeps its pace, which is
@@ -30,7 +30,7 @@ import { LabChoices, LabPanel } from "./labShared";
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const SPEEDS = [
-  ["1", "1× · hiện tại"],
+  ["1", "1× · trước khi chốt"],
   ["1.25", "1.25×"],
   ["1.5", "1.5×"],
   ["2", "2×"],
@@ -39,7 +39,7 @@ type Speed = (typeof SPEEDS)[number][0];
 
 const HOVERS = [
   ["slow", "Chậm lại về 1×"],
-  ["hold", "Dừng hẳn · hiện tại"],
+  ["hold", "Dừng hẳn · trước khi chốt"],
 ] as const;
 type Hover = (typeof HOVERS)[number][0];
 

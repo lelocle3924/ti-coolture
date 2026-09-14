@@ -76,8 +76,8 @@ const STUDIES = [
     to: "/lab/store-speed",
     n: "09",
     title: "What's in store — nhanh 1.5×, chậm lại khi rê chuột",
-    body: "Trang chủ thật, chỉ khác hai dòng sản phẩm: chạy nhanh gấp rưỡi, và dòng đang rê chuột chậm về tốc độ hiện tại thay vì đứng yên. Bật qua lại để so với 1×, 1.25×, 2× và kiểu dừng hẳn như bây giờ.",
-    meta: "2 công tắc · PC · trang chủ",
+    body: "Đã chốt 14/09 và đã lên site: hai dòng chạy nhanh gấp rưỡi, dòng đang rê chuột chậm về tốc độ cũ thay vì đứng yên. Trang này vẫn giữ để so với 1×, 1.25×, 2× và kiểu dừng hẳn như trước.",
+    meta: "2 công tắc · PC · đã lên site",
   },
 ];
 

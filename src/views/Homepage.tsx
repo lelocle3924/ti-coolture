@@ -769,17 +769,12 @@ function StoreTile({
   );
 }
 
-/* The lanes' ambient drift in px/s — the two speeds the old CSS durations
-   worked out to on a laptop (see StoreMarquee). */
+/* The lanes' base drift in px/s — the two speeds the old CSS durations
+   worked out to on a laptop (see StoreMarquee). The site runs them at
+   SITE_LANES. */
 export const LANE_SPEEDS = { top: 34, bottom: 28 } as const;
 
-/**
- * How fast the lanes drift, and what a hovering cursor does to them.
- *
- * Always null on the site, which drifts at LANE_SPEEDS and holds a lane still
- * under the cursor. /lab/store-speed sets it to try the lanes faster, slowing
- * under the cursor rather than stopping, on the real homepage (14/09).
- */
+/** How fast the lanes drift, and what a hovering cursor does to them. */
 export interface LaneTuning {
   /** Multiplies both lanes' drift. */
   scale: number;
@@ -787,6 +782,14 @@ export interface LaneTuning {
   hover: "hold" | "slow";
   hoverScale: number;
 }
+
+/* Team 14/09, choosing from /lab/store-speed: "tốc độ 1.5x, hover chuột
+   chậm về 1x như hiện tại". Both lanes drift half as fast again, and the lane
+   under a cursor eases back to the speed they both used to run at instead of
+   stopping, while the other keeps its pace. */
+export const SITE_LANES: LaneTuning = { scale: 1.5, hover: "slow", hoverScale: 1 };
+
+/** Another tuning, for a study on the real homepage. Null on the site. */
 export const LaneTuningOverride = createContext<LaneTuning | null>(null);
 
 /* Team feedback (07/09): "Thao tác vuốt ở What's in store trên PC chưa ổn."
@@ -796,8 +799,10 @@ export const LaneTuningOverride = createContext<LaneTuning | null>(null);
    a touchscreen alike, and a flick coasts on its own velocity before rejoining
    the drift. See useMarqueeTrack for why that cannot be done in CSS.
 
-   Hover still holds the lane still — you stop it to read a tile — but stopping
-   it is no longer a dead end, because you can now push it along yourself. */
+   Hover used to hold the lane still, so a tile could be read. Since 14/09 it
+   slows the lane under the cursor to the speed both lanes used to drift at
+   (SITE_LANES) — slow enough to read, never a dead stop — and it can still be
+   pushed along by hand. */
 function StoreLane({
   products,
   direction,
@@ -993,11 +998,9 @@ function LoopingStoreLane({
 
 function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: Product) => void }) {
   const half = Math.ceil(products.length / 2);
-  /* Null on the site — see LaneTuningOverride. */
-  const tuning = useContext(LaneTuningOverride);
-  const scale = tuning?.scale ?? 1;
+  const tuning = useContext(LaneTuningOverride) ?? SITE_LANES;
   const hoverSpeed = (base: number) =>
-    tuning?.hover === "slow" ? base * tuning.hoverScale : undefined;
+    tuning.hover === "slow" ? base * tuning.hoverScale : undefined;
   /* Team 20/08: one lane is enough on a phone — two stacked marquees eat the
      screen and neither can be read while both are moving. */
   const twoLanes = useMediaQuery("(min-width: 768px)");
@@ -1051,7 +1054,7 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
             <StoreLane
               products={products.slice(0, half)}
               direction="left"
-              speed={LANE_SPEEDS.top * scale}
+              speed={LANE_SPEEDS.top * tuning.scale}
               hoverSpeed={hoverSpeed(LANE_SPEEDS.top)}
               offscreen={paused}
               onOpen={onOpen}
@@ -1059,7 +1062,7 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
             <StoreLane
               products={products.slice(half)}
               direction="right"
-              speed={LANE_SPEEDS.bottom * scale}
+              speed={LANE_SPEEDS.bottom * tuning.scale}
               hoverSpeed={hoverSpeed(LANE_SPEEDS.bottom)}
               offscreen={paused}
               onOpen={onOpen}
