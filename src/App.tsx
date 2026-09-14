@@ -30,6 +30,7 @@ import CollectionStudies from "./lab/CollectionStudies";
 import HomeMapStudies from "./lab/HomeMapStudies";
 import TitleMotionStudies from "./lab/TitleMotionStudies";
 import StoreSpeedStudies from "./lab/StoreSpeedStudies";
+import ShopChannelStudies from "./lab/ShopChannelStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
@@ -340,6 +341,15 @@ const router = createBrowserRouter([
         ],
       },
       { path: "lab/store-speed", element: <StoreSpeedStudies /> },
+      {
+        path: "lab/shop-buttons",
+        element: <ShopChannelStudies />,
+        /* The real shop page, with its platform buttons swapped in place. */
+        children: [
+          { index: true, element: <Navigate to="shop-tap-hoa-tieng-viet" replace /> },
+          { path: ":storeId", element: <ShopDisplay /> },
+        ],
+      },
 
       /* Renamed 26/08. Kept as redirects so anything already shared or
          bookmarked still lands, rather than bouncing to the homepage. */

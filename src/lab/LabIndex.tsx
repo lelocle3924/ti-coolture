@@ -79,6 +79,13 @@ const STUDIES = [
     body: "Đã chốt 14/09 và đã lên site: hai dòng chạy nhanh gấp rưỡi, dòng đang rê chuột chậm về tốc độ cũ thay vì đứng yên. Trang này vẫn giữ để so với 1×, 1.25×, 2× và kiểu dừng hẳn như trước.",
     meta: "2 công tắc · PC · đã lên site",
   },
+  {
+    to: "/lab/shop-buttons",
+    n: "10",
+    title: "Nút kênh ở trang shop — một màu brand, logo thay chữ",
+    body: "Bốn nền tảng chung một màu lấy từ brand — violet, trắng, mực hoặc teal — thay cho màu riêng của từng nền tảng, và logo của nền tảng thay cho chữ. Chạy trên trang shop thật, PC và mobile, với shop có 4, 3, 2 và 1 kênh; màu cũ vẫn giữ một công tắc để so.",
+    meta: "4 công tắc · PC + mobile · /stores/[slug]",
+  },
 ];
 
 export default function LabIndex() {
