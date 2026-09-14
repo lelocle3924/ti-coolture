@@ -48,6 +48,32 @@
   animation: ti-pin-settle 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* The homepage island, arriving (14/09). On a phone a sideways swipe steps
+   region, so the next island comes in from the side the swipe sent it from;
+   the arrows use the same pair. Short travel and an ease-out, the site's
+   motion for things that arrive — a nudge towards where it came from, not a
+   carousel slide. */
+@keyframes ti-island-from-right {
+  from { opacity: 0.4; transform: translateX(6%); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ti-island-from-left {
+  from { opacity: 0.4; transform: translateX(-6%); }
+  to   { opacity: 1; transform: none; }
+}
+.ti-island-from-right {
+  animation: ti-island-from-right 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ti-island-from-left {
+  animation: ti-island-from-left 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ti-island-from-right,
+  .ti-island-from-left {
+    animation: none;
+  }
+}
+
 /* Motion proposal 11 (approved 31/08): the lanes stop when nobody is looking.
    Set from lib/usePauseOffscreen — off screen, or the tab in the background.
    Pausing holds the lane's position rather than resetting it, so scrolling

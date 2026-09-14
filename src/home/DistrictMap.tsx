@@ -1,7 +1,18 @@
-import { createContext, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { ArrowRight, Camera, Landmark, ShoppingBag, Utensils } from "lucide-react";
 import { islandBlobs, planFor, pointsAlongRoute } from "./homeData";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
+import HeroWave from "../components/HeroWave";
+import { useMediaQuery } from "../lib/useAutoHideChrome";
 import "./home.css";
 import type { TouristRoute } from "../types";
 
@@ -15,6 +26,10 @@ import type { TouristRoute } from "../types";
  * they are a list beside the island now, all three named and on screen at
  * once, and the list is the control. There is nothing left to swipe, so there
  * is nothing left to explain.
+ *
+ * On a phone the homepage has since gone back to swiping (14/09): one name
+ * under the title, the island to swipe or its arrows to press, and no list.
+ * See HomeDistrictMap.
  *
  * The same note rewrites the map itself:
  *
@@ -68,6 +83,7 @@ export function KeLayout({
   island,
   islandFirst = false,
   align = "center",
+  indexOnPhone = true,
 }: {
   index: ReactNode;
   island: ReactNode;
@@ -94,6 +110,12 @@ export function KeLayout({
    * down an empty field.
    */
   align?: "center" | "start";
+  /**
+   * Whether the column shows on a phone at all. The homepage leaves its list
+   * of maps off there (14/09): the name under the title and a swipe do its
+   * job, and a list under the island only pushed the section longer.
+   */
+  indexOnPhone?: boolean;
 }) {
   return (
     <div
@@ -104,7 +126,7 @@ export function KeLayout({
       <div
         className={`px-5 md:order-none md:px-10 ${
           islandFirst ? "order-2 mt-8 md:mt-0" : "order-1"
-        }`}
+        } ${indexOnPhone ? "" : "hidden md:block"}`}
       >
         {index}
       </div>
@@ -314,6 +336,10 @@ export function useRegionPicker(routes: TouristRoute[]) {
  * The three maps, by name. Hairlines on the violet and the row measure of
  * /discover's place list; the selected one takes the teal and the short rule,
  * which is what says this list is the control for the map beside it.
+ *
+ * Team 14/09: "giữ text bên trái, cho text lớn hơn 1.5 lần" — 16/18px became
+ * 24/27px, and the rows and the rule grew with it so the list keeps its
+ * proportions rather than just its words getting bigger.
  */
 export function RegionList({
   routes,
@@ -334,17 +360,17 @@ export function RegionList({
               type="button"
               onClick={() => onPick(r.id)}
               aria-current={on}
-              className={`flex w-full items-center gap-3 py-3.5 text-left transition-colors ${
+              className={`flex w-full items-center gap-4 py-4 text-left transition-colors md:py-5 ${
                 on ? "text-wave" : "text-white/65 hover:text-paper"
               }`}
             >
-              <span className="min-w-0 flex-1 truncate text-base font-medium leading-snug md:text-lg">
+              <span className="min-w-0 flex-1 truncate text-2xl font-medium leading-snug md:text-[1.6875rem]">
                 {planFor(r.id).region}
               </span>
               <span
                 aria-hidden="true"
                 className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                  on ? "w-8" : "w-0"
+                  on ? "w-12" : "w-0"
                 }`}
               />
             </button>
@@ -404,6 +430,136 @@ export function HomeIsland({
   );
 }
 
+/* The arc and the wave, as /lab/home-map placed them (13/09), and how the
+   phone steps region. */
+
+/** At most the /discover copy's 28rem, never under 7.5rem — see arcWidth. */
+const ARC_MAX_REM = 28;
+const ARC_MIN_REM = 7.5;
+/** The arc's flat top end sits 3.52 units down its 555-wide box, so the box is
+    lifted by that much of its width to put the cut, not the box, on the edge. */
+const ARC_CUT = 3.52 / 555;
+/** The wave's box, as a share of the island's height — about the share of the
+    hero the hero's own box takes. */
+const WAVE_BOX = 0.36;
+/** HeroWave rests both ends at y 64 of its 120-tall box… */
+const WAVE_REST = 64 / 120;
+/** …and the sea moves the middle of the curve up to 28 of those units. */
+const WAVE_SWING = 28 / 120;
+/** How far a finger has to travel across the island, sideways, to step. */
+const SWIPE_PX = 40;
+
+interface MapGeometry {
+  /** The drawn land's lowest edge, from the section's top edge. */
+  landBottom: number;
+  /** The island's 4:3 box: its height, and its bottom from the section's top. */
+  islandHeight: number;
+  islandBottom: number;
+  /** From the lower edge of the collections down to this section's top. */
+  rise: number;
+  /**
+   * The arc's width in px: as wide as the room between the page's right edge
+   * and the end of the title (or, on a phone, the region's name), less a
+   * 16px breath, within ARC_MIN_REM and ARC_MAX_REM. At a fixed width the
+   * ring ran through the centred words on a phone.
+   */
+  arcWidth: number;
+}
+
+/** Measures what the arc and the wave are placed from, and keeps it current. */
+function useMapGeometry(sectionRef: { current: HTMLElement | null }, key: string) {
+  const [geo, setGeo] = useState<MapGeometry | null>(null);
+
+  useLayoutEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    let frame = 0;
+
+    const measure = () => {
+      frame = 0;
+      const svg = section.querySelector<SVGSVGElement>('svg[viewBox="0 0 800 600"]');
+      const land = svg?.querySelector<SVGGElement>("g[fill]");
+      if (!svg || !land) return;
+      const top = section.getBoundingClientRect().top;
+      const box = svg.getBoundingClientRect();
+      const drawn = land.getBBox();
+      const scale = box.height / 600;
+      // the collections: the heading, the panels, the "see more" line — the panels are second
+      const panels = document.querySelector("#dong-collections > :nth-child(2)");
+      // how far right the words reach — their glyphs, not their block boxes
+      const reach = Array.from(section.querySelectorAll("h2, h2 + p")).reduce((edge, el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return Math.max(edge, range.getBoundingClientRect().right);
+      }, 0);
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const room = document.documentElement.clientWidth - reach - 16;
+      setGeo({
+        landBottom: box.top - top + (drawn.y + drawn.height) * scale,
+        islandHeight: box.height,
+        islandBottom: box.bottom - top,
+        rise: panels ? top - panels.getBoundingClientRect().bottom : 0,
+        arcWidth: Math.min(ARC_MAX_REM * rem, Math.max(ARC_MIN_REM * rem, room)),
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+
+    measure();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(section);
+    const collections = document.getElementById("dong-collections");
+    if (collections) observer.observe(collections);
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [sectionRef, key]);
+
+  return geo;
+}
+
+/**
+ * A sideways swipe across the island steps region — on a touch screen, where
+ * there is no list beside it any more. The tap that ends a swipe is not also
+ * a tap on the island, which would leave for /discover.
+ */
+function useSwipeStep(step: (delta: number) => void) {
+  const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  const swiped = useRef(false);
+
+  return {
+    onPointerDown: (e: { pointerType: string; pointerId: number; clientX: number; clientY: number }) => {
+      if (e.pointerType === "mouse") return;
+      start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      swiped.current = false;
+    },
+    onPointerUp: (e: { pointerId: number; clientX: number; clientY: number }) => {
+      const from = start.current;
+      start.current = null;
+      if (!from || from.id !== e.pointerId) return;
+      const dx = e.clientX - from.x;
+      const dy = e.clientY - from.y;
+      // sideways, and plainly more sideways than down
+      if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      swiped.current = true;
+      step(dx < 0 ? 1 : -1);
+    },
+    onPointerCancel: () => {
+      start.current = null;
+    },
+    onClickCapture: (e: { preventDefault: () => void; stopPropagation: () => void }) => {
+      if (!swiped.current) return;
+      swiped.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+  };
+}
+
 /**
  * /discover's layout, with the three maps in the column instead of the places.
  *
@@ -419,11 +575,27 @@ export function HomeIsland({
  *     three maps by name, and only by name.
  *   · "Empty space từ cuối phần collections đến title và map… quá nhiều" —
  *     the 10vh ramp above the section is gone and the title opens it.
- *   · "Nền của map ở homepage bị trống" — the field carried /discover's two
- *     marks for one round; the second note that day took them off again
- *     ("nhìn lạc lõng quá"). What fills it instead — the hero's wave under
- *     the map, the arc joined to the collections, a centred map — is being
- *     tried inside the real homepage at /lab/home-map.
+ *
+ * Team 14/09, choosing from /lab/home-map, where the options had been tried
+ * inside the real homepage:
+ *
+ *   · On a desktop — "chọn sóng trắng, mép dưới, làm sóng mờ đi 30%, arc bên
+ *     phải mờ đi 30%, giữ text bên trái, cho text lớn hơn 1.5 lần, bỏ tên map
+ *     dưới title, thu nhỏ kích cỡ map khoảng 5% để nó không bị out ra khỏi
+ *     viền trang". The hero's wave runs white along the land's lowest edge at
+ *     30%. The arc's flat end joins the collections' lower edge at the right,
+ *     at the same 30% ("Mờ 30%" in the study). The list of maps stays on the
+ *     left at one and a half times the size, and the title stands alone. The
+ *     island is 95% of its column and brought in off the page's edge: land
+ *     reaches past its own box by up to 10.1% of the box's width (Thủ Đức,
+ *     measured: −76 to 881 of 800), so at 95% it needs 9.6% of the column
+ *     plus a 1rem breath to end inside the page. That pulls its box 4.6% and
+ *     1rem into the list's column, below the list.
+ *   · On a phone — "bỏ text 3 tên map, người dùng thấy 1 dòng tên map ngay
+ *     dưới title, vuốt trái phải hoặc bấm mũi tên để xem. Sóng dưới map, mờ
+ *     30%". No list; the one line under the title names the map; a sideways
+ *     swipe across the island steps region the way the arrows do, and the
+ *     new island comes in from the side it was sent from.
  *
  * The ground still has to arrive at brand-deep, because the collaborate band
  * below is brand-deep and 20/08 asked that no two grounds meet on a hard
@@ -435,17 +607,59 @@ export function HomeDistrictMap({
   onOpenRoute,
   heading = "Khám phá thành phố",
 }: DistrictMapProps) {
+  const wide = useMediaQuery("(min-width: 768px)");
   const { route, pick, step } = useRegionPicker(routes);
+  const sectionRef = useRef<HTMLElement>(null);
+  const geo = useMapGeometry(sectionRef, `${route?.id}:${wide}`);
+  /** Which way the last step went, so the next island arrives from that side. */
+  const [travel, setTravel] = useState(0);
+  const go = (delta: number) => {
+    setTravel(delta);
+    step(delta);
+  };
+  const swipe = useSwipeStep(go);
+
   if (!route) return null;
   const plan = planFor(route.id);
 
+  /* The wave's resting line lies along the land's lowest edge; its box is
+     placed so that line lands there. Half the band, and the sea's swing, then
+     hang below the land, so the section grows by whatever of that the
+     island's own foot and the section's padding do not already cover. */
+  const basePad = wide ? 64 : 48;
+  const boxHeight = geo ? geo.islandHeight * WAVE_BOX : 0;
+  const boxTop = geo ? geo.landBottom - WAVE_REST * boxHeight : 0;
+  const viewportHeight = typeof window === "undefined" ? 800 : window.innerHeight;
+  const bandHalf = ((wide ? 0.17 : 0.05) * viewportHeight) / 2;
+  const below = geo ? geo.islandBottom - geo.landBottom : 0;
+  const extraPad = geo ? Math.max(0, bandHalf + WAVE_SWING * boxHeight + 12 - (below + basePad)) : 0;
+
   return (
     <section
+      ref={sectionRef}
       id="dong-map"
       data-surface="dark"
-      className="relative overflow-hidden pb-12 pt-12 text-paper md:pb-16 md:pt-16"
-      style={{ background: MAP_GROUND }}
+      /* The arc rises out of this section's top, so only the sides clip. */
+      className="relative overflow-x-clip pt-12 text-paper md:pt-16"
+      style={{ background: MAP_GROUND, paddingBottom: basePad + extraPad }}
     >
+      {geo && (
+        <ArcTopRight
+          className="pointer-events-none absolute right-0 z-[1] opacity-30"
+          fill="var(--color-wave)"
+          style={{ width: geo.arcWidth, top: -geo.rise - geo.arcWidth * ARC_CUT }}
+        />
+      )}
+
+      {geo && (
+        <HeroWave
+          className="z-[2] opacity-30"
+          stroke="var(--color-paper)"
+          boxTop={`${boxTop}px`}
+          boxHeight={`${boxHeight}px`}
+        />
+      )}
+
       <div className="relative z-20 mx-auto max-w-4xl px-5 text-center md:px-8">
         {/* The homepage's own heading scale rather than /discover's h1, so
             this title sits in the same step as "What's in store" and "Chưa
@@ -454,7 +668,8 @@ export function HomeDistrictMap({
         <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-[1.25] text-paper">
           {heading}
         </h2>
-        <p key={route.id} className="lab-plate-in mt-3 text-base tracking-[0.12em] text-wave md:text-lg">
+        {/* The phone's one line naming the map; a desktop names it in the list. */}
+        <p key={route.id} className="lab-plate-in mt-3 text-lg tracking-[0.12em] text-wave md:hidden">
           {plan.region}
         </p>
       </div>
@@ -463,13 +678,36 @@ export function HomeDistrictMap({
         <KeLayout
           islandFirst
           align="start"
-          index={<RegionList routes={routes} current={route.id} onPick={pick} />}
+          indexOnPhone={false}
+          index={
+            <RegionList
+              routes={routes}
+              current={route.id}
+              onPick={(id) => {
+                setTravel(0);
+                pick(id);
+              }}
+            />
+          }
           island={
-            /* Pulled up by its own empty top, exactly as on /discover — see
-               the note on CategoryMap for the 10.9%. */
-            <div className="relative -mt-[10.9%]">
-              <MapArrows onStep={step} />
-              <HomeIsland route={route} onOpenRoute={onOpenRoute} />
+            /* Pulled up by its own empty top, as on /discover — see the note
+               on CategoryMap for the 10.9%, which on a desktop is 95% of
+               itself here because the island is. touch-pan-y keeps a vertical
+               swipe for the page and gives a sideways one to the map. */
+            <div
+              className="relative -mt-[10.9%] touch-pan-y md:-ml-[calc(4.6%+1rem)] md:-mt-[10.35%] md:w-[95%]"
+              onPointerDown={swipe.onPointerDown}
+              onPointerUp={swipe.onPointerUp}
+              onPointerCancel={swipe.onPointerCancel}
+              onClickCapture={swipe.onClickCapture}
+            >
+              <MapArrows onStep={go} />
+              <div
+                key={route.id}
+                className={travel > 0 ? "ti-island-from-right" : travel < 0 ? "ti-island-from-left" : ""}
+              >
+                <HomeIsland route={route} onOpenRoute={onOpenRoute} />
+              </div>
             </div>
           }
         />
