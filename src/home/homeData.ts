@@ -192,8 +192,18 @@ export function islandBlobs(stops: Array<{ x: number; y: number }>): IslandBlob[
  * them, so every point on that line is inside the landmass by construction. A
  * pin placed here can no more fall into the water than one placed on a stop.
  *
- * Points sit at (k + 0.5) / n of the total length, so they are inset from
- * both ends rather than sitting on the first and last stop.
+ * Points sit at (k + 0.5) / n of the walk, so they are inset from both ends
+ * rather than sitting on the first and last stop.
+ *
+ * The walk is measured sideways — how far it travels across the island, not
+ * how long the line is. With three to five stops the two came to the same
+ * thing. With the team's place list (14/09) a region has eleven to thirteen
+ * stops, and where several sit in one narrow band the line runs up and down
+ * it; by length, pins bunched there as close as 48 units — about 21px on a
+ * phone, less than a pin is wide. Measured sideways they fall a fifth of the
+ * way across apart whatever the line does, and every point is still on it,
+ * so still on land. A walk with no sideways travel at all falls back to
+ * length.
  */
 export function pointsAlongRoute(
   stops: Array<{ x: number; y: number }>,
@@ -203,9 +213,10 @@ export function pointsAlongRoute(
   if (stops.length === 0) return Array.from({ length: n }, () => ({ x: 50, y: 50 }));
   if (stops.length === 1) return Array.from({ length: n }, () => ({ ...stops[0] }));
 
+  const sideways = stops.some((s) => s.x !== stops[0].x);
   const legs = stops.slice(1).map((b, i) => {
     const a = stops[i];
-    return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y) };
+    return { a, b, len: sideways ? Math.abs(b.x - a.x) : Math.hypot(b.x - a.x, b.y - a.y) };
   });
   const total = legs.reduce((sum, l) => sum + l.len, 0);
   if (total === 0) return Array.from({ length: n }, () => ({ ...stops[0] }));
