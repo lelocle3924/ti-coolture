@@ -283,17 +283,18 @@ export function RibbonLoop({
                 drawn (a phone's "Cách đặt hàng") and the ribbon round the eye
                 is 40+ units thick, so the margin never reaches its far side.
 
-                Team 14/09: "vạch màu teal nhỏ bên cạnh con mắt" on
-                /stores/[slug]. The mask's region was the mark's own box,
-                0,0 → 700×695, and the lids' rectangles cross its top edge
-                while they wait outside the eye. Chrome let one row of device
-                pixels through where the region's edge met the masked lids — a
-                teal hairline along that edge of the mark, which the shop
-                page turns into a vertical line beside the eye. Measured
-                there: 349 teal pixels in a 3px column on the edge, none with
-                the lids hidden, none with this region. It reaches well past
-                anything a lid can cover, so its edge falls outside the
-                drawing, where there is nothing to let through. */}
+                Team 14/09, twice: "vạch màu teal nhỏ bên cạnh con mắt" on
+                /stores/[slug]. The lids were rectangles 280 units long, far
+                bigger than the eye, and waiting outside it they ran off the
+                top of the mark. Wherever the renderer clipped that masked
+                teal at an edge, one row of device pixels came through: a
+                hairline along the mark's top edge, which the shop page turns
+                into a vertical line beside the eye. It came and went with the
+                window's width and the screen's pixel ratio — 175 rows of it
+                at 1920px ×1, none at 1536px ×1 — so a first fix that only
+                widened this region was checked at one ratio, looked clean,
+                and was not. The region stays wide, so its own edge never
+                falls on anything drawn; the lids below are what fixed it. */}
             <mask
               id={eyeClipId}
               maskUnits="userSpaceOnUse"
@@ -313,16 +314,32 @@ export function RibbonLoop({
           </defs>
           <g mask={`url(#${eyeClipId})`}>
             {/* Rotated onto the eye's own axis, so "perpendicular to the
-                centre line" is a plain translateY in here. The rects are
-                deliberately larger than the opening — the mask decides what
-                shows, so their size only has to be generous.
+                centre line" is a plain translateY in here.
+
+                Shaped to the eye, not generous rectangles (14/09 — see the
+                mask's note). Each lid is the almond's own outline on its side
+                of the axis: the path sampled at 800 points, turned onto this
+                frame, and widened by 11 units — the mask's 7-unit stroke and 4
+                to spare. Shut, a lid still covers everything the mask lets
+                through; parked 40 units out, it stays at least 22 units inside
+                the mark instead of running off its edge. Inside the mask the
+                blink is what it was: the shapes differ only where nothing
+                shows.
 
                 They overlap by a unit either side of the axis for the same
                 13/09 reason: two edges that merely touch at y=0 leave a
                 hairline of ground along the shut eye. */}
             <g transform="translate(157.58 126.77) rotate(38.25)">
-              <rect className="ti-eye-lid-a" x="-140" y="-130" width="280" height="131" fill={ribbon} />
-              <rect className="ti-eye-lid-b" x="-140" y="-1" width="280" height="131" fill={ribbon} />
+              <polygon
+                className="ti-eye-lid-a"
+                fill={ribbon}
+                points="-102.9,-8.0 -96.5,-15.5 -90.1,-21.5 -83.6,-26.6 -77.2,-30.9 -70.8,-34.5 -64.3,-37.5 -57.9,-40.0 -51.5,-42.0 -45.1,-43.5 -38.6,-44.7 -32.2,-45.4 -25.8,-45.8 -19.3,-45.8 -12.9,-45.8 -6.5,-45.5 -0.1,-44.8 6.4,-43.9 12.8,-42.6 19.2,-41.1 25.7,-39.2 32.1,-37.1 38.5,-34.7 44.9,-32.1 51.4,-29.6 57.8,-27.0 64.2,-24.4 70.7,-21.8 77.1,-19.2 83.5,-16.6 89.9,-14.0 96.4,-11.4 102.8,-7.7 102.8,1.0 -102.9,1.0"
+              />
+              <polygon
+                className="ti-eye-lid-b"
+                fill={ribbon}
+                points="-102.9,7.8 -96.5,14.8 -90.1,20.8 -83.6,26.0 -77.2,30.4 -70.8,34.2 -64.3,37.3 -57.9,40.0 -51.5,42.1 -45.1,43.9 -38.6,45.2 -32.2,46.1 -25.8,46.7 -19.3,46.9 -12.9,47.0 -6.5,46.9 -0.1,46.5 6.4,45.9 12.8,45.0 19.2,43.8 25.7,42.4 32.1,40.8 38.5,38.9 44.9,36.8 51.4,34.5 57.8,32.0 64.2,29.3 70.7,26.3 77.1,23.2 83.5,19.8 89.9,16.2 96.4,12.3 102.8,7.8 102.8,-1.0 -102.9,-1.0"
+              />
             </g>
           </g>
         </>
