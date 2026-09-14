@@ -681,25 +681,26 @@ export function HomeDistrictMap({
             The spacing, 15/09 — "cách đều title và map". Equal on the
             letters: from the title's baseline to the top of the name's
             capitals, and from the name's baseline to the top of the land.
-            Both lines are DFVN Some Time Later at leading 1.25, and its typo
-            metrics (ascent .70, descent .30, cap .695 — the ones a browser
-            uses, since the font sets USE_TYPO_METRICS) put the baseline
-            .425em above the foot of a line's box and the cap top .13em below
-            its head. The gap is one of the name's capitals, .45 of the title
-            size t:
+            Both lines render at .display's own line-height of 1.02 — the
+            leading-[1.25] on the title loses to it in the cascade — so a
+            line's box holds its glyphs almost exactly. DFVN Some Time Later
+            reports ascent .694, descent .306 and capitals .705 in the browser
+            (it sets USE_TYPO_METRICS), which puts the baseline .316em above
+            the foot of a line's box and the capitals at its head. The gap is
+            one of the name's capitals, .45 of the title size t:
 
-              title baseline → name caps   .425t + m + .13 × .65t = .45t
-                                           → m = −.0595t
-              name baseline → land         .425 × .65t + m′ + land = .45t
-                                           → m′ = .17375t − land
+              title baseline → name caps   .316t + m + ~0 = .45t
+                                           → m ≈ .134t; on the page, .121t
+              name baseline → land         .316 × .65t + m′ + land = .45t
+                                           → m′ = .2446t − land
 
-            The land starts 84/600 down its 4:3 box (81–87 across the three
-            maps), which is .105 of the island's width: 5.838% of the page on
-            a desktop, where the island is 55.6%, and 7.0875% on a phone,
+            The land starts about 85/600 down its 4:3 box (81–87 across the
+            three maps), .10625 of the island's width: 5.9075% of the page on
+            a desktop, where the island is 55.6%, and 7.1719% on a phone,
             where it is 67.5%. That is m′, on the island below. */}
         <p
           key={route.id}
-          className="lab-plate-in display mt-[calc(var(--t)*-0.0595)] text-[length:calc(var(--t)*0.65)] normal-case leading-[1.25] text-wave"
+          className="lab-plate-in display mt-[calc(var(--t)*0.121)] text-[length:calc(var(--t)*0.65)] normal-case text-wave"
         >
           {plan.region}
         </p>
@@ -712,7 +713,7 @@ export function HomeDistrictMap({
             island's own is. touch-pan-y keeps a vertical swipe for the page
             and gives a sideways one to the map. */}
         <div
-          className="relative mx-auto mt-[calc(var(--t)*0.17375_-_7.0875%)] w-[67.5%] touch-pan-y md:mt-[calc(var(--t)*0.17375_-_5.838%)] md:w-[55.6%]"
+          className="relative mx-auto mt-[calc(var(--t)*0.2446_-_7.1719%)] w-[67.5%] touch-pan-y md:mt-[calc(var(--t)*0.2446_-_5.9075%)] md:w-[55.6%]"
           onPointerDown={swipe.onPointerDown}
           onPointerUp={swipe.onPointerUp}
           onPointerCancel={swipe.onPointerCancel}
