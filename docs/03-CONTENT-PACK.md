@@ -88,7 +88,7 @@ OWN "TÍ"
 
 ### Footer
 > Tí Coolture — nơi tuyển chọn local brand và artist Việt.
-> Liên hệ: hello@ticoolture.vn
+> Liên hệ: ticoolture@gmail.com
 > Điều khoản sử dụng · Chính sách bảo mật · Hợp tác với Tí
 > © 2026 Tí Coolture
 

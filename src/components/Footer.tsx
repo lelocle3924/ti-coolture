@@ -18,10 +18,10 @@ export default function Footer() {
               Nơi tuyển chọn local brand và artist Việt.
             </p>
             <a
-              href="mailto:hello@ticoolture.vn"
+              href="mailto:ticoolture@gmail.com"
               className="mt-4 inline-flex items-center min-h-11 text-sm text-wave hover:underline"
             >
-              hello@ticoolture.vn
+              ticoolture@gmail.com
             </a>
           </div>
 
