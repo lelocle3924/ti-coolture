@@ -13,7 +13,7 @@ import { planFor } from "../home/homeData";
  * beside the map or on it:
  *
  *     Khám phá thành phố
- *          Chợ Lớn
+ *           Quận 1
  *     [ the places | ‹ the map › ]
  *
  * — and then the footer. There is no paper band and no wave seam: 09/09,

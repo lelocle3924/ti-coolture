@@ -15,9 +15,10 @@
  * the views do not change.
  *
  * ── What is not real ─────────────────────────────────────────────────────
- * Writes mutate memory only and are lost on reload. Every shop, product,
- * price and route is invented placeholder content — see the warnings in
- * src/lib/mock/seed.ts. None of it may ship to a public demo.
+ * Writes mutate memory only and are lost on reload. Every shop, product and
+ * price is invented placeholder content — see the warnings in
+ * src/lib/mock/seed.ts. None of it may ship to a public demo. The places on
+ * the map are the exception since 14/09: they are the team's own list.
  */
 
 import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, RouteStop } from "../types";

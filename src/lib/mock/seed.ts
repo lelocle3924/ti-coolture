@@ -159,68 +159,112 @@ export const seed: Database = {
 
   product_materials: [],
 
-  // ⚠ INVENTED — content pack Part B. Three placeholder routes.
+  /* The three districts of the team's place list (14/09), in the sheet's
+     order. They replace the three invented routes (Chợ Lớn, Thủ Đức and an
+     afternoon in Quận 1) and take their ids from the district. */
   routes: [
     {
-      id: "route-cho-lon",
-      slug: "vong-cho-lon",
-      title_vi: "Vòng Chợ Lớn",
-      title_en: "Chợ Lớn Loop",
-      description_vi: "4 điểm · nửa ngày",
-      description_en: "4 stops · half a day",
+      id: "route-quan-1",
+      slug: "quan-1",
+      title_vi: "Quận 1",
+      title_en: "District 1",
+      description_vi: "13 điểm",
+      description_en: "13 places",
       cover_url: null,
-      duration_min: 240,
+      duration_min: null,
       status: "published",
       sort_order: 1,
     },
     {
-      id: "route-thu-duc",
-      slug: "sang-tao-thu-duc",
-      title_vi: "Sáng tạo Thủ Đức",
-      title_en: "Thủ Đức Makers",
-      description_vi: "5 điểm · cả ngày",
-      description_en: "5 stops · full day",
+      id: "route-quan-2",
+      slug: "quan-2",
+      title_vi: "Quận 2",
+      title_en: "District 2",
+      description_vi: "13 điểm",
+      description_en: "13 places",
       cover_url: null,
-      duration_min: 480,
+      duration_min: null,
       status: "published",
       sort_order: 2,
     },
     {
-      id: "route-quan-1",
-      slug: "mot-buoi-chieu-quan-1",
-      title_vi: "Một buổi chiều Quận 1",
-      title_en: "An Afternoon in District 1",
-      description_vi: "3 điểm · 3 giờ",
-      description_en: "3 stops · 3 hours",
+      id: "route-quan-3",
+      slug: "quan-3",
+      title_vi: "Quận 3",
+      title_en: "District 3",
+      description_vi: "11 điểm",
+      description_en: "11 places",
       cover_url: null,
-      duration_min: 180,
+      duration_min: null,
       status: "published",
       sort_order: 3,
     },
   ],
 
-  /* The last column is the kind of place — see RouteStopRow.category. Filed
-     by hand against what each place actually is, not spread evenly to make
-     the map look full: Chợ Lớn has no eating stop in the dataset and Quận 1
-     has nothing filed under chụp ảnh, and /discover says so rather than
-     inventing one. */
+  /* The team's place list (14/09, "List địa điểm các quận"): each place's
+     name, its kinds and its Google Maps link come straight from the sheet.
+     The rest is derived from those, and nothing is invented:
+
+       · map_x / map_y are the place's real position, read off its link and
+         stretched per axis into the band the islands were drawn in (x 13–87,
+         y 34–72), so north is up and east is right. The island is built from
+         these, so its outline follows where the places actually are.
+       · stop_number runs west to east. The sheet's numbering counts rows, it
+         is not a walk, and the pins on /discover are spaced along the walk —
+         see pointsAlongRoute.
+       · The sheet lists Compound Garment twice, under 3 and under 1, and both
+         links open the same pin, so it is one place filed under both. Four
+         names are spelled as the place spells itself on its pin: Compund,
+         And CLub, Icescream and Infiniti were typos.
+       · address is empty: the sheet gives none, and the row links the pin
+         instead.
+
+     The kinds are the sheet's key — 1 ăn uống, 2 tham quan, 3 mua sắm,
+     4 chụp ảnh, 5 vui chơi giải trí. A kind with nothing in a district stays
+     empty (Quận 1 has no vui chơi giải trí, Quận 2 no chụp ảnh) and
+     /discover says so rather than inventing a place. */
   route_stops: [
-    // Vòng Chợ Lớn
-    ["route-cho-lon", 1, "Bưu điện Chợ Lớn", 14, 74, null, "tham-quan"],
-    ["route-cho-lon", 2, "Hội quán Tuệ Thành", 36, 52, null, "chup-anh"],
-    ["route-cho-lon", 3, "Chợ vải Soái Kình Lâm", 62, 60, null, "mua-sam"],
-    ["route-cho-lon", 4, "Xưởng thêu Chỉ Đỏ", 84, 34, "shop-chi-do", "mua-sam"],
-    // Sáng tạo Thủ Đức
-    ["route-thu-duc", 1, "Ga Metro Bến Thành", 10, 66, null, "chup-anh"],
-    ["route-thu-duc", 2, "Bảo tàng Áo Dài", 32, 44, null, "tham-quan"],
-    ["route-thu-duc", 3, "Lò gốm Mù U", 52, 62, "shop-gom-mu-u", "mua-sam"],
-    ["route-thu-duc", 4, "Cà phê Xưởng", 72, 38, null, "an-uong"],
-    ["route-thu-duc", 5, "Chợ đêm Thủ Đức", 90, 58, null, "an-uong"],
-    // Một buổi chiều Quận 1
-    ["route-quan-1", 1, "Đường sách Nguyễn Văn Bình", 18, 60, null, "tham-quan"],
-    ["route-quan-1", 2, "Xưởng Lem", 50, 38, "shop-xuong-lem", "mua-sam"],
-    ["route-quan-1", 3, "Chung cư 42 Nguyễn Huệ", 82, 56, null, "an-uong"],
-  ].map(([routeId, n, name, x, y, shopId, category]) => ({
+    // Quận 1
+    ["route-quan-1", 1, "Hãng đĩa thời đại", 13, 38, ["mua-sam"], "https://maps.app.goo.gl/VbuzUKt5X6wHSujW8"],
+    ["route-quan-1", 2, "Scoopy Ice Cream", 15, 36, ["an-uong"], "https://maps.app.goo.gl/ZkfodXd8Jh4qXJbL9"],
+    ["route-quan-1", 3, "Cục Gạch Quán", 17, 36, ["an-uong"], "https://maps.app.goo.gl/TA8JymSzJYMP8MTr5"],
+    ["route-quan-1", 4, "Tân Định Vintage Store", 21, 34, ["mua-sam"], "https://maps.app.goo.gl/Q8KUTrK467X9Ki3L8"],
+    ["route-quan-1", 5, "Au Parc Cafe", 51, 57, ["an-uong"], "https://maps.app.goo.gl/SDhbohJ4zpskYbsKA"],
+    ["route-quan-1", 6, "Chùa Ông Ấn Độ", 58, 64, ["tham-quan"], "https://maps.app.goo.gl/iSuBm1EidcHmeqrC9"],
+    ["route-quan-1", 7, "Triển lãm những con mắt của thời gian", 61, 58, ["tham-quan"], "https://maps.app.goo.gl/uaHNpT3wMEVX9JeA9"],
+    ["route-quan-1", 8, "And Club Photobooth", 61, 63, ["chup-anh"], "https://maps.app.goo.gl/RJJUnXrYwG6c2aVY6"],
+    ["route-quan-1", 9, "Tổ hợp mua sắm Lý Tự Trọng", 62, 58, ["an-uong", "mua-sam"], "https://maps.app.goo.gl/nDbnDDn3GM7F6gj8A"],
+    ["route-quan-1", 10, "Compound Garment", 63, 72, ["mua-sam", "an-uong"], "https://maps.app.goo.gl/bceyaDaN1uevVQ8U7"],
+    ["route-quan-1", 11, "Chung cư Tôn Thất Đạm", 72, 71, ["an-uong", "mua-sam", "chup-anh"], "https://maps.app.goo.gl/N9gTEpY569uFHpHRA"],
+    ["route-quan-1", 12, "Bảo tàng Lịch Sử Hồ Chí Minh", 75, 43, ["tham-quan"], "https://maps.app.goo.gl/ab8a8HpUUD1LGLNY6"],
+    ["route-quan-1", 13, "Bảo tàng địa chất Việt Nam", 87, 48, ["tham-quan"], "https://maps.app.goo.gl/ESV5enabwP1GJmAt6"],
+    // Quận 2
+    ["route-quan-2", 1, "Dogma Collection", 13, 68, ["tham-quan"], "https://maps.app.goo.gl/JaoGwFcsQh1PWCzm7"],
+    ["route-quan-2", 2, "Sip N Play Board & video game bar", 17, 69, ["an-uong", "vui-choi"], "https://maps.app.goo.gl/N7QtShETowN3vtra8"],
+    ["route-quan-2", 3, "Quang San Art Museum", 21, 34, ["tham-quan"], "https://maps.app.goo.gl/QhDnkYGXDtJJVfh16"],
+    ["route-quan-2", 4, "Workshop Hub", 29, 65, ["vui-choi"], "https://maps.app.goo.gl/UoLnM7mRaGdZNYgB7"],
+    ["route-quan-2", 5, "Simple Place", 30, 47, ["an-uong"], "https://maps.app.goo.gl/hwz7f54Q824mxLsJ6"],
+    ["route-quan-2", 6, "annenlamda", 34, 55, ["mua-sam"], "https://maps.app.goo.gl/7MMQWfYmiyyAwEr29"],
+    ["route-quan-2", 7, "CHILLALA Art Museum", 38, 66, ["tham-quan"], "https://maps.app.goo.gl/qPWrpmLBuB1eNYY47"],
+    ["route-quan-2", 8, "Tổ hợp Hẻm 28 Thảo Điền", 54, 63, ["an-uong", "tham-quan", "mua-sam"], "https://maps.app.goo.gl/2NDWy1jCSR7kdhCD7"],
+    ["route-quan-2", 9, "BARTELS Thảo Điền", 55, 70, ["an-uong"], "https://maps.app.goo.gl/W9JAwGj2xS9FjLGM7"],
+    ["route-quan-2", 10, "Tổ hợp 14 Trần Ngọc Diện", 60, 68, ["an-uong", "tham-quan", "mua-sam"], "https://maps.app.goo.gl/5g8AfMNUJS2qTgw78"],
+    ["route-quan-2", 11, "Infinity Racing", 67, 70, ["vui-choi"], "https://maps.app.goo.gl/mrhzcvLFdeSr8wFx6"],
+    ["route-quan-2", 12, "Umatcha Se Artisan Matcha", 68, 63, ["an-uong"], "https://maps.app.goo.gl/hEYCb2yLAbSAipjC7"],
+    ["route-quan-2", 13, "SCLIMB Climbing Sport", 87, 72, ["vui-choi"], "https://maps.app.goo.gl/YUTFS7YveAcrTsSw7"],
+    // Quận 3
+    ["route-quan-3", 1, "Airy Studio", 13, 41, ["vui-choi"], "https://maps.app.goo.gl/mPpSAMp9zDrf1JZV7"],
+    ["route-quan-3", 2, "Kollab Photo", 24, 34, ["chup-anh"], "https://maps.app.goo.gl/tGKJQ8d5B7HyqX1K9"],
+    ["route-quan-3", 3, "Tổ hợp mua sắm quần áo Lê Văn Sỹ", 24, 35, ["mua-sam"], "https://maps.app.goo.gl/yNww4nicFkXkV9Tz6"],
+    ["route-quan-3", 4, "Tran Quan's Archery Club", 25, 43, ["vui-choi"], "https://maps.app.goo.gl/N4W3qg221ZvBNM496"],
+    ["route-quan-3", 5, "Workshop làm nến Dipsoul Candle", 35, 72, ["vui-choi"], "https://maps.app.goo.gl/9fqG422hBeBB8MhL8"],
+    ["route-quan-3", 6, "Sundate Matcha", 62, 42, ["an-uong"], "https://maps.app.goo.gl/poFfedY98ti9rov27"],
+    ["route-quan-3", 7, "Hội Boardgame Ánh Trăng", 62, 72, ["vui-choi"], "https://maps.app.goo.gl/Hb7K6U9o3sT3vBYy7"],
+    ["route-quan-3", 8, "Cà phê Rêverie", 78, 52, ["an-uong"], "https://maps.app.goo.gl/Mv97uwDBf7CvV1LS8"],
+    ["route-quan-3", 9, "Bảo tàng chứng tích chiến tranh", 81, 56, ["tham-quan"], "https://maps.app.goo.gl/obJqd6TjpqE9dZeY9"],
+    ["route-quan-3", 10, "Casinha", 85, 51, ["an-uong"], "https://maps.app.goo.gl/nm382r3og7XxS5b46"],
+    ["route-quan-3", 11, "Phê Men", 87, 43, ["an-uong"], "https://maps.app.goo.gl/mAXoGtz7QRWfdqH99"],
+  ].map(([routeId, n, name, x, y, categories, link]) => ({
     id: `stop-${routeId}-${n}`,
     route_id: routeId as string,
     stop_number: n as number,
@@ -228,13 +272,13 @@ export const seed: Database = {
     name_en: null,
     description_vi: null,
     description_en: null,
-    address: name as string,
+    address: null,
     map_x: x as number,
     map_y: y as number,
     image_url: null,
-    external_url: null,
-    shop_id: (shopId as string | null) ?? null,
-    categories: [category as string],
+    external_url: link as string,
+    shop_id: null,
+    categories: categories as string[],
   })),
 
   // ⚠ INVENTED — content pack Part B, "3 nội dung Hidden Gems".
