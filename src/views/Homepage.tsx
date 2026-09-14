@@ -902,6 +902,11 @@ function StoreLane({
 const SLIDE = 0.65;
 /** Where its slide starts, which is (1 - SLIDE) / 2 — the peek, symmetric. */
 const PEEK = 0.175;
+/** A flick at least this fast (px/s) crosses three products instead of one: a
+    deliberate throw of the thumb, well past a swipe made to see the next. */
+const STRONG_FLICK = 1300;
+/* Stable across renders, so the track's pointer handler is not rebuilt. */
+const RAIL_FLICK = { strongVelocity: STRONG_FLICK, strongPages: 3 };
 
 function LoopingStoreLane({
   products,
@@ -925,10 +930,11 @@ function LoopingStoreLane({
      full 5% between it and its neighbour. */
   const track = useLoopTrack(products.length, {
     response: 0.55,
-    decelerationRate: 0.992,
-    maxPagesPerFlick: 1,
     slide: SLIDE,
     lead: PEEK,
+    /* Team 14/09: "vuốt nhẹ thì lướt 1 sản phẩm, vuốt mạnh thì lướt qua 3 sản
+       phẩm" — see `flick` in useLoopTrack. */
+    flick: RAIL_FLICK,
   });
   const laid = Array.from({ length: LOOP_COPIES }, () => products).flat();
 

@@ -40,6 +40,10 @@ import { useReducedMotion } from "./useAutoHideChrome";
 /** How many times the list is laid out. Three: one on screen, one either side. */
 export const LOOP_COPIES = 3;
 
+/** With `flick` set, a swipe at least this long (px) or this fast (px/s) moves a slide. */
+const SWIPE_DISTANCE = 40;
+const SWIPE_VELOCITY = 350;
+
 /** Apple's projection: where a flick comes to rest. */
 function project(velocity: number, decelerationRate: number): number {
   return ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
@@ -52,6 +56,17 @@ export interface LoopTrackOptions {
   decelerationRate?: number;
   /** Cap on how many slides one flick may cross. */
   maxPagesPerFlick?: number;
+  /**
+   * Page by how hard the swipe was, not by where it would coast to.
+   *
+   * Team 14/09, the phone rail: "vuốt nhẹ thì lướt 1 sản phẩm, vuốt mạnh thì
+   * lướt qua 3 sản phẩm". Set, a swipe moves exactly one slide, however gently
+   * it was made — anything past SWIPE_DISTANCE or SWIPE_VELOCITY — and a flick
+   * at least `strongVelocity` px/s fast moves `strongPages`. Nothing in between:
+   * two outcomes a thumb can learn, rather than a projection it has to aim.
+   * maxPagesPerFlick and decelerationRate do not apply.
+   */
+  flick?: { strongVelocity: number; strongPages: number };
   /**
    * How much of the viewport one step advances, as a fraction of its width.
    *
@@ -95,6 +110,7 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
     response = 0.5,
     decelerationRate = 0.992,
     maxPagesPerFlick = 1,
+    flick,
     slide = 1,
     lead = 0,
   } = options;
@@ -329,23 +345,36 @@ export function useLoopTrack(count: number, options: LoopTrackOptions = {}): Loo
         const dt = Math.max(1, now - first.t);
         const velocity = ((ev.clientX - first.x) / dt) * 1000; // px/s
 
-        const projected = xRef.current + project(velocity, decelerationRate);
-        let target = Math.round((leadRef.current - projected) / step);
-        // one flick may cross at most maxPagesPerFlick slides
-        const delta = Math.max(
-          -maxPagesPerFlick,
-          Math.min(maxPagesPerFlick, target - startVi)
-        );
-        target = startVi + delta;
+        let delta: number;
+        if (flick) {
+          /* The browser took the gesture over — a vertical scroll that began
+             with a little sideways drift. That is not a swipe at the rail. */
+          if (ev.type === "pointercancel") {
+            goToVirtual(startVi);
+            return;
+          }
+          const dragged = ev.clientX - startX;
+          // the flick's own direction when it has one, the drag's otherwise
+          const toward = Math.sign(Math.abs(velocity) >= SWIPE_VELOCITY ? velocity : dragged);
+          // dragging right (toward > 0) goes back
+          if (Math.abs(velocity) >= flick.strongVelocity) delta = -toward * flick.strongPages;
+          else if (Math.abs(dragged) >= SWIPE_DISTANCE || Math.abs(velocity) >= SWIPE_VELOCITY) delta = -toward;
+          else delta = 0;
+        } else {
+          const projected = xRef.current + project(velocity, decelerationRate);
+          const landing = Math.round((leadRef.current - projected) / step);
+          // one flick may cross at most maxPagesPerFlick slides
+          delta = Math.max(-maxPagesPerFlick, Math.min(maxPagesPerFlick, landing - startVi));
+        }
 
-        goToVirtual(target, velocity);
+        goToVirtual(startVi + delta, velocity);
       };
 
       el.addEventListener("pointermove", onMove);
       el.addEventListener("pointerup", onUp);
       el.addEventListener("pointercancel", onUp);
     },
-    [decelerationRate, goToVirtual, maxPagesPerFlick, stop]
+    [decelerationRate, flick, goToVirtual, maxPagesPerFlick, stop]
   );
 
   useEffect(() => stop, [stop]);
