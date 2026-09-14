@@ -53,9 +53,14 @@ function PlaceRow({
   /** Arrived here from a link — hold a mark on it long enough to be found. */
   flashed: boolean;
 }) {
-  const mapHref = stop.address?.startsWith("http")
-    ? stop.address
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address ?? "")}`;
+  /* The place's own pin when the team has supplied one (14/09) — a search
+     for a name can land on the wrong branch of a chain, or on nothing.
+     Otherwise a search for the address, as before. */
+  const mapHref =
+    stop.mapUrl ??
+    (stop.address
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address)}`
+      : undefined);
 
   return (
     <li
@@ -72,10 +77,12 @@ function PlaceRow({
       <div className="py-3.5">
         <p className="text-base font-medium leading-snug text-paper md:text-lg">{stop.name}</p>
 
-        {stop.address && (
+        {mapHref && (
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/60">
             <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-wave" />
-            <span className="min-w-0">{stop.address}</span>
+            {/* The team's list names each place and links its pin, and
+                gives no street address — so a row may have only the link. */}
+            {stop.address && <span className="min-w-0">{stop.address}</span>}
             <a
               href={mapHref}
               target="_blank"

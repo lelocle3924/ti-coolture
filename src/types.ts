@@ -94,6 +94,8 @@ export interface RouteStop {
   y: number; // percentage vertical position for custom map mockup
   /** Kinds of place, at least one — see DISCOVER_CATEGORIES; placeholder taxonomy for now. */
   categories: string[];
+  /** The place's own pin on Google Maps, when one is on file. */
+  mapUrl?: string;
 }
 
 export interface TouristRoute {

@@ -141,7 +141,8 @@ function toRoute(routeId: string): TouristRoute {
     .map((s) => ({
       id: s.id,
       name: s.name_vi,
-      address: s.external_url ?? s.address ?? "",
+      address: s.address ?? "",
+      mapUrl: s.external_url ?? undefined,
       description: s.description_vi ?? "",
       x: s.map_x,
       y: s.map_y,
