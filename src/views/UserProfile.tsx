@@ -435,7 +435,8 @@ export default function UserProfile() {
               {profile?.role === "Admin" ? "// ADMIN SECURITY CREDENTIALS" : "// EXPLORER CREDENTIALS"}
             </span>
             <h1 className="font-display font-black text-xl uppercase tracking-tight text-black">
-              {user?.email}
+              {/* The test accounts carry no email (15/09), so they need a name. */}
+              {user?.email || "Tài khoản dùng thử"}
             </h1>
             <p className="text-xs font-mono text-neutral-500 uppercase mt-0.5">
               Profile Role: {profile?.role || "User"} • Registered on Tí Coolture

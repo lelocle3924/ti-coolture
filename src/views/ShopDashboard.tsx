@@ -148,7 +148,7 @@ export default function ShopDashboard() {
       setShopVibe("");
       setShopDescription(sData.description || [sData.story, sData.vibe].filter(Boolean).join("\n\n") || "");
       setShopPhone(sData.phone || "");
-      setShopEmail(sData.email || sData.id + "@shop.vn");
+      setShopEmail(sData.email || "");
       setShopAddress(sData.address || "");
       setShopTaxId(sData.taxId || "");
 
@@ -744,7 +744,6 @@ export default function ShopDashboard() {
                     type="email"
                     value={shopEmail}
                     onChange={(e) => setShopEmail(e.target.value)}
-                    placeholder="artisan@ticoolture.vn"
                     className="w-full border-2 border-black p-2 font-mono text-xs focus:outline-none"
                     required
                   />

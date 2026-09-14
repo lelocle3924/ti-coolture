@@ -53,7 +53,9 @@ export default function AuthGateway() {
     setError(null);
     try {
       const mockUid = role === "Admin" ? "admin_local" : role === "Shop" ? "shop_local" : "user_local";
-      const mockEmail = role === "Admin" ? "admin@ticoolture.vn" : role === "Shop" ? "artisan@shop.vn" : "explorer@ticoolture.vn";
+      /* No address. The test accounts are keyed by uid, and a made-up email
+         only ever reached the screen looking like somebody's real one (15/09). */
+      const mockEmail = "";
       const mockRole = role;
 
       if (loginAsMockUser) {
@@ -407,7 +409,6 @@ export default function AuthGateway() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="explorer@email.com"
                         className="w-full rounded-full border border-ink/10 px-4 py-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                         required
                       />
@@ -480,7 +481,6 @@ export default function AuthGateway() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={mode === "ShopForm" ? "artisan@shop.vn" : "explorer@email.com"}
                       className="w-full rounded-full border border-ink/10 px-4 py-3 bg-paper-warm focus:bg-paper focus:ring-2 focus:ring-brand/20 outline-none"
                       required
                     />
