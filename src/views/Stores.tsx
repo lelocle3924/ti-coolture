@@ -171,9 +171,22 @@ export default function Stores() {
                    three edges reading as two. */
                 <div
                   key={store.id}
-                  className="rev hover-elastic rounded-[1.875rem] bg-paper p-5 flex flex-col justify-between h-full space-y-4 border border-ink/10 hover:border-brand/40 group cursor-pointer overflow-hidden"
+                  className="rev hover-elastic rounded-[1.875rem] bg-paper p-5 flex flex-col h-full border border-ink/10 hover:border-brand/40 group cursor-pointer overflow-hidden"
                 >
 
+                  {/* Team 15/09: "bấm vào mọi nơi kể từ dòng 'tác phẩm tiêu
+                      biểu' trở lên đều phải dẫn đến trang shop, không chỉ khi
+                      bấm vào tên shop hay nút 'Ghé thăm xưởng'".
+
+                      Everything that leads to the shop sits in this one box,
+                      and the shop's name is the link: its ::after is stretched
+                      over the box and out into the card's padding, so the
+                      whole upper card is one target with one name and one tab
+                      stop. A wrapping link cannot do it — "Mở bản đồ" is a
+                      link of its own, and a link cannot sit inside a link — so
+                      that one is lifted above the stretch instead. The
+                      thumbnails below the line still open their products. */}
+                  <div className="relative">
                     {/* Atelier Cover Banner Viewport with Shared View Transition Name */}
                     <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-paper-warm">
                       <img
@@ -201,14 +214,16 @@ export default function Stores() {
                     </div>
 
                     {/* Atelier Identity & Story */}
-                    <div className="space-y-2">
+                    <div className="mt-4 space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <Link 
+                        <Link
                           to={`/stores/${store.id}`}
                           viewTransition
-                          className="font-medium text-lg text-ink group-hover:text-brand transition-colors line-clamp-1"
+                          className="min-w-0 font-medium text-lg text-ink group-hover:text-brand transition-colors after:absolute after:-inset-x-5 after:-top-5 after:bottom-0 after:z-[1]"
                         >
-                          {store.name}
+                          {/* The clamp on the text, not the link: the link's
+                              own box must not clip what it stretches. */}
+                          <span className="line-clamp-1">{store.name}</span>
                         </Link>
                       </div>
 
@@ -233,7 +248,7 @@ export default function Stores() {
                               href={mapUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-brand hover:underline font-semibold flex items-center gap-0.5 shrink-0"
+                              className="relative z-[2] text-brand hover:underline font-semibold flex items-center gap-0.5 shrink-0"
                             >
                               <span>Mở bản đồ</span>
                               <ArrowUpRight className="w-3 h-3" />
@@ -243,32 +258,40 @@ export default function Stores() {
                       )}
                     </div>
 
+                    {/* The tray's heading ends the box, so the line is still
+                        part of the way to the shop. */}
+                    {storeProducts.length > 0 && (
+                      <span className="label mt-4 block border-t border-ink/5 pt-3 text-[9px] text-ink/50">
+                        TÁC PHẨM TIÊU BIỂU TỪ XƯỞNG:
+                      </span>
+                    )}
+                  </div>
+
                     {/* Featured Wares Preview Tray */}
                     {storeProducts.length > 0 && (
-                      <div className="pt-3 border-t border-ink/5 space-y-1.5">
-                        <span className="label text-ink/50 text-[9px] block">TÁC PHẨM TIÊU BIỂU TỪ XƯỞNG:</span>
-                        <div className="grid grid-cols-3 gap-2">
-                          {storeProducts.map((prod) => (
-                            <ContinuityLink
-                              key={prod.id}
-                              product={prod}
-                              to={`/products/${prod.id}`}
-                              className="aspect-square rounded-xl overflow-hidden bg-paper-warm border border-ink/5 hover:border-brand transition-all block group/thumb"
-                            >
-                              <img
-                                src={prod.images?.[0]}
-                                alt={prod.name}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300"
-                              />
-                            </ContinuityLink>
-                          ))}
-                        </div>
+                      <div className="mt-1.5 grid grid-cols-3 gap-2">
+                        {storeProducts.map((prod) => (
+                          <ContinuityLink
+                            key={prod.id}
+                            product={prod}
+                            to={`/products/${prod.id}`}
+                            className="aspect-square rounded-xl overflow-hidden bg-paper-warm border border-ink/5 hover:border-brand transition-all block group/thumb"
+                          >
+                            <img
+                              src={prod.images?.[0]}
+                              alt={prod.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300"
+                            />
+                          </ContinuityLink>
+                        ))}
                       </div>
                     )}
 
-                    {/* Action Button-in-Button CTA */}
-                    <div className="pt-2">
+                    {/* Action Button-in-Button CTA. mt-auto takes a short
+                        card's spare height, so the buttons line up along a
+                        row; pt-6 is the gap the old space-y-4 and pt-2 made. */}
+                    <div className="mt-auto pt-6">
                       <Link
                         to={`/stores/${store.id}`}
                         viewTransition
