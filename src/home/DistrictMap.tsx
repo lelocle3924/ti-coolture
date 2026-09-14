@@ -27,9 +27,10 @@ import type { TouristRoute } from "../types";
  * once, and the list is the control. There is nothing left to swipe, so there
  * is nothing left to explain.
  *
- * On a phone the homepage has since gone back to swiping (14/09): one name
- * under the title, the island to swipe or its arrows to press, and no list.
- * See HomeDistrictMap.
+ * The homepage has since given its list up — on a phone on 14/09, on a
+ * desktop on 15/09: one name under the title, the island in the middle, and
+ * its arrows (or, on a phone, a swipe) to change it. See HomeDistrictMap.
+ * /discover keeps the list beside the island, filled with places.
  *
  * The same note rewrites the map itself:
  *
@@ -90,7 +91,6 @@ export function KeLayout({
   island,
   islandFirst = false,
   align = "center",
-  indexOnPhone = true,
 }: {
   index: ReactNode;
   island: ReactNode;
@@ -111,18 +111,12 @@ export function KeLayout({
    * Where the column sits against the island.
    *
    * "start" is /discover (09/09) — "mép trên list địa điểm để ngang với mép
-   * trên bản đồ" — and, since 13/09, the homepage, which took that layout
-   * whole. "center" is what the homepage did before: a three-line list on
-   * the middle of a tall map, which is what left its title floating halfway
-   * down an empty field.
+   * trên bản đồ" — and was the homepage's from 13/09 until its list went on
+   * 15/09. "center" is what the homepage did before that: a three-line list
+   * on the middle of a tall map, which is what left its title floating
+   * halfway down an empty field.
    */
   align?: "center" | "start";
-  /**
-   * Whether the column shows on a phone at all. The homepage leaves its list
-   * of maps off there (14/09): the name under the title and a swipe do its
-   * job, and a list under the island only pushed the section longer.
-   */
-  indexOnPhone?: boolean;
 }) {
   return (
     <div
@@ -133,7 +127,7 @@ export function KeLayout({
       <div
         className={`px-5 md:order-none md:px-10 ${
           islandFirst ? "order-2 mt-8 md:mt-0" : "order-1"
-        } ${indexOnPhone ? "" : "hidden md:block"}`}
+        }`}
       >
         {index}
       </div>
@@ -347,6 +341,10 @@ export function useRegionPicker(routes: TouristRoute[]) {
  * Team 14/09: "giữ text bên trái, cho text lớn hơn 1.5 lần" — 16/18px became
  * 24/27px, and the rows and the rule grew with it so the list keeps its
  * proportions rather than just its words getting bigger.
+ *
+ * The homepage stopped showing it on 15/09 ("bỏ list bên trái" — see
+ * HomeDistrictMap). /lab/home-map still draws it, as the position it compares
+ * against, which is why it stays here.
  */
 export function RegionList({
   routes,
@@ -584,25 +582,26 @@ function useSwipeStep(step: (delta: number) => void) {
  *     the 10vh ramp above the section is gone and the title opens it.
  *
  * Team 14/09, choosing from /lab/home-map, where the options had been tried
- * inside the real homepage:
+ * inside the real homepage — and all of this still stands: the hero's wave
+ * runs white along the land's lowest edge at 30%; the arc's flat end joins
+ * the collections' lower edge at the right, at the same 30%; on a phone a
+ * sideways swipe across the island steps region the way the arrows do, and
+ * the new island comes in from the side it was sent from.
  *
- *   · On a desktop — "chọn sóng trắng, mép dưới, làm sóng mờ đi 30%, arc bên
- *     phải mờ đi 30%, giữ text bên trái, cho text lớn hơn 1.5 lần, bỏ tên map
- *     dưới title, thu nhỏ kích cỡ map khoảng 5% để nó không bị out ra khỏi
- *     viền trang". The hero's wave runs white along the land's lowest edge at
- *     30%. The arc's flat end joins the collections' lower edge at the right,
- *     at the same 30% ("Mờ 30%" in the study). The list of maps stays on the
- *     left at one and a half times the size, and the title stands alone. The
- *     island is 95% of its column and brought in off the page's edge: land
- *     reaches past its own box by up to 10.1% of the box's width (Thủ Đức,
- *     measured: −76 to 881 of 800), so at 95% it needs 9.6% of the column
- *     plus a 1rem breath to end inside the page. That pulls its box 4.6% and
- *     1rem into the list's column, below the list.
- *   · On a phone — "bỏ text 3 tên map, người dùng thấy 1 dòng tên map ngay
- *     dưới title, vuốt trái phải hoặc bấm mũi tên để xem. Sóng dưới map, mờ
- *     30%". No list; the one line under the title names the map; a sideways
- *     swipe across the island steps region the way the arrows do, and the
- *     new island comes in from the side it was sent from.
+ * Team 15/09 changed its mind about the rest: "để map nằm giữa, bỏ list bên
+ * trái, ghi tên bản đồ ở ngay dưới title (đổi khi map đổi), tên bản đồ dùng
+ * font giống title, màu teal, kích cỡ bằng 65% title, cách đều title và map.
+ * Thu nhỏ ảnh map đi 10%".
+ *
+ *   · The list of maps is gone at every width. The line that named the map
+ *     on a phone names it everywhere now, in the title's face, teal, at 65%
+ *     of the title's size, and the arrows change it.
+ *   · The island is centred and 10% smaller than it was: 55.6% of the page
+ *     on a desktop, where it was 95% of a 65% column, and 67.5% on a phone,
+ *     where it was 75%. Centred, its land no longer heads for the page's
+ *     edge, so the 14/09 inset that pulled it in off that edge goes too.
+ *   · "Cách đều" is measured on the letters rather than on the boxes. The
+ *     arithmetic is in the note on the spacing, below.
  *
  * The ground still has to arrive at brand-deep, because the collaborate band
  * below is brand-deep and 20/08 asked that no two grounds meet on a hard
@@ -615,7 +614,7 @@ export function HomeDistrictMap({
   heading = "Khám phá thành phố",
 }: DistrictMapProps) {
   const wide = useMediaQuery("(min-width: 768px)");
-  const { route, pick, step } = useRegionPicker(routes);
+  const { route, step } = useRegionPicker(routes);
   const sectionRef = useRef<HTMLElement>(null);
   const geo = useMapGeometry(sectionRef, `${route?.id}:${wide}`);
   /** Which way the last step went, so the next island arrives from that side. */
@@ -647,7 +646,9 @@ export function HomeDistrictMap({
       id="dong-map"
       data-surface="dark"
       /* The arc rises out of this section's top, so only the sides clip. */
-      className="relative overflow-x-clip pt-12 text-paper md:pt-16"
+      /* --t is the title's size, which the name, the gap and the island's
+         pull are all stated in. */
+      className="relative overflow-x-clip pt-12 text-paper [--t:clamp(2rem,5.6vw,4.5rem)] md:pt-16"
       style={{ background: MAP_GROUND, paddingBottom: basePad + extraPad }}
     >
       {geo && (
@@ -672,52 +673,59 @@ export function HomeDistrictMap({
             this title sits in the same step as "What's in store" and "Chưa
             biết mua gì?" above it. leading-[1.25] for the stacked marks on
             PHỐ — see index.css on how far Vietnamese uppercase reaches. */}
-        <h2 className="display text-[clamp(2rem,5.6vw,4.5rem)] normal-case leading-[1.25] text-paper">
+        <h2 className="display text-[length:var(--t)] normal-case leading-[1.25] text-paper">
           {heading}
         </h2>
-        {/* The phone's one line naming the map; a desktop names it in the list. */}
-        <p key={route.id} className="lab-plate-in mt-3 text-lg tracking-[0.12em] text-wave md:hidden">
+        {/* The map's name. It reads off the route, so the arrows change it.
+
+            The spacing, 15/09 — "cách đều title và map". Equal on the
+            letters: from the title's baseline to the top of the name's
+            capitals, and from the name's baseline to the top of the land.
+            Both lines are DFVN Some Time Later at leading 1.25, and its typo
+            metrics (ascent .70, descent .30, cap .695 — the ones a browser
+            uses, since the font sets USE_TYPO_METRICS) put the baseline
+            .425em above the foot of a line's box and the cap top .13em below
+            its head. The gap is one of the name's capitals, .45 of the title
+            size t:
+
+              title baseline → name caps   .425t + m + .13 × .65t = .45t
+                                           → m = −.0595t
+              name baseline → land         .425 × .65t + m′ + land = .45t
+                                           → m′ = .17375t − land
+
+            The land starts 84/600 down its 4:3 box (81–87 across the three
+            maps), which is .105 of the island's width: 5.838% of the page on
+            a desktop, where the island is 55.6%, and 7.0875% on a phone,
+            where it is 67.5%. That is m′, on the island below. */}
+        <p
+          key={route.id}
+          className="lab-plate-in display mt-[calc(var(--t)*-0.0595)] text-[length:calc(var(--t)*0.65)] normal-case leading-[1.25] text-wave"
+        >
           {plan.region}
         </p>
       </div>
 
-      <div className="relative z-10 mt-2 md:mt-4">
-        <KeLayout
-          islandFirst
-          align="start"
-          indexOnPhone={false}
-          index={
-            <RegionList
-              routes={routes}
-              current={route.id}
-              onPick={(id) => {
-                setTravel(0);
-                pick(id);
-              }}
-            />
-          }
-          island={
-            /* Pulled up by its own empty top, as on /discover — see the note
-               on CategoryMap for the 10.9%, which on a desktop is 95% of
-               itself here because the island is. touch-pan-y keeps a vertical
-               swipe for the page and gives a sideways one to the map. */
-            <div
-              className="relative -mt-[10.9%] touch-pan-y md:-ml-[calc(4.6%+1rem)] md:-mt-[10.35%] md:w-[95%]"
-              onPointerDown={swipe.onPointerDown}
-              onPointerUp={swipe.onPointerUp}
-              onPointerCancel={swipe.onPointerCancel}
-              onClickCapture={swipe.onClickCapture}
-            >
-              <MapArrows onStep={go} />
-              <div
-                key={route.id}
-                className={travel > 0 ? "ti-island-from-right" : travel < 0 ? "ti-island-from-left" : ""}
-              >
-                <HomeIsland route={route} onOpenRoute={onOpenRoute} />
-              </div>
-            </div>
-          }
-        />
+      <div className="relative z-10">
+        {/* Centred, 10% smaller than before (15/09), and pulled up into its
+            own empty top by m′ — see the note on the name above. The margin's
+            percentage is of this full-width block, the same width the
+            island's own is. touch-pan-y keeps a vertical swipe for the page
+            and gives a sideways one to the map. */}
+        <div
+          className="relative mx-auto mt-[calc(var(--t)*0.17375_-_7.0875%)] w-[67.5%] touch-pan-y md:mt-[calc(var(--t)*0.17375_-_5.838%)] md:w-[55.6%]"
+          onPointerDown={swipe.onPointerDown}
+          onPointerUp={swipe.onPointerUp}
+          onPointerCancel={swipe.onPointerCancel}
+          onClickCapture={swipe.onClickCapture}
+        >
+          <MapArrows onStep={go} />
+          <div
+            key={route.id}
+            className={travel > 0 ? "ti-island-from-right" : travel < 0 ? "ti-island-from-left" : ""}
+          >
+            <HomeIsland route={route} onOpenRoute={onOpenRoute} />
+          </div>
+        </div>
       </div>
     </section>
   );
