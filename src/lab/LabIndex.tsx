@@ -62,8 +62,8 @@ const STUDIES = [
     to: "/lab/home-map",
     n: "07",
     title: "Map trang chủ — sóng, arc và map ở giữa",
-    body: "Trang chủ thật, chỉ khác phần map. Con sóng của hero nằm ngang map hoặc dọc mép dưới map, xanh hoặc trắng; arc góc phải nối vào mép dưới Bộ sưu tập; bỏ danh sách vùng để map vào giữa. Bật tắt từng thứ ngay trên trang.",
-    meta: "4 công tắc · PC + mobile · trang chủ",
+    body: "Đã chốt 14/09 và đã lên site — PC: sóng trắng dọc mép dưới map mờ 30%, arc mờ 30%, danh sách bên trái chữ lớn gấp rưỡi, bỏ tên vùng dưới tiêu đề, map nhỏ lại 5%; mobile: bỏ danh sách, một dòng tên vùng dưới tiêu đề, vuốt hoặc bấm mũi tên để đổi. Trang này vẫn giữ các công tắc cũ để so.",
+    meta: "4 công tắc · đã lên site",
   },
   {
     to: "/lab/titles",

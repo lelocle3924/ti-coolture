@@ -2116,9 +2116,11 @@ function CollectionsSpringTabs({
 
   const seeMore = (
     <div className="mt-8 flex justify-center px-5 pb-4 md:px-10">
+      {/* In front of the map's arc, which rises into this band from below
+          (14/09, see HomeDistrictMap) and would otherwise sit over the words. */}
       <Link
         to="/products"
-        className="group inline-flex items-center gap-3 border-b border-white/40 pb-1 text-sm font-semibold text-paper transition-colors hover:border-wave hover:text-wave"
+        className="group relative z-[3] inline-flex items-center gap-3 border-b border-white/40 pb-1 text-sm font-semibold text-paper transition-colors hover:border-wave hover:text-wave"
       >
         Còn nhiều bộ sưu tập khác
         <ArrowUpRight className="h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
