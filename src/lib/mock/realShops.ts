@@ -278,15 +278,56 @@ export function realShopRows(): ShopRow[] {
   }));
 }
 
+/* ⚠ DEMO CHANNELS (15/09). "thêm các nút demo threads, facebook, tiktok cho
+   vài shop 1 cách ngẫu nhiên để kiểm tra hiển thị."
+
+   Drawn once, at random, with a fixed seed — Python's random.Random(1509),
+   none to three of the three per shop — and written out here so every reload
+   shows the same page: six shops on Instagram alone, two on two platforms,
+   one on three and four on all four, which is every count the shop page has
+   to lay out.
+
+   The shops never gave these. Each URL is that platform's own search for the
+   shop's name, so a click lands somewhere harmless instead of on a stranger
+   who happens to hold the same handle there. Take them out before any public
+   demo. */
+type DemoPlatform = "threads" | "facebook" | "tiktok";
+
+const DEMO_CHANNELS: Record<string, DemoPlatform[]> = {
+  "ga-con-studios": ["tiktok"],
+  "nen-mlem": ["threads"],
+  "tap-hoa-tieng-viet": ["threads", "facebook", "tiktok"],
+  "thaotran-studio": ["threads", "facebook", "tiktok"],
+  "thoi-ke-di-kios": ["threads", "facebook", "tiktok"],
+  "fat-rug": ["threads", "facebook", "tiktok"],
+  "nom-vn": ["facebook", "tiktok"],
+};
+
+const DEMO_SEARCH: Record<DemoPlatform, (query: string) => string> = {
+  threads: (q) => `https://www.threads.net/search?q=${q}`,
+  facebook: (q) => `https://www.facebook.com/search/top?q=${q}`,
+  tiktok: (q) => `https://www.tiktok.com/search?q=${q}`,
+};
+
 export function realShopSocialRows(): ShopSocialRow[] {
-  return SHOPS.map((shop) => ({
-    id: `soc-${shop.slug}`,
-    shop_id: `shop-${shop.slug}`,
-    platform: "instagram" as const,
-    url: `https://instagram.com/${shop.handle}`,
-    handle: shop.handle,
-    is_visible: true,
-  }));
+  return SHOPS.flatMap((shop) => [
+    {
+      id: `soc-${shop.slug}`,
+      shop_id: `shop-${shop.slug}`,
+      platform: "instagram" as const,
+      url: `https://instagram.com/${shop.handle}`,
+      handle: shop.handle,
+      is_visible: true,
+    },
+    ...(DEMO_CHANNELS[shop.slug] ?? []).map((platform) => ({
+      id: `soc-${shop.slug}-${platform}`,
+      shop_id: `shop-${shop.slug}`,
+      platform,
+      url: DEMO_SEARCH[platform](encodeURIComponent(shop.name)),
+      handle: null,
+      is_visible: true,
+    })),
+  ]);
 }
 
 export function realProductRows(): ProductRow[] {
