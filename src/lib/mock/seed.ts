@@ -234,7 +234,7 @@ export const seed: Database = {
     image_url: null,
     external_url: null,
     shop_id: (shopId as string | null) ?? null,
-    category: category as string,
+    categories: [category as string],
   })),
 
   // ⚠ INVENTED — content pack Part B, "3 nội dung Hidden Gems".

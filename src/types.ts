@@ -92,8 +92,8 @@ export interface RouteStop {
   description: string;
   x: number; // percentage horizontal position for custom map mockup
   y: number; // percentage vertical position for custom map mockup
-  /** Kind of place — see DISCOVER_CATEGORIES; placeholder taxonomy for now. */
-  category: string;
+  /** Kinds of place, at least one — see DISCOVER_CATEGORIES; placeholder taxonomy for now. */
+  categories: string[];
 }
 
 export interface TouristRoute {

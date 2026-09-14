@@ -131,8 +131,8 @@ export default function Discovery() {
   useEffect(() => {
     if (loading || !route || !startStopId) return;
     const stop = route.stops.find((s) => s.id === startStopId);
-    // the row only exists while its own kind is showing, so open that first
-    if (stop) setPicked(stop.category);
+    // the row only exists while one of its own kinds is showing, so open that first
+    if (stop) setPicked(stop.categories[0]);
     // one beat for the list to paint before we scroll to a row inside it
     const timer = setTimeout(() => revealStop(startStopId), 300);
     return () => clearTimeout(timer);
@@ -163,11 +163,12 @@ export default function Discovery() {
      an empty column. Once someone has picked, their pick stands — including
      across a region change, which is what the arrows are asked to preserve. */
   const firstFilled =
-    DISCOVER_CATEGORIES.find((c) => route.stops.some((s) => s.category === c.id))?.id ??
+    DISCOVER_CATEGORIES.find((c) => route.stops.some((s) => s.categories.includes(c.id)))?.id ??
     DISCOVER_CATEGORIES[0].id;
   const activeId = picked ?? firstFilled;
   const category = DISCOVER_CATEGORIES.find((c) => c.id === activeId) ?? DISCOVER_CATEGORIES[0];
-  const shown = route.stops.filter((s) => s.category === activeId);
+  /* A place filed under several kinds shows in each of their lists. */
+  const shown = route.stops.filter((s) => s.categories.includes(activeId));
 
   /* Wraps, because two chevrons that grey out at the ends of a three-item
      list spend most of their life disabled. */
