@@ -69,8 +69,8 @@ const STUDIES = [
     to: "/lab/titles",
     n: "08",
     title: "Tiêu đề xuất hiện — 14 kiểu với anime.js",
-    body: "Chạy trên trang thật: trang chủ, sản phẩm, một sản phẩm, danh bạ shop, một shop, khám phá. Mỗi tiêu đề h1/h2 diễn khi cuộn tới — trồi lên, trượt dòng, bật từ, gợn sóng, xáo chữ, rèm teal, mắt chớp, gõ phím, rơi & nảy, mờ về nét, lật 3D, tụ lại, cuộn số, mực teal. Đổi hiệu ứng, trang và nhịp ngay trên trang.",
-    meta: "14 hiệu ứng · 6 trang · PC + mobile",
+    body: "Đã chốt 14/09: 03 · Bật từng từ, nhịp 1×, đã lên site ở mọi trang trừ một sản phẩm và một shop. Trang này vẫn chạy cả 14 kiểu trên trang thật — trồi lên, trượt dòng, bật từ, gợn sóng, xáo chữ, rèm teal, mắt chớp, gõ phím, rơi & nảy, mờ về nét, lật 3D, tụ lại, cuộn số, mực teal.",
+    meta: "14 hiệu ứng · 03 đã lên site",
   },
   {
     to: "/lab/store-speed",

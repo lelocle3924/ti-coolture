@@ -399,6 +399,13 @@ html[data-vt-dir="backward"]::view-transition-new(root) {
   to { transform: scaleX(1); }
 }
 
+/* Titles that arrive (14/09). src/lib/useTitleEntrance.ts holds a title at
+   opacity 0 until it is on screen, then pops it in word by word. Only that
+   script sets the attribute, so without it every title is simply there. */
+[data-title-wait] {
+  opacity: 0 !important;
+}
+
 /* D2 · Staggered reveal — motion proposal 02 (approved 31/08).
 
    Was a scroll timeline whose stagger came from :nth-child(2n) and (3n)

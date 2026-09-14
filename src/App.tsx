@@ -34,6 +34,7 @@ import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
+import { useTitleEntrance } from "./lib/useTitleEntrance";
 
 function SmartScrollRestoration() {
   const location = useLocation();
@@ -219,6 +220,14 @@ function SiteShell() {
     !isLab &&
     REVEAL_FOOTER.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 
+  /* Team 14/09, from /lab/titles: titles pop in word by word as they come
+     into view — effect 03, "Bật từng từ", at 1× — "ở mọi trang trừ một sản
+     phẩm và một shop". Those two open on a photograph with its name beside
+     it, which should simply be there. Never in the lab, which plays its own. */
+  const pageRef = useRef<HTMLDivElement>(null);
+  const titlesArrive = !isLab && !/^\/(products|stores)\/[^/]+/.test(pathname);
+  useTitleEntrance(pageRef, titlesArrive);
+
   return (
     <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
       {!isLab && <Header />}
@@ -226,7 +235,7 @@ function SiteShell() {
           pushing it down. Every page therefore needs the pill's height cleared
           at the top — except the homepage, whose hero owns that space and puts
           the deck under the pill on purpose. */}
-      <div className={`flex-grow ${isHome || isLab ? "" : "pt-24 md:pt-28"}`}>
+      <div ref={pageRef} className={`flex-grow ${isHome || isLab ? "" : "pt-24 md:pt-28"}`}>
         <PageBody reveal={hasRevealFooter}>
           <Outlet />
         </PageBody>
