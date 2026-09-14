@@ -67,7 +67,7 @@ The stated ambition is a "universe of local creativity" — the first place some
 
 ## Brand Commitments
 
-- **Name:** Tí Coolture. Contact address on record: hello@ticoolture.vn.
+- **Name:** Tí Coolture. Contact address on record: ticoolture@gmail.com.
 - **Logo system:** a boat cutting through waves; the fingerprint marks a unique imprint; the boat's eye is vision. Source assets live in `src/assets/brand/` — `logo-full-color.svg`, `logo-green.svg`, `logo-purple.svg`, `logo-monochrome.svg`, plus the supporting marks `brand-wave-bottom.svg`, `brand-ribbon-loop.svg`, `brand-arc-top-right.svg`. In the app they are inlined as recolourable React components (`src/components/Brandmark.tsx`, `src/components/BrandShapes.tsx`) so one path set serves violet, white and ink grounds.
 - **Brand guidelines:** `docs/BRAND-GUIDELINES-TÍ-COOLTURE.pdf` (authoritative, includes the 60% white / 30% violet / 10% teal ratio).
 - **Binding art direction:** `docs/01-ART-DIRECTION-BRIEF.md` v1.0 (2026-08-10) is a pinned brief — palette, typography, layout stance, the single wave signature element, motion budget, and an explicit anti-brief. Treat it as the visual authority for this project; do not redirect it toward a different taste.

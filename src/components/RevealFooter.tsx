@@ -97,10 +97,10 @@ function RevealFooter({ reveal }: { reveal: number }) {
             Nơi tuyển chọn local brand và artist Việt.
           </p>
           <a
-            href="mailto:hello@ticoolture.vn"
+            href="mailto:ticoolture@gmail.com"
             className="mt-4 inline-flex min-h-11 items-center text-sm text-paper underline underline-offset-4 decoration-white/40 hover:decoration-paper"
           >
-            hello@ticoolture.vn
+            ticoolture@gmail.com
           </a>
         </div>
 
