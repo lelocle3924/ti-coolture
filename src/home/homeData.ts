@@ -81,9 +81,17 @@ export interface DistrictPlan {
    * of the city a visitor would say out loud, not the administrative unit —
    * `district` is still the full name and is what the route pages and the
    * lab studies read.
+   *
+   * Since the team's place list (14/09) the three maps are Quận 1, 2 and 3,
+   * and the label is the district as the sheet names it. Chợ Lớn and Thủ Đức
+   * no longer name anything on the map, and "Trung tâm" beside "Quận 2" and
+   * "Quận 3" would read as a different kind of name rather than a region.
    */
   region: string;
-  /** Rough walking distance across the route — route metadata per UX-TASKS 5.2. */
+  /**
+   * Rough walking distance across the route — route metadata per UX-TASKS 5.2.
+   * Measured between the places' real positions, in stop order, west to east.
+   */
   walk: string;
   /** Block outlines for the district plan drawing (800×600 viewBox). */
   shapes: string[];
@@ -91,23 +99,27 @@ export interface DistrictPlan {
   axis: string;
 }
 
+/* The block outlines and waterways are texture, not survey, and were drawn
+   before the regions changed: Quận 1 keeps its own, Quận 2 takes Thủ Đức's
+   and Quận 3 Chợ Lớn's. They are clipped to the island, which is built from
+   the places, so the outline under them is real even where they are not. */
 export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
-  "route-cho-lon": {
-    district: "Quận 5 · Chợ Lớn",
-    region: "Chợ Lớn",
-    walk: "~1,8 km",
+  "route-quan-1": {
+    district: "Quận 1",
+    region: "Quận 1",
+    walk: "~7,9 km",
     shapes: [
-      "M60,300 L210,236 L330,268 L392,392 L296,486 L142,452 Z",
-      "M330,268 L470,214 L560,320 L470,404 L392,392 Z",
-      "M142,452 L296,486 L332,592 L176,608 Z",
-      "M470,404 L560,320 L676,368 L644,494 L508,506 Z",
+      "M140,240 L330,200 L392,320 L276,398 L152,352 Z",
+      "M392,320 L536,246 L618,368 L500,442 Z",
+      "M276,398 L500,442 L470,556 L296,540 Z",
+      "M618,368 L722,318 L760,452 L640,494 Z",
     ],
-    axis: "M20,520 C140,470 250,560 380,510 S620,430 790,470",
+    axis: "M0,440 C160,392 280,478 420,436 S660,352 800,404",
   },
-  "route-thu-duc": {
-    district: "TP Thủ Đức",
-    region: "Thủ Đức",
-    walk: "~4,2 km",
+  "route-quan-2": {
+    district: "Quận 2",
+    region: "Quận 2",
+    walk: "~7,3 km",
     shapes: [
       "M96,190 L286,150 L370,262 L268,352 L120,318 Z",
       "M370,262 L520,196 L640,290 L556,398 L410,376 Z",
@@ -116,17 +128,17 @@ export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
     ],
     axis: "M40,240 C200,300 300,180 440,250 S660,340 790,280",
   },
-  "route-quan-1": {
-    district: "Quận 1",
-    region: "Trung tâm",
-    walk: "~1,1 km",
+  "route-quan-3": {
+    district: "Quận 3",
+    region: "Quận 3",
+    walk: "~7,6 km",
     shapes: [
-      "M140,240 L330,200 L392,320 L276,398 L152,352 Z",
-      "M392,320 L536,246 L618,368 L500,442 Z",
-      "M276,398 L500,442 L470,556 L296,540 Z",
-      "M618,368 L722,318 L760,452 L640,494 Z",
+      "M60,300 L210,236 L330,268 L392,392 L296,486 L142,452 Z",
+      "M330,268 L470,214 L560,320 L470,404 L392,392 Z",
+      "M142,452 L296,486 L332,592 L176,608 Z",
+      "M470,404 L560,320 L676,368 L644,494 L508,506 Z",
     ],
-    axis: "M0,440 C160,392 280,478 420,436 S660,352 800,404",
+    axis: "M20,520 C140,470 250,560 380,510 S620,430 790,470",
   },
 };
 
@@ -192,8 +204,18 @@ export function islandBlobs(stops: Array<{ x: number; y: number }>): IslandBlob[
  * them, so every point on that line is inside the landmass by construction. A
  * pin placed here can no more fall into the water than one placed on a stop.
  *
- * Points sit at (k + 0.5) / n of the total length, so they are inset from
- * both ends rather than sitting on the first and last stop.
+ * Points sit at (k + 0.5) / n of the walk, so they are inset from both ends
+ * rather than sitting on the first and last stop.
+ *
+ * The walk is measured sideways — how far it travels across the island, not
+ * how long the line is. With three to five stops the two came to the same
+ * thing. With the team's place list (14/09) a region has eleven to thirteen
+ * stops, and where several sit in one narrow band the line runs up and down
+ * it; by length, pins bunched there as close as 48 units — about 21px on a
+ * phone, less than a pin is wide. Measured sideways they fall a fifth of the
+ * way across apart whatever the line does, and every point is still on it,
+ * so still on land. A walk with no sideways travel at all falls back to
+ * length.
  */
 export function pointsAlongRoute(
   stops: Array<{ x: number; y: number }>,
@@ -203,9 +225,10 @@ export function pointsAlongRoute(
   if (stops.length === 0) return Array.from({ length: n }, () => ({ x: 50, y: 50 }));
   if (stops.length === 1) return Array.from({ length: n }, () => ({ ...stops[0] }));
 
+  const sideways = stops.some((s) => s.x !== stops[0].x);
   const legs = stops.slice(1).map((b, i) => {
     const a = stops[i];
-    return { a, b, len: Math.hypot(b.x - a.x, b.y - a.y) };
+    return { a, b, len: sideways ? Math.abs(b.x - a.x) : Math.hypot(b.x - a.x, b.y - a.y) };
   });
   const total = legs.reduce((sum, l) => sum + l.len, 0);
   if (total === 0) return Array.from({ length: n }, () => ({ ...stops[0] }));

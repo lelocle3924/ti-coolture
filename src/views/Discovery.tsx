@@ -13,7 +13,7 @@ import { planFor } from "../home/homeData";
  * beside the map or on it:
  *
  *     Khám phá thành phố
- *          Chợ Lớn
+ *           Quận 1
  *     [ the places | ‹ the map › ]
  *
  * — and then the footer. There is no paper band and no wave seam: 09/09,
@@ -53,9 +53,14 @@ function PlaceRow({
   /** Arrived here from a link — hold a mark on it long enough to be found. */
   flashed: boolean;
 }) {
-  const mapHref = stop.address?.startsWith("http")
-    ? stop.address
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address ?? "")}`;
+  /* The place's own pin when the team has supplied one (14/09) — a search
+     for a name can land on the wrong branch of a chain, or on nothing.
+     Otherwise a search for the address, as before. */
+  const mapHref =
+    stop.mapUrl ??
+    (stop.address
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address)}`
+      : undefined);
 
   return (
     <li
@@ -72,10 +77,12 @@ function PlaceRow({
       <div className="py-3.5">
         <p className="text-base font-medium leading-snug text-paper md:text-lg">{stop.name}</p>
 
-        {stop.address && (
+        {mapHref && (
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/60">
             <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-wave" />
-            <span className="min-w-0">{stop.address}</span>
+            {/* The team's list names each place and links its pin, and
+                gives no street address — so a row may have only the link. */}
+            {stop.address && <span className="min-w-0">{stop.address}</span>}
             <a
               href={mapHref}
               target="_blank"
@@ -131,8 +138,8 @@ export default function Discovery() {
   useEffect(() => {
     if (loading || !route || !startStopId) return;
     const stop = route.stops.find((s) => s.id === startStopId);
-    // the row only exists while its own kind is showing, so open that first
-    if (stop) setPicked(stop.category);
+    // the row only exists while one of its own kinds is showing, so open that first
+    if (stop) setPicked(stop.categories[0]);
     // one beat for the list to paint before we scroll to a row inside it
     const timer = setTimeout(() => revealStop(startStopId), 300);
     return () => clearTimeout(timer);
@@ -163,11 +170,12 @@ export default function Discovery() {
      an empty column. Once someone has picked, their pick stands — including
      across a region change, which is what the arrows are asked to preserve. */
   const firstFilled =
-    DISCOVER_CATEGORIES.find((c) => route.stops.some((s) => s.category === c.id))?.id ??
+    DISCOVER_CATEGORIES.find((c) => route.stops.some((s) => s.categories.includes(c.id)))?.id ??
     DISCOVER_CATEGORIES[0].id;
   const activeId = picked ?? firstFilled;
   const category = DISCOVER_CATEGORIES.find((c) => c.id === activeId) ?? DISCOVER_CATEGORIES[0];
-  const shown = route.stops.filter((s) => s.category === activeId);
+  /* A place filed under several kinds shows in each of their lists. */
+  const shown = route.stops.filter((s) => s.categories.includes(activeId));
 
   /* Wraps, because two chevrons that grey out at the ends of a three-item
      list spend most of their life disabled. */

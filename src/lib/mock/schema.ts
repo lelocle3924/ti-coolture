@@ -137,7 +137,7 @@ export interface RouteStopRow {
   map_x: number;
   map_y: number;
   /**
-   * Which kind of place this is, for the pins on /discover.
+   * Which kinds of place this is, for the pins on /discover.
    *
    * ⚠ PLACEHOLDER COLUMN (08/09). The four values in use — an-uong,
    * tham-quan, chup-anh, mua-sam — are the temporary set the team named, and
@@ -145,8 +145,13 @@ export interface RouteStopRow {
    * schema will want a table of its own with a Vietnamese and an English
    * name per kind; this is the smallest thing that lets the map be built
    * against real content instead of against a guess.
+   *
+   * A list, not one value: the team's place list (14/09) files a building of
+   * shops and cafés as "1,3" — eating and shopping — and such a place belongs
+   * in both lists on /discover rather than in whichever was written first.
+   * Never empty.
    */
-  category: string;
+  categories: string[];
   image_url: string | null;
   external_url: string | null;
   shop_id: string | null;

@@ -8,7 +8,7 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
-import { ArrowRight, Camera, Landmark, ShoppingBag, Utensils } from "lucide-react";
+import { ArrowRight, Camera, FerrisWheel, Landmark, ShoppingBag, Utensils } from "lucide-react";
 import { islandBlobs, planFor, pointsAlongRoute } from "./homeData";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import HeroWave from "../components/HeroWave";
@@ -54,13 +54,20 @@ import type { TouristRoute } from "../types";
    cannot drift apart. `route_stops` carries no category column yet, so a pin
    names a kind of place rather than pointing at one; see pointsAlongRoute in
    homeData for where they are put and why. When the column lands, the pins
-   move onto their stops and this list comes out of the dataset. */
+   move onto their stops and this list comes out of the dataset.
+
+   The fifth kind comes from the team's place list (14/09), whose key reads
+   "5: Vui Chơi-Giải Trí" — archery, climbing, karting, board games, candle
+   workshops. Written the way the phrase is said, "vui chơi giải trí", and
+   drawn as a ferris wheel: it is the sign for a khu vui chơi, and it cannot
+   be mistaken for the shopping bag beside it the way a ticket could. */
 
 export const DISCOVER_CATEGORIES = [
   { id: "an-uong", name: "Ăn uống", Icon: Utensils },
   { id: "tham-quan", name: "Tham quan", Icon: Landmark },
   { id: "chup-anh", name: "Chụp ảnh", Icon: Camera },
   { id: "mua-sam", name: "Mua sắm", Icon: ShoppingBag },
+  { id: "vui-choi", name: "Vui chơi giải trí", Icon: FerrisWheel },
 ] as const;
 
 export type DiscoverCategory = (typeof DISCOVER_CATEGORIES)[number];
