@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
@@ -104,12 +104,27 @@ const PLATFORMS = [
   { key: "tiktok", label: "TikTok", fill: "bg-[#343333]" },
 ] as const;
 
-interface Channel {
+export interface Channel {
   key: string;
   label: string;
   fill: string;
   href: string;
 }
+
+export interface ChannelButtonsProps {
+  channels: Channel[];
+  /** "row" under the avatar ring on a desktop; "bar" floating on a phone. */
+  placement: "row" | "bar";
+  shopName: string;
+}
+
+/**
+ * A stand-in for the platform buttons, for /lab/shop-buttons, which mounts
+ * this page with it set so the options are judged on the real page (15/09).
+ * Always null on the site. The "bar" stand-in renders inside the floating
+ * nav, so it draws only the list.
+ */
+export const ChannelButtonsOverride = createContext<ComponentType<ChannelButtonsProps> | null>(null);
 
 function channelsOf(store: StoreProfile): Channel[] {
   return PLATFORMS.flatMap((platform) => {
@@ -289,6 +304,8 @@ const COLUMN = "@container mx-auto w-[min(60rem,calc(100%_-_2rem))] md:w-[min(60
 export default function ShopDisplay() {
   const { storeId } = useParams<{ storeId: string }>();
   const { store, products, resolved } = useShopPage(storeId);
+  /* null on the site — see ChannelButtonsOverride */
+  const ChannelButtons = useContext(ChannelButtonsOverride);
   const wide = useMediaQuery("(min-width: 768px)");
   const coverRef = useRef<HTMLDivElement>(null);
 
@@ -463,7 +480,10 @@ export default function ShopDisplay() {
                 a shop on one platform gets one button in the first column
                 rather than one button stretched across the page. On a phone
                 these live in the floating bar instead. */}
-            {channels.length > 0 && (
+            {channels.length > 0 && ChannelButtons && (
+              <ChannelButtons channels={channels} placement="row" shopName={store.name} />
+            )}
+            {channels.length > 0 && !ChannelButtons && (
               <ul className="hidden grid-cols-4 gap-[2.4cqw] md:grid">
                 {channels.map((channel) => (
                   <li key={channel.key}>
@@ -576,6 +596,9 @@ export default function ShopDisplay() {
           aria-label={`Kênh của ${store.name}`}
           className="pointer-events-none fixed inset-x-4 bottom-[max(0.875rem,env(safe-area-inset-bottom))] z-40 flex justify-center md:hidden"
         >
+          {ChannelButtons ? (
+            <ChannelButtons channels={channels} placement="bar" shopName={store.name} />
+          ) : (
           <ul className={`pointer-events-auto flex gap-2 ${channels.length > 1 ? "w-full" : ""}`}>
             {channels.map((channel) => (
               /* flex-auto, not equal shares: INSTAGRAM is nine letters and
@@ -597,6 +620,7 @@ export default function ShopDisplay() {
               </li>
             ))}
           </ul>
+          )}
         </nav>
       )}
     </>
