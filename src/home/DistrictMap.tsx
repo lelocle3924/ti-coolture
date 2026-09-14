@@ -790,8 +790,17 @@ export function CategoryMap({
            the empty band is about an eighth of the box. It is a percentage so
            it holds at every width; it is off by up to ~28px on the two
            regions whose highest stop sits a little lower, which is the price
-           of one number for three hand-placed maps. */
-        <div className="relative -mt-[10.9%]">
+           of one number for three hand-placed maps.
+
+           On a desktop the island is 88% of its column and 3.2% in from the
+           list (15/09: "thu nhỏ map ở trang /discover đi 1 chút để nó không
+           bị crop bên ngoài màn hình"). The team's places draw land from −52
+           to 865 of the 800-wide box, and at full width that ran 76px past a
+           1440 screen. At 88% and 3.2% in, the land ends about 1% of the
+           column inside the page on the right and starts the same distance
+           clear of the list on the left, at any width. The pull shrinks with
+           the island: 10.9% × 0.88. */
+        <div className="relative -mt-[10.9%] md:-mt-[9.59%] md:ml-[3.2%] md:w-[88%]">
           <MapArrows onStep={onStep} />
 
           <IslandFrame route={route}>
