@@ -747,10 +747,15 @@ export default function Products() {
           {/* The groups. Full-bleed on a phone so the strip scrolls past the
               page gutter rather than stopping short of it. */}
           <div className="-mx-4 border-b border-ink/12 md:-mx-8">
+            {/* Sideways only (16/09: "khoá di chuyển trục y, chỉ chạy ngang
+                theo trục x"). touch-pan-x keeps a drag that starts on the
+                strip from moving anything up or down, and overflow-y-hidden
+                takes away the vertical scroll the strip had — the open tab's
+                rule used to hang a pixel below it. */}
             <div
               role="tablist"
               aria-label="Nhóm sản phẩm"
-              className="flex gap-5 overflow-x-auto no-scrollbar px-4 md:gap-7 md:px-8"
+              className="flex touch-pan-x gap-5 overflow-x-auto overflow-y-hidden no-scrollbar px-4 md:gap-7 md:px-8"
             >
               {[
                 { slug: ALL_GROUP, name: "Tất cả", count: baseRows.length },
@@ -779,11 +784,12 @@ export default function Products() {
                     >
                       {tab.count}
                     </span>
-                    {/* the rule under the open tab, drawn on the strip's own
-                        hairline so the two read as one edge */}
+                    {/* the rule under the open tab, sitting on the strip's
+                        own hairline so the two read as one edge — inside the
+                        strip, not hanging past it, or the strip scrolls */}
                     <span
                       aria-hidden="true"
-                      className={`absolute inset-x-0 -bottom-px h-[2px] rounded-full transition-opacity duration-300 ${
+                      className={`absolute inset-x-0 bottom-0 h-[2px] rounded-full transition-opacity duration-300 ${
                         on ? "bg-brand opacity-100" : "opacity-0"
                       }`}
                     />
@@ -797,7 +803,10 @@ export default function Products() {
               "Tất cả": 29 chips at once is the shape this replaced. */}
           {openGroup && (
             <div className="-mx-4 md:-mx-8">
-              <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 md:flex-wrap md:overflow-x-visible md:px-8">
+              {/* Sideways only, as the groups above; the 4px either side,
+                  given back by the negative margin, keeps a focus ring from
+                  being cut by the hidden overflow. */}
+              <div className="-my-1 flex touch-pan-x gap-2 overflow-x-auto overflow-y-hidden no-scrollbar px-4 py-1 md:touch-auto md:flex-wrap md:overflow-visible md:px-8">
                 <button
                   onClick={() => handleKindSelect("")}
                   aria-pressed={!activeKind}
