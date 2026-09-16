@@ -6,6 +6,7 @@ import type { Product, StoreProfile } from "../types";
 import { NO_TRANSACTION, PRICE_NOTE } from "../lib/continuity";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import { useMediaQuery } from "../lib/useAutoHideChrome";
+import PlatformGlyph from "../components/PlatformGlyph";
 import { Dropdown, PRICE_BANDS, ProductCard, SORTS } from "./Products";
 import "./shop.css";
 
@@ -44,10 +45,9 @@ import "./shop.css";
  *     avatar    photo Ø114.6, centre 90 in       → 16.3% of the column, centred at 12.8%
  *     name      cap 23, left edge on the ring,   → 45px, from the ring, centred in the
  *               centred under the cover            ring's lower half
- *     buttons   4 × 160, gap 17, 53 tall, flush  → 2.4% gap, 7.6% tall, 20px bold,
- *               under the ring                     starting at the ring's foot
- *               Threads #191919 · Instagram #FF6AC0→#FFA38D→#FFDC5B
- *               Facebook #004AAD · TikTok #343333
+ *     buttons   4 × 160, gap 17, 53 tall, flush  → starting at the ring's foot; since
+ *               under the ring                     16/09 round white buttons carrying
+ *                                                  the platform's mark (PlatformGlyph)
  *     text      3 lines at 21.5, "…xem thêm"     → 20px / 1.5, the control inline
  *     ground    violet to the cover's foot, then → a ramp of 17.25rem at 1536
  *               a ~200 ramp to paper
@@ -95,21 +95,31 @@ const SHOP_MARKS = {
 /** The loop's eye, below the loop's centre, in loop widths — at -90°. */
 const EYE_BELOW_CENTRE = 0.275;
 
-/* In the order the drawing gives them. Brand colours, because a button that
-   says INSTAGRAM in Instagram's colours is found before it is read. */
+/* In the order the drawing gives them.
+
+   They used to wear the platforms' own colours — Threads black, Instagram's
+   sunset, Facebook blue, TikTok grey — with the names in capitals. Team 16/09,
+   choosing from /lab/shop-buttons: "chọn phương án màu trắng, chỉ để logo, nút
+   tròn gọn". So all four share one skin: a white disc, the platform's mark in
+   the brand's violet, a violet hairline and a soft violet shadow; under the
+   pointer the disc fills violet and the mark turns white. The platform's name
+   is still there for a screen reader, on the link's label. */
 const PLATFORMS = [
-  { key: "threads", label: "Threads", fill: "bg-[#191919]" },
-  { key: "instagram", label: "Instagram", fill: "bg-[linear-gradient(90deg,#ff6ac0,#ffa38d,#ffdc5b)]" },
-  { key: "facebook", label: "Facebook", fill: "bg-[#004aad]" },
-  { key: "tiktok", label: "TikTok", fill: "bg-[#343333]" },
+  { key: "threads", label: "Threads" },
+  { key: "instagram", label: "Instagram" },
+  { key: "facebook", label: "Facebook" },
+  { key: "tiktok", label: "TikTok" },
 ] as const;
 
 interface Channel {
   key: string;
   label: string;
-  fill: string;
   href: string;
 }
+
+/** The disc every platform button is; each placement adds its size and shadow. */
+const CHANNEL_BUTTON =
+  "grid place-items-center rounded-full bg-paper text-brand transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-brand hover:text-paper active:translate-y-0 active:scale-[0.98] active:duration-100 focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-wave motion-reduce:transition-colors motion-reduce:hover:translate-y-0";
 
 function channelsOf(store: StoreProfile): Channel[] {
   return PLATFORMS.flatMap((platform) => {
@@ -459,21 +469,22 @@ export default function ShopDisplay() {
 
           <div data-surface="light" className={COLUMN}>
             {/* "4 nút nằm ngay dưới viền dưới của ảnh đại diện" — flush under
-                the ring. The grid keeps four columns whatever is present, so
-                a shop on one platform gets one button in the first column
-                rather than one button stretched across the page. On a phone
-                these live in the floating bar instead. */}
+                the ring, from the left; a platform the shop does not use is
+                simply absent. Round and sized to the mark since 16/09, so the
+                row is only as long as the shop's platforms. On a phone these
+                live in the floating bar instead. */}
             {channels.length > 0 && (
-              <ul className="hidden grid-cols-4 gap-[2.4cqw] md:grid">
+              <ul className="hidden flex-wrap gap-3 md:flex">
                 {channels.map((channel) => (
                   <li key={channel.key}>
                     <a
                       href={channel.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`grid h-[7.6cqw] min-h-12 place-items-center rounded-[0.7rem] text-[length:clamp(0.875rem,2.1cqw,1.25rem)] font-bold uppercase tracking-[0.04em] text-paper [text-shadow:0_1px_3px_rgba(18,8,31,0.45)] transition-[filter] duration-200 hover:brightness-110 ${channel.fill}`}
+                      aria-label={`${channel.label} của ${store.name}`}
+                      className={`${CHANNEL_BUTTON} h-14 w-14 shadow-[0_12px_24px_-16px_rgba(58,10,128,0.75),inset_0_0_0_1px_rgba(117,32,247,0.16)]`}
                     >
-                      {channel.label}
+                      <PlatformGlyph platform={channel.key} className="h-6 w-6" />
                     </a>
                   </li>
                 ))}
@@ -567,32 +578,25 @@ export default function ShopDisplay() {
           14/09: the buttons sat in a tray of the nav's dark glass, and on the
           page's white that tray read as a thick grey outline round them — the
           other thing on the phone page that looked broken. They float on
-          their own now, each with a soft shadow and a hairline of light to
-          lift it off paper and violet alike. One platform is one button of
-          its own width, centred, rather than a bar across the screen; more
-          share the width. */}
+          their own now, each with a soft shadow to lift it off whatever
+          scrolls under it. Since 16/09 they are the desktop's white discs,
+          centred as a group. */}
       {channels.length > 0 && (
         <nav
           aria-label={`Kênh của ${store.name}`}
           className="pointer-events-none fixed inset-x-4 bottom-[max(0.875rem,env(safe-area-inset-bottom))] z-40 flex justify-center md:hidden"
         >
-          <ul className={`pointer-events-auto flex gap-2 ${channels.length > 1 ? "w-full" : ""}`}>
+          <ul className="pointer-events-auto flex gap-3">
             {channels.map((channel) => (
-              /* flex-auto, not equal shares: INSTAGRAM is nine letters and
-                 THREADS seven, and four equal quarters of a phone cut the
-                 longest label against its own edges. */
-              <li key={channel.key} className={channels.length > 1 ? "min-w-0 flex-auto" : ""}>
+              <li key={channel.key}>
                 <a
                   href={channel.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`grid h-12 place-items-center rounded-full font-bold uppercase text-paper shadow-[0_10px_24px_-10px_rgba(18,8,31,0.65),inset_0_0_0_1px_rgba(255,255,255,0.22)] [text-shadow:0_1px_3px_rgba(18,8,31,0.45)] ${
-                    channels.length > 1
-                      ? "px-3 text-[11px] tracking-[0.04em]"
-                      : "min-w-[13rem] px-10 text-[13px] tracking-[0.08em]"
-                  } ${channel.fill}`}
+                  aria-label={`${channel.label} của ${store.name}`}
+                  className={`${CHANNEL_BUTTON} h-12 w-12 shadow-[0_14px_30px_-12px_rgba(40,8,90,0.45),inset_0_0_0_1px_rgba(117,32,247,0.16)]`}
                 >
-                  {channel.label}
+                  <PlatformGlyph platform={channel.key} className="h-[1.375rem] w-[1.375rem]" />
                 </a>
               </li>
             ))}
