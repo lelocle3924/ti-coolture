@@ -62,9 +62,15 @@ export const seed: Database = {
      meant to be an eighth group rather than a kind of souvenir, this is the
      one line that changes.
 
-     Five leaves are empty on today's catalogue — Phụ kiện điện thoại, Giấy
-     ghi chú, Sổ lập kế hoạch, Hình dán, Gối chườm, Bộ trò chơi and Sách và
-     tạp chí. They stay in the list: /products shows their count, which is 0,
+     ⚠ A SECOND LEAF IS NOT THEIRS. "Dưỡng da" under Dưỡng/Chăm sóc da was
+     added on 16/09 for the serums among the demo photographs, which none of
+     the team's four kinds there takes. Confirm it with the team.
+
+     14 leaves are empty on today's catalogue — Phụ kiện điện thoại, Tranh
+     Riso, Tranh nguyên bản, Zine, Sổ, Giấy ghi chú, Sổ lập kế hoạch, Nước
+     hoa, Nến thơm, Sản phẩm tắm - gội, Gối chườm, Bộ trò chơi, Đồ chơi/Thú
+     bông and Sách và tạp chí. They stay in the list: /products shows their
+     count, which is 0,
      and does not let them be pressed, so the strip states what the site is
      open to stocking without ever offering a filter that empties the page. */
   categories: [
@@ -105,6 +111,7 @@ export const seed: Database = {
     sub("cham-soc-da", "nen-thom", "Nến thơm", "Scented candles", 2),
     sub("cham-soc-da", "tam-goi", "Sản phẩm tắm - gội", "Bath & hair", 3),
     sub("cham-soc-da", "goi-chuom", "Gối chườm", "Heat packs", 4),
+    sub("cham-soc-da", "duong-da", "Dưỡng da", "Skincare", 5),
 
     cat("giai-tri", "Giải trí", "Leisure", 7),
     sub("giai-tri", "bo-tro-choi", "Bộ trò chơi", "Games", 1),
