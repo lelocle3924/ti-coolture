@@ -625,7 +625,7 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   src={f.src}
                   alt={
                     f.shopId
-                      ? `Ảnh do ${f.shopName} gửi cho trang chủ Tí Coolture`
+                      ? `Ảnh sản phẩm của ${f.shopName}`
                       : "Tí Coolture — ảnh mở đầu"
                   }
                   fetchPriority={i === 0 ? "high" : "auto"}

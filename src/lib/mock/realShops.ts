@@ -1,29 +1,35 @@
 /**
- * The thirteen shops the team photographed — added 2026-08-28.
+ * The thirteen shops on the site, and everything they show.
  *
- * This module has a different standing from seed.ts and catalogue.ts, and the
- * difference matters:
+ * This module's standing changed on 16/09, and the difference matters:
  *
- *   ✔ SHOP NAMES ARE REAL. These are the shops themselves, and the photography
- *     is theirs — the drop the team collected, not stock and not generated.
- *     docs/01-ART-DIRECTION-BRIEF.md §8 bans stock photography; this is the
- *     opposite of that, and it is why the labelled grey placeholder blocks are
- *     no longer the only thing the catalogue can show.
- *   ⚠ PRODUCT NAMES, PRICES AND CATEGORIES ARE STILL INVENTED. They were
- *     written off what each photograph shows so the grid reads plausibly.
- *     Nothing here was supplied by the shops, and no price is a real price.
- *     Confirm all of it with each shop before any public demo.
+ *   ✔ SHOP NAMES AND HANDLES ARE REAL — the shops the team collected in
+ *     August.
+ *   ⚠ EVERYTHING ELSE IS DEMO MATERIAL. "Bỏ hết tất cả ảnh sản phẩm cũ, chỉ
+ *     dùng các ảnh trong folder /Ảnh up shop/foreign, vì ảnh trong đây tôi đã
+ *     đảm bảo không dính bản quyền, an toàn để làm demo." The shops' own
+ *     photographs are gone. Every product — its name, price, category and
+ *     material — is written to one of 29 demo photographs, and each shop's
+ *     line is whichever of those sit closest to what the shop made. None of
+ *     it came from the shops; their descriptions are in shopStories.ts and
+ *     have the same standing. Replace all of it before any public demo.
  *
- * Images are addressed by convention rather than by manifest, so this stays a
- * plain data module with no build step in front of it:
+ * The rules the team gave for the catalogue (16/09):
  *
- *     /shop-photos/<shop slug>/<product index>-<image index>.webp
+ *   · twice as many products as photographs — 29 photographs, 58 products,
+ *     so every photograph opens two products, always in two different shops;
+ *   · a product's second picture is related to its first: the same kind of
+ *     thing, chosen by eye;
+ *   · the third and fourth are random — drawn once with a fixed seed
+ *     (Python's random.Random(1609)) and written out, so a reload shows the
+ *     same gallery.
  *
- * They live in public/ rather than src/assets/ because there are 186 of them
- * and they are referenced by path, not imported — and neither the raw drop nor
- * the optimised output is committed (team decision, 28/08). If the folder is
- * missing, run `python scripts/build-shop-photos.py` against the drop; the
- * slugs below are the ones that script produces.
+ * Each shop's first product gives it its cover and its second the round seal,
+ * and no photograph is the cover or the seal of two shops.
+ *
+ * The photographs are built by scripts/build-shop-photos.py:
+ *
+ *     /shop-photos/<first 8 characters of the source file name>.webp
  */
 
 import type {
@@ -43,9 +49,10 @@ interface ProductSpec {
   category: string;
   /** null renders as "Liên hệ" — never as 0. */
   price: number | null;
-  material: string;
-  /** How many photos the drop has for this product. Most are 3. */
-  photos: number;
+  /** null where no material applies — food. */
+  material: string | null;
+  /** The product, a picture related to it, and two drawn at random. */
+  photos: [string, string, string, string];
 }
 
 interface ShopSpec {
@@ -55,9 +62,42 @@ interface ShopSpec {
   area: string;
   /** Instagram handle — these shops sell on their own channels, per §1. */
   handle: string;
-  /** In the drop's folder order, because that is what names the files. */
+  /** The first gives the shop its cover, the second its seal. */
   products: ProductSpec[];
 }
+
+/** Each built photograph's size in pixels, long edge 720. */
+const PHOTO_SIZES: Record<string, [number, number]> = {
+  "01969148": [480, 720],
+  "06510d14": [576, 720],
+  "0a13156c": [480, 720],
+  "0cfc19d9": [540, 720],
+  "1854913f": [720, 564],
+  "1af9b30d": [480, 720],
+  "1c25b61b": [720, 720],
+  "209407df": [540, 720],
+  "23910558": [480, 720],
+  "2879b0e9": [576, 720],
+  "37385e31": [405, 720],
+  "380d474d": [720, 720],
+  "3cb5f709": [480, 720],
+  "4072dda8": [541, 720],
+  "439f01c7": [540, 720],
+  "4afee351": [480, 720],
+  "5ccebf97": [576, 720],
+  "5f479d48": [576, 720],
+  "64c8db60": [720, 720],
+  "77ef052b": [503, 720],
+  "7fc41ab5": [576, 720],
+  "8427ac1c": [480, 720],
+  "aff28091": [480, 720],
+  "d83eb155": [480, 720],
+  "da57170e": [493, 720],
+  "de7c8670": [522, 720],
+  "e364150f": [480, 720],
+  "f0d0c8d2": [480, 720],
+  "f1d4e806": [536, 720],
+};
 
 const SHOPS: ShopSpec[] = [
   {
@@ -67,8 +107,10 @@ const SHOPS: ShopSpec[] = [
     area: "Quận 3",
     handle: "gacon.studios",
     products: [
-      { slug: "so-tay-da-bo-bo-mau", name: "Sổ tay da bò (bộ màu)", category: "cat-so", price: 320000, material: "mat-da-that", photos: 3 },
-      { slug: "so-tay-da-bo-khoa-gai", name: "Sổ tay da bò khoá gài", category: "cat-so", price: 280000, material: "mat-da-that", photos: 3 },
+      { slug: "tui-deo-vai-da-lon-nau-khoa-cai", name: "Túi đeo vai da lộn nâu khoá cài", category: "cat-phu-kien", price: 890000, material: "mat-da-that", photos: ["4072dda8", "f1d4e806", "439f01c7", "d83eb155"] },
+      { slug: "tui-hobo-da-do-gach", name: "Túi hobo da đỏ gạch", category: "cat-phu-kien", price: 1150000, material: "mat-da-that", photos: ["5ccebf97", "4072dda8", "209407df", "0a13156c"] },
+      { slug: "tui-kep-nach-da-man-chin", name: "Túi kẹp nách da mận chín", category: "cat-phu-kien", price: 790000, material: "mat-da-that", photos: ["f1d4e806", "4072dda8", "1af9b30d", "64c8db60"] },
+      { slug: "tui-jean-deo-vai-dinh-no", name: "Túi jean đeo vai đính nơ", category: "cat-phu-kien", price: 380000, material: "mat-denim", photos: ["5f479d48", "4afee351", "de7c8670", "f0d0c8d2"] },
     ],
   },
   {
@@ -78,9 +120,10 @@ const SHOPS: ShopSpec[] = [
     area: "Bình Thạnh",
     handle: "lo.stuff",
     products: [
-      { slug: "nen-ca-phe-sua-da", name: "Nến cà phê sữa đá", category: "cat-nen-thom", price: 195000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "nen-lon-bia-sai-gon", name: "Nến lon bia Sài Gòn", category: "cat-nen-thom", price: 165000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "nen-banh-flan", name: "Nến bánh flan", category: "cat-nen-thom", price: 175000, material: "mat-sap-dau-nanh", photos: 3 },
+      { slug: "lo-tru-da-reu", name: "Lọ trụ đá rêu", category: "cat-trang-tri", price: 520000, material: "mat-thuy-tinh", photos: ["77ef052b", "8427ac1c", "4afee351", "7fc41ab5"] },
+      { slug: "terrarium-chuong-kinh-de-go", name: "Terrarium chuông kính đế gỗ", category: "cat-trang-tri", price: 590000, material: "mat-thuy-tinh", photos: ["8427ac1c", "77ef052b", "5ccebf97", "1c25b61b"] },
+      { slug: "hu-ngu-coc-cacao-gion", name: "Hũ ngũ cốc cacao giòn", category: "cat-dac-san", price: 99000, material: null, photos: ["06510d14", "3cb5f709", "aff28091", "de7c8670"] },
+      { slug: "lo-reu-tron-nap-kinh", name: "Lọ rêu tròn nắp kính", category: "cat-trang-tri", price: 450000, material: "mat-thuy-tinh", photos: ["380d474d", "77ef052b", "5ccebf97", "0a13156c"] },
     ],
   },
   {
@@ -90,11 +133,10 @@ const SHOPS: ShopSpec[] = [
     area: "Phú Nhuận",
     handle: "nen.mlem",
     products: [
-      { slug: "nen-ly-thuy-tinh-quai-dong", name: "Nến ly thuỷ tinh quai đồng", category: "cat-nen-thom", price: 210000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "nen-ca-phe-phin", name: "Nến cà phê phin", category: "cat-nen-thom", price: 230000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "nen-to-pho", name: "Nến tô phở", category: "cat-nen-thom", price: 260000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "nen-che-khuc-bach", name: "Nến chè khúc bạch", category: "cat-nen-thom", price: 185000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "nen-bun-bo-ghe-nhua", name: "Nến bún bò ghế nhựa", category: "cat-nen-thom", price: 275000, material: "mat-sap-dau-nanh", photos: 3 },
+      { slug: "granola-socola-hanh-nhan", name: "Granola socola hạnh nhân", category: "cat-dac-san", price: 129000, material: null, photos: ["06510d14", "e364150f", "380d474d", "1c25b61b"] },
+      { slug: "bot-pha-khong-duong-bo-4-vi", name: "Bột pha không đường (bộ 4 vị)", category: "cat-dac-san", price: 189000, material: null, photos: ["3cb5f709", "0a13156c", "8427ac1c", "d83eb155"] },
+      { slug: "tra-trai-cay-dong-chai-cap-doi", name: "Trà trái cây đóng chai (cặp đôi)", category: "cat-dac-san", price: 89000, material: null, photos: ["0a13156c", "3cb5f709", "aff28091", "8427ac1c"] },
+      { slug: "gio-snack-trai-cay-say-8-goi", name: "Giỏ snack trái cây sấy (8 gói)", category: "cat-dac-san", price: 159000, material: null, photos: ["e364150f", "06510d14", "1c25b61b", "01969148"] },
     ],
   },
   {
@@ -104,11 +146,9 @@ const SHOPS: ShopSpec[] = [
     area: "Quận 1",
     handle: "plasti.light",
     products: [
-      { slug: "den-tru-mica-cau-vong", name: "Đèn trụ mica ánh cầu vồng", category: "cat-den", price: 690000, material: "mat-mica", photos: 3 },
-      { slug: "den-ngu-mica-bo-tron", name: "Đèn ngủ mica bo tròn", category: "cat-den", price: 520000, material: "mat-mica", photos: 3 },
-      { slug: "den-ban-nam-do", name: "Đèn bàn nấm đỏ", category: "cat-den", price: 750000, material: "mat-mica", photos: 3 },
-      { slug: "den-xep-ly-hong-phan", name: "Đèn xếp ly hồng phấn", category: "cat-den", price: 640000, material: "mat-mica", photos: 3 },
-      { slug: "den-de-ban-cam-dat", name: "Đèn để bàn cam đất", category: "cat-den", price: 580000, material: "mat-mica", photos: 3 },
+      { slug: "den-mica-tang-xanh-loi-cam", name: "Đèn mica tầng xanh — lõi cam", category: "cat-den", price: 1190000, material: "mat-mica", photos: ["0cfc19d9", "2879b0e9", "06510d14", "77ef052b"] },
+      { slug: "charm-mica-ca-xanh", name: "Charm mica cá xanh", category: "cat-moc-khoa", price: 59000, material: "mat-mica", photos: ["1af9b30d", "7fc41ab5", "209407df", "1c25b61b"] },
+      { slug: "den-mica-tam-tang-loi-hong", name: "Đèn mica tám tầng — lõi hồng", category: "cat-den", price: 1290000, material: "mat-mica", photos: ["2879b0e9", "0cfc19d9", "4072dda8", "209407df"] },
     ],
   },
   {
@@ -118,11 +158,12 @@ const SHOPS: ShopSpec[] = [
     area: "Quận 10",
     handle: "taphoatiengviet",
     products: [
-      { slug: "moc-khoa-tron-ven", name: "Móc khoá “Trọn Vẹn”", category: "cat-moc-khoa", price: 85000, material: "mat-mica", photos: 3 },
-      { slug: "khay-mica-xuan-binh-ngo", name: "Khay mica “Xuân Bính Ngọ”", category: "cat-trang-tri", price: 190000, material: "mat-mica", photos: 3 },
-      { slug: "tranh-di-nhe-noi-khe", name: "Tranh khung “Đi Nhẹ Nói Khẽ Cười Duyên”", category: "cat-tranh-ky-thuat-so", price: 350000, material: "mat-giay-my-thuat", photos: 3 },
-      { slug: "thiep-mica-du-day-hanh-phuc", name: "Thiệp mica “Đủ Đầy Hạnh Phúc”", category: "cat-thiep", price: 120000, material: "mat-mica", photos: 3 },
-      { slug: "hop-mica-o-nha-thuong-nhau", name: "Hộp mica “Ở Nhà Thương Nhau”", category: "cat-trang-tri", price: 165000, material: "mat-mica", photos: 3 },
+      { slug: "the-treo-chia-khoa-hinh-ca", name: "Thẻ treo chìa khoá hình cá", category: "cat-moc-khoa", price: 79000, material: "mat-mica", photos: ["64c8db60", "01969148", "23910558", "3cb5f709"] },
+      { slug: "bo-charm-ly-ca-phe-treo-tui", name: "Bộ charm ly cà phê treo túi", category: "cat-moc-khoa", price: 95000, material: "mat-mica", photos: ["439f01c7", "aff28091", "06510d14", "4afee351"] },
+      { slug: "chum-charm-moi-ngay", name: "Chùm charm “Mỗi Ngày”", category: "cat-moc-khoa", price: 145000, material: "mat-mica", photos: ["1af9b30d", "7fc41ab5", "de7c8670", "01969148"] },
+      { slug: "charm-tulip-do", name: "Charm tulip đỏ", category: "cat-moc-khoa", price: 69000, material: "mat-mica", photos: ["7fc41ab5", "1af9b30d", "23910558", "f1d4e806"] },
+      { slug: "day-deo-chia-khoa-hoa-tiet-la", name: "Dây đeo chìa khoá hoạ tiết lá", category: "cat-moc-khoa", price: 69000, material: "mat-kim-loai", photos: ["01969148", "64c8db60", "7fc41ab5", "2879b0e9"] },
+      { slug: "charm-ngoc-trai-treo-tui", name: "Charm ngọc trai treo túi", category: "cat-moc-khoa", price: 89000, material: null, photos: ["f1d4e806", "5ccebf97", "23910558", "1854913f"] },
     ],
   },
   {
@@ -132,11 +173,10 @@ const SHOPS: ShopSpec[] = [
     area: "Thủ Đức",
     handle: "thaotran.studio",
     products: [
-      { slug: "den-khoi-nhom-bo-4", name: "Đèn khối nhôm (bộ 4 cỡ)", category: "cat-den", price: 1250000, material: "mat-kim-loai", photos: 3 },
-      { slug: "chan-sach-chim-se", name: "Chặn sách chim sẻ", category: "cat-van-phong-pham-khac", price: 380000, material: "mat-kim-loai", photos: 3 },
-      { slug: "den-khoi-diem-ban-mau", name: "Đèn khối “Điểm” bản màu", category: "cat-den", price: 890000, material: "mat-mica", photos: 3 },
-      { slug: "den-da-hong-mai-tay", name: "Đèn đá hồng mài tay", category: "cat-den", price: null, material: "mat-kim-loai", photos: 3 },
-      { slug: "ghe-bang-thep-ngoai-troi", name: "Ghế băng thép ngoài trời", category: "cat-trang-tri", price: null, material: "mat-kim-loai", photos: 3 },
+      { slug: "den-khoi-mica-anh-do", name: "Đèn khối mica ánh đỏ", category: "cat-den", price: 950000, material: "mat-mica", photos: ["2879b0e9", "0cfc19d9", "77ef052b", "439f01c7"] },
+      { slug: "paludarium-khung-go-oc-cho", name: "Paludarium khung gỗ óc chó", category: "cat-trang-tri", price: 4500000, material: "mat-thuy-tinh", photos: ["d83eb155", "da57170e", "1c25b61b", "0cfc19d9"] },
+      { slug: "vivarium-khung-den-hai-den", name: "Vivarium khung đen hai đèn", category: "cat-trang-tri", price: null, material: "mat-thuy-tinh", photos: ["da57170e", "d83eb155", "1c25b61b", "4072dda8"] },
+      { slug: "den-khoi-mica-bon-tang", name: "Đèn khối mica bốn tầng", category: "cat-den", price: 890000, material: "mat-mica", photos: ["0cfc19d9", "2879b0e9", "4072dda8", "8427ac1c"] },
     ],
   },
   {
@@ -146,11 +186,11 @@ const SHOPS: ShopSpec[] = [
     area: "Quận 4",
     handle: "thoikedi.kios",
     products: [
-      { slug: "magnet-tich-cuc-nhieu-len", name: "Magnet “Tích Cực Nhiều Lên”", category: "cat-nam-cham", price: 65000, material: "mat-mica", photos: 3 },
-      { slug: "magnet-via-he-bo-4", name: "Magnet “Vỉa Hè” (bộ 4)", category: "cat-nam-cham", price: 180000, material: "mat-mica", photos: 4 },
-      { slug: "magnet-ca-loc", name: "Magnet “Cá Lóc”", category: "cat-nam-cham", price: 70000, material: "mat-mica", photos: 3 },
-      { slug: "poster-tieu-lenh-chua-lanh", name: "Poster “Tiêu Lệnh Chữa Lành”", category: "cat-tranh-ky-thuat-so", price: 150000, material: "mat-giay-my-thuat", photos: 3 },
-      { slug: "moc-khoa-365-ngay-binh-an", name: "Móc khoá “365 Ngày Bình An”", category: "cat-moc-khoa", price: 90000, material: "mat-mica", photos: 4 },
+      { slug: "bo-pin-cai-nha-bien", name: "Bộ pin cài “Nhà Biển”", category: "cat-phu-kien", price: 120000, material: "mat-kim-loai", photos: ["23910558", "f0d0c8d2", "de7c8670", "7fc41ab5"] },
+      { slug: "moc-khoa-carabiner-day-du-bo-3-mau", name: "Móc khoá carabiner dây dù (bộ 3 màu)", category: "cat-moc-khoa", price: 159000, material: "mat-kim-loai", photos: ["01969148", "64c8db60", "209407df", "06510d14"] },
+      { slug: "moc-khoa-khoen-xanh-hinh-ca", name: "Móc khoá khoen xanh hình cá", category: "cat-moc-khoa", price: 110000, material: "mat-kim-loai", photos: ["64c8db60", "01969148", "439f01c7", "4afee351"] },
+      { slug: "bo-pin-cai-xanh-reu", name: "Bộ pin cài xanh rêu", category: "cat-phu-kien", price: 110000, material: "mat-kim-loai", photos: ["f0d0c8d2", "23910558", "d83eb155", "1af9b30d"] },
+      { slug: "mu-thuy-thu-jean-duong-chi", name: "Mũ thuỷ thủ jean đường chỉ", category: "cat-phu-kien", price: 250000, material: "mat-denim", photos: ["209407df", "1c25b61b", "06510d14", "de7c8670"] },
     ],
   },
   {
@@ -160,11 +200,9 @@ const SHOPS: ShopSpec[] = [
     area: "Chợ Lớn",
     handle: "at.o_studio",
     products: [
-      { slug: "dau-lan-giay-thu-cong", name: "Đầu lân giấy thủ công", category: "cat-trang-tri", price: 850000, material: "mat-giay-my-thuat", photos: 3 },
-      { slug: "bo-dia-cyanotype-hoa-van", name: "Bộ đĩa cyanotype hoa văn", category: "cat-dung-cu-an-uong", price: 420000, material: "mat-giay-my-thuat", photos: 3 },
-      { slug: "vit-gom-hoa-tiet-xanh", name: "Vịt gốm hoạ tiết xanh", category: "cat-do-gom", price: 260000, material: "mat-gom", photos: 3 },
-      { slug: "tuong-mica-ong-dia", name: "Tượng mica “Ông Địa”", category: "cat-do-choi-thu-bong", price: 690000, material: "mat-mica", photos: 3 },
-      { slug: "standee-mica-phat-quang", name: "Standee mica phát quang", category: "cat-trang-tri", price: 240000, material: "mat-mica", photos: 4 },
+      { slug: "binh-reu-giac-ngu-trua", name: "Bình rêu “Giấc Ngủ Trưa”", category: "cat-trang-tri", price: 690000, material: "mat-thuy-tinh", photos: ["380d474d", "8427ac1c", "37385e31", "439f01c7"] },
+      { slug: "moc-khoa-cun-cam-va-tulip", name: "Móc khoá cún cam và tulip", category: "cat-moc-khoa", price: 99000, material: "mat-mica", photos: ["7fc41ab5", "1af9b30d", "0cfc19d9", "439f01c7"] },
+      { slug: "chuong-kinh-nguoi-may-phu-reu", name: "Chuông kính “Người Máy Phủ Rêu”", category: "cat-trang-tri", price: 790000, material: "mat-thuy-tinh", photos: ["8427ac1c", "380d474d", "37385e31", "0cfc19d9"] },
     ],
   },
   {
@@ -174,11 +212,12 @@ const SHOPS: ShopSpec[] = [
     area: "Đà Lạt",
     handle: "dongvui.space",
     products: [
-      { slug: "tote-canvas-da-lat-4-mau", name: "Tote canvas “Đà Lạt” (4 màu)", category: "cat-phu-kien", price: 190000, material: "mat-vai-lanh", photos: 3 },
-      { slug: "tote-dalat-dalat-dalat", name: "Tote “Dalat Dalat Dalat”", category: "cat-phu-kien", price: 210000, material: "mat-vai-lanh", photos: 3 },
-      { slug: "tote-du-lich-sapa", name: "Tote “Du Lịch Sapa”", category: "cat-phu-kien", price: 220000, material: "mat-vai-lanh", photos: 3 },
-      { slug: "tote-denim-dalat", name: "Tote denim “Dalat”", category: "cat-phu-kien", price: 370000, material: "mat-cotton-cham", photos: 3 },
-      { slug: "tote-canvas-in-lua-co-lon", name: "Tote canvas in lụa cỡ lớn", category: "cat-phu-kien", price: 250000, material: "mat-vai-lanh", photos: 3 },
+      { slug: "mu-luoi-trai-reu-dinh-pin", name: "Mũ lưỡi trai rêu đính pin", category: "cat-phu-kien", price: 290000, material: "mat-canvas", photos: ["f0d0c8d2", "23910558", "1854913f", "7fc41ab5"] },
+      { slug: "tui-day-rut-di-bien", name: "Túi dây rút đi biển", category: "cat-phu-kien", price: 320000, material: "mat-canvas", photos: ["aff28091", "439f01c7", "e364150f", "0cfc19d9"] },
+      { slug: "tui-canvas-mini-deo-cheo", name: "Túi canvas mini đeo chéo", category: "cat-phu-kien", price: 390000, material: "mat-canvas", photos: ["439f01c7", "aff28091", "06510d14", "4072dda8"] },
+      { slug: "mu-bucket-chi-cam-khau-tay", name: "Mũ bucket chỉ cam khâu tay", category: "cat-phu-kien", price: 350000, material: "mat-denim", photos: ["37385e31", "1854913f", "439f01c7", "380d474d"] },
+      { slug: "mu-luoi-trai-xanh-dinh-pin", name: "Mũ lưỡi trai xanh đính pin", category: "cat-phu-kien", price: 310000, material: "mat-canvas", photos: ["23910558", "f0d0c8d2", "de7c8670", "4072dda8"] },
+      { slug: "mu-tai-beo-jean-di-phuot", name: "Mũ tai bèo jean đi phượt", category: "cat-phu-kien", price: 260000, material: "mat-denim", photos: ["1854913f", "37385e31", "8427ac1c", "aff28091"] },
     ],
   },
   {
@@ -188,11 +227,12 @@ const SHOPS: ShopSpec[] = [
     area: "Gò Vấp",
     handle: "fat.rug",
     products: [
-      { slug: "tham-tufting-ong-ho", name: "Thảm tufting “Ông Hổ”", category: "cat-trang-tri", price: 2400000, material: "mat-len-tufting", photos: 3 },
-      { slug: "tham-tufting-xe-hoi", name: "Thảm tufting xe hơi", category: "cat-trang-tri", price: 1850000, material: "mat-len-tufting", photos: 3 },
-      { slug: "tham-tufting-8-ball", name: "Thảm tufting “8 Ball”", category: "cat-trang-tri", price: 980000, material: "mat-len-tufting", photos: 3 },
-      { slug: "tham-tufting-doi-cun", name: "Thảm tufting đôi cún", category: "cat-trang-tri", price: 1250000, material: "mat-len-tufting", photos: 3 },
-      { slug: "tham-tufting-ca-chua", name: "Thảm tufting cà chua", category: "cat-trang-tri", price: 890000, material: "mat-len-tufting", photos: 3 },
+      { slug: "mu-bucket-denim-tua-rach", name: "Mũ bucket denim tua rách", category: "cat-phu-kien", price: 340000, material: "mat-denim", photos: ["1c25b61b", "209407df", "380d474d", "4afee351"] },
+      { slug: "mu-docker-denim-chap-va", name: "Mũ docker denim chắp vá", category: "cat-phu-kien", price: 280000, material: "mat-denim", photos: ["209407df", "1c25b61b", "1af9b30d", "3cb5f709"] },
+      { slug: "mu-bucket-denim-day-rut", name: "Mũ bucket denim dây rút", category: "cat-phu-kien", price: 290000, material: "mat-denim", photos: ["1854913f", "1c25b61b", "380d474d", "23910558"] },
+      { slug: "mu-tai-beo-vien-chi-noi", name: "Mũ tai bèo viền chỉ nổi", category: "cat-phu-kien", price: 330000, material: "mat-denim", photos: ["37385e31", "209407df", "0a13156c", "1c25b61b"] },
+      { slug: "tui-deo-cheo-jean-nhieu-ngan", name: "Túi đeo chéo jean nhiều ngăn", category: "cat-phu-kien", price: 460000, material: "mat-denim", photos: ["4afee351", "de7c8670", "1c25b61b", "3cb5f709"] },
+      { slug: "tui-deo-vai-jean-tui-hop", name: "Túi đeo vai jean túi hộp", category: "cat-phu-kien", price: 420000, material: "mat-denim", photos: ["de7c8670", "4afee351", "1c25b61b", "3cb5f709"] },
     ],
   },
   {
@@ -202,11 +242,9 @@ const SHOPS: ShopSpec[] = [
     area: "Quận 7",
     handle: "flicker.quicker",
     products: [
-      { slug: "den-cot-soc-mau", name: "Đèn cột sọc màu", category: "cat-den", price: 460000, material: "mat-mica", photos: 3 },
-      { slug: "den-lover-bo-doi", name: "Đèn “Lover” (bộ đôi)", category: "cat-den", price: 520000, material: "mat-sap-dau-nanh", photos: 3 },
-      { slug: "den-tru-hong-mo", name: "Đèn trụ hồng mờ", category: "cat-den", price: 480000, material: "mat-mica", photos: 3 },
-      { slug: "den-hop-giay-vuong", name: "Đèn hộp giấy vuông", category: "cat-den", price: 390000, material: "mat-giay-my-thuat", photos: 3 },
-      { slug: "den-hop-in-hoa-tiet-pop", name: "Đèn hộp in hoạ tiết pop", category: "cat-den", price: 430000, material: "mat-giay-my-thuat", photos: 3 },
+      { slug: "nuoc-ep-dao-dong-chai", name: "Nước ép đào đóng chai", category: "cat-dac-san", price: 45000, material: null, photos: ["0a13156c", "3cb5f709", "f1d4e806", "439f01c7"] },
+      { slug: "thach-trai-cay-tui-mix-vi", name: "Thạch trái cây túi mix vị", category: "cat-dac-san", price: 65000, material: null, photos: ["e364150f", "06510d14", "1af9b30d", "f0d0c8d2"] },
+      { slug: "tra-sua-hoa-tan-it-ngot", name: "Trà sữa hoà tan ít ngọt", category: "cat-dac-san", price: 79000, material: null, photos: ["3cb5f709", "0a13156c", "e364150f", "4072dda8"] },
     ],
   },
   {
@@ -216,11 +254,13 @@ const SHOPS: ShopSpec[] = [
     area: "Hà Nội",
     handle: "nom.vn",
     products: [
-      { slug: "tui-gap-hoa-tiet-cam", name: "Túi gấp “Hoạ Tiết Cam”", category: "cat-phu-kien", price: 280000, material: "mat-vai-lanh", photos: 3 },
-      { slug: "bookmark-kim-loai-bo-3", name: "Bookmark kim loại (bộ 3)", category: "cat-van-phong-pham-khac", price: 150000, material: "mat-kim-loai", photos: 3 },
-      { slug: "tui-gap-quai-hong", name: "Túi gấp quai hồng", category: "cat-phu-kien", price: 260000, material: "mat-vai-lanh", photos: 3 },
-      { slug: "tui-gap-vai-tai-che", name: "Túi gấp vải tái chế", category: "cat-phu-kien", price: 240000, material: "mat-vai-lanh", photos: 3 },
-      { slug: "bo-qua-du-hi", name: "Bộ quà “Du Hí”", category: "cat-phu-kien", price: 450000, material: "mat-hop-giay", photos: 3 },
+      { slug: "tui-dua-thu-denim-den", name: "Túi đưa thư denim đen", category: "cat-phu-kien", price: 490000, material: "mat-denim", photos: ["4afee351", "de7c8670", "380d474d", "0a13156c"] },
+      { slug: "tui-hobo-tai-che-tu-quan-jean", name: "Túi hobo tái chế từ quần jean", category: "cat-phu-kien", price: 420000, material: "mat-denim", photos: ["5f479d48", "de7c8670", "f1d4e806", "0a13156c"] },
+      { slug: "tui-kep-nach-nau-dinh-tan", name: "Túi kẹp nách nâu đinh tán", category: "cat-phu-kien", price: 690000, material: "mat-da-that", photos: ["4072dda8", "5ccebf97", "2879b0e9", "209407df"] },
+      { slug: "tui-rut-xanh-com-quai-hong", name: "Túi rút xanh cốm quai hồng", category: "cat-phu-kien", price: 350000, material: "mat-canvas", photos: ["aff28091", "439f01c7", "da57170e", "64c8db60"] },
+      { slug: "mu-tai-beo-ghep-vai-jean", name: "Mũ tai bèo ghép vải jean", category: "cat-phu-kien", price: 320000, material: "mat-denim", photos: ["1c25b61b", "1854913f", "7fc41ab5", "01969148"] },
+      { slug: "tui-xach-da-mem-quai-don", name: "Túi xách da mềm quai đơn", category: "cat-phu-kien", price: 990000, material: "mat-da-that", photos: ["5ccebf97", "f1d4e806", "01969148", "0a13156c"] },
+      { slug: "tui-hop-denim-bac-mau", name: "Túi hộp denim bạc màu", category: "cat-phu-kien", price: 450000, material: "mat-denim", photos: ["de7c8670", "5f479d48", "64c8db60", "380d474d"] },
     ],
   },
   {
@@ -230,26 +270,25 @@ const SHOPS: ShopSpec[] = [
     area: "Quận 2",
     handle: "roomroom.mushii",
     products: [
-      { slug: "den-nam-hong-bo-3", name: "Đèn nấm hồng (bộ 3)", category: "cat-den", price: 720000, material: "mat-resin", photos: 6 },
-      { slug: "den-nam-chuyen-sac", name: "Đèn nấm chuyển sắc", category: "cat-den", price: 580000, material: "mat-resin", photos: 3 },
-      { slug: "den-nam-cam-ho-phach", name: "Đèn nấm cam hổ phách", category: "cat-den", price: 620000, material: "mat-resin", photos: 3 },
-      { slug: "den-nam-soc-hong", name: "Đèn nấm sọc hồng", category: "cat-den", price: 540000, material: "mat-resin", photos: 3 },
-      { slug: "den-nam-soc-cam", name: "Đèn nấm sọc cam", category: "cat-den", price: 560000, material: "mat-resin", photos: 3 },
+      { slug: "tu-kinh-duong-xi-co-den", name: "Tủ kính dương xỉ có đèn", category: "cat-trang-tri", price: 3900000, material: "mat-thuy-tinh", photos: ["da57170e", "d83eb155", "8427ac1c", "aff28091"] },
+      { slug: "tu-kinh-rung-mua-go-lua", name: "Tủ kính rừng mưa gỗ lũa", category: "cat-trang-tri", price: null, material: "mat-thuy-tinh", photos: ["d83eb155", "da57170e", "2879b0e9", "4afee351"] },
+      { slug: "be-reu-mini-de-go", name: "Bể rêu mini đế gỗ", category: "cat-trang-tri", price: 480000, material: "mat-thuy-tinh", photos: ["77ef052b", "380d474d", "4afee351", "f1d4e806"] },
     ],
   },
 ];
 
-/** `/shop-photos/<shop>/<product index>-<image index>.webp` */
-const photoUrl = (shopSlug: string, productIndex: number, imageIndex: number) =>
-  `/shop-photos/${shopSlug}/${productIndex + 1}-${imageIndex + 1}.webp`;
+/** `/shop-photos/<photograph>.webp` */
+const photoUrl = (photo: string) => `/shop-photos/${photo}.webp`;
 
-/* Four materials the existing seed has no row for. Ceramic, linen, resin and
-   soy wax already cover the rest. */
+/* Materials the seed has no row for. Ceramic, linen, resin, glass and soy wax
+   are already there. */
 export const REAL_MATERIAL_ROWS = [
   { id: "mat-mica", slug: "mica", name_vi: "Mica", name_en: "Acrylic" },
   { id: "mat-kim-loai", slug: "kim-loai", name_vi: "Kim loại", name_en: "Metal" },
   { id: "mat-len-tufting", slug: "len-tufting", name_vi: "Len tufting", name_en: "Tufted yarn" },
   { id: "mat-da-that", slug: "da-that", name_vi: "Da thật", name_en: "Leather" },
+  { id: "mat-denim", slug: "denim", name_vi: "Vải denim", name_en: "Denim" },
+  { id: "mat-canvas", slug: "canvas", name_vi: "Vải canvas", name_en: "Canvas" },
 ];
 
 export function realShopRows(): ShopRow[] {
@@ -261,12 +300,8 @@ export function realShopRows(): ShopRow[] {
     tagline_en: null,
     story_vi: null,
     story_en: null,
-    /* Both taken from the shop's own photography rather than a grey block —
-       the whole point of the drop. The logo seal is small and round, so the
-       second product's first frame reads as an avatar well enough and keeps
-       the cover and the seal from being the same picture. */
-    logo_url: photoUrl(shop.slug, Math.min(1, shop.products.length - 1), 0),
-    cover_url: photoUrl(shop.slug, 0, 0),
+    logo_url: photoUrl(shop.products[Math.min(1, shop.products.length - 1)].photos[0]),
+    cover_url: photoUrl(shop.products[0].photos[0]),
     contact_email: null,
     is_online_only: true,
     address: shop.area,
@@ -339,13 +374,13 @@ export function realProductRows(): ProductRow[] {
       slug: product.slug,
       name_vi: product.name,
       name_en: null,
-      short_desc_vi: `${product.name} — ảnh thật do ${shop.name} gửi. Mô tả và giá còn chờ shop xác nhận.`,
+      short_desc_vi: `${product.name} — ảnh minh hoạ; tên và giá đặt cho bản demo, chưa phải của shop.`,
       short_desc_en: null,
       story_vi: null,
       story_en: null,
       price_vnd: product.price,
       price_note_vi: PRICE_NOTE,
-      price_updated_at: "2026-08-28",
+      price_updated_at: "2026-09-16",
       dimensions: null,
       status: "published" as const,
       /* The homepage hero and the "featured" rails read this. One per shop for
@@ -362,20 +397,17 @@ export function realProductRows(): ProductRow[] {
 export function realProductImageRows(): ProductImageRow[] {
   let sortOrder = 0;
   return SHOPS.flatMap((shop) =>
-    shop.products.flatMap((product, productIndex) =>
-      Array.from({ length: product.photos }, (_, imageIndex) => ({
+    shop.products.flatMap((product) =>
+      product.photos.map((photo, imageIndex) => ({
         id: `img-${product.slug}-${imageIndex + 1}`,
         product_id: `prod-${product.slug}`,
-        url: photoUrl(shop.slug, productIndex, imageIndex),
-        alt_vi: `${product.name} — ảnh do ${shop.name} cung cấp`,
+        url: photoUrl(photo),
+        alt_vi: `${product.name} — ảnh minh hoạ ${imageIndex + 1}`,
         alt_en: null,
         is_cover: imageIndex === 0,
         sort_order: sortOrder++,
-        /* The drop is mostly 1080x1440 portrait; build-shop-photos.py fits it
-           inside 720 on the long edge, so this is the common case. Cards crop
-           to square with object-cover either way. */
-        width: 540,
-        height: 720,
+        width: PHOTO_SIZES[photo][0],
+        height: PHOTO_SIZES[photo][1],
       }))
     )
   );
@@ -383,9 +415,8 @@ export function realProductImageRows(): ProductImageRow[] {
 
 export function realProductMaterialRows(): ProductMaterialRow[] {
   return SHOPS.flatMap((shop) =>
-    shop.products.map((product) => ({
-      product_id: `prod-${product.slug}`,
-      material_id: product.material,
-    }))
+    shop.products.flatMap((product) =>
+      product.material ? [{ product_id: `prod-${product.slug}`, material_id: product.material }] : []
+    )
   );
 }
