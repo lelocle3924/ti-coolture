@@ -413,7 +413,10 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   </span>
                   <span className="text-left">
                     <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
-                    <span className="block text-[11px] font-medium text-ink/55">
+                    {/* The shop's description, a hundred words and more since
+                        16/09: one line of it, cut with "…", rather than a pill
+                        growing across the photograph. */}
+                    <span className="block max-w-[min(15rem,52vw)] truncate text-[11px] font-medium text-ink/55 md:max-w-[22rem]">
                       {frame!.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame!.caption}
                     </span>
                   </span>
@@ -436,7 +439,9 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
                   </span>
                   <span className="text-left">
                     <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
-                    <span className="block text-[11px] font-medium text-ink/55">{frame!.caption}</span>
+                    <span className="block max-w-[min(15rem,52vw)] truncate text-[11px] font-medium text-ink/55 md:max-w-[22rem]">
+                      {frame!.caption}
+                    </span>
                   </span>
                 </span>
               )}

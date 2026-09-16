@@ -382,7 +382,7 @@ export function useHomeData(): HomeData {
           : landscapePlate(shop.name.toUpperCase(), `ẢNH SHOP GỬI · ${LANDSCAPE_SPEC}`, "paper"),
         shopId: shop.id,
         shopName: shop.name,
-        caption: shop.vibe || shop.description || "",
+        caption: shop.story || shop.vibe || shop.description || "",
         awaitingUpload: !sent,
       };
     });
