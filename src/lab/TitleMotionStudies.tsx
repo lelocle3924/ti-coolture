@@ -562,7 +562,7 @@ function useTitleMotion(
 const PAGES = [
   ["home", "Trang chủ", ""],
   ["products", "Sản phẩm", "products"],
-  ["product", "Một sản phẩm", "products/prod-so-tay-da-bo-bo-mau"],
+  ["product", "Một sản phẩm", "products/prod-tui-deo-vai-da-lon-nau-khoa-cai"],
   ["stores", "Danh bạ shop", "stores"],
   ["shop", "Một shop", "stores/shop-ga-con-studios"],
   ["discover", "Khám phá", "discover"],

@@ -1,114 +1,74 @@
 """
-Build public/shop-photos/ from the raw shop photography drop.
+Build public/shop-photos/ from the demo photographs.
 
-The output IS in the repo (28/08) — otherwise a clone shows the catalogue as
-grey plates, which defeats the point of having asked the shops for photographs.
-The raw drop is not: ~100MB of full-resolution JPEG nothing renders at size.
+Team 16/09: "Bỏ hết tất cả ảnh sản phẩm cũ, chỉ dùng các ảnh trong folder
+/Ảnh up shop/foreign, vì ảnh trong đây tôi đã đảm bảo không dính bản quyền, an
+toàn để làm demo." The shops' own photography is gone from the site; these are
+the only photographs it shows.
 
-So this script only needs running when the drop changes. After that,
-src/lib/mock/realShops.ts finds everything it expects already committed.
+The output IS in the repo, otherwise a clone shows the catalogue as grey
+plates. The source folder is not (it sits under the ignored "Ảnh up shop/").
 
     pip install pillow
     python scripts/build-shop-photos.py
 
-Input, exactly as the shops sent it:
+Input, one flat folder:
 
-    Ảnh up shop/<Shop Name>/<product number>/<whatever>.jpg
+    Ảnh up shop/foreign/<whatever>.jpg
 
-Output, which realShops.ts addresses by convention rather than by manifest:
+Output, which src/lib/mock/realShops.ts addresses by name:
 
-    public/shop-photos/<shop-slug>/<product-n>-<image-i>.webp
+    public/shop-photos/<first 8 characters of the file name>.webp
 
-Why it is not raw: the drop is ~100MB of Instagram-resolution JPEG (mostly
-1080x1440), and none of it is ever displayed above ~560px. 720px WebP at q70
-is 6.1MB for the same 186 images and stays sharp at every size the site
-renders them — product grid card, detail gallery, marquee tile, shop cover.
+The source files are named by hash, so eight characters are unique and stay
+the same when the folder is rebuilt. The script prints each photograph's
+built size; realShops.ts carries those numbers in PHOTO_SIZES.
+
+Why it is not raw: the photographs are up to 1200x1800 and none is displayed
+above ~560px. 720px WebP at q70 stays sharp at every size the site renders
+them — product grid card, detail gallery, marquee tile, shop cover.
 """
 
 import json
 import os
-import re
 import shutil
-import unicodedata
 
 from PIL import Image, ImageOps
 
-SRC = "Ảnh up shop"
-OUT = "public/shop-photos"
+SRC = os.path.join("Ảnh up shop", "foreign")
+OUT = os.path.join("public", "shop-photos")
 MAX_EDGE = 720
 QUALITY = 70
 
 
-def slugify(name: str) -> str:
-    """ASCII slug. Must agree with the slugs hardcoded in realShops.ts."""
-    name = name.replace("đ", "d").replace("Đ", "D")
-    name = "".join(
-        c for c in unicodedata.normalize("NFD", name) if unicodedata.category(c) != "Mn"
-    )
-    return re.sub(r"-+", "-", re.sub(r"[^a-zA-Z0-9]+", "-", name).strip("-").lower())
-
-
 def main() -> None:
     if not os.path.isdir(SRC):
-        raise SystemExit(f"No photo drop at {SRC!r} — nothing to build.")
+        raise SystemExit(f"No photographs at {SRC!r} — nothing to build.")
 
     if os.path.isdir(OUT):
         shutil.rmtree(OUT)
     os.makedirs(OUT, exist_ok=True)
 
-    manifest: dict = {}
-    written = 0
+    sizes: dict = {}
     total_bytes = 0
-
-    for shop in sorted(os.listdir(SRC)):
-        shop_dir = os.path.join(SRC, shop)
-        if not os.path.isdir(shop_dir):
+    for filename in sorted(os.listdir(SRC)):
+        if not filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
             continue
+        # exif_transpose first: a phone shot can carry an orientation tag, and
+        # thumbnail() ignores it.
+        image = ImageOps.exif_transpose(Image.open(os.path.join(SRC, filename))).convert("RGB")
+        image.thumbnail((MAX_EDGE, MAX_EDGE), Image.LANCZOS)
 
-        slug = slugify(shop)
-        manifest[slug] = {"name": shop, "products": []}
-        os.makedirs(os.path.join(OUT, slug), exist_ok=True)
+        key = filename[:8]
+        if key in sizes:
+            raise SystemExit(f"Two source files start with {key!r}; rename one.")
+        dest = os.path.join(OUT, f"{key}.webp")
+        image.save(dest, "WEBP", quality=QUALITY, method=6)
+        sizes[key] = [image.width, image.height]
+        total_bytes += os.path.getsize(dest)
 
-        products = sorted(
-            d for d in os.listdir(shop_dir) if os.path.isdir(os.path.join(shop_dir, d))
-        )
-        for n, product in enumerate(products, start=1):
-            product_dir = os.path.join(shop_dir, product)
-            files = sorted(
-                f
-                for f in os.listdir(product_dir)
-                if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
-            )
-            urls = []
-            for i, filename in enumerate(files, start=1):
-                # exif_transpose first: several of these are phone shots that
-                # carry an orientation tag, and thumbnail() ignores it.
-                image = ImageOps.exif_transpose(
-                    Image.open(os.path.join(product_dir, filename))
-                ).convert("RGB")
-                image.thumbnail((MAX_EDGE, MAX_EDGE), Image.LANCZOS)
-
-                rel = f"{slug}/{n}-{i}.webp"
-                dest = os.path.join(OUT, rel)
-                image.save(dest, "WEBP", quality=QUALITY, method=6)
-
-                total_bytes += os.path.getsize(dest)
-                written += 1
-                urls.append("/shop-photos/" + rel)
-
-            manifest[slug]["products"].append({"n": n, "images": urls})
-
-    # Written for eyeballing only. realShops.ts does not read it — it derives
-    # the same paths from the slug and the counts it carries, so the data stays
-    # a plain module with no build step in front of it.
-    with open("manifest.json", "w", encoding="utf-8") as fh:
-        json.dump(manifest, fh, ensure_ascii=False, indent=1)
-
-    print(
-        f"{written} images -> {total_bytes / 1048576:.1f} MB "
-        f"across {sum(len(v['products']) for v in manifest.values())} products "
-        f"in {len(manifest)} shops"
-    )
+    print(json.dumps(sizes, indent=1))
+    print(f"{len(sizes)} photographs -> {total_bytes / 1048576:.1f} MB")
 
 
 if __name__ == "__main__":

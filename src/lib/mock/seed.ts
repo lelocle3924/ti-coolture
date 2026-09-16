@@ -286,14 +286,14 @@ export const seed: Database = {
      All three used to point at placeholder products, so the card the 09/09
      note is asking about — "Tôi muốn thấy ảnh sản phẩm thực sự thì sẽ render
      chỗ hidden gems như thế nào" — could only ever show a grey block. Three
-     photographed products from three different shops now, so opening the
-     card twice shows two real pictures. */
+     products from three different shops now — demo photographs since
+     16/09 — so opening the card twice shows two different pictures. */
   featured_items: [
     {
       id: "gem-1",
       placement: "hidden_gem",
-      product_id: "prod-so-tay-da-bo-khoa-gai",
-      note_vi: "Da bò khâu tay. Dùng vài tháng là quyển sổ lên màu của riêng bạn.",
+      product_id: "prod-den-mica-tang-xanh-loi-cam",
+      note_vi: "Đi một vòng quanh cái đèn là thấy màu đổi theo từng bước chân.",
       note_en: null,
       sort_order: 1,
       is_active: true,
@@ -301,8 +301,8 @@ export const seed: Database = {
     {
       id: "gem-2",
       placement: "hidden_gem",
-      product_id: "prod-nen-ca-phe-sua-da",
-      note_vi: "Mùi cà phê sữa đá, đựng trong đúng cái ly quen thuộc.",
+      product_id: "prod-binh-reu-giac-ngu-trua",
+      note_vi: "Một khu rừng nhỏ tự giữ ẩm, mỗi tuần chỉ cần mở nắp một lần.",
       note_en: null,
       sort_order: 2,
       is_active: true,
@@ -310,8 +310,8 @@ export const seed: Database = {
     {
       id: "gem-3",
       placement: "hidden_gem",
-      product_id: "prod-den-ban-nam-do",
-      note_vi: "Bật lên một cái là góc bàn đổi hẳn tông.",
+      product_id: "prod-tui-hobo-da-do-gach",
+      note_vi: "Da mềm dần theo dáng vai, càng đeo càng lên màu.",
       note_en: null,
       sort_order: 3,
       is_active: true,
@@ -419,11 +419,11 @@ export const seed: Database = {
      placeholder collections in src/home/homeData.ts — but a row pointing at
      a deleted product is a trap for whoever wires the real page up. */
   collection_products: [
-    { collection_id: "coll-gom", product_id: "prod-vit-gom-hoa-tiet-xanh", sort_order: 1 },
-    { collection_id: "coll-in-an", product_id: "prod-tranh-di-nhe-noi-khe", sort_order: 1 },
-    { collection_id: "coll-qua-tang", product_id: "prod-moc-khoa-tron-ven", sort_order: 1 },
-    { collection_id: "coll-qua-tang", product_id: "prod-thiep-mica-du-day-hanh-phuc", sort_order: 2 },
-    { collection_id: "coll-cho-lon", product_id: "prod-so-tay-da-bo-bo-mau", sort_order: 1 },
+    { collection_id: "coll-gom", product_id: "prod-lo-tru-da-reu", sort_order: 1 },
+    { collection_id: "coll-in-an", product_id: "prod-bo-pin-cai-nha-bien", sort_order: 1 },
+    { collection_id: "coll-qua-tang", product_id: "prod-charm-tulip-do", sort_order: 1 },
+    { collection_id: "coll-qua-tang", product_id: "prod-day-deo-chia-khoa-hoa-tiet-la", sort_order: 2 },
+    { collection_id: "coll-cho-lon", product_id: "prod-moc-khoa-cun-cam-va-tulip", sort_order: 1 },
   ],
 
   site_settings: [
