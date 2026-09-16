@@ -302,6 +302,16 @@ export interface HomeData {
   gems: Array<{ product: Product; note: string }>;
 }
 
+/** A copy of `items` in a random order (Fisher–Yates). */
+function shuffled<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 export function useHomeData(): HomeData {
   const [products, setProducts] = useState<Product[]>([]);
   const [stores, setStores] = useState<StoreProfile[]>([]);
@@ -345,21 +355,30 @@ export function useHomeData(): HomeData {
       awaitingUpload: false,
     };
 
-    /* A shop that has actually sent photographs shows them. The plate is for
-       the ones that have not — it is a request for a 16:9 landscape frame, and
-       printing it over a shop whose pictures are already on the page reads as
-       a bug rather than as a prompt (28/08).
+    /* Team 16/09: "Mỗi lần vào homepage là một thứ tự shop và ảnh shop random
+       (selection of shop cũng random luôn), chỉ có ảnh Tí Coolture là xuất
+       hiện đầu tiên." So every visit deals five shops at random, in a random
+       order, and each shows one of its own photographs picked at random —
+       from the first two pictures of its products, the two that show the
+       product (the rest of a product's gallery is filler). The house frame
+       stays first.
 
-       The supplied photographs are portrait, so the deck crops them: the frame
-       is object-cover, which is the same thing it would do to a 16:9 shot on a
-       4:5 phone layout. A real crop of a real photograph tells you more about
-       the finished page than a grey rectangle asking for one. */
-    const partners = stores.slice(0, 5).map<HeroFrame>((shop) => {
-      const sent = !!shop.coverUrl && !shop.coverUrl.startsWith("data:");
+       Drawn once, when the data arrives: a re-render must not reshuffle the
+       deck under a visitor's finger.
+
+       A shop with no photograph at all still gets the plate, which asks for a
+       16:9 landscape frame (28/08). The photographs are portrait, so the deck
+       crops them — object-cover, as it would a 16:9 shot on a 4:5 phone. */
+    const partners = shuffled<StoreProfile>(stores).slice(0, 5).map<HeroFrame>((shop) => {
+      const photos = products
+        .filter((p) => p.storeId === shop.id)
+        .flatMap((p) => (p.images ?? []).slice(0, 2));
+      const photo = photos.length > 0 ? photos[Math.floor(Math.random() * photos.length)] : shop.coverUrl;
+      const sent = !!photo && !photo.startsWith("data:");
       return {
         id: `frame-${shop.id}`,
         src: sent
-          ? shop.coverUrl!
+          ? photo!
           : landscapePlate(shop.name.toUpperCase(), `ẢNH SHOP GỬI · ${LANDSCAPE_SPEC}`, "paper"),
         shopId: shop.id,
         shopName: shop.name,
@@ -369,7 +388,7 @@ export function useHomeData(): HomeData {
     });
 
     return [house, ...partners];
-  }, [stores]);
+  }, [stores, products]);
 
   const popular = useMemo(
     () => [...products].sort((a, b) => (b.clicks || 0) - (a.clicks || 0)).slice(0, 10),
