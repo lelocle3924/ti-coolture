@@ -33,6 +33,7 @@ import type {
   ShopRow,
   ShopSocialRow,
 } from "./schema";
+import { SHOP_STORIES } from "./shopStories";
 
 const NOW = "2026-08-28T00:00:00.000Z";
 const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
@@ -257,9 +258,9 @@ export function realShopRows(): ShopRow[] {
     id: `shop-${shop.slug}`,
     slug: shop.slug,
     name: shop.name,
-    tagline_vi: shop.tagline,
+    tagline_vi: SHOP_STORIES[shop.slug]?.tagline ?? shop.tagline,
     tagline_en: null,
-    story_vi: null,
+    story_vi: SHOP_STORIES[shop.slug]?.story ?? null,
     story_en: null,
     /* Both taken from the shop's own photography rather than a grey block —
        the whole point of the drop. The logo seal is small and round, so the
