@@ -301,16 +301,21 @@ function ProductCard({
       /* The grey plate around each card is a desktop device. On a phone it
          spends 6px of a 190px tile on a border twice over, and the note above
          is about giving that space back to the photographs. */
-      className={`rev hover-elastic group/tile group cursor-pointer ${
+      className={`rev group/tile group cursor-pointer ${
         dense
           ? ""
-          : "rounded-[2rem] bg-black/5 p-1.5 ring-1 ring-black/5 hover:ring-brand/40"
+          : "hover-elastic rounded-[2rem] bg-black/5 p-1.5 ring-1 ring-black/5 hover:ring-brand/40"
       }`}
       style={dense ? { paddingTop: JAG_GAP, paddingBottom: JAG_GAP } : undefined}
     >
+      {/* On a phone the lift and its shadow belong to the card itself. The
+          wrapper has no corners there — it only carries the jagged gap above
+          and below — so a shadow drawn round it was a rectangle, and a finger
+          held on a card, where :hover sticks, showed it with square lower
+          corners (16/09). */}
       <div
         className={`flex h-full flex-col justify-between overflow-hidden border border-ink/5 bg-paper ${
-          dense ? "rounded-[1.25rem]" : "rounded-[1.625rem]"
+          dense ? "hover-elastic rounded-[1.25rem]" : "rounded-[1.625rem]"
         }`}
       >
         {/* The image is the link; the wishlist button is its sibling, not its
