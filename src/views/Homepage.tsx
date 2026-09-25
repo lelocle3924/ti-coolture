@@ -262,9 +262,8 @@ function DeckArrow({
       type="button"
       onClick={onPress}
       aria-label={label}
-      className={`absolute top-1/2 z-40 hidden -translate-y-1/2 cursor-pointer p-2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-110 active:scale-95 md:block ${
-        side === "left" ? "left-1 md:left-2" : "right-1 md:right-2"
-      }`}
+      className={`absolute top-1/2 z-40 hidden -translate-y-1/2 cursor-pointer p-2 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-110 active:scale-95 md:block ${side === "left" ? "left-1 md:left-2" : "right-1 md:right-2"
+        }`}
       style={{ color: dark ? "var(--color-paper)" : "var(--color-ink)" }}
     >
       <Glyph
@@ -401,70 +400,69 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
 
   const chrome = (
     <div className="pointer-events-none flex flex-wrap items-end justify-between gap-3 p-3 md:p-6">
-            <div key={frame!.id} className="lab-pop pointer-events-auto">
-              {frame!.shopId ? (
-                <Link
-                  to={`/stores/${frame!.shopId}`}
-                  draggable={false}
-                  className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
-                    {String(active + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-left">
-                    <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
-                    {/* The shop's description, a hundred words and more since
+      <div key={frame!.id} className="lab-pop pointer-events-auto">
+        {frame!.shopId ? (
+          <Link
+            to={`/stores/${frame!.shopId}`}
+            draggable={false}
+            className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
+              {String(active + 1).padStart(2, "0")}
+            </span>
+            <span className="text-left">
+              <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
+              {/* The shop's description, a hundred words and more since
                         16/09: one line of it, cut with "…", rather than a pill
                         growing across the photograph. */}
-                    <span className="block max-w-[min(15rem,52vw)] truncate text-[11px] font-medium text-ink/55 md:max-w-[22rem]">
-                      {frame!.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame!.caption}
-                    </span>
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-brand" />
-                </Link>
-              ) : (
-                /* Team 13/09: "Style chrome của 'Tí Coolture  Mỗi người một
-                   Tí chất riêng' nên match với style chrome của các thẻ khác
-                   trong deck, để có background separation tốt hơn."
+              <span className="block max-w-[min(15rem,52vw)] truncate text-[11px] font-medium text-ink/55 md:max-w-[22rem]">
+                {frame!.awaitingUpload ? `Chờ ảnh ${LANDSCAPE_SPEC}` : frame!.caption}
+              </span>
+            </span>
+            <ArrowUpRight className="h-4 w-4 text-brand" />
+          </Link>
+        ) : (
+          /* Team 13/09: "Style chrome của 'Tí Coolture  Mỗi người một
+             Tí chất riêng' nên match với style chrome của các thẻ khác
+             trong deck, để có background separation tốt hơn."
 
-                   It was a teal pill, and on the house frame it sits over the
-                   teal of the boat's wave — the one ground in the deck it
-                   could not be told apart from. It is now the partner frames'
-                   pill exactly: paper, the numbered teal disc, name over
-                   caption. The only thing left off is the arrow, because
-                   this frame opens nothing and an arrow would say it does. */
-                <span className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink">
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
-                    {String(active + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-left">
-                    <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
-                    <span className="block max-w-[min(15rem,52vw)] truncate text-[11px] font-medium text-ink/55 md:max-w-[22rem]">
-                      {frame!.caption}
-                    </span>
-                  </span>
-                </span>
-              )}
-            </div>
+             It was a teal pill, and on the house frame it sits over the
+             teal of the boat's wave — the one ground in the deck it
+             could not be told apart from. It is now the partner frames'
+             pill exactly: paper, the numbered teal disc, name over
+             caption. The only thing left off is the arrow, because
+             this frame opens nothing and an arrow would say it does. */
+          <span className="inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-wave text-sm font-black text-ink">
+              {String(active + 1).padStart(2, "0")}
+            </span>
+            <span className="text-left">
+              <span className="block text-sm font-black leading-tight">{frame!.shopName}</span>
+              <span className="block max-w-[min(15rem,52vw)] truncate text-[11px] font-medium text-ink/55 md:max-w-[22rem]">
+                {frame!.caption}
+              </span>
+            </span>
+          </span>
+        )}
+      </div>
 
-            <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink/40 p-2 backdrop-blur-md">
-              {frames.map((f, i) => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setTaken(true);
-                    setActive(i);
-                  }}
-                  aria-label={`Xem ảnh ${i + 1}: ${f.shopName}`}
-                  aria-current={i === active}
-                  className={`h-2.5 rounded-full transition-all duration-500 ${
-                    i === active ? "w-8 bg-wave" : "w-2.5 bg-white/45 hover:bg-white/80"
-                  }`}
-                  style={{ transitionTimingFunction: "var(--ease-brand)" }}
-                />
-              ))}
-            </div>
-          </div>
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink/40 p-2 backdrop-blur-md">
+        {frames.map((f, i) => (
+          <button
+            key={f.id}
+            onClick={() => {
+              setTaken(true);
+              setActive(i);
+            }}
+            aria-label={`Xem ảnh ${i + 1}: ${f.shopName}`}
+            aria-current={i === active}
+            className={`h-2.5 rounded-full transition-all duration-500 ${i === active ? "w-8 bg-wave" : "w-2.5 bg-white/45 hover:bg-white/80"
+              }`}
+            style={{ transitionTimingFunction: "var(--ease-brand)" }}
+          />
+        ))}
+      </div>
+    </div>
   );
 
 
@@ -587,29 +585,29 @@ function HeroDeck({ frames }: { frames: ReturnType<typeof useHomeData>["heroFram
             const style =
               rel === 0
                 ? {
-                    transform: `translate3d(${lead}px,0,0) rotate(${lead * 0.012}deg) scale(1)`,
-                    opacity: 1,
-                    zIndex: 30,
-                  }
+                  transform: `translate3d(${lead}px,0,0) rotate(${lead * 0.012}deg) scale(1)`,
+                  opacity: 1,
+                  zIndex: 30,
+                }
                 : rel === 1
                   ? {
-                      transform: `translate3d(${2.2 - progress * 2.2}%,${-2.4 + progress * 2.4}%,0) rotate(${(1 - progress) * 2.2}deg) scale(${0.955 + progress * 0.045})`,
-                      opacity: 1,
-                      zIndex: 20,
-                    }
+                    transform: `translate3d(${2.2 - progress * 2.2}%,${-2.4 + progress * 2.4}%,0) rotate(${(1 - progress) * 2.2}deg) scale(${0.955 + progress * 0.045})`,
+                    opacity: 1,
+                    zIndex: 20,
+                  }
                   : rel === 2
                     ? {
-                        transform: "translate3d(-2.2%,-4%,0) rotate(-2.4deg) scale(0.915)",
-                        opacity: 1,
-                        zIndex: 10,
-                      }
+                      transform: "translate3d(-2.2%,-4%,0) rotate(-2.4deg) scale(0.915)",
+                      opacity: 1,
+                      zIndex: 10,
+                    }
                     : outgoing
                       ? {
-                          transform: "translate3d(3%,-3%,0) rotate(3deg) scale(1)",
-                          opacity: 0,
-                          // above the front card, below the attribution chrome
-                          zIndex: 35,
-                        }
+                        transform: "translate3d(3%,-3%,0) rotate(3deg) scale(1)",
+                        opacity: 0,
+                        // above the front card, below the attribution chrome
+                        zIndex: 35,
+                      }
                       : { transform: "translate3d(0,-5%,0) scale(0.9)", opacity: 0, zIndex: 0 };
 
             return (
@@ -756,17 +754,16 @@ function StoreTile({
         </span>
       </div>
       <div
-        className={`mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3 transition-opacity duration-300 ${
-          quiet ? "opacity-0" : "opacity-100"
-        }`}
+        className={`mt-4 flex items-baseline gap-4 border-t border-white/15 pt-3 transition-opacity duration-300 ${quiet ? "opacity-0" : "opacity-100"
+          }`}
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[11px] tracking-[0.16em] text-white/70">
+          <span className="block truncate text-[11px] tracking-[0.16em] text-white">
             {product.storeName.toUpperCase()}
           </span>
           <span className="mt-1 block truncate text-lg font-medium text-paper">{product.name}</span>
         </span>
-        <span className="shrink-0 text-sm tabular-nums text-white/70">
+        <span className="shrink-0 text-sm tabular-nums text-white">
           {formatPrice(product.price)}
         </span>
       </div>
@@ -954,9 +951,8 @@ function LoopingStoreLane({
            clientWidth, which includes padding, so a padded viewport would
            step further than a slide is wide and drift out of true. The gutter
            goes on the slide. */
-        className={`overflow-hidden touch-pan-y ${
-          track.dragging ? "cursor-grabbing" : "cursor-grab"
-        }`}
+        className={`overflow-hidden touch-pan-y ${track.dragging ? "cursor-grabbing" : "cursor-grab"
+          }`}
         role="group"
         aria-roledescription="carousel"
         aria-label="Sản phẩm nổi bật"
@@ -997,9 +993,8 @@ function LoopingStoreLane({
             onClick={() => track.goTo(i)}
             aria-label={`Xem sản phẩm ${i + 1}`}
             aria-current={i === track.page}
-            className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              i === track.page ? "w-7 bg-wave" : "w-1.5 bg-white/30"
-            }`}
+            className={`h-1.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${i === track.page ? "w-7 bg-wave" : "w-1.5 bg-white/30"
+              }`}
           />
         ))}
       </div>
@@ -1228,9 +1223,8 @@ function HowItWorks() {
                 sized in dvh precisely because a rem-sized version clipped its
                 last row on short Windows laptops. */}
             <div
-              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13.5rem,36dvh,23rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${
-                i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
-              } ${i % 2 === 0 ? "bg-brand" : "bg-brand-deep"} text-paper`}
+              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13.5rem,36dvh,23rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
+                } ${i % 2 === 0 ? "bg-brand" : "bg-brand-deep"} text-paper`}
             >
               <h3 className="display text-[clamp(1.25rem,min(2.3vw,3.2dvh),2rem)] normal-case leading-[1.05]">
                 {step.vi.title}
@@ -1266,36 +1260,36 @@ function HowItWorks() {
   if (!pinned) {
     return (
       <>
-      <BendingSeam
-        sagittaRatio={SEAM_SAGITTA}
-        above="var(--color-brand)"
-        below="var(--color-paper)"
-        collapse
-      />
-      <section
-        id="dong-how"
-        data-surface="light"
-        /* pb clears the crest exactly rather than by guess: the crest is 25%
-           of the width at 486:266, so it stands 0.25/1.827 = 13.7% of the
-           width tall. In the lab the crest simply follows the cards in normal
-           flow; here it is absolute, so the padding has to stand in for it.
-
-           Below md it has a second thing to clear, and that one is larger.
-           The ribbon is 48% of the width and drops 12% of its own height, so
-           it reaches 0.88 × 48% = 42.2% of the width above the foot — and
-           the step cards end where this padding starts. 46% leaves the mark
-           a little under 4% of clear air below the last card; anything less
-           and the cards are back on top of it, which is the 09/09 report.
-           Percentages of the width throughout, so the clearance holds from a
-           320px phone to a tablet. */
-        className="relative overflow-hidden bg-paper pb-[46%] pt-[max(2.75rem,7.875%)] text-ink md:pb-[14%]"
-      >
-        <HowMarks />
-        <div className="relative z-10">
-          {header}
-          <div className="mt-8">{fan}</div>
-        </div>
-      </section>
+        <BendingSeam
+          sagittaRatio={SEAM_SAGITTA}
+          above="var(--color-brand)"
+          below="var(--color-paper)"
+          collapse
+        />
+        <section
+          id="dong-how"
+          data-surface="light"
+          /* pb clears the crest exactly rather than by guess: the crest is 25%
+             of the width at 486:266, so it stands 0.25/1.827 = 13.7% of the
+             width tall. In the lab the crest simply follows the cards in normal
+             flow; here it is absolute, so the padding has to stand in for it.
+  
+             Below md it has a second thing to clear, and that one is larger.
+             The ribbon is 48% of the width and drops 12% of its own height, so
+             it reaches 0.88 × 48% = 42.2% of the width above the foot — and
+             the step cards end where this padding starts. 46% leaves the mark
+             a little under 4% of clear air below the last card; anything less
+             and the cards are back on top of it, which is the 09/09 report.
+             Percentages of the width throughout, so the clearance holds from a
+             320px phone to a tablet. */
+          className="relative overflow-hidden bg-paper pb-[46%] pt-[max(2.75rem,7.875%)] text-ink md:pb-[14%]"
+        >
+          <HowMarks />
+          <div className="relative z-10">
+            {header}
+            <div className="mt-8">{fan}</div>
+          </div>
+        </section>
       </>
     );
   }
@@ -1378,7 +1372,7 @@ function HowItWorks() {
               `relative` and already clipped correctly, which is why only the
               pinned path showed it. */}
           <div className="relative flex h-full flex-col justify-start overflow-hidden pt-[max(6.5rem,7.875%)]">
-          {/* Inside the pane, not at the foot of the tall wrapper.
+            {/* Inside the pane, not at the foot of the tall wrapper.
 
               Team 04/09: while the page is held, the straight violet edge of
               "Chưa biết mua gì?" must not show — only the wave and the ribbon
@@ -1388,9 +1382,9 @@ function HowItWorks() {
               only arrives once the pin lets go. At that moment the pane's foot
               and the wrapper's foot are the same line, so the crest meets the
               violet with nothing between them. */}
-          <HowMarks />
-          {header}
-          {/* The fan used to tuck -8px under the heading, layering its cards
+            <HowMarks />
+            {header}
+            {/* The fan used to tuck -8px under the heading, layering its cards
               over the title the way the reference does. The 31/08 note asks
               for the opposite — "đừng quá sát với các thẻ" — so the tuck is
               gone and the heading gets real clearance. */}
@@ -1681,25 +1675,25 @@ function GemTravellingStar({
         style={
           landed
             ? {
-                right: slot.right,
-                top: slot.top,
-                width: GEM_STAR.w,
-                height: GEM_STAR.h,
-                borderRadius: 999,
-                transition: travel,
-              }
+              right: slot.right,
+              top: slot.top,
+              width: GEM_STAR.w,
+              height: GEM_STAR.h,
+              borderRadius: 999,
+              transition: travel,
+            }
             : {
-                /* Parked on the edge, or pushed off it while the nav is up.
-                   Same element, same transition — the tab leaving with the
-                   nav is the same movement as the star coming home. */
-                right: parked ? 0 : -GEM_TAB.w,
-                top: "50%",
-                marginTop: -GEM_TAB.h / 2,
-                width: GEM_TAB.w,
-                height: GEM_TAB.h,
-                borderRadius: "1rem 0 0 1rem",
-                transition: travel,
-              }
+              /* Parked on the edge, or pushed off it while the nav is up.
+                 Same element, same transition — the tab leaving with the
+                 nav is the same movement as the star coming home. */
+              right: parked ? 0 : -GEM_TAB.w,
+              top: "50%",
+              marginTop: -GEM_TAB.h / 2,
+              width: GEM_TAB.w,
+              height: GEM_TAB.h,
+              borderRadius: "1rem 0 0 1rem",
+              transition: travel,
+            }
         }
       >
         <StarIcon className={landed ? "h-3.5 w-3.5" : "h-6 w-6"} />
@@ -2255,43 +2249,43 @@ export default function Homepage() {
       {/* content sheet — opaque, scrolls over the stationary footer */}
       <RevealFooterLayout sheet="bg-brand">
         <div>
-        <HeroDeck frames={heroFrames} />
+          <HeroDeck frames={heroFrames} />
 
-        {loading ? (
-          <div className="flex gap-6 overflow-hidden px-5 py-24 md:px-10" aria-busy="true">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="aspect-video w-[30rem] shrink-0 animate-pulse bg-white/8" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="mx-auto max-w-md px-5 py-24 text-center">
-            <p className="text-base font-medium">Không tải được danh sách sản phẩm.</p>
-            <button onClick={reload} className="mt-4 min-h-11 text-sm text-paper underline underline-offset-4">
-              Thử lại
-            </button>
-          </div>
-        ) : (
-          <StoreMarquee products={popular} onOpen={open} />
-        )}
+          {loading ? (
+            <div className="flex gap-6 overflow-hidden px-5 py-24 md:px-10" aria-busy="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="aspect-video w-[30rem] shrink-0 animate-pulse bg-white/8" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="mx-auto max-w-md px-5 py-24 text-center">
+              <p className="text-base font-medium">Không tải được danh sách sản phẩm.</p>
+              <button onClick={reload} className="mt-4 min-h-11 text-sm text-paper underline underline-offset-4">
+                Thử lại
+              </button>
+            </div>
+          ) : (
+            <StoreMarquee products={popular} onOpen={open} />
+          )}
 
-        {/* violet → white */}
-        {/* The seam that used to sit here is inside HowItWorks now: it has to
+          {/* violet → white */}
+          {/* The seam that used to sit here is inside HowItWorks now: it has to
             stick with the pin, and only a child of the pinned wrapper can. */}
-        <HowItWorks />
+          <HowItWorks />
 
-        {/* white → violet. The guidelines also offer a chapter-front device
+          {/* white → violet. The guidelines also offer a chapter-front device
             (flat field + ribbon, see BrandChapterDivider) but using it here
             would put a "Bộ sưu tập" title back above a section whose whole
             point is that it opens on "Chưa biết mua gì?" — so the wave, which
             is the book's transition device, carries the change of ground. */}
-        {/* white → violet */}
-        {/* No gradient into "Chưa biết mua gì?" any more. The crest inside
+          {/* white → violet */}
+          {/* No gradient into "Chưa biết mua gì?" any more. The crest inside
             HowItWorks is the whole transition now — it rises out of this
             section's own violet, so the two grounds meet on the shape rather
             than on a fade. */}
-        <CollectionsSpringTabs collections={collections} onOpen={open} />
+          <CollectionsSpringTabs collections={collections} onOpen={open} />
 
-        {/* No ramp above the map any more (13/09). It was a 10vh band from
+          {/* No ramp above the map any more (13/09). It was a 10vh band from
             this violet into brand-deep, and with the map's title centred
             halfway down the island beside it, most of the empty space the
             team called out between the collections and the map. The map
@@ -2302,14 +2296,14 @@ export default function Homepage() {
             user click vào bất cứ đâu trên bản đồ đó, sẽ redirect sang
             /discover." It opens the region the list has selected, so the
             choice made here survives the navigation. */}
-        <DistrictMap
-          routes={routes}
-          onOpenRoute={(routeId) => navigate(`/discover/${routeId}`)}
-        />
+          <DistrictMap
+            routes={routes}
+            onOpenRoute={(routeId) => navigate(`/discover/${routeId}`)}
+          />
 
-        {/* The map ends on brand-deep, the collaborate band's own ground, so
+          {/* The map ends on brand-deep, the collaborate band's own ground, so
             the two meet on no edge at all. */}
-        <Collaborate />
+          <Collaborate />
         </div>
       </RevealFooterLayout>
     </div>
