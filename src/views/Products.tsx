@@ -304,7 +304,7 @@ function ProductCard({
       className={`rev group/tile group cursor-pointer ${
         dense
           ? ""
-          : "hover-elastic rounded-[2rem] bg-black/5 p-1.5 ring-1 ring-black/5 hover:ring-brand/40"
+          : "hover-elastic rounded-[2rem] p-1.5 hover:ring-1 hover:ring-brand/40"
       }`}
       style={dense ? { paddingTop: JAG_GAP, paddingBottom: JAG_GAP } : undefined}
     >
@@ -865,7 +865,7 @@ export default function Products() {
               <strong className="font-bold text-ink">{filteredProducts.length}</strong> tác phẩm
             </span>
 
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2">
               <Dropdown
                 label="Giá"
                 value={activePriceBand}

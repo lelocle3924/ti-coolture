@@ -424,7 +424,6 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
                 className="h-10 w-10 border border-ink/10 object-cover"
               />
               <span>
-                <span className="label block text-wave-ink">Xưởng chế tác</span>
                 <span className="text-sm font-semibold group-hover:text-brand">
                   {product.storeName}
                 </span>
@@ -438,7 +437,7 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
           </div>
 
           <div className="space-y-3">
-            <h1 className="display text-3xl leading-tight normal-case md:text-4xl">{product.name}</h1>
+            <h1 className="text-3xl font-bold leading-tight normal-case md:text-4xl" style={{ fontFamily: '"Alexandria", system-ui, sans-serif' }}>{product.name}</h1>
             <p className="text-2xl font-semibold text-brand">{formatPrice(product.price)}</p>
             <p className="text-[11px] text-ink/50">{PRICE_NOTE}</p>
           </div>
