@@ -215,7 +215,7 @@ function SiteShell() {
      Decided here rather than in each page, so the four cannot drift apart and
      a fifth is one entry away. The homepage wraps itself, because its sheet is
      violet and it has chrome of its own to sit outside the sheet. */
-  const REVEAL_FOOTER = ["/products", "/stores", "/discover"];
+  const REVEAL_FOOTER = ["/products", "/stores", "/discover", "/open-shop"];
   const hasRevealFooter =
     !isLab &&
     REVEAL_FOOTER.some((base) => pathname === base || pathname.startsWith(`${base}/`));
