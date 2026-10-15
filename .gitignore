@@ -6,6 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+.venv/
+portal.html
 note.txt
 
 # Claude Code local machine settings (absolute paths, per-machine grants)

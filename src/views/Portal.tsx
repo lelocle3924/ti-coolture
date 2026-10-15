@@ -358,7 +358,7 @@ export default function Portal() {
 
   // Direct Image Upload Handler
   async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || []);
+    const files: File[] = event.target.files ? Array.from(event.target.files) : [];
     if (files.length === 0) return;
 
     const token = (await getSupabaseToken()) || "dev-token";
