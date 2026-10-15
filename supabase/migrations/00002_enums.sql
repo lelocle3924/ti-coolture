@@ -14,4 +14,6 @@ CREATE TYPE click_target        AS ENUM
 CREATE TYPE carousel_rule       AS ENUM
   ('random', 'most_clicked', 'curated', 'curated_fill');
 CREATE TYPE shop_role           AS ENUM ('owner', 'editor');
+CREATE TYPE invite_status       AS ENUM ('pending', 'accepted', 'revoked');
+
 

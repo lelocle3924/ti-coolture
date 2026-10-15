@@ -83,6 +83,64 @@ CREATE POLICY "Public read active invite by exact token hash"
     AND expires_at > now()
   );
 
-COMMENT ON TABLE portal_invites IS 'Quản lý link mời bí mật cho đối tác shop đăng sản phẩm không cần mật khẩu';
-COMMENT ON COLUMN portal_invites.token_hash IS 'Chuỗi hash SHA-256 của token bí mật được gửi cho shop';
-COMMENT ON COLUMN portal_invites.status IS 'Trạng thái token: active (soạn thảo), locked_pending (đã gửi chờ duyệt), completed (đã duyệt xong), revoked (thu hồi)';
+-- ============ SHOP INVITATIONS (GOOGLE OAUTH) ============
+-- Quản lý lời mời hợp tác qua email Google.
+-- Khi đối tác đăng nhập Google OAuth, hệ thống tự động đối chiếu email để cấp quyền quản lý xưởng.
+
+CREATE TABLE shop_invitations (
+  id              uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  shop_id         uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  invited_email   text NOT NULL,                               -- Email Google/Gmail của đối tác
+  shop_role       shop_role NOT NULL DEFAULT 'owner',
+  status          invite_status NOT NULL DEFAULT 'pending',
+  created_by      uuid REFERENCES staff_members(user_id),
+  expires_at      timestamptz NOT NULL DEFAULT (now() + interval '30 days'),
+  accepted_at     timestamptz,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+
+  UNIQUE (shop_id, invited_email)
+);
+
+CREATE INDEX idx_shop_invitations_email  ON shop_invitations (invited_email);
+CREATE INDEX idx_shop_invitations_shop   ON shop_invitations (shop_id);
+CREATE INDEX idx_shop_invitations_status ON shop_invitations (status);
+
+CREATE TRIGGER trg_shop_invitations_updated_at
+  BEFORE UPDATE ON shop_invitations
+  FOR EACH ROW
+  EXECUTE FUNCTION update_portal_invite_timestamp();
+
+ALTER TABLE shop_invitations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Staff members have full access to shop invitations"
+  ON shop_invitations
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM staff_members
+      WHERE staff_members.user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM staff_members
+      WHERE staff_members.user_id = auth.uid()
+        AND staff_members.role IN ('admin', 'moderator')
+    )
+  );
+
+CREATE POLICY "Users can view pending invitations for their email"
+  ON shop_invitations
+  FOR SELECT
+  TO authenticated
+  USING (
+    lower(invited_email) = lower(auth.jwt()->>'email')
+    AND status = 'pending'
+    AND expires_at > now()
+  );
+
+COMMENT ON TABLE shop_invitations IS 'Quản lý lời mời xưởng gửi đến email Google của đối tác';
+COMMENT ON COLUMN shop_invitations.invited_email IS 'Email Google đối tác sẽ dùng để đăng nhập vào portal';
+

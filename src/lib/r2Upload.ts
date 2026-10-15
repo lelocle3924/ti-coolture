@@ -59,11 +59,16 @@ export async function requestUploadTickets(
     size: f.size,
   }));
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch("/api/portal/upload-ticket", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       token,
       files: fileMeta,

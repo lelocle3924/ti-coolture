@@ -32,29 +32,49 @@ Hạ tầng phải được thiết kế để hạn chế tối đa việc ngư
 * **Trở ngại thực tế:** Quy trình đăng ký tài khoản truyền thống (nhập email -> tạo mật khẩu -> xác thực email OTP/link) gây ma sát cực lớn, khiến đối tác nản lòng và bỏ cuộc. Đồng thời, việc lưu trữ mật khẩu kéo theo các nghĩa vụ bảo vệ dữ liệu cá nhân phức tạp.
 * **Yêu cầu cốt lõi:**
   1. Đăng ký & truy cập không mật khẩu, không xác thực email.
-  2. Tuyệt đối **không có link/nút truy cập công khai** trên trang chủ hay menu website. Link portal phải do đích thân team Tí Coolture gửi riêng cho từng shop.
-  3. Cho phép chọn nhiều ảnh một lúc (`multiple files`) và **kéo thả (Drag & Drop) để sắp xếp thứ tự hiển thị**.
-  4. Sau khi đăng xong, phải qua **quy trình Admin thẩm định (Review)**. Chỉ khi Admin duyệt thì sản phẩm và ảnh mới được chính thức xuất hiện trên trang web.
+### 2.1 Bài toán nghiệp vụ & Vấn đề cần giải quyết
+* Các thương hiệu thủ công, nghệ nhân cần không gian tự nhập câu chuyện thương hiệu, tải ảnh sản phẩm và mô tả.
+* **Trở ngại thực tế:** Quy trình đăng ký tài khoản truyền thống (nhập email -> tạo mật khẩu -> xác thực email OTP/link) gây ma sát cực lớn, khiến đối tác nản lòng và bỏ cuộc. Đồng thời, việc lưu trữ mật khẩu kéo theo các nghĩa vụ bảo vệ dữ liệu cá nhân phức tạp (Nghị định 13/2023/NĐ-CP).
+* **Yêu cầu cốt lõi:**
+  1. **Đăng nhập 1-chạm bằng Google OAuth:** Tận dụng tài khoản Google/Gmail mà mọi chủ shop đều có sẵn trên điện thoại/máy tính. Không mật khẩu, không xác thực email thủ công, không token rườm rà.
+  2. **Tái sử dụng hạ tầng cho tương lai:** Cơ sở hạ tầng Google OAuth (Supabase Auth) được thiết kế để sau này phục vụ luôn tính năng đăng nhập/tạo tài khoản của người dùng cuối (khách mua hàng đồng bộ wishlist, đánh giá...).
+  3. Tuyệt đối **không có link/nút truy cập công khai** trên trang chủ hay menu website. Link portal phải do đích thân team Tí Coolture gửi riêng cho từng shop.
+  4. Cho phép chọn nhiều ảnh một lúc (`multiple files`) và **kéo thả (Drag & Drop) để sắp xếp thứ tự hiển thị**.
+  5. Sau khi đăng xong, phải qua **quy trình Admin thẩm định (Review)**. Chỉ khi Admin duyệt thì sản phẩm và ảnh mới được chính thức xuất hiện trên trang web.
 
 ---
 
-### 2.2 Đánh giá 5 giải pháp xác thực & Lựa chọn kiến trúc
+### 2.2 Kiến trúc Xác thực Google OAuth & Phân quyền Shop
 
-| # | Giải pháp | Cơ chế xác thực | Mức độ tiện lợi cho Shop | Gánh nặng pháp lý (NĐ 13) | Độ an toàn & Kiểm soát |
-|---|---|---|---|---|---|
-| **1** | **Magic Onboarding Token** *(Được chọn)* | Link chứa Crypto Token do Admin sinh ra (gửi qua Zalo/Direct) | ⭐⭐⭐⭐⭐ (Bấm là vào) | Tối thiểu (0 lưu PII) | Rất cao (Có TTL, gắn chặt shop) |
-| **2** | **Token + Passcode 6 số** | Link bí mật + Mã PIN 6 số gửi riêng tin nhắn thứ hai | ⭐⭐⭐⭐ (Nhập 6 số PIN) | Tối thiểu | Rất cao (Bảo vệ khi link bị chuyển tiếp) |
-| **3** | **Zalo One-Click OAuth** | Đăng nhập 1-chạm bằng Zalo App thông qua số ĐT whitelist | ⭐⭐⭐⭐⭐ (Quen thuộc ở VN) | Trung bình (cần chính sách Zalo) | Tuyệt đối |
-| **4** | **State-Machine Token Lock** *(Kết hợp)* | Token tự động khóa quyền sửa ngay khi bấm "Gửi duyệt" | ⭐⭐⭐⭐⭐ (Tránh sửa nhầm) | Tối thiểu | Tuyệt đối (Chống thay đổi sau submit) |
-| **5** | **Passkey / WebAuthn** | Xác thực sinh trắc học (FaceID / Vân tay) trên điện thoại | ⭐⭐⭐ (Hơi lạ với nghệ nhân) | Tối thiểu | Tuyệt đối |
+#### Quyết định kiến trúc chính thức: **Google OAuth (Supabase Auth Provider) + Whitelist / Invitation Association**
+Thay vì yêu cầu shop lưu giữ những chuỗi token bí mật dài dòng dễ thất lạc, hệ thống sử dụng **Google OAuth**:
 
-#### Quyết định kiến trúc chính thức:
-Kết hợp **Giải pháp 1 (Magic Onboarding Token)** và **Giải pháp 4 (State-Machine Token Lock)**:
-* Admin tạo link mời trong dashboard nội bộ.
-* Hệ thống sinh ra 1 link duy nhất: `https://ticoolture.vn/portal/setup?token=tc_inv_8f9a2b...`
-* Link chỉ được team gửi trực tiếp cho đại diện shop qua Zalo / Messenger.
-* Shop truy cập, nhập thông tin, upload ảnh kéo thả, bấm **"Gửi bài cho Tí Coolture duyệt"**.
-* Token lập tức chuyển sang trạng thái khóa (`locked_pending`), chuyển form về chế độ Read-only.
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. ADMIN THIẾT LẬP:                                                         │
+│    Admin tạo Shop & gán email Google của đối tác (bảng shop_invitations)    │
+│    Admin gửi link bí mật: https://ticoolture.vn/portal                      │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2. ĐỐI TÁC TRUY CẬP & ĐĂNG NHẬP 1-CHẠM:                                     │
+│    Shop mở link riêng -> Bấm "Tiếp tục với Google"                          │
+│    Supabase Auth xử lý OAuth, xác nhận email đã định danh từ Google        │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 3. XÁC THỰC QUYỀN TRUY CẬP (AUTHORIZATION GUARD):                            │
+│    - Nếu email khớp với shop_invitations: Tự động liên kết vào shop_members │
+│      và mở khóa trang quản lý xưởng tương ứng.                              │
+│    - Nếu email KHÔNG thuộc bất kỳ shop nào: Trả về lỗi 403 Forbidden        │
+│      "Email này chưa được cấp quyền quản lý xưởng trên Tí Coolture".        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Lợi ích vượt trội:
+1. **Trải nghiệm đỉnh cao (Zero Friction):** Chủ shop chỉ cần bấm 1 chạm trên điện thoại hoặc trình duyệt để đăng nhập bằng tài khoản Google có sẵn.
+2. **Tuân thủ pháp lý (Nghị định 13/2023/NĐ-CP):** Hệ thống Tí Coolture hoàn toàn không lưu trữ mật khẩu (hashed password), không lưu trữ thông tin nhạy cảm. Quản lý danh tính và bảo mật 2 lớp (2FA) do Google đảm nhiệm.
+3. **Nền tảng mở rộng (Future-proof):** Cùng 1 hệ thống Supabase Google Auth, sau này chỉ cần bật thêm cờ người dùng (User Role) là khách hàng thông thường có thể đăng nhập để lưu Wishlist lên Cloud.
 
 ---
 
@@ -62,19 +82,18 @@ Kết hợp **Giải pháp 1 (Magic Onboarding Token)** và **Giải pháp 4 (St
 
 1. **Tuyệt đối ẩn danh trên Client:**
    * Không có bất kỳ liên kết, nút bấm, hay chuyển hướng nào từ trang chủ, header, footer, hay drawer của `ticoolture.vn`.
-   * Thêm chỉ thị chống lập chỉ mục tìm kiếm:
+   * Toàn bộ các route `/portal/*` đều có thẻ:
      ```html
      <meta name="robots" content="noindex, nofollow" />
      ```
-     vào tất cả các route thuộc `/portal/*`.
 2. **Cơ chế kiểm soát Guard Route:**
-   * Truy cập thẳng vào `https://ticoolture.vn/portal` mà không có `?token=...` hợp lệ sẽ lập tức bị **Redirect về Trang chủ** hoặc trả về lỗi **404 Not Found**.
-   * Token được kiểm tra tính hợp lệ qua backend API (`/api/portal/verify-token`) trước khi giao diện soạn thảo được hiển thị:
-     * Kiểm tra chữ ký & tính toàn vẹn (HMAC / UUIDv4 hash).
-     * Kiểm tra thời hạn hiệu lực (`expires_at`, mặc định 14 ngày).
-     * Kiểm tra trạng thái token (`active`, `locked_pending`, `used`, `revoked`).
+   * URL vào portal (ví dụ: `https://ticoolture.vn/portal`) chỉ do team gửi qua Zalo / Messenger cho đối tác.
+   * Người dùng truy cập phải đăng nhập Google.
+   * Sau khi đăng nhập, API `/api/portal/me` kiểm tra email người dùng trong cơ sở dữ liệu:
+     * Nếu hợp lệ: Cấp quyền truy cập Dashboard xưởng.
+     * Nếu không hợp lệ: Hiển thị màn hình từ chối kèm nút đăng xuất hoặc liên hệ Admin.
 3. **Thu hồi quyền tức thì (Revocation):**
-   * Nếu phát hiện link bị lộ ra ngoài, Admin có thể ấn nút "Thu hồi Token" (Revoke) ngay trên dashboard, vô hiệu hóa truy cập ngay lập tức.
+   * Nếu ngừng hợp tác với shop, Admin chỉ cần hủy quyền trong bảng `shop_members` / `shop_invitations`. Shop sẽ bị chặn ngay trong phiên tiếp theo.
 
 ---
 
@@ -94,17 +113,17 @@ Kết hợp **Giải pháp 1 (Magic Onboarding Token)** và **Giải pháp 4 (St
   ```mermaid
   sequenceDiagram
     autonumber
-    actor Shop as Shop Partner
+    actor Shop as Shop Partner (Google Authenticated)
     participant FE as Portal Frontend
-    participant API as Vercel Serverless (/api/upload-ticket)
+    participant API as Vercel Serverless (/api/portal/upload-ticket)
     participant R2 as Cloudflare R2 Storage
     participant DB as Supabase PostgreSQL
 
     Shop->>FE: Chọn 5 ảnh & bắt đầu upload
-    FE->>API: Gửi danh sách tên file + kích thước kèm Token
-    API->>API: Xác thực Token hợp lệ & quota ảnh
+    FE->>API: Gửi danh sách tên file + kích thước (Header: Bearer JWT)
+    API->>API: Xác thực Google JWT & quyền sở hữu Shop
     API->>R2: Tạo Presigned PUT URLs (hạn 15 phút)
-    API-->>FE: Trả về danh sách Presigned URLs
+    API-->>FE: Trả về danh sách Presigned URLs & R2 Keys
     loop Từng ảnh
       FE->>R2: Upload trực tiếp file binary lên R2 (PUT)
     end
@@ -113,8 +132,8 @@ Kết hợp **Giải pháp 1 (Magic Onboarding Token)** và **Giải pháp 4 (St
     Shop->>FE: Bấm "Gửi bài duyệt"
     FE->>API: Gửi payload sản phẩm kèm danh sách R2 Keys và sort_order
     API->>DB: Ghi vào products và product_images (status: pending_review)
-    API->>DB: Đổi token sang locked_pending
-    API-->>FE: Báo thành công, chuyển UI sang Read-Only
+    API->>API: Gửi Webhook thông báo Telegram cho Admin
+    API-->>FE: Báo thành công, chuyển UI sang trạng thái Đang Chờ Duyệt
   ```
 
 ---
@@ -126,26 +145,26 @@ Trường `publish_status` áp dụng cho cả `shops` và `products`:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> draft: Shop đang soạn qua Token
-    draft --> pending_review: Shop bấm "Gửi duyệt cho Tí Coolture" (Token bị khóa)
+    [*] --> draft: Shop đang soạn qua Portal
+    draft --> pending_review: Shop bấm "Gửi duyệt cho Tí Coolture" (Khóa sửa tạm thời)
     pending_review --> published: Admin phê duyệt trên CMS (Hiện lên website)
-    pending_review --> draft: Admin từ chối / Yêu cầu sửa (Mở khóa Token)
+    pending_review --> draft: Admin từ chối / Yêu cầu sửa (Mở lại quyền sửa)
     published --> hidden: Admin tạm ẩn
     hidden --> published: Admin hiển thị lại
 ```
 
 1. **Giai đoạn `draft`:** Dữ liệu đang được shop chỉnh sửa, lưu nháp tự động (Auto-save) sau mỗi 30 giây.
 2. **Giai đoạn `pending_review`:**
-   * Token chuyển sang `locked_pending`. Shop không thể tự ý sửa đổi nội dung hay hoán đổi ảnh trong khi đang chờ duyệt.
+   * Trạng thái sản phẩm chuyển sang `pending_review`. Shop ở chế độ Xem (Read-only) trong khi chờ duyệt.
    * Hệ thống kích hoạt **Webhook thông báo Admin** (gửi tin nhắn tự động về Telegram Bot của Lộc hoặc Zalo Webhook):
      > 🔔 **Có sản phẩm mới chờ duyệt!**  
-     > • **Shop:** Gốm Mộc Chân  
+     > • **Shop:** Gốm Mộc Chân (gommocchan@gmail.com)  
      > • **Sản phẩm:** Bình hoa gốm vuốt tay Men Tro  
      > • **Số lượng ảnh:** 6 ảnh  
      > 🔗 *[Bấm vào đây để xem trước và duyệt]*
 3. **Giai đoạn `published`:**
    * Admin bấm **"Duyệt sản phẩm"** trên trang quản trị.
-   * Bản ghi chuyển sang trạng thái `published`.
+   * Bản ghi chuyển sang trạng thái `published` và hiển thị ra catalogue công khai.
 4. **Nguyên tắc cô lập hiển thị công khai (Isolate Data):**
    * Mọi câu lệnh truy vấn dữ liệu phía Client trên trang chủ `ticoolture.vn` (qua Supabase RLS hoặc API route) **bắt buộc phải có điều kiện**:
      ```sql
@@ -155,44 +174,46 @@ stateDiagram-v2
 
 ---
 
-## 3. THIẾT KẾ DATABASE SCHEMA CHO PHÂN HỆ PORTAL
+## 3. THIẾT KẾ DATABASE SCHEMA CHO PHÂN HỆ PORTAL (GOOGLE OAUTH)
 
-Bổ sung bảng quản lý Token và nâng cấp bảng ảnh sản phẩm vào hệ thống migrations của Supabase:
+Bổ sung bảng quản lý lời mời Google Email và hoàn thiện liên kết với bảng `shop_members` và `product_images`:
 
-### 3.1 Bảng `portal_invites` (Quản lý Link mời)
+### 3.1 Bảng `shop_invitations` (Quản lý lời mời đối tác qua Google Email)
 ```sql
-CREATE TYPE portal_invite_status AS ENUM ('active', 'locked_pending', 'completed', 'revoked');
+CREATE TYPE invite_status AS ENUM ('pending', 'accepted', 'revoked');
 
-CREATE TABLE portal_invites (
+CREATE TABLE shop_invitations (
   id              uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   shop_id         uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
-  token_hash      text UNIQUE NOT NULL,      -- Hash của secret token
-  passcode        varchar(6),                 -- Tùy chọn: PIN 6 số nếu kích hoạt lớp bảo vệ 2
-  status          portal_invite_status NOT NULL DEFAULT 'active',
+  invited_email   text NOT NULL,              -- Email Google của đại diện xưởng/shop
+  shop_role       shop_role NOT NULL DEFAULT 'owner',
+  status          invite_status NOT NULL DEFAULT 'pending',
   created_by      uuid REFERENCES staff_members(user_id),
-  expires_at      timestamptz NOT NULL,       -- Hết hạn (mặc định now() + interval '14 days')
-  submitted_at    timestamptz,                -- Thời điểm shop bấm gửi duyệt
-  metadata        jsonb DEFAULT '{}'::jsonb,  -- Thông tin liên hệ, ghi chú nội bộ
+  expires_at      timestamptz NOT NULL DEFAULT (now() + interval '30 days'),
+  accepted_at     timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now(),
-  updated_at      timestamptz NOT NULL DEFAULT now()
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (shop_id, invited_email)
 );
 
-CREATE INDEX idx_portal_invites_token ON portal_invites(token_hash);
-CREATE INDEX idx_portal_invites_shop ON portal_invites(shop_id);
+CREATE INDEX idx_shop_invitations_email ON shop_invitations (invited_email);
+CREATE INDEX idx_shop_invitations_shop  ON shop_invitations (shop_id);
 ```
+
+> **Cơ chế Auto-Linking:** Khi shop owner đăng nhập Google OAuth lần đầu, nếu `auth.users.email` khớp với một bản ghi `shop_invitations` có `status = 'pending'`, hệ thống sẽ tự động chèn một bản ghi vào `shop_members (user_id, shop_id, shop_role)` và chuyển `status` sang `accepted`.
 
 ### 3.2 Bảng `product_images` (Lưu trữ ảnh & Thứ tự sắp xếp)
 ```sql
 CREATE TABLE product_images (
   id              uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id      uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  r2_key          text NOT NULL,              -- Đường dẫn file trên Cloudflare R2
-  sort_order      int NOT NULL DEFAULT 0,     -- Thứ tự kéo thả (0 là cover)
+  url             text NOT NULL,              -- Đường dẫn key trên Cloudflare R2
   is_cover        boolean NOT NULL DEFAULT false,
+  sort_order      int NOT NULL DEFAULT 0,     -- Thứ tự kéo thả (0 là cover)
   width           int,
   height          int,
-  alt_text        text,
-  created_at      timestamptz NOT NULL DEFAULT now()
+  alt_vi          text,
+  alt_en          text
 );
 
 CREATE INDEX idx_product_images_product ON product_images(product_id, sort_order);
@@ -200,19 +221,18 @@ CREATE INDEX idx_product_images_product ON product_images(product_id, sort_order
 
 ---
 
-## 4. MA TRẬN API ENDPOINTS CHO PHÂN HỆ PORTAL
+## 4. MA TRẬN API ENDPOINTS CHO PHÂN HỆ PORTAL (GOOGLE OAUTH)
 
-Tất cả các API này được xây dựng dưới dạng **Vercel Serverless Functions** (`/api/portal/*`), không lộ anon key trực tiếp cho các thao tác nhạy cảm:
+Tất cả các API này được xây dựng dưới dạng **Vercel Serverless Functions** (`/api/portal/*`), xác thực phiên làm việc thông qua Supabase Google OAuth Session JWT (`Authorization: Bearer <access_token>`):
 
 | Endpoint | Phương thức | Quyền hạn | Chức năng |
 |---|---|---|---|
-| `/api/admin/portal/create-invite` | `POST` | Admin/Staff | Tạo link mời mới cho 1 shop, trả về full invitation URL để gửi qua Zalo |
-| `/api/admin/portal/revoke-invite` | `POST` | Admin | Thu hồi link mời ngay lập tức |
-| `/api/portal/verify-token` | `POST` | Public (kèm Token) | Xác minh token hợp lệ, trả về thông tin shop và dữ liệu nháp hiện tại |
-| `/api/portal/upload-ticket` | `POST` | Public (kèm Token) | Xin danh sách Presigned PUT URLs từ Cloudflare R2 để upload nhiều ảnh |
-| `/api/portal/save-draft` | `POST` | Public (kèm Token) | Lưu nháp thông tin và thứ tự ảnh của sản phẩm |
-| `/api/portal/submit-review` | `POST` | Public (kèm Token) | Chốt gửi duyệt, khóa token (`locked_pending`), bắn Telegram notification |
-| `/api/admin/reviews/action` | `POST` | Admin | Duyệt (`published`) hoặc Từ chối (`rejected` kèm lý do) |
+| `/api/portal/me` | `GET` | Google Authenticated | Xác thực Google session, tự động liên kết lời mời theo email, trả về thông tin shop và vai trò |
+| `/api/portal/upload-ticket` | `POST` | Google Authenticated | Xác thực quyền của shop, cấp danh sách Presigned PUT URLs từ Cloudflare R2 |
+| `/api/portal/save-draft` | `POST` | Google Authenticated | Lưu nháp sản phẩm, cập nhật mô tả, giá và thứ tự kéo thả của ảnh |
+| `/api/portal/submit-review` | `POST` | Google Authenticated | Chốt gửi duyệt, đổi trạng thái sang `pending_review`, kích hoạt Telegram Bot báo Admin |
+| `/api/admin/portal/invite` | `POST` | Admin/Staff | Thêm lời mời quản lý xưởng gửi tới email Google của shop đối tác |
+| `/api/admin/reviews/action` | `POST` | Admin/Staff | Phê duyệt (`published`) hoặc Từ chối (`rejected` kèm lý do) |
 
 ---
 
@@ -222,8 +242,8 @@ Khi vận hành thực tế chỉ có 1 người giám sát cùng AI Agents, cá
 
 | Tình huống sự cố | Kịch bản phản ứng của Hệ thống | Hành động xử lý của Người / Agent |
 |---|---|---|
-| **Shop gửi ảnh quá nặng (> 10MB/ảnh)** | Frontend dùng canvas nén sơ bộ (client-side compression) trước khi PUT lên R2; chặn file > 15MB tại presigned ticket. | Agent kiểm tra code client compressor; không cần can thiệp server. |
-| **Link mời vô tình bị lộ ra ngoài** | Token chỉ can thiệp được đúng dữ liệu của 1 shop đó; không thể xem hay sửa dữ liệu của shop khác (Row-Level Security & Scoped API). | Admin bấm 1 nút **"Thu hồi link"** trên dashboard. Hệ thống đổi trạng thái token sang `revoked`. |
+| **Shop đăng nhập nhầm email Google cá nhân khác** | API `/api/portal/me` kiểm tra thấy email không có trong `shop_members` và `shop_invitations`, trả về màn hình hướng dẫn kèm nút chuyển tài khoản Google. | Không gây lỗi hệ thống; shop tự bấm đổi tài khoản Gmail đã đăng ký với team. |
+| **Shop gửi ảnh quá nặng (> 12MB/ảnh)** | Frontend dùng canvas nén sơ bộ (client-side compression) trước khi PUT lên R2; backend từ chối cấp ticket cho file > 12MB. | Agent kiểm tra code client compressor; không cần can thiệp server. |
 | **Đứt kết nối mạng giữa lúc upload ảnh** | Frontend upload từng ảnh độc lập (concurrency = 3). Ảnh nào lỗi có nút **"Thử lại"** ngay cạnh thumbnail. | Shop bấm thử lại cho ảnh bị lỗi mà không phải upload lại từ đầu. |
 | **Supabase hoặc R2 gặp sự cố kết nối** | API serverless bắt lỗi (try/catch), trả thông báo thân thiện: *"Hệ thống đang bảo trì, vui lòng lưu giữ ảnh và thử lại sau ít phút"*. | Webhook bắn cảnh báo về Telegram của admin kèm mã lỗi chi tiết. |
 
@@ -232,13 +252,14 @@ Khi vận hành thực tế chỉ có 1 người giám sát cùng AI Agents, cá
 ## 6. LỘ TRÌNH THỰC THI (ACTION ROADMAP)
 
 * **Bước 1 (Database Migration):**
-  * Chạy file migration tạo bảng `portal_invites` và thiết lập quan hệ với `shops`, `products`, `product_images`.
+  * Hoàn thành 13 migrations + Bổ sung bảng `shop_invitations` và nâng cấp cấu trúc `product_images`.
 * **Bước 2 (Cloudflare R2 Direct Upload Integration):**
-  * Cài đặt AWS S3 SDK (tương thích R2) trên Vercel Serverless Functions để phát sinh Presigned PUT URLs.
-* **Bước 3 (Backend API Layer):**
-  * Viết các serverless endpoints: tạo invite, verify token, xin ticket upload, submit review, và webhook thông báo Telegram.
+  * Tích hợp AWS S3 SDK (tương thích R2) trên Vercel Serverless Functions để phát sinh Presigned PUT URLs, tài liệu hóa runbook R2.
+* **Bước 3 (Backend API Layer với Google OAuth):**
+  * Xây dựng các endpoints: xác thực Google OAuth `/api/portal/me`, cấp vé upload `/api/portal/upload-ticket`, lưu nháp `/api/portal/save-draft`, gửi duyệt `/api/portal/submit-review`, và webhook thông báo Telegram.
 * **Bước 4 (Frontend Partner Portal UI):**
-  * Dựng route bí mật `/portal` (bảo vệ bằng token query).
-  * Xây dựng giao diện tải nhiều ảnh, lưới kéo thả sắp xếp thứ tự (Drag & Drop), đánh dấu ảnh cover.
+  * Dựng route bí mật `/portal` (bảo vệ bằng Google OAuth Guard).
+  * Xây dựng giao diện đăng nhập Google, tải nhiều ảnh, lưới kéo thả sắp xếp thứ tự (Drag & Drop), đánh dấu ảnh cover.
 * **Bước 5 (Admin Review Workflow):**
   * Hoàn thiện màn hình duyệt bài trên trang quản trị, cho phép Admin xem trước (preview) giao diện sản phẩm y hệt như trên trang web thật trước khi ấn nút Xuất bản.
+
