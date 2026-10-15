@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   supabase,
   isSupabaseConfigured,
@@ -21,14 +21,12 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Eye,
   AlertCircle,
   FileImage,
   RefreshCw,
-  ExternalLink,
   Store,
-  Layers,
-  Info,
+  KeyRound,
+  ExternalLink,
 } from "lucide-react";
 
 // Standard taxonomy categories
@@ -163,11 +161,6 @@ export default function Portal() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-
-  // Fallback Dev Mode for testing without Supabase credentials
-  const [devModeActive, setDevModeActive] = useState(false);
-  const [devEmailInput, setDevEmailInput] = useState("gommocchan@gmail.com");
 
   // Enforce noindex, nofollow
   useEffect(() => {
@@ -220,14 +213,7 @@ export default function Portal() {
         };
       }
 
-      // If no Supabase configured, check dev mode token
-      const devToken = localStorage.getItem("ti_portal_dev_token");
-      if (devToken) {
-        setDevModeActive(true);
-        setCurrentUser({ email: localStorage.getItem("ti_portal_dev_email") || "dev@ticoolture.vn" });
-        await loadPortalMe(devToken);
-      }
-
+      // Not logged in by default
       setSessionLoading(false);
     }
 
@@ -265,47 +251,47 @@ export default function Portal() {
       if (isSupabaseConfigured) {
         await signInWithGoogle();
       } else {
-        // Dev fallback simulation
-        setAuthError("Supabase chưa được cấu hình biến môi trường. Vui lòng dùng chế độ Thử nghiệm (Dev Test) bên dưới.");
+        setAuthError("Chưa có biến môi trường VITE_SUPABASE_URL. Vui lòng cấu hình Google OAuth trong .env.local theo hướng dẫn bên dưới.");
       }
     } catch (err: any) {
-      setAuthError(err.message);
+      setAuthError(err.message || "Lỗi khi kích hoạt Google OAuth.");
     }
   }
 
-  // Handle Dev Mode Login for demo/local test
-  async function handleDevLogin(e: React.FormEvent) {
-    e.preventDefault();
-    if (!devEmailInput.trim()) return;
-
-    setSessionLoading(true);
-    setAuthError(null);
-
-    // Mock session token
-    const mockToken = "dev-token-" + btoa(devEmailInput.trim());
-    localStorage.setItem("ti_portal_dev_token", mockToken);
-    localStorage.setItem("ti_portal_dev_email", devEmailInput.trim());
-
-    // Provide mock shop & products if API is running with mock or fallback
-    setDevModeActive(true);
-    setCurrentUser({ email: devEmailInput.trim() });
-
-    try {
-      await loadPortalMe(mockToken);
-    } catch (err) {
-      console.warn("API not responding locally, simulating dev shop state:", err);
-    }
-
-    // Default mock shop if backend is not deployed locally
-    setShop((prev) => prev || {
+  // Demo Preview mode: strictly user-triggered, never automatic
+  function enterDemoPreview() {
+    setCurrentUser({ email: "gommocchan@gmail.com" });
+    setShop({
       id: "shop-moc-chan-uuid",
       name: "Gốm Mộc Chân",
       slug: "gom-moc-chan",
       status: "published",
-      tagline_vi: "Gốm thủ công vuốt tay mộc mạc",
+      tagline_vi: "Gốm vuốt tay men tro thủ công",
     });
-
-    setSessionLoading(false);
+    setProducts([
+      {
+        id: "demo-p1",
+        name_vi: "Bình gốm vuốt tay Men Tro",
+        price_vnd: 450000,
+        status: "draft",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        product_images: [
+          { id: "img-1", url: "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&auto=format&fit=crop&q=80", is_cover: true, sort_order: 0 }
+        ]
+      },
+      {
+        id: "demo-p2",
+        name_vi: "Cốc gốm mộc hỏa biến",
+        price_vnd: 280000,
+        status: "pending_review",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        product_images: [
+          { id: "img-2", url: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80", is_cover: true, sort_order: 0 }
+        ]
+      }
+    ]);
   }
 
   async function handleLogout() {
@@ -314,7 +300,6 @@ export default function Portal() {
     setShop(null);
     setProducts([]);
     setAuthError(null);
-    setDevModeActive(false);
   }
 
   // Reset & Open Form
@@ -417,8 +402,7 @@ export default function Portal() {
         return updated;
       });
     } catch (err: any) {
-      console.warn("R2 upload notice (will use preview in dev/offline):", err.message);
-      // Fallback for dev mode without active R2 credentials: keep preview URL
+      console.warn("R2 upload fallback (offline preview):", err.message);
       setImages((current) =>
         current.map((item) => {
           if (item.isUploading) {
@@ -446,7 +430,6 @@ export default function Portal() {
       next[index] = next[targetIndex];
       next[targetIndex] = temp;
 
-      // Update sortOrder & ensure slot 0 is Cover
       return next.map((img, i) => ({
         ...img,
         sortOrder: i,
@@ -517,12 +500,10 @@ export default function Portal() {
         setEditingProductId(data.product.id);
       }
     } catch (err: any) {
-      // Dev mode fallback
       setFormFeedback({
         type: "success",
         text: "Đã lưu bản nháp thành công (chế độ demo).",
       });
-      // Add or update to local products state
       setProducts((prev) => {
         const id = editingProductId || `prod-${Date.now()}`;
         const existingIdx = prev.findIndex((p) => p.id === id);
@@ -605,7 +586,6 @@ export default function Portal() {
       if (token) await loadPortalMe(token);
       setActiveView("list");
     } catch (err: any) {
-      // Dev mode fallback
       setFormFeedback({
         type: "success",
         text: "Đã gửi duyệt thành công! (Mô phỏng Telegram alert đến Admin)",
@@ -624,44 +604,45 @@ export default function Portal() {
   // 1. Loading View
   if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-[#111110] text-[#eae7dc] flex items-center justify-center font-sans">
+      <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center font-sans">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-6 h-6 animate-spin text-[#d4af37]" />
-          <p className="text-xs uppercase tracking-widest text-[#a8a29e]">Đang xác thực quyền đối tác...</p>
+          <RefreshCw className="w-6 h-6 animate-spin text-[#39d6cf]" />
+          <p className="text-xs uppercase tracking-widest text-[#a39ab8]">Đang tải Cổng Đối tác...</p>
         </div>
       </div>
     );
   }
 
-  // 2. Not Logged In View
+  // 2. Not Logged In View: Show clean Google OAuth Login Card
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#111110] text-[#eae7dc] flex flex-col items-center justify-center p-6 font-sans">
-        <div className="w-full max-w-md bg-[#1c1c1a] border border-[#2e2d2a] rounded-2xl p-8 shadow-2xl">
+      <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex flex-col items-center justify-center p-6 font-sans">
+        <div className="w-full max-w-md bg-[#181224] border border-[#2e2344] rounded-2xl p-8 shadow-2xl">
           <div className="flex items-center gap-2 mb-6">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#d4af37]"></span>
-            <span className="text-[11px] font-mono tracking-widest uppercase text-[#a8a29e]">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#39d6cf]"></span>
+            <span className="text-[11px] font-mono tracking-widest uppercase text-[#a39ab8]">
               Partner Portal · Tí Coolture
             </span>
           </div>
 
-          <h1 className="text-2xl font-serif font-bold text-[#faf8f5] mb-2">
-            Không gian Đối tác Xưởng
+          <h1 className="text-2xl font-serif font-bold text-white mb-2">
+            Đăng nhập Cổng Đối tác
           </h1>
-          <p className="text-sm text-[#a8a29e] mb-8 leading-relaxed">
-            Dành riêng cho các nghệ nhân & thương hiệu thủ công đăng tải hình ảnh và thông tin sản phẩm.
+          <p className="text-sm text-[#a39ab8] mb-8 leading-relaxed">
+            Dành riêng cho các nghệ nhân & local brand đăng tải hình ảnh và sản phẩm lên catalogue.
           </p>
 
           {authError && (
-            <div className="mb-6 p-3.5 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-200 flex items-start gap-2.5 leading-relaxed">
+            <div className="mb-6 p-4 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-200 flex items-start gap-2.5 leading-relaxed">
               <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
               <span>{authError}</span>
             </div>
           )}
 
+          {/* Google Sign-In Button */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-[#faf8f5] hover:bg-[#ffffff] text-[#111110] font-medium rounded-xl transition duration-150 shadow-sm text-sm"
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white hover:bg-zinc-100 text-[#12081f] font-semibold rounded-xl transition duration-150 shadow-sm text-sm"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -684,68 +665,61 @@ export default function Portal() {
             Tiếp tục với Google
           </button>
 
-          <div className="mt-8 pt-6 border-t border-[#2e2d2a] text-center">
-            <p className="text-[11px] text-[#78716c] leading-relaxed">
-              Truy cập yêu cầu lời mời từ ban quản trị. Hệ thống không lưu trữ mật khẩu, hoàn toàn tuân thủ Nghị định 13/2023/NĐ-CP.
-            </p>
-          </div>
+          {!isSupabaseConfigured && (
+            <div className="mt-6 p-4 bg-[#23173d] border border-[#3b2a60] rounded-xl text-left">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#39d6cf] mb-1.5">
+                <KeyRound className="w-4 h-4" />
+                Cần cấu hình OAuth trong .env.local
+              </div>
+              <p className="text-[11px] text-[#a39ab8] leading-relaxed mb-3">
+                Chưa tìm thấy biến môi trường <code className="text-white bg-[#12081f] px-1 py-0.5 rounded">VITE_SUPABASE_URL</code>.
+                Để kết nối Google OAuth thật, vui lòng xem hướng dẫn của agent để cấu hình Google Cloud & Supabase.
+              </p>
+              <button
+                onClick={enterDemoPreview}
+                className="w-full py-2 px-3 bg-[#362759] hover:bg-[#4a3678] text-white text-xs font-medium rounded-lg transition"
+              >
+                Duyệt xem trước giao diện (Demo Preview) →
+              </button>
+            </div>
+          )}
 
-          {/* Dev Test Section */}
-          <div className="mt-6 pt-4 border-t border-[#262522]">
-            <details className="text-left text-xs text-[#78716c]">
-              <summary className="cursor-pointer hover:text-[#a8a29e] transition">
-                Chế độ Thử nghiệm Nhanh (Dev Preview)
-              </summary>
-              <form onSubmit={handleDevLogin} className="mt-3 flex flex-col gap-2">
-                <input
-                  type="email"
-                  value={devEmailInput}
-                  onChange={(e) => setDevEmailInput(e.target.value)}
-                  placeholder="Nhập email xưởng (ví dụ: gommocchan@gmail.com)"
-                  className="w-full bg-[#111110] border border-[#3b3a36] rounded-lg px-3 py-2 text-xs text-[#eae7dc] focus:outline-none focus:border-[#d4af37]"
-                />
-                <button
-                  type="submit"
-                  className="w-full bg-[#2e2d2a] hover:bg-[#3b3a36] text-[#eae7dc] py-2 rounded-lg text-xs font-medium transition"
-                >
-                  Vào thử nghiệm với Email này
-                </button>
-              </form>
-            </details>
+          <div className="mt-8 pt-6 border-t border-[#2e2344] text-center">
+            <p className="text-[11px] text-[#7b7194] leading-relaxed">
+              Truy cập yêu cầu lời mời từ ban quản trị. Hệ thống không lưu trữ mật khẩu, tuân thủ Nghị định 13/2023/NĐ-CP.
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  // 3. 403 Forbidden View (Logged in but no authorized shop)
+  // 3. 403 Forbidden View (Logged in Google, but email not authorized)
   if (!shop) {
     return (
-      <div className="min-h-screen bg-[#111110] text-[#eae7dc] flex items-center justify-center p-6 font-sans">
-        <div className="w-full max-w-md bg-[#1c1c1a] border border-red-900/40 rounded-2xl p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center p-6 font-sans">
+        <div className="w-full max-w-md bg-[#181224] border border-red-900/40 rounded-2xl p-8 text-center shadow-2xl">
           <div className="w-12 h-12 rounded-full bg-red-950/60 border border-red-800/50 flex items-center justify-center mx-auto mb-4 text-red-400">
             <ShieldAlert className="w-6 h-6" />
           </div>
 
-          <h2 className="text-xl font-serif font-bold text-[#faf8f5] mb-2">
+          <h2 className="text-xl font-serif font-bold text-white mb-2">
             Email chưa được cấp quyền
           </h2>
-          <p className="text-sm text-[#a8a29e] mb-4 leading-relaxed">
-            Tài khoản Google <strong className="text-[#faf8f5]">{currentUser.email}</strong> chưa liên kết với bất kỳ xưởng thủ công nào trên Tí Coolture.
+          <p className="text-sm text-[#a39ab8] mb-4 leading-relaxed">
+            Tài khoản Google <strong className="text-white">{currentUser.email}</strong> chưa liên kết với bất kỳ xưởng thủ công nào trên Tí Coolture.
           </p>
 
-          <p className="text-xs text-[#78716c] mb-8 leading-relaxed">
+          <p className="text-xs text-[#7b7194] mb-8 leading-relaxed">
             Nếu bạn là đối tác vừa nhận lời mời, hãy chắc chắn bạn đã chọn đúng địa chỉ Gmail đã cung cấp cho ban quản trị.
           </p>
 
-          <div className="flex flex-col gap-2.5">
-            <button
-              onClick={handleLogout}
-              className="w-full py-2.5 px-4 bg-[#2e2d2a] hover:bg-[#3b3a36] text-[#eae7dc] rounded-xl text-sm font-medium transition"
-            >
-              Đổi tài khoản Google khác
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full py-2.5 px-4 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-sm font-medium transition shadow-sm"
+          >
+            Đổi tài khoản Google khác
+          </button>
         </div>
       </div>
     );
@@ -753,31 +727,31 @@ export default function Portal() {
 
   // 4. Main Partner Portal Dashboard View
   return (
-    <div className="min-h-screen bg-[#111110] text-[#eae7dc] font-sans pb-24">
+    <div className="min-h-screen bg-[#12081f] text-[#faf8ff] font-sans pb-24">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 bg-[#171715]/90 backdrop-blur-md border-b border-[#262522]">
+      <header className="sticky top-0 z-40 bg-[#181224]/90 backdrop-blur-md border-b border-[#2e2344]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#2e2d2a] border border-[#3e3d38] flex items-center justify-center text-[#d4af37]">
+            <div className="w-8 h-8 rounded-lg bg-[#23173d] border border-[#3b2a60] flex items-center justify-center text-[#39d6cf]">
               <Store className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-serif font-bold text-[#faf8f5]">
+                <h1 className="text-sm font-serif font-bold text-white">
                   {shop.name}
                 </h1>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#262522] text-[#a8a29e] border border-[#383733]">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
                   {role === "owner" ? "Chủ xưởng" : "Biên tập"}
                 </span>
               </div>
-              <p className="text-[11px] text-[#78716c]">{currentUser.email}</p>
+              <p className="text-[11px] text-[#a39ab8]">{currentUser.email}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#a8a29e] hover:text-[#eae7dc] hover:bg-[#262522] transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#a39ab8] hover:text-white hover:bg-[#23173d] transition"
               title="Đăng xuất"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -794,17 +768,17 @@ export default function Portal() {
             {/* Header section */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
-                <h2 className="text-2xl font-serif font-bold text-[#faf8f5]">
+                <h2 className="text-2xl font-serif font-bold text-white">
                   Danh mục sản phẩm xưởng
                 </h2>
-                <p className="text-xs text-[#a8a29e] mt-1">
+                <p className="text-xs text-[#a39ab8] mt-1">
                   Đăng tải hình ảnh chất lượng cao và câu chuyện sáng tạo của sản phẩm.
                 </p>
               </div>
 
               <button
                 onClick={openCreateForm}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#d4af37] hover:bg-[#c49f27] text-[#111110] font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm"
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 Thêm sản phẩm mới
@@ -813,19 +787,19 @@ export default function Portal() {
 
             {/* Product Grid / Table */}
             {products.length === 0 ? (
-              <div className="bg-[#171715] border border-[#262522] rounded-2xl p-12 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#262522] flex items-center justify-center mx-auto mb-4 text-[#a8a29e]">
+              <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#23173d] flex items-center justify-center mx-auto mb-4 text-[#a39ab8]">
                   <FileImage className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-serif font-semibold text-[#faf8f5] mb-1">
+                <h3 className="text-base font-serif font-semibold text-white mb-1">
                   Chưa có sản phẩm nào
                 </h3>
-                <p className="text-xs text-[#78716c] max-w-sm mx-auto mb-6">
+                <p className="text-xs text-[#7b7194] max-w-sm mx-auto mb-6">
                   Bấm nút bên dưới để bắt đầu đăng sản phẩm đầu tiên cho xưởng của bạn.
                 </p>
                 <button
                   onClick={openCreateForm}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#faf8f5] hover:bg-[#ffffff] text-[#111110] font-medium rounded-xl text-xs transition"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs transition"
                 >
                   <Plus className="w-4 h-4" />
                   Tạo sản phẩm đầu tiên
@@ -844,10 +818,10 @@ export default function Portal() {
                   return (
                     <div
                       key={prod.id}
-                      className="bg-[#171715] border border-[#262522] rounded-2xl overflow-hidden hover:border-[#3b3a36] transition flex flex-col"
+                      className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden hover:border-[#7520f7]/50 transition flex flex-col"
                     >
                       {/* Image Thumbnail */}
-                      <div className="aspect-[4/3] bg-[#21211e] relative overflow-hidden flex items-center justify-center">
+                      <div className="aspect-[4/3] bg-[#23173d] relative overflow-hidden flex items-center justify-center">
                         {imgUrl ? (
                           <img
                             src={imgUrl}
@@ -855,7 +829,7 @@ export default function Portal() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="text-xs text-[#78716c] flex flex-col items-center gap-1.5">
+                          <div className="text-xs text-[#7b7194] flex flex-col items-center gap-1.5">
                             <FileImage className="w-6 h-6" />
                             <span>Chưa có ảnh</span>
                           </div>
@@ -864,12 +838,12 @@ export default function Portal() {
                         {/* Status Badge */}
                         <div className="absolute top-3 left-3">
                           {prod.status === "draft" && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-[#2e2d2a]/90 text-[#d4af37] backdrop-blur-sm border border-[#3e3d38]">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-[#12081f]/90 text-[#a39ab8] backdrop-blur-sm border border-[#3b2a60]">
                               Bản nháp
                             </span>
                           )}
                           {prod.status === "pending_review" && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-amber-950/80 text-amber-300 backdrop-blur-sm border border-amber-800/60 flex items-center gap-1">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-[#23173d]/90 text-[#39d6cf] backdrop-blur-sm border border-[#39d6cf]/40 flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               Đang chờ duyệt
                             </span>
@@ -891,26 +865,26 @@ export default function Portal() {
                       {/* Content */}
                       <div className="p-4 flex-1 flex flex-col justify-between">
                         <div>
-                          <h3 className="font-serif font-bold text-[#faf8f5] text-base mb-1">
+                          <h3 className="font-serif font-bold text-white text-base mb-1">
                             {prod.name_vi}
                           </h3>
                           {prod.price_vnd ? (
-                            <p className="text-xs font-mono text-[#d4af37]">
+                            <p className="text-xs font-mono text-[#39d6cf] font-medium">
                               {prod.price_vnd.toLocaleString("vi-VN")} ₫
                             </p>
                           ) : (
-                            <p className="text-xs text-[#78716c]">Giá liên hệ</p>
+                            <p className="text-xs text-[#7b7194]">Giá liên hệ</p>
                           )}
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-[#262522] flex items-center justify-between text-xs">
-                          <span className="text-[#78716c] text-[11px]">
+                        <div className="mt-4 pt-3 border-t border-[#2e2344] flex items-center justify-between text-xs">
+                          <span className="text-[#7b7194] text-[11px]">
                             {prod.product_images?.length || 0} ảnh
                           </span>
 
                           <button
                             onClick={() => openEditForm(prod)}
-                            className="text-[#d4af37] hover:text-[#f0cb53] font-medium transition"
+                            className="text-[#39d6cf] hover:text-white font-medium transition"
                           >
                             {prod.status === "pending_review" ? "Xem chi tiết" : "Chỉnh sửa →"}
                           </button>
@@ -929,13 +903,13 @@ export default function Portal() {
             <div className="flex items-center justify-between mb-6">
               <button
                 onClick={() => setActiveView("list")}
-                className="flex items-center gap-1.5 text-xs text-[#a8a29e] hover:text-[#eae7dc] transition"
+                className="flex items-center gap-1.5 text-xs text-[#a39ab8] hover:text-white transition"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Quay lại danh sách
               </button>
 
-              <span className="text-xs font-mono text-[#78716c]">
+              <span className="text-xs font-mono text-[#7b7194]">
                 {editingProductId ? "Chỉnh sửa sản phẩm" : "Thêm mới"}
               </span>
             </div>
@@ -944,12 +918,12 @@ export default function Portal() {
               <div
                 className={`mb-6 p-4 rounded-xl text-xs flex items-center gap-2.5 leading-relaxed ${
                   formFeedback.type === "success"
-                    ? "bg-emerald-950/50 border border-emerald-800/60 text-emerald-200"
+                    ? "bg-[#23173d] border border-[#39d6cf]/50 text-[#39d6cf]"
                     : "bg-red-950/50 border border-red-800/60 text-red-200"
                 }`}
               >
                 {formFeedback.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-[#39d6cf] flex-shrink-0" />
                 ) : (
                   <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                 )}
@@ -957,11 +931,11 @@ export default function Portal() {
               </div>
             )}
 
-            <div className="bg-[#171715] border border-[#262522] rounded-2xl p-6 sm:p-8 space-y-6">
+            <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-8 space-y-6">
               {/* Product Basic Info */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-[#a8a29e] uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
                     Tên sản phẩm (Tiếng Việt) <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -969,19 +943,19 @@ export default function Portal() {
                     value={nameVi}
                     onChange={(e) => setNameVi(e.target.value)}
                     placeholder="Ví dụ: Bình gốm vuốt tay Men Tro"
-                    className="w-full bg-[#111110] border border-[#2e2d2a] rounded-xl px-4 py-2.5 text-sm text-[#faf8f5] focus:outline-none focus:border-[#d4af37] transition"
+                    className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-[#a8a29e] uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
                       Danh mục <span className="text-red-400">*</span>
                     </label>
                     <select
                       value={categoryId}
                       onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full bg-[#111110] border border-[#2e2d2a] rounded-xl px-4 py-2.5 text-sm text-[#faf8f5] focus:outline-none focus:border-[#d4af37] transition"
+                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
                     >
                       {CATEGORIES.map((catGroup) => (
                         <optgroup key={catGroup.group} label={catGroup.group}>
@@ -996,7 +970,7 @@ export default function Portal() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#a8a29e] uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
                       Giá tham khảo (VNĐ)
                     </label>
                     <input
@@ -1006,14 +980,14 @@ export default function Portal() {
                         setPriceVnd(e.target.value ? Number(e.target.value) : "")
                       }
                       placeholder="450000"
-                      className="w-full bg-[#111110] border border-[#2e2d2a] rounded-xl px-4 py-2.5 text-sm text-[#faf8f5] focus:outline-none focus:border-[#d4af37] transition font-mono"
+                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-[#a8a29e] uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
                       Kích thước / Trọng lượng
                     </label>
                     <input
@@ -1021,12 +995,12 @@ export default function Portal() {
                       value={dimensions}
                       onChange={(e) => setDimensions(e.target.value)}
                       placeholder="Ví dụ: 18 x 25 cm, 800g"
-                      className="w-full bg-[#111110] border border-[#2e2d2a] rounded-xl px-4 py-2.5 text-sm text-[#faf8f5] focus:outline-none focus:border-[#d4af37] transition"
+                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#a8a29e] uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
                       Tên tiếng Anh (tuỳ chọn)
                     </label>
                     <input
@@ -1034,13 +1008,13 @@ export default function Portal() {
                       value={nameEn}
                       onChange={(e) => setNameEn(e.target.value)}
                       placeholder="Ash-glaze ceramic vase"
-                      className="w-full bg-[#111110] border border-[#2e2d2a] rounded-xl px-4 py-2.5 text-sm text-[#faf8f5] focus:outline-none focus:border-[#d4af37] transition"
+                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[#a8a29e] uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
                     Câu chuyện / Mô tả nghệ nhân
                   </label>
                   <textarea
@@ -1048,34 +1022,34 @@ export default function Portal() {
                     value={storyVi}
                     onChange={(e) => setStoryVi(e.target.value)}
                     placeholder="Chia sẻ về chất liệu, cảm hứng chế tác và nét độc đáo của sản phẩm này..."
-                    className="w-full bg-[#111110] border border-[#2e2d2a] rounded-xl p-4 text-sm text-[#faf8f5] focus:outline-none focus:border-[#d4af37] transition leading-relaxed resize-none"
+                    className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-[#7520f7] transition leading-relaxed resize-none"
                   ></textarea>
                 </div>
               </div>
 
               {/* Multiple Direct-to-R2 Image Upload & Reorder */}
-              <div className="pt-6 border-t border-[#262522]">
+              <div className="pt-6 border-t border-[#2e2344]">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="text-xs font-medium text-[#a8a29e] uppercase tracking-wider">
+                    <h3 className="text-xs font-medium text-[#a39ab8] uppercase tracking-wider">
                       Hình ảnh sản phẩm (Cloudflare R2 Direct Upload)
                     </h3>
-                    <p className="text-[11px] text-[#78716c] mt-0.5">
+                    <p className="text-[11px] text-[#7b7194] mt-0.5">
                       Kéo thả để sắp xếp thứ tự. Vị trí đầu tiên là Ảnh đại diện.
                     </p>
                   </div>
-                  <span className="text-xs font-mono text-[#d4af37]">
+                  <span className="text-xs font-mono text-[#39d6cf]">
                     {images.length} ảnh
                   </span>
                 </div>
 
                 {/* Upload Dropzone */}
-                <label className="border-2 border-dashed border-[#2e2d2a] hover:border-[#d4af37]/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition bg-[#111110]/50 hover:bg-[#111110] mb-6">
-                  <UploadCloud className="w-8 h-8 text-[#a8a29e] mb-2" />
-                  <span className="text-xs font-medium text-[#faf8f5]">
+                <label className="border-2 border-dashed border-[#2e2344] hover:border-[#39d6cf]/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition bg-[#12081f]/50 hover:bg-[#12081f] mb-6">
+                  <UploadCloud className="w-8 h-8 text-[#a39ab8] mb-2" />
+                  <span className="text-xs font-medium text-white">
                     Chọn nhiều ảnh hoặc thả vào đây
                   </span>
-                  <span className="text-[11px] text-[#78716c] mt-1">
+                  <span className="text-[11px] text-[#7b7194] mt-1">
                     Tối đa 12MB/ảnh · Định dạng WebP, JPEG, PNG
                   </span>
                   <input
@@ -1093,10 +1067,10 @@ export default function Portal() {
                     {images.map((img, idx) => (
                       <div
                         key={img.id}
-                        className={`relative aspect-square rounded-xl overflow-hidden border bg-[#21211e] group transition ${
+                        className={`relative aspect-square rounded-xl overflow-hidden border bg-[#23173d] group transition ${
                           idx === 0
-                            ? "border-[#d4af37] ring-2 ring-[#d4af37]/20"
-                            : "border-[#2e2d2a]"
+                            ? "border-[#39d6cf] ring-2 ring-[#39d6cf]/20"
+                            : "border-[#2e2344]"
                         }`}
                       >
                         <img
@@ -1107,15 +1081,15 @@ export default function Portal() {
 
                         {/* Uploading indicator */}
                         {img.isUploading && (
-                          <div className="absolute inset-0 bg-[#111110]/80 flex flex-col items-center justify-center p-2">
-                            <RefreshCw className="w-4 h-4 animate-spin text-[#d4af37] mb-1.5" />
-                            <div className="w-full bg-[#262522] rounded-full h-1 overflow-hidden">
+                          <div className="absolute inset-0 bg-[#12081f]/85 flex flex-col items-center justify-center p-2">
+                            <RefreshCw className="w-4 h-4 animate-spin text-[#39d6cf] mb-1.5" />
+                            <div className="w-full bg-[#2e2344] rounded-full h-1 overflow-hidden">
                               <div
-                                className="bg-[#d4af37] h-1 transition-all"
+                                className="bg-[#39d6cf] h-1 transition-all"
                                 style={{ width: `${img.progress || 0}%` }}
                               ></div>
                             </div>
-                            <span className="text-[10px] font-mono text-[#eae7dc] mt-1">
+                            <span className="text-[10px] font-mono text-white mt-1">
                               {img.progress || 0}%
                             </span>
                           </div>
@@ -1123,7 +1097,7 @@ export default function Portal() {
 
                         {/* Cover Tag */}
                         {idx === 0 && (
-                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-[#d4af37] text-[#111110] shadow-sm">
+                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-[#39d6cf] text-[#12081f] shadow-sm font-semibold">
                             Ảnh chính
                           </span>
                         )}
@@ -1134,7 +1108,7 @@ export default function Portal() {
                             <button
                               type="button"
                               onClick={() => moveImage(idx, "left")}
-                              className="p-1.5 bg-[#1c1c1a] hover:bg-[#2e2d2a] rounded-lg text-white transition"
+                              className="p-1.5 bg-[#23173d] hover:bg-[#362759] rounded-lg text-white transition"
                               title="Sang trái"
                             >
                               <ChevronLeft className="w-3.5 h-3.5" />
@@ -1154,7 +1128,7 @@ export default function Portal() {
                             <button
                               type="button"
                               onClick={() => moveImage(idx, "right")}
-                              className="p-1.5 bg-[#1c1c1a] hover:bg-[#2e2d2a] rounded-lg text-white transition"
+                              className="p-1.5 bg-[#23173d] hover:bg-[#362759] rounded-lg text-white transition"
                               title="Sang phải"
                             >
                               <ChevronRight className="w-3.5 h-3.5" />
@@ -1168,8 +1142,8 @@ export default function Portal() {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-6 border-t border-[#262522] flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-[11px] text-[#78716c] text-center sm:text-left">
+              <div className="pt-6 border-t border-[#2e2344] flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-[11px] text-[#7b7194] text-center sm:text-left">
                   Sau khi lưu nháp, bạn có thể gửi bài để đội ngũ Tí Coolture duyệt lên website.
                 </p>
 
@@ -1178,7 +1152,7 @@ export default function Portal() {
                     type="button"
                     onClick={handleSaveDraft}
                     disabled={isSaving}
-                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#262522] hover:bg-[#33322d] text-[#eae7dc] font-medium rounded-xl text-xs transition flex items-center justify-center gap-2"
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#23173d] hover:bg-[#2e2344] text-white font-medium rounded-xl text-xs transition border border-[#3b2a60] flex items-center justify-center gap-2"
                   >
                     {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                     Lưu bản nháp
@@ -1188,7 +1162,7 @@ export default function Portal() {
                     type="button"
                     onClick={handleSubmitReview}
                     disabled={isSubmitting}
-                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#d4af37] hover:bg-[#c49f27] text-[#111110] font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
                   >
                     {isSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                     Gửi bài duyệt
