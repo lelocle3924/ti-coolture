@@ -142,7 +142,7 @@ function InquiryModal({ inquiry, storeName }: { inquiry: Inquiry; storeName: str
         </p>
         <div className="space-y-2">
           {inquiry.channels.length === 0 && (
-            <p className="text-xs text-ink/55">Xưởng chưa khai báo kênh liên hệ nào.</p>
+            <p className="text-xs text-ink/55">Shop chưa khai báo kênh liên hệ nào.</p>
           )}
           {inquiry.channels.map((c) => (
             <button
@@ -192,9 +192,8 @@ function SpecTable({
     ["Chất liệu", product.material || "—"],
     ["Kích thước", product.size || "—"],
     ["Danh mục", product.category],
-    ["Xưởng", product.storeName],
+    ["Shop", product.storeName],
     ["Khu vực", store?.address || "—"],
-    ["Mã sản phẩm", product.id.replace(/^prod-/, "")],
   ];
   const line = tone === "paper" ? "border-white/15" : "border-ink/12";
   const key = tone === "paper" ? "text-white/55" : "text-ink/50";
@@ -458,7 +457,7 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
               onClick={() => inquiry.setOpen(true)}
               className="flex w-full items-center justify-between border border-brand bg-brand px-5 py-3.5 text-xs font-semibold text-paper transition-colors hover:bg-brand-deep"
             >
-              <span>Nhắn xưởng để đặt</span>
+              <span>Nhắn shop để đặt</span>
               <ExternalLink className="h-3.5 w-3.5" />
             </button>
             <p className="text-[11px] leading-relaxed text-ink/50">{NO_TRANSACTION}</p>

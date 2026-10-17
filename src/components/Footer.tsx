@@ -68,7 +68,7 @@ export default function Footer() {
                   onClick={() => setIsApplyOpen(true)}
                   className="inline-flex items-center min-h-11 text-sm text-wave hover:underline font-medium cursor-pointer"
                 >
-                  Hợp tác với Tí (Mở xưởng)
+                  Hợp tác với Tí (Mở shop)
                 </button>
               </li>
               <li>

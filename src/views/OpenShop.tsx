@@ -47,13 +47,13 @@ const EMPTY: SignupFields = {
 };
 
 const LABELS: Record<keyof SignupFields, string> = {
-  shopName: "Tên xưởng",
+  shopName: "Tên shop",
   contactName: "Người phụ trách",
   email: "Email",
   phone: "Số điện thoại",
   area: "Khu vực",
   channel: "Kênh đang bán",
-  makes: "Xưởng làm gì",
+  makes: "Shop làm gì",
   links: "Đường dẫn ảnh sản phẩm",
 };
 
@@ -127,7 +127,7 @@ function Sent({ values, tone = "ink" }: { values: SignupFields; tone?: "ink" | "
       </span>
       <h2 className="display text-2xl normal-case">Tí nhận được rồi</h2>
       <p className={`text-sm leading-relaxed ${muted}`}>
-        Đăng ký của <strong>{values.shopName || "xưởng"}</strong> đã gửi tới ban tuyển chọn. Tí đọc
+        Đăng ký của <strong>{values.shopName || "shop"}</strong> đã gửi tới ban tuyển chọn. Tí đọc
         tay từng hồ sơ và trả lời qua email <strong>{values.email}</strong> trong khoảng 5 ngày làm
         việc.
       </p>
@@ -143,7 +143,7 @@ function Sent({ values, tone = "ink" }: { values: SignupFields; tone?: "ink" | "
           tone === "paper" ? "text-wave" : "text-brand"
         }`}
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Về danh bạ xưởng
+        <ArrowLeft className="h-3.5 w-3.5" /> Về danh bạ shop
       </Link>
     </div>
   );
@@ -279,12 +279,12 @@ export default function OpenShop() {
             noValidate
           >
             <p className="label text-wave-ink">Gửi Tí</p>
-            <h1 className="display mt-2 text-3xl normal-case md:text-5xl">Xưởng mình muốn tham gia</h1>
+            <h1 className="display mt-2 text-3xl normal-case md:text-5xl">Shop mình muốn tham gia</h1>
 
             <div className="mt-10 space-y-7 text-lg leading-[2.6] md:text-xl md:leading-[2.8]">
               <p>
-                Xưởng của mình tên là{" "}
-                <Blank name="shopName" values={values} set={set} errors={errors} width="14ch" placeholder="tên xưởng" />
+                Shop của mình tên là{" "}
+                <Blank name="shopName" values={values} set={set} errors={errors} width="14ch" placeholder="tên shop" />
                 , làm ở{" "}
                 <Blank name="area" values={values} set={set} errors={errors} width="11ch" placeholder="khu vực" />.
               </p>
@@ -322,7 +322,7 @@ export default function OpenShop() {
 
             <div className="mt-10 space-y-2">
               <label htmlFor="makes" className="label block text-ink/55">
-                Xưởng mình làm <span className="text-brand">*</span>
+                Shop mình làm <span className="text-brand">*</span>
               </label>
               <textarea
                 id="makes"

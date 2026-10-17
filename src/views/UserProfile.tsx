@@ -1300,7 +1300,7 @@ export default function UserProfile() {
 
                           <div className="flex items-center space-x-1 text-xs text-ink/60">
                             <MapPin className="w-3.5 h-3.5 text-brand shrink-0" />
-                            <span>Xưởng: {prod.brand || prod.storeName}</span>
+                            <span>Shop: {prod.brand || prod.storeName}</span>
                           </div>
 
                           {/* Personal Custom Annotation */}
@@ -1353,9 +1353,9 @@ export default function UserProfile() {
           {/* 2. FOLLOWED PAGES SECTION (Right 4 columns) */}
           <div className="lg:col-span-4 space-y-6">
             <div className="border-b border-ink/10 pb-4">
-              <span className="label text-wave-ink text-[10px] font-semibold block">XƯỞNG THEO DÕI</span>
+              <span className="label text-wave-ink text-[10px] font-semibold block">SHOP THEO DÕI</span>
               <h2 className="display text-2xl font-medium text-ink normal-case">
-                Xưởng thủ công ({followedStores.length})
+                Shop thủ công ({followedStores.length})
               </h2>
             </div>
 
@@ -1363,8 +1363,8 @@ export default function UserProfile() {
               <div className="p-2 rounded-[2.5rem] bg-black/5">
                 <div className="bg-paper rounded-[2.125rem] p-8 text-center space-y-2">
                   <Store className="w-8 h-8 text-brand mx-auto opacity-40" />
-                  <p className="text-xs font-semibold text-ink">Chưa theo dõi xưởng nào</p>
-                  <p className="text-[11px] text-ink/60">Ghé danh bạ xưởng để theo dõi các local brand yêu thích.</p>
+                  <p className="text-xs font-semibold text-ink">Chưa theo dõi shop nào</p>
+                  <p className="text-[11px] text-ink/60">Ghé danh bạ shop để theo dõi các local brand yêu thích.</p>
                 </div>
               </div>
             ) : (
@@ -1405,7 +1405,7 @@ export default function UserProfile() {
                         to={`/stores/${store.id}`}
                         className="w-full block text-center py-2.5 rounded-full bg-brand text-paper text-xs font-semibold hover:bg-brand-deep transition-all shadow-sm"
                       >
-                        Ghé thăm xưởng →
+                        Ghé thăm shop →
                       </Link>
                     </div>
                   </div>

@@ -114,6 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           price_vnd: typeof priceVnd === "number" ? priceVnd : null,
           price_note_vi: priceNoteVi || "Giá tham khảo, giá cuối do shop quyết định",
           dimensions: dimensions?.trim() || null,
+          variants: Array.isArray(variants) ? variants : [],
           updated_at: new Date().toISOString(),
         })
         .eq("id", targetProductId);
@@ -142,6 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           price_vnd: typeof priceVnd === "number" ? priceVnd : null,
           price_note_vi: priceNoteVi || "Giá tham khảo, giá cuối do shop quyết định",
           dimensions: dimensions?.trim() || null,
+          variants: Array.isArray(variants) ? variants : [],
           status: "draft",
         })
         .select("id")

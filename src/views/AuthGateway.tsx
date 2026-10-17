@@ -257,7 +257,7 @@ export default function AuthGateway() {
                       Khám phá & Lưu tác phẩm
                     </h2>
                     <p className="text-xs text-ink/75 leading-relaxed">
-                      Theo dõi các xưởng chế tác yêu thích, lưu danh sách sản phẩm độc bản và nhận thông báo khi có bộ sưu tập mới.
+                      Theo dõi các shop chế tác yêu thích, lưu danh sách sản phẩm độc bản và nhận thông báo khi có bộ sưu tập mới.
                     </p>
                   </div>
 
@@ -284,9 +284,9 @@ export default function AuthGateway() {
                     <div className="w-12 h-12 rounded-2xl bg-wave/20 text-wave grid place-items-center">
                       <Store className="w-6 h-6" />
                     </div>
-                    <span className="label text-wave font-semibold text-xs block">DÀNH CHO XƯỞNG & NGHỆ NHÂN</span>
+                    <span className="label text-wave font-semibold text-xs block">DÀNH CHO SHOP & NGHỆ NHÂN</span>
                     <h2 className="display text-2xl font-medium text-paper normal-case leading-tight">
-                      Không gian Xưởng sáng tạo
+                      Không gian Shop sáng tạo
                     </h2>
                     <p className="text-xs text-white/80 leading-relaxed">
                       Đăng tải tác phẩm, chia sẻ triết lý chế tác và kết nối với cộng đồng những người trân trọng giá trị bản địa.
@@ -294,7 +294,7 @@ export default function AuthGateway() {
                   </div>
 
                   <div className="pt-4 border-t border-white/15 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-wave">Đăng nhập chủ xưởng</span>
+                    <span className="text-xs font-semibold text-wave">Đăng nhập chủ shop</span>
                     <div className="w-8 h-8 rounded-full bg-wave text-ink grid place-items-center group-hover:translate-x-1 transition-transform">
                       <ArrowRight className="w-4 h-4" />
                     </div>
@@ -323,7 +323,7 @@ export default function AuthGateway() {
                     disabled={loading}
                     className="px-5 py-2.5 rounded-full border border-ink/10 text-xs font-semibold text-ink bg-paper-warm hover:bg-brand hover:text-paper transition-all shadow-xs"
                   >
-                    🏪 Chủ xưởng mẫu (Artisan)
+                    🏪 Chủ shop mẫu (Artisan)
                   </button>
                   <button
                     onClick={() => handleTestLogin("Admin")}
@@ -353,7 +353,7 @@ export default function AuthGateway() {
                 </button>
 
                 <span className="label text-wave-ink text-[10px] font-semibold">
-                  {mode === "ShopForm" ? "Xưởng sáng tạo" : "Người khám phá"}
+                  {mode === "ShopForm" ? "Shop sáng tạo" : "Người khám phá"}
                 </span>
               </div>
 
@@ -365,7 +365,7 @@ export default function AuthGateway() {
                   {formType === "ResetPassword" && "Đặt lại mật khẩu"}
                 </h2>
                 <p className="text-xs text-ink/60 mt-1">
-                  {mode === "ShopForm" ? "Không gian quản lý tác phẩm và thông tin xưởng" : "Lưu trữ bộ sưu tập và tác phẩm yêu thích của bạn"}
+                  {mode === "ShopForm" ? "Không gian quản lý tác phẩm và thông tin shop" : "Lưu trữ bộ sưu tập và tác phẩm yêu thích của bạn"}
                 </p>
               </div>
 

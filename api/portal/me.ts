@@ -26,12 +26,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // If user has a shop attached, fetch details & products
     if (portalUser.shopId) {
-      const [shopRes, productsRes] = await Promise.all([
+      const [shopRes, socialsRes, productsRes] = await Promise.all([
         supabase
           .from("shops")
-          .select("id, name, slug, tagline_vi, story_vi, logo_url, cover_url, status, is_online_only")
+          .select("id, name, slug, tagline_vi, story_vi, logo_url, cover_url, status, is_online_only, address, area_tag, contact_email")
           .eq("id", portalUser.shopId)
           .single(),
+        supabase
+          .from("shop_socials")
+          .select("platform, url, is_visible")
+          .eq("shop_id", portalUser.shopId),
         supabase
           .from("products")
           .select(`
@@ -39,6 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             name_vi,
             name_en,
             price_vnd,
+            category_id,
+            short_desc_vi,
+            story_vi,
+            dimensions,
             status,
             created_at,
             updated_at,
@@ -55,6 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ]);
 
       shopData = shopRes.data;
+      if (shopData && socialsRes.data) {
+        (shopData as any).socials = socialsRes.data;
+      }
       productsData = productsRes.data || [];
     }
 

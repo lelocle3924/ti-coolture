@@ -1013,14 +1013,14 @@ export default function Products() {
                   Chưa có tác phẩm phù hợp
                 </h3>
                 <p className="text-xs text-ink/70 leading-relaxed max-w-md mx-auto">
-                  Tí chưa tìm thấy món đồ khớp chính xác với bộ lọc này. Hãy để lại yêu cầu phong cách bạn đang tìm để Tí kết nối các xưởng phù hợp nhé!
+                  Tí chưa tìm thấy món đồ khớp chính xác với bộ lọc này. Hãy để lại yêu cầu phong cách bạn đang tìm để Tí kết nối các shop phù hợp nhé!
                 </p>
               </div>
 
               {demandSubmitted ? (
                 <div className="p-4 rounded-2xl bg-wave/20 border border-wave text-wave-ink text-xs font-semibold flex items-center justify-center gap-2">
                   <Check className="w-4 h-4" />
-                  <span>Cảm ơn bạn! Ban tuyển chọn Tí đã lưu yêu cầu và sẽ tìm kiếm xưởng phù hợp.</span>
+                  <span>Cảm ơn bạn! Ban tuyển chọn Tí đã lưu yêu cầu và sẽ tìm kiếm shop phù hợp.</span>
                 </div>
               ) : (
                 <form onSubmit={handleDemandSubmit} className="space-y-3 text-left">

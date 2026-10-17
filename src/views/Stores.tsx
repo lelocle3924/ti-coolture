@@ -111,7 +111,7 @@ export default function Stores() {
             find a shop by name rather than how you narrow a list. */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <span className="text-xs text-ink/60 font-medium">
-            Hiển thị <strong className="text-ink font-bold">{filteredStores.length}</strong> xưởng thủ công
+            Hiển thị <strong className="text-ink font-bold">{filteredStores.length}</strong> shop thủ công
           </span>
 
           <div className="relative max-w-xs w-full">
@@ -120,7 +120,7 @@ export default function Stores() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo tên xưởng, phong cách..."
+              placeholder="Tìm theo tên shop, phong cách..."
               className="w-full bg-paper border border-ink/10 rounded-full pl-9 pr-4 py-2 text-xs text-ink focus:outline-none focus:border-brand shadow-xs"
             />
           </div>
@@ -143,7 +143,7 @@ export default function Stores() {
         ) : filteredStores.length === 0 ? (
           <div className="max-w-md mx-auto my-12 rounded-[1.875rem] border border-ink/10 bg-paper p-8 text-center space-y-3">
             <Store className="w-10 h-10 text-brand mx-auto opacity-40" />
-            <h3 className="display text-xl font-medium">Không tìm thấy xưởng phù hợp</h3>
+            <h3 className="display text-xl font-medium">Không tìm thấy shop phù hợp</h3>
             <p className="text-xs text-ink/60">Thử tìm với từ khoá khác nhé.</p>
             <button
               onClick={() => setSearchQuery("")}
@@ -176,7 +176,7 @@ export default function Stores() {
 
                   {/* Team 15/09: "bấm vào mọi nơi kể từ dòng 'tác phẩm tiêu
                       biểu' trở lên đều phải dẫn đến trang shop, không chỉ khi
-                      bấm vào tên shop hay nút 'Ghé thăm xưởng'".
+                      bấm vào tên shop hay nút 'Ghé thăm shop'".
 
                       Everything that leads to the shop sits in this one box,
                       and the shop's name is the link: its ::after is stretched
@@ -262,7 +262,7 @@ export default function Stores() {
                         part of the way to the shop. */}
                     {storeProducts.length > 0 && (
                       <span className="label mt-4 block border-t border-ink/5 pt-3 text-[9px] text-ink/50">
-                        TÁC PHẨM TIÊU BIỂU TỪ XƯỞNG:
+                        TÁC PHẨM TIÊU BIỂU TỪ SHOP:
                       </span>
                     )}
                   </div>
@@ -297,7 +297,7 @@ export default function Stores() {
                         viewTransition
                         className="group/btn w-full py-2.5 px-5 rounded-full bg-paper-warm hover:bg-brand text-ink hover:text-paper text-xs font-semibold transition-all duration-300 flex items-center justify-between border border-ink/10 shadow-xs"
                       >
-                        <span>Ghé thăm xưởng</span>
+                        <span>Ghé thăm shop</span>
                         <div className="w-6 h-6 rounded-full bg-black/5 group-hover/btn:bg-white/20 flex items-center justify-center transition-transform group-hover/btn:translate-x-1">
                           <ArrowRight className="w-3.5 h-3.5" />
                         </div>

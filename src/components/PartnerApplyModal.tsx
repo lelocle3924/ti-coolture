@@ -24,7 +24,7 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!shopName.trim() || !email.trim()) {
-      setError("Vui lòng điền tên xưởng và email Google liên hệ.");
+      setError("Vui lòng điền tên shop và email Google liên hệ.");
       return;
     }
 
@@ -85,7 +85,7 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-serif font-bold text-white">
-              Đã gửi hồ sơ mở xưởng thành công!
+              Đã gửi hồ sơ mở shop thành công!
             </h3>
             <p className="text-sm text-[#a39ab8] leading-relaxed max-w-sm mx-auto">
               Cảm ơn bạn đã quan tâm. Ban quản trị Tí Coolture sẽ xem xét hồ sơ và gửi quyền truy cập Portal qua Gmail <strong className="text-white">{email}</strong>.
@@ -106,11 +106,11 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
                 <Store className="w-4 h-4" />
               </div>
               <h3 className="text-lg font-serif font-bold text-white">
-                Đăng ký mở Xưởng trên Tí Coolture
+                Đăng ký mở Shop trên Tí Coolture
               </h3>
             </div>
             <p className="text-xs text-[#a39ab8] mb-6 leading-relaxed">
-              Dành cho các xưởng thủ công, local brand và nghệ nhân Việt. Mỗi tài khoản Gmail mở duy nhất 1 xưởng.
+              Dành cho các shop thủ công, local brand và nghệ nhân Việt. Mỗi tài khoản Gmail mở duy nhất 1 shop.
             </p>
 
             {error && (
@@ -123,7 +123,7 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-[#a39ab8] mb-1">
-                    Tên Xưởng / Local Brand *
+                    Tên Shop / Local Brand *
                   </label>
                   <input
                     type="text"
@@ -214,12 +214,12 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
 
               <div>
                 <label className="block text-xs font-medium text-[#a39ab8] mb-1">
-                  Mô tả sản phẩm & câu chuyện xưởng
+                  Mô tả sản phẩm & câu chuyện shop
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Chia sẻ ngắn về chất liệu thủ công, phong cách và các sản phẩm tiêu biểu của xưởng..."
+                  placeholder="Chia sẻ ngắn về chất liệu thủ công, phong cách và các sản phẩm tiêu biểu của shop..."
                   rows={3}
                   className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition resize-none"
                 />
@@ -236,7 +236,7 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  Gửi Hồ Sơ Mở Xưởng
+                  Gửi Hồ Sơ Mở Shop
                 </button>
               </div>
             </form>
