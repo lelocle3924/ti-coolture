@@ -24,6 +24,34 @@
 import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, RouteStop } from "../types";
 import { seed } from "./mock/seed";
 import type { Database, ProductRow, ShopRow } from "./mock/schema";
+import { supabase } from "./supabaseClient";
+
+export type DataSourceMode = "mock" | "real";
+
+export function getDataSourceMode(): DataSourceMode {
+  if (typeof window === "undefined") return "mock";
+  return (localStorage.getItem("ti_data_source_mode") as DataSourceMode) || "mock";
+}
+
+export function setDataSourceMode(mode: DataSourceMode) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("ti_data_source_mode", mode);
+    window.dispatchEvent(new CustomEvent("ti_data_source_changed", { detail: mode }));
+  }
+}
+
+const R2_PUBLIC_DOMAIN =
+  import.meta.env.VITE_R2_PUBLIC_DOMAIN ||
+  import.meta.env.R2_PUBLIC_DOMAIN ||
+  "https://pub-eb634fe5fce842bfb049a6bc69cf067d.r2.dev";
+
+export function resolveImageUrl(url?: string | null): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  return `${R2_PUBLIC_DOMAIN.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
+}
 
 /** Session-scoped clone so writes never corrupt the seed module. */
 const db: Database = JSON.parse(JSON.stringify(seed));
@@ -178,11 +206,110 @@ function writeUsers(users: Record<string, UserProfile>) {
 /* ── reads ─────────────────────────────────────────────────────────────── */
 
 export async function fetchStores(): Promise<StoreProfile[]> {
+  if (getDataSourceMode() === "real" && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("shops")
+        .select("*, shop_socials(*)")
+        .eq("status", "published");
+
+      if (!error && data) {
+        return data.map((row: any) => {
+          const socials = row.shop_socials || [];
+          const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
+          return {
+            id: row.id,
+            userId: "",
+            name: row.name,
+            logoUrl: resolveImageUrl(row.logo_url),
+            coverUrl: resolveImageUrl(row.cover_url),
+            story: row.story_vi ?? "",
+            vibe: row.tagline_vi ?? "",
+            description: row.tagline_vi ?? undefined,
+            phone: "",
+            email: row.contact_email ?? "",
+            address: row.address ?? row.area_tag ?? "",
+            taxId: "",
+            socials: {
+              facebook: pick("facebook"),
+              instagram: pick("instagram"),
+              tiktok: pick("tiktok"),
+              threads: pick("threads"),
+              website: pick("website"),
+              zalo: pick("zalo"),
+            },
+            socialToggles: {
+              facebook: !!pick("facebook"),
+              instagram: !!pick("instagram"),
+              tiktok: !!pick("tiktok"),
+              threads: !!pick("threads"),
+              website: !!pick("website"),
+              zalo: !!pick("zalo"),
+            },
+            registered: true,
+            createdAt: row.created_at,
+            status: "Approved",
+            hidden: false,
+          };
+        });
+      }
+    } catch (e) {
+      console.warn("Error fetching real stores from Supabase:", e);
+    }
+  }
   return delay(db.shops.filter((s) => s.status !== "archived").map(toStore));
 }
 
 export async function fetchStoreById(storeId: string): Promise<StoreProfile | null> {
-  const row = db.shops.find((s) => s.id === storeId);
+  if (getDataSourceMode() === "real" && supabase) {
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId);
+      const query = supabase.from("shops").select("*, shop_socials(*)");
+      const { data, error } = await (isUuid ? query.eq("id", storeId) : query.eq("slug", storeId)).maybeSingle();
+
+      if (!error && data) {
+        const socials = data.shop_socials || [];
+        const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
+        return {
+          id: data.id,
+          userId: "",
+          name: data.name,
+          logoUrl: resolveImageUrl(data.logo_url),
+          coverUrl: resolveImageUrl(data.cover_url),
+          story: data.story_vi ?? "",
+          vibe: data.tagline_vi ?? "",
+          description: data.tagline_vi ?? undefined,
+          phone: "",
+          email: data.contact_email ?? "",
+          address: data.address ?? data.area_tag ?? "",
+          taxId: "",
+          socials: {
+            facebook: pick("facebook"),
+            instagram: pick("instagram"),
+            tiktok: pick("tiktok"),
+            threads: pick("threads"),
+            website: pick("website"),
+            zalo: pick("zalo"),
+          },
+          socialToggles: {
+            facebook: !!pick("facebook"),
+            instagram: !!pick("instagram"),
+            tiktok: !!pick("tiktok"),
+            threads: !!pick("threads"),
+            website: !!pick("website"),
+            zalo: !!pick("zalo"),
+          },
+          registered: true,
+          createdAt: data.created_at,
+          status: "Approved",
+          hidden: false,
+        };
+      }
+    } catch (e) {
+      console.warn("Error fetching real store by id:", e);
+    }
+  }
+  const row = db.shops.find((s) => s.id === storeId || s.slug === storeId);
   return delay(row ? toStore(row) : null);
 }
 
@@ -190,20 +317,160 @@ export async function fetchProducts(
   status: "Pending" | "Approved" | "Rejected" = "Approved",
   _opts?: { throwOnError?: boolean }
 ): Promise<Product[]> {
+  if (getDataSourceMode() === "real" && supabase) {
+    try {
+      const dbStatus = status === "Approved" ? "published" : status === "Pending" ? "pending_review" : "rejected";
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, shops(*), categories(*), product_images(*)")
+        .eq("status", dbStatus);
+
+      if (!error && data) {
+        return data.map((row: any) => {
+          const shop = row.shops;
+          const category = row.categories;
+          const images = (row.product_images || [])
+            .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
+            .map((img: any) => resolveImageUrl(img.url));
+
+          return {
+            id: row.id,
+            storeId: row.shop_id,
+            storeName: shop?.name ?? "",
+            storeLogo: shop?.logo_url ? resolveImageUrl(shop.logo_url) : undefined,
+            name: row.name_vi,
+            price: row.price_vnd ?? 0,
+            currency: "VND",
+            description: row.short_desc_vi ?? "",
+            images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
+            category: category?.name_vi ?? "",
+            categorySlug: category?.slug ?? "",
+            categoryGroup: category?.name_vi ?? "",
+            categoryGroupSlug: category?.slug ?? "",
+            variants: [],
+            material: "",
+            size: row.dimensions ?? undefined,
+            story: row.story_vi ?? undefined,
+            clicks: 0,
+            views: 0,
+            status,
+            createdAt: row.created_at,
+            hidden: false,
+          };
+        });
+      }
+    } catch (e) {
+      console.warn("Error fetching real products:", e);
+    }
+  }
   const rows = db.products.filter((p) => statusFromPublish(p.status) === status);
   return delay(rows.map(toProduct));
 }
 
 export async function fetchAllProducts(): Promise<Product[]> {
-  return delay(db.products.map(toProduct));
+  return fetchProducts("Approved");
 }
 
 export async function fetchProductsStore(storeId: string): Promise<Product[]> {
+  if (getDataSourceMode() === "real" && supabase) {
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId);
+      let targetShopId = storeId;
+      if (!isUuid) {
+        const { data: s } = await supabase.from("shops").select("id").eq("slug", storeId).maybeSingle();
+        if (s?.id) targetShopId = s.id;
+      }
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, shops(*), categories(*), product_images(*)")
+        .eq("shop_id", targetShopId)
+        .eq("status", "published");
+
+      if (!error && data) {
+        return data.map((row: any) => {
+          const shop = row.shops;
+          const category = row.categories;
+          const images = (row.product_images || [])
+            .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
+            .map((img: any) => resolveImageUrl(img.url));
+
+          return {
+            id: row.id,
+            storeId: row.shop_id,
+            storeName: shop?.name ?? "",
+            storeLogo: shop?.logo_url ? resolveImageUrl(shop.logo_url) : undefined,
+            name: row.name_vi,
+            price: row.price_vnd ?? 0,
+            currency: "VND",
+            description: row.short_desc_vi ?? "",
+            images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
+            category: category?.name_vi ?? "",
+            categorySlug: category?.slug ?? "",
+            categoryGroup: category?.name_vi ?? "",
+            categoryGroupSlug: category?.slug ?? "",
+            variants: [],
+            material: "",
+            size: row.dimensions ?? undefined,
+            story: row.story_vi ?? undefined,
+            clicks: 0,
+            views: 0,
+            status: "Approved",
+            createdAt: row.created_at,
+            hidden: false,
+          };
+        });
+      }
+    } catch (e) {
+      console.warn("Error fetching real products for store:", e);
+    }
+  }
   return delay(db.products.filter((p) => p.shop_id === storeId).map(toProduct));
 }
 
 export async function fetchProductById(productId: string): Promise<Product | null> {
-  const row = db.products.find((p) => p.id === productId);
+  if (getDataSourceMode() === "real" && supabase) {
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId);
+      const query = supabase.from("products").select("*, shops(*), categories(*), product_images(*)");
+      const { data, error } = await (isUuid ? query.eq("id", productId) : query.eq("slug", productId)).maybeSingle();
+
+      if (!error && data) {
+        const shop = data.shops;
+        const category = data.categories;
+        const images = (data.product_images || [])
+          .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
+          .map((img: any) => resolveImageUrl(img.url));
+
+        return {
+          id: data.id,
+          storeId: data.shop_id,
+          storeName: shop?.name ?? "",
+          storeLogo: shop?.logo_url ? resolveImageUrl(shop.logo_url) : undefined,
+          name: data.name_vi,
+          price: data.price_vnd ?? 0,
+          currency: "VND",
+          description: data.short_desc_vi ?? "",
+          images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
+          category: category?.name_vi ?? "",
+          categorySlug: category?.slug ?? "",
+          categoryGroup: category?.name_vi ?? "",
+          categoryGroupSlug: category?.slug ?? "",
+          variants: [],
+          material: "",
+          size: data.dimensions ?? undefined,
+          story: data.story_vi ?? undefined,
+          clicks: 0,
+          views: 0,
+          status: "Approved",
+          createdAt: data.created_at,
+          hidden: false,
+        };
+      }
+    } catch (e) {
+      console.warn("Error fetching real product by id:", e);
+    }
+  }
+  const row = db.products.find((p) => p.id === productId || p.slug === productId);
   return delay(row ? toProduct(row) : null);
 }
 

@@ -9,6 +9,7 @@ coverage/
 .venv/
 portal.html
 note.txt
+passwords.md
 
 # Claude Code local machine settings (absolute paths, per-machine grants)
 .claude/settings.local.json

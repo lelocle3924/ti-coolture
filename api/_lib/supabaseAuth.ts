@@ -17,6 +17,19 @@ export interface AuthenticatedStaffContext {
   role: "admin" | "moderator" | "viewer";
 }
 
+export interface AuthenticatedPortalContext {
+  userId: string;
+  userEmail: string;
+  isAdmin: boolean;
+  adminRole?: "admin" | "moderator" | "viewer";
+  staffName?: string;
+  shopId?: string;
+  shopName?: string;
+  shopSlug?: string;
+  shopStatus?: string;
+  role: "admin" | "owner" | "editor";
+}
+
 /**
  * Extracts Bearer token from incoming request headers.
  */
@@ -27,11 +40,10 @@ export function extractBearerToken(authHeader?: string): string | null {
 }
 
 /**
- * Verifies the Supabase JWT and resolves the user's authorized shop membership.
- * Features Auto-Linking: If the user is logging in with an email that was invited,
- * they are automatically enrolled into `shop_members`.
+ * Authenticates any valid portal user (Staff Admin OR Shop Partner).
+ * Returns their role and contextual metadata.
  */
-export async function authenticateShopMember(authHeader?: string): Promise<AuthenticatedShopContext> {
+export async function authenticatePortalUser(authHeader?: string): Promise<AuthenticatedPortalContext> {
   const token = extractBearerToken(authHeader);
   if (!token) {
     throw new Error("Vui lòng đăng nhập với tài khoản Google để tiếp tục.");
@@ -52,7 +64,36 @@ export async function authenticateShopMember(authHeader?: string): Promise<Authe
     throw new Error("Tài khoản Google không có email hợp lệ.");
   }
 
-  // 2. Check existing shop membership in shop_members
+  // 2. Check Staff / Admin membership (by user_id or by email)
+  let staffData: any = null;
+  const { data: staffByUid } = await supabase
+    .from("staff_members")
+    .select("id, role, full_name, is_active, user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (staffByUid) {
+    staffData = staffByUid;
+  } else {
+    const { data: staffByEmail } = await supabase
+      .from("staff_members")
+      .select("id, role, full_name, is_active, user_id")
+      .eq("email", userEmail)
+      .maybeSingle();
+
+    if (staffByEmail) {
+      staffData = staffByEmail;
+      // Link user_id to staff record
+      await supabase
+        .from("staff_members")
+        .update({ user_id: user.id })
+        .eq("id", staffByEmail.id);
+    }
+  }
+
+  const isStaffActive = Boolean(staffData && staffData.is_active);
+
+  // 3. Check existing shop membership in shop_members
   const { data: memberData } = await supabase
     .from("shop_members")
     .select(`
@@ -67,75 +108,107 @@ export async function authenticateShopMember(authHeader?: string): Promise<Authe
     .eq("user_id", user.id)
     .single();
 
+  let shopInfo: any = null;
   if (memberData && memberData.shops) {
-    const shop = memberData.shops as any;
-    return {
-      userId: user.id,
-      userEmail,
-      shopId: shop.id,
-      shopName: shop.name,
-      shopSlug: shop.slug,
-      shopStatus: shop.status,
-      role: memberData.shop_role as "owner" | "editor",
-    };
+    shopInfo = memberData.shops;
   }
 
-  // 3. Auto-linking: Check if there is an active/pending invitation for this email
-  const { data: inviteData } = await supabase
-    .from("shop_invitations")
-    .select(`
-      id,
-      shop_id,
-      shop_role,
-      status,
-      expires_at,
-      shops (
+  // 4. Auto-linking: Check if there is an active/pending invitation for this email
+  if (!shopInfo) {
+    const { data: inviteData } = await supabase
+      .from("shop_invitations")
+      .select(`
         id,
-        name,
-        slug,
-        status
-      )
-    `)
-    .eq("invited_email", userEmail)
-    .eq("status", "pending")
-    .single();
+        shop_id,
+        shop_role,
+        status,
+        expires_at,
+        shops (
+          id,
+          name,
+          slug,
+          status
+        )
+      `)
+      .eq("invited_email", userEmail)
+      .eq("status", "pending")
+      .single();
 
-  if (inviteData && inviteData.shops) {
-    const expiry = new Date(inviteData.expires_at).getTime();
-    if (expiry > Date.now()) {
-      // Auto-enroll user into shop_members
-      await supabase.from("shop_members").insert({
-        user_id: user.id,
-        shop_id: inviteData.shop_id,
-        shop_role: inviteData.shop_role,
-      });
+    if (inviteData && inviteData.shops) {
+      const expiry = new Date(inviteData.expires_at).getTime();
+      if (expiry > Date.now()) {
+        await supabase.from("shop_members").insert({
+          user_id: user.id,
+          shop_id: inviteData.shop_id,
+          shop_role: inviteData.shop_role,
+        });
 
-      // Mark invitation as accepted
-      await supabase
-        .from("shop_invitations")
-        .update({
-          status: "accepted",
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", inviteData.id);
+        await supabase
+          .from("shop_invitations")
+          .update({
+            status: "accepted",
+            accepted_at: new Date().toISOString(),
+          })
+          .eq("id", inviteData.id);
 
-      const shop = inviteData.shops as any;
-      return {
-        userId: user.id,
-        userEmail,
-        shopId: shop.id,
-        shopName: shop.name,
-        shopSlug: shop.slug,
-        shopStatus: shop.status,
-        role: inviteData.shop_role as "owner" | "editor",
-      };
+        shopInfo = inviteData.shops;
+      }
     }
   }
 
-  // 4. Unauthorized
+  // If user is Staff/Admin: allow entry!
+  if (isStaffActive) {
+    return {
+      userId: user.id,
+      userEmail,
+      isAdmin: true,
+      adminRole: staffData.role as "admin" | "moderator" | "viewer",
+      staffName: staffData.full_name,
+      shopId: shopInfo?.id,
+      shopName: shopInfo?.name,
+      shopSlug: shopInfo?.slug,
+      shopStatus: shopInfo?.status,
+      role: "admin",
+    };
+  }
+
+  // If user has a shop: allow entry!
+  if (shopInfo) {
+    return {
+      userId: user.id,
+      userEmail,
+      isAdmin: false,
+      shopId: shopInfo.id,
+      shopName: shopInfo.name,
+      shopSlug: shopInfo.slug,
+      shopStatus: shopInfo.status,
+      role: (memberData?.shop_role as "owner" | "editor") || "owner",
+    };
+  }
+
+  // Unauthorized
   throw new Error(
     `Email Google "${userEmail}" chưa được cấp quyền quản lý xưởng nào trên Tí Coolture. Vui lòng liên hệ ban quản trị để được hỗ trợ.`
   );
+}
+
+/**
+ * Legacy shop member auth helper
+ */
+export async function authenticateShopMember(authHeader?: string): Promise<AuthenticatedShopContext> {
+  const context = await authenticatePortalUser(authHeader);
+  if (!context.shopId) {
+    throw new Error("Tài khoản chưa được liên kết với xưởng nào.");
+  }
+  return {
+    userId: context.userId,
+    userEmail: context.userEmail,
+    shopId: context.shopId,
+    shopName: context.shopName || "",
+    shopSlug: context.shopSlug || "",
+    shopStatus: context.shopStatus || "draft",
+    role: context.role === "editor" ? "editor" : "owner",
+  };
 }
 
 /**
@@ -155,14 +228,34 @@ export async function authenticateStaffMember(authHeader?: string): Promise<Auth
   }
 
   const user = userData.user;
+  const userEmail = (user.email || "").toLowerCase().trim();
 
-  const { data: staffData, error: staffError } = await supabase
+  let staffData: any = null;
+  const { data: staffByUid } = await supabase
     .from("staff_members")
-    .select("role, full_name, is_active")
+    .select("id, role, full_name, is_active, user_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (staffError || !staffData || !staffData.is_active) {
+  if (staffByUid) {
+    staffData = staffByUid;
+  } else {
+    const { data: staffByEmail } = await supabase
+      .from("staff_members")
+      .select("id, role, full_name, is_active, user_id")
+      .eq("email", userEmail)
+      .maybeSingle();
+
+    if (staffByEmail) {
+      staffData = staffByEmail;
+      await supabase
+        .from("staff_members")
+        .update({ user_id: user.id })
+        .eq("id", staffByEmail.id);
+    }
+  }
+
+  if (!staffData || !staffData.is_active) {
     throw new Error("Tài khoản của bạn không có quyền truy cập quản trị hệ thống.");
   }
 

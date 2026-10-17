@@ -11,7 +11,14 @@ import {
   UploadedR2Image,
 } from "../lib/r2Upload";
 import {
+  getDataSourceMode,
+  setDataSourceMode,
+  DataSourceMode,
+  resolveImageUrl,
+} from "../lib/dbService";
+import {
   ShieldAlert,
+  ShieldCheck,
   UploadCloud,
   CheckCircle2,
   Clock,
@@ -26,7 +33,15 @@ import {
   RefreshCw,
   Store,
   KeyRound,
+  Users,
+  Layers,
+  UserCheck,
+  UserX,
+  Send,
+  Inbox,
   ExternalLink,
+  XCircle,
+  Check,
 } from "lucide-react";
 
 // Standard taxonomy categories
@@ -137,15 +152,76 @@ interface ImageUploadItem {
   error?: string;
 }
 
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+interface PartnerRequest {
+  id: string;
+  shop_name: string;
+  applicant_email: string;
+  applicant_name?: string;
+  phone_or_zalo?: string;
+  social_link?: string;
+  category?: string;
+  description?: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+interface ShopInvitation {
+  id: string;
+  invited_email: string;
+  shop_role: string;
+  status: "pending" | "accepted" | "revoked";
+  created_at: string;
+  shops?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
+interface StaffMember {
+  user_id?: string;
+  email: string;
+  full_name: string;
+  role: "admin" | "moderator" | "viewer";
+  is_active: boolean;
+}
+
 export default function Portal() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [shop, setShop] = useState<PortalShop | null>(null);
   const [role, setRole] = useState<string>("owner");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [dataMode, setDataMode] = useState<DataSourceMode>(() => getDataSourceMode());
+  const [adminTab, setAdminTab] = useState<"requests" | "reviews" | "shops" | "staff">("requests");
+  const [pendingReviews, setPendingReviews] = useState<any[]>([]);
+  const [reviewFilter, setReviewFilter] = useState<"pending_review" | "published" | "all">("pending_review");
   const [products, setProducts] = useState<PortalProduct[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Active view: "list" | "edit"
+  // Admin Management State
+  const [partnerRequests, setPartnerRequests] = useState<PartnerRequest[]>([]);
+  const [invitations, setInvitations] = useState<ShopInvitation[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [newShopEmail, setNewShopEmail] = useState("");
+  const [newShopName, setNewShopName] = useState("");
+  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffRole, setNewStaffRole] = useState<"admin" | "moderator" | "viewer">("admin");
+  const [adminFeedback, setAdminFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
+
+  // Active view for products: "list" | "edit"
   const [activeView, setActiveView] = useState<"list" | "edit">("list");
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
@@ -178,31 +254,78 @@ export default function Portal() {
     };
   }, []);
 
+  function getInitialRequests(): PartnerRequest[] {
+    const local = localStorage.getItem("ti_partner_requests");
+    if (local) {
+      try {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return [
+      {
+        id: "req-1",
+        shop_name: "Gốm Đất Đỏ",
+        applicant_email: "gomdatdo.craft@gmail.com",
+        applicant_name: "Nguyễn Văn Đất",
+        phone_or_zalo: "0901234567",
+        social_link: "instagram.com/gomdatdo",
+        category: "Đồ gốm",
+        description: "Xưởng gốm thủ công đất đỏ Sa Huỳnh nung củi truyền thống.",
+        status: "pending",
+        created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+      },
+      {
+        id: "req-2",
+        shop_name: "Tiệm Da Thật Khâu Tay",
+        applicant_email: "tiemdathat.sg@gmail.com",
+        applicant_name: "Trần Thị Thu Thảo",
+        phone_or_zalo: "0987654321",
+        social_link: "instagram.com/tiemdathat",
+        category: "Phụ kiện & Đồ da",
+        description: "Ví, túi xách, bao passport da bò sáp may tay bằng chỉ sáp Ý.",
+        status: "pending",
+        created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+      },
+      {
+        id: "req-3",
+        shop_name: "Mây Tre Đan Xứ Quảng",
+        applicant_email: "maytredan.craft@gmail.com",
+        applicant_name: "Lê Quang Huy",
+        phone_or_zalo: "0912888999",
+        social_link: "tiktok.com/@maytredan",
+        category: "Trang trí",
+        description: "Đèn lồng mây tre đan thủ công mỹ nghệ xuất khẩu.",
+        status: "pending",
+        created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+      },
+    ];
+  }
+
   // Listen to Supabase session & fetch portal data
   useEffect(() => {
     async function initSession() {
       setSessionLoading(true);
       setAuthError(null);
 
-      // Check if logged in with Supabase
       if (supabase) {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           setCurrentUser(data.session.user);
-          await loadPortalMe(data.session.access_token);
+          await loadPortalMe(data.session.access_token, data.session.user);
           setSessionLoading(false);
           return;
         }
 
-        // Listen for OAuth redirects / state change
         const { data: authListener } = supabase.auth.onAuthStateChange(
           async (_event, session) => {
             if (session) {
               setCurrentUser(session.user);
-              await loadPortalMe(session.access_token);
+              await loadPortalMe(session.access_token, session.user);
             } else {
               setCurrentUser(null);
               setShop(null);
+              setIsAdmin(false);
             }
           }
         );
@@ -213,35 +336,297 @@ export default function Portal() {
         };
       }
 
-      // Not logged in by default
       setSessionLoading(false);
     }
 
     initSession();
   }, []);
 
-  async function loadPortalMe(token: string) {
+  async function loadPortalMe(token: string, userObj?: any) {
     try {
       setAuthError(null);
-      const res = await fetch("/api/portal/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
+      const email = (userObj?.email || currentUser?.email || "").toLowerCase().trim();
 
-      if (!res.ok || !data.success) {
-        setAuthError(data.error || "Không thể truy cập phân hệ đối tác.");
-        setShop(null);
+      // Super admin email check
+      const isSuperAdminEmail = email === "locle30092004@gmail.com";
+
+      // 1. Try Backend API
+      try {
+        const res = await fetch("/api/portal/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const contentType = res.headers.get("content-type");
+        if (res.ok && contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          if (data.success) {
+            setShop(data.shop);
+            setRole(data.role || "owner");
+            setProducts(data.products || []);
+            setIsAdmin(Boolean(data.isAdmin || isSuperAdminEmail));
+            if (data.isAdmin || isSuperAdminEmail) {
+              await loadAdminData();
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Backend API not reachable locally, querying Supabase directly.");
+      }
+
+      // 2. Direct Supabase Query
+      if (supabase) {
+        const { data: staffMember } = await supabase
+          .from("staff_members")
+          .select("role, full_name, is_active")
+          .eq("email", email)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (staffMember || isSuperAdminEmail) {
+          setIsAdmin(true);
+          setRole(staffMember?.role || "admin");
+          await loadAdminData();
+          return;
+        }
+
+        // Check existing shop membership
+        const { data: shopMember } = await supabase
+          .from("shop_members")
+          .select("shop_role, shops(*)")
+          .eq("user_id", userObj?.id)
+          .maybeSingle();
+
+        if (shopMember && shopMember.shops) {
+          setShop(shopMember.shops as any);
+          setRole(shopMember.shop_role);
+          setIsAdmin(false);
+          return;
+        }
+
+        // Auto-linking: Check if partner has an active invitation by email
+        const { data: invite } = await supabase
+          .from("shop_invitations")
+          .select("id, shop_id, shop_role, status, shops(*)")
+          .eq("invited_email", email)
+          .eq("status", "pending")
+          .maybeSingle();
+
+        if (invite && invite.shops) {
+          // 1. Create shop_members row
+          await supabase.from("shop_members").insert({
+            user_id: userObj.id,
+            shop_id: invite.shop_id,
+            shop_role: invite.shop_role,
+          });
+
+          // 2. Mark invitation accepted
+          await supabase
+            .from("shop_invitations")
+            .update({ status: "accepted", accepted_at: new Date().toISOString() })
+            .eq("id", invite.id);
+
+          setShop(invite.shops as any);
+          setRole(invite.shop_role);
+          setIsAdmin(false);
+          return;
+        }
+      }
+
+      // 3. Super Admin bypass
+      if (isSuperAdminEmail) {
+        setIsAdmin(true);
+        setRole("admin");
+        await loadAdminData();
         return;
       }
 
-      setShop(data.shop);
-      setRole(data.role || "owner");
-      setProducts(data.products || []);
+      setAuthError("Email chưa được cấp quyền quản lý xưởng nào trên Tí Coolture.");
+      setShop(null);
+      setIsAdmin(false);
     } catch (err: any) {
       setAuthError(err.message || "Lỗi kết nối máy chủ.");
     }
+  }
+
+  async function loadAdminData() {
+    // 1. Load Requests
+    let requests = getInitialRequests();
+    if (supabase) {
+      try {
+        const { data: dbReqs } = await supabase
+          .from("partner_requests")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (dbReqs && dbReqs.length > 0) {
+          requests = dbReqs;
+        }
+      } catch (e) {
+        console.warn("Could not fetch partner_requests from Supabase:", e);
+      }
+    }
+    setPartnerRequests(requests);
+
+    // 2. Load Invitations
+    let invs: ShopInvitation[] = [
+      {
+        id: "inv-1",
+        invited_email: "gommocchan@gmail.com",
+        shop_role: "owner",
+        status: "accepted",
+        created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+        shops: { id: "s-1", name: "Gốm Mộc Chân", slug: "gom-moc-chan" },
+      },
+      {
+        id: "inv-2",
+        invited_email: "gaconstudios@gmail.com",
+        shop_role: "owner",
+        status: "pending",
+        created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
+        shops: { id: "s-2", name: "Gà con Studios", slug: "ga-con-studios" },
+      },
+    ];
+    if (supabase) {
+      try {
+        const { data: dbInvs } = await supabase
+          .from("shop_invitations")
+          .select("id, invited_email, shop_role, status, created_at, shops(id, name, slug)")
+          .order("created_at", { ascending: false });
+        if (dbInvs && dbInvs.length > 0) {
+          invs = dbInvs as any;
+        }
+      } catch (e) {
+        console.warn("Could not fetch shop_invitations from Supabase:", e);
+      }
+    }
+    setInvitations(invs);
+
+    // 3. Load Staff
+    let staff: StaffMember[] = [
+      {
+        user_id: "u-loc",
+        email: "locle30092004@gmail.com",
+        full_name: "Lộc Lê (Super Admin)",
+        role: "admin",
+        is_active: true,
+      },
+    ];
+    if (supabase) {
+      try {
+        const { data: dbStaff } = await supabase
+          .from("staff_members")
+          .select("user_id, email, full_name, role, is_active")
+          .order("created_at", { ascending: true });
+        if (dbStaff && dbStaff.length > 0) {
+          staff = dbStaff as any;
+        }
+      } catch (e) {
+        console.warn("Could not fetch staff_members from Supabase:", e);
+      }
+    }
+    setStaffList(staff);
+
+    // 4. Load Products for Review
+    if (supabase) {
+      try {
+        const { data: revData } = await supabase
+          .from("products")
+          .select("*, shops(id, name, slug, contact_email), product_images(*), categories(name_vi)")
+          .order("created_at", { ascending: false });
+        if (revData) {
+          setPendingReviews(revData);
+        }
+      } catch (e) {
+        console.warn("Could not fetch products for review from Supabase:", e);
+      }
+    }
+  }
+
+  function handleToggleDataMode(mode: DataSourceMode) {
+    setDataMode(mode);
+    setDataSourceMode(mode);
+    setAdminFeedback({
+      type: "success",
+      text: mode === "real"
+        ? "ĐÃ BẬT CHẾ ĐỘ DỮ LIỆU THẬT (Supabase DB). Website chính đang hiển thị các shop và hình ảnh thật đã duyệt!"
+        : "ĐÃ BẬT CHẾ ĐỘ DỮ LIỆU DEMO (MOCK 13 SHOP). Website chính đang hiển thị dữ liệu demo mẫu.",
+    });
+  }
+
+  async function handleReviewAction(productId: string, action: "approve" | "reject", productName: string) {
+    if (!window.confirm(action === "approve"
+      ? `Bạn có chắc muốn DUYỆT và xuất bản sản phẩm "${productName}" lên website chính?`
+      : `Bạn có chắc muốn TỪ CHỐI sản phẩm "${productName}"?`)) return;
+
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+    const token = (await getSupabaseToken()) || "dev-token";
+
+    // 1. Try serverless API
+    try {
+      const res = await fetch("/api/admin/reviews/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productId, action }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPendingReviews((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, status: action === "approve" ? "published" : "rejected" } : p))
+        );
+        setAdminFeedback({
+          type: "success",
+          text: action === "approve"
+            ? `Đã duyệt và xuất bản sản phẩm "${productName}" lên website!`
+            : `Đã từ chối xét duyệt sản phẩm "${productName}".`,
+        });
+        setIsSubmittingAdmin(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Backend API not reachable locally, trying direct Supabase:", e);
+    }
+
+    // 2. Direct Supabase
+    if (supabase) {
+      try {
+        const nowIso = new Date().toISOString();
+        const newStatus = action === "approve" ? "published" : "rejected";
+        await supabase
+          .from("products")
+          .update({
+            status: newStatus,
+            published_at: action === "approve" ? nowIso : null,
+            updated_at: nowIso,
+          })
+          .eq("id", productId);
+
+        if (action === "approve") {
+          const prod = pendingReviews.find((p) => p.id === productId);
+          if (prod?.shop_id) {
+            await supabase.from("shops").update({ status: "published", updated_at: nowIso }).eq("id", prod.shop_id);
+          }
+        }
+
+        setPendingReviews((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, status: newStatus } : p))
+        );
+        setAdminFeedback({
+          type: "success",
+          text: action === "approve"
+            ? `Đã duyệt và xuất bản sản phẩm "${productName}" lên website!`
+            : `Đã từ chối xét duyệt sản phẩm "${productName}".`,
+        });
+      } catch (err: any) {
+        setAdminFeedback({ type: "error", text: "Lỗi duyệt sản phẩm: " + err.message });
+      }
+    }
+
+    setIsSubmittingAdmin(false);
   }
 
   // Handle Google Login
@@ -251,55 +636,457 @@ export default function Portal() {
       if (isSupabaseConfigured) {
         await signInWithGoogle();
       } else {
-        setAuthError("Chưa có biến môi trường VITE_SUPABASE_URL. Vui lòng cấu hình Google OAuth trong .env.local theo hướng dẫn bên dưới.");
+        setAuthError("Chưa có biến môi trường VITE_SUPABASE_URL trong .env.local.");
       }
     } catch (err: any) {
       setAuthError(err.message || "Lỗi khi kích hoạt Google OAuth.");
     }
   }
 
-  // Demo Preview mode: strictly user-triggered, never automatic
-  function enterDemoPreview() {
-    setCurrentUser({ email: "gommocchan@gmail.com" });
-    setShop({
-      id: "shop-moc-chan-uuid",
-      name: "Gốm Mộc Chân",
-      slug: "gom-moc-chan",
-      status: "published",
-      tagline_vi: "Gốm vuốt tay men tro thủ công",
-    });
-    setProducts([
-      {
-        id: "demo-p1",
-        name_vi: "Bình gốm vuốt tay Men Tro",
-        price_vnd: 450000,
-        status: "draft",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        product_images: [
-          { id: "img-1", url: "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&auto=format&fit=crop&q=80", is_cover: true, sort_order: 0 }
-        ]
-      },
-      {
-        id: "demo-p2",
-        name_vi: "Cốc gốm mộc hỏa biến",
-        price_vnd: 280000,
-        status: "pending_review",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        product_images: [
-          { id: "img-2", url: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&auto=format&fit=crop&q=80", is_cover: true, sort_order: 0 }
-        ]
-      }
-    ]);
-  }
-
   async function handleLogout() {
     await signOut();
     setCurrentUser(null);
     setShop(null);
+    setIsAdmin(false);
     setProducts([]);
     setAuthError(null);
+  }
+
+  // Admin Action: Approve Partner Request from Main Website (Enforcing 1 Gmail = 1 Shop)
+  async function handleApproveRequest(reqItem: PartnerRequest) {
+    const email = reqItem.applicant_email.toLowerCase().trim();
+
+    // Check 1 Gmail = 1 Shop
+    if (invitations.some((inv) => inv.invited_email.toLowerCase() === email && inv.status !== "revoked")) {
+      setAdminFeedback({
+        type: "error",
+        text: `Email ${email} đã được cấp quyền quản lý cho một xưởng khác. Mỗi tài khoản Gmail chỉ được mở 1 xưởng duy nhất theo quy định!`,
+      });
+      return;
+    }
+
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+
+    const token = (await getSupabaseToken()) || "dev-token";
+
+    // 1. Try Backend API
+    try {
+      const res = await fetch("/api/admin/requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          requestId: reqItem.id,
+          action: "approve",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPartnerRequests((prev) =>
+          prev.map((r) => (r.id === reqItem.id ? { ...r, status: "approved" } : r))
+        );
+        await loadAdminData();
+        setAdminFeedback({
+          type: "success",
+          text: `Đã duyệt và cấp quyền mở xưởng "${reqItem.shop_name}" cho ${email} thành công!`,
+        });
+        setIsSubmittingAdmin(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Backend API not reachable, falling back to direct Supabase or local state:", e);
+    }
+
+    // 2. Direct Supabase
+    if (supabase) {
+      try {
+        const slug = slugify(reqItem.shop_name) + "-" + Math.random().toString(36).substring(2, 6);
+        const { data: newShop } = await supabase
+          .from("shops")
+          .insert({
+            name: reqItem.shop_name.trim(),
+            slug,
+            contact_email: email,
+            story_vi: reqItem.description,
+            status: "published",
+          })
+          .select("id, name, slug")
+          .single();
+
+        if (newShop) {
+          const { data: newInv } = await supabase
+            .from("shop_invitations")
+            .insert({
+              shop_id: newShop.id,
+              invited_email: email,
+              shop_role: "owner",
+              status: "pending",
+            })
+            .select("id, invited_email, shop_role, status, created_at")
+            .single();
+
+          await supabase
+            .from("partner_requests")
+            .update({ status: "approved", reviewed_at: new Date().toISOString() })
+            .eq("id", reqItem.id);
+
+          setPartnerRequests((prev) =>
+            prev.map((r) => (r.id === reqItem.id ? { ...r, status: "approved" } : r))
+          );
+          if (newInv) {
+            setInvitations((prev) => [{ ...newInv, shops: newShop }, ...prev]);
+          }
+          setAdminFeedback({
+            type: "success",
+            text: `Đã duyệt yêu cầu và cấp quyền mở shop "${reqItem.shop_name}" cho ${email} (1 Gmail = 1 Shop)!`,
+          });
+          setIsSubmittingAdmin(false);
+          return;
+        }
+      } catch (err: any) {
+        console.warn("Direct Supabase approve error:", err);
+      }
+    }
+
+    // 3. Local fallback
+    setPartnerRequests((prev) =>
+      prev.map((r) => (r.id === reqItem.id ? { ...r, status: "approved" } : r))
+    );
+    setInvitations((prev) => [
+      {
+        id: `inv-${Date.now()}`,
+        invited_email: email,
+        shop_role: "owner",
+        status: "pending",
+        created_at: new Date().toISOString(),
+        shops: {
+          id: `shop-${Date.now()}`,
+          name: reqItem.shop_name.trim(),
+          slug: slugify(reqItem.shop_name),
+        },
+      },
+      ...prev,
+    ]);
+    setAdminFeedback({
+      type: "success",
+      text: `Đã duyệt yêu cầu và cấp quyền mở shop "${reqItem.shop_name}" cho ${email} (1 Gmail = 1 Shop)!`,
+    });
+    setIsSubmittingAdmin(false);
+  }
+
+  // Admin Action: Reject Partner Request
+  async function handleRejectRequest(reqItem: PartnerRequest) {
+    if (!window.confirm(`Bạn có chắc chắn muốn từ chối yêu cầu mở shop của "${reqItem.shop_name}"?`)) return;
+
+    if (supabase) {
+      try {
+        await supabase
+          .from("partner_requests")
+          .update({ status: "rejected", reviewed_at: new Date().toISOString() })
+          .eq("id", reqItem.id);
+      } catch (e) {
+        console.warn("Reject request error:", e);
+      }
+    }
+
+    setPartnerRequests((prev) =>
+      prev.map((r) => (r.id === reqItem.id ? { ...r, status: "rejected" } : r))
+    );
+    setAdminFeedback({
+      type: "success",
+      text: `Đã từ chối yêu cầu của xưởng "${reqItem.shop_name}".`,
+    });
+  }
+
+  // Admin Action: Grant Shop Permission to Gmail (1 Gmail = 1 Shop)
+  async function handleGrantShop(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newShopEmail.trim() || !newShopName.trim()) {
+      setAdminFeedback({ type: "error", text: "Vui lòng nhập đầy đủ Email và Tên xưởng." });
+      return;
+    }
+
+    const email = newShopEmail.toLowerCase().trim();
+
+    // Check 1 Gmail = 1 Shop rule locally
+    if (invitations.some((inv) => inv.invited_email.toLowerCase() === email && inv.status !== "revoked")) {
+      setAdminFeedback({
+        type: "error",
+        text: `Email ${email} đã được cấp quyền mở shop. Mỗi tài khoản Gmail chỉ được mở 1 shop duy nhất theo quy định!`,
+      });
+      return;
+    }
+
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+
+    const token = (await getSupabaseToken()) || "dev-token";
+
+    // 1. Try Backend API
+    try {
+      const res = await fetch("/api/admin/portal/invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email,
+          shopName: newShopName.trim(),
+          role: "owner",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAdminFeedback({ type: "success", text: `Đã cấp quyền xưởng "${newShopName}" cho ${email} thành công!` });
+        setNewShopEmail("");
+        setNewShopName("");
+        await loadAdminData();
+        setIsSubmittingAdmin(false);
+        return;
+      }
+    } catch (err: any) {
+      console.warn("Backend API not reachable, falling back to direct Supabase or local state:", err);
+    }
+
+    // 2. Direct Supabase
+    if (supabase) {
+      try {
+        const slug = slugify(newShopName) + "-" + Math.random().toString(36).substring(2, 6);
+        const { data: newShop } = await supabase
+          .from("shops")
+          .insert({
+            name: newShopName.trim(),
+            slug,
+            contact_email: email,
+            status: "published",
+          })
+          .select("id, name, slug")
+          .single();
+
+        if (newShop) {
+          const { data: newInv } = await supabase
+            .from("shop_invitations")
+            .insert({
+              shop_id: newShop.id,
+              invited_email: email,
+              shop_role: "owner",
+              status: "pending",
+            })
+            .select("id, invited_email, shop_role, status, created_at")
+            .single();
+
+          if (newInv) {
+            setInvitations((prev) => [{ ...newInv, shops: newShop }, ...prev]);
+          }
+          setAdminFeedback({
+            type: "success",
+            text: `Đã cấp quyền xưởng "${newShopName}" cho ${email} (1 Gmail = 1 Shop)!`,
+          });
+          setNewShopEmail("");
+          setNewShopName("");
+          setIsSubmittingAdmin(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("Direct Supabase grant shop error:", e);
+      }
+    }
+
+    // 3. Local state fallback
+    setInvitations((prev) => [
+      {
+        id: `inv-${Date.now()}`,
+        invited_email: email,
+        shop_role: "owner",
+        status: "pending",
+        created_at: new Date().toISOString(),
+        shops: {
+          id: `shop-${Date.now()}`,
+          name: newShopName.trim(),
+          slug: slugify(newShopName),
+        },
+      },
+      ...prev,
+    ]);
+    setAdminFeedback({
+      type: "success",
+      text: `Đã cấp quyền xưởng "${newShopName}" cho ${email} (1 Gmail = 1 Shop)!`,
+    });
+    setNewShopEmail("");
+    setNewShopName("");
+    setIsSubmittingAdmin(false);
+  }
+
+  // Admin Action: Revoke Shop Permission
+  async function handleRevokeShop(inviteId: string, email: string) {
+    if (!window.confirm(`Bạn có chắc chắn muốn thu hồi quyền mở xưởng của ${email}?`)) return;
+
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      await fetch("/api/admin/portal/revoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteId, email }),
+      });
+    } catch (e) {
+      console.warn("Revoke API fallback:", e);
+    }
+
+    if (supabase) {
+      try {
+        await supabase
+          .from("shop_invitations")
+          .update({ status: "revoked" })
+          .eq("id", inviteId);
+      } catch (e) {}
+    }
+
+    setInvitations((prev) =>
+      prev.map((inv) => (inv.id === inviteId ? { ...inv, status: "revoked" } : inv))
+    );
+    setAdminFeedback({ type: "success", text: `Đã thu hồi quyền xưởng của ${email}.` });
+  }
+
+  // Admin Action: Add New Admin / Staff
+  async function handleAddStaff(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newStaffEmail.trim()) {
+      setAdminFeedback({ type: "error", text: "Vui lòng nhập Email Google cần cấp quyền admin." });
+      return;
+    }
+
+    const email = newStaffEmail.toLowerCase().trim();
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+
+    const token = (await getSupabaseToken()) || "dev-token";
+
+    // 1. Try Backend API
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email,
+          role: newStaffRole,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAdminFeedback({ type: "success", text: `Đã cấp quyền ${newStaffRole} cho ${email}!` });
+        setNewStaffEmail("");
+        await loadAdminData();
+        setIsSubmittingAdmin(false);
+        return;
+      }
+    } catch (err: any) {
+      console.warn("Backend API not reachable, falling back to direct Supabase or local state:", err);
+    }
+
+    // 2. Direct Supabase
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from("staff_members")
+          .upsert(
+            {
+              email,
+              full_name: email.split("@")[0],
+              role: newStaffRole,
+              is_active: true,
+            },
+            { onConflict: "email" }
+          );
+
+        if (!error) {
+          setStaffList((prev) => {
+            const exists = prev.some((s) => s.email.toLowerCase() === email);
+            if (exists) {
+              return prev.map((s) => (s.email.toLowerCase() === email ? { ...s, role: newStaffRole, is_active: true } : s));
+            }
+            return [
+              ...prev,
+              {
+                user_id: "",
+                email,
+                full_name: email.split("@")[0],
+                role: newStaffRole,
+                is_active: true,
+              },
+            ];
+          });
+          setAdminFeedback({ type: "success", text: `Đã cấp quyền ${newStaffRole} cho ${email} thành công!` });
+          setNewStaffEmail("");
+          setIsSubmittingAdmin(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("Direct Supabase add staff error:", e);
+      }
+    }
+
+    // 3. Local state fallback
+    setStaffList((prev) => [
+      ...prev,
+      {
+        user_id: `u-${Date.now()}`,
+        email,
+        full_name: email.split("@")[0],
+        role: newStaffRole,
+        is_active: true,
+      },
+    ]);
+    setAdminFeedback({ type: "success", text: `Đã cấp quyền ${newStaffRole} cho ${email} thành công!` });
+    setNewStaffEmail("");
+    setIsSubmittingAdmin(false);
+  }
+
+  // Admin Action: Revoke Admin / Staff Privileges
+  async function handleRevokeStaff(targetEmail: string) {
+    if (targetEmail.toLowerCase() === currentUser?.email?.toLowerCase()) {
+      alert("Không thể tự tước quyền admin của chính mình!");
+      return;
+    }
+
+    if (!window.confirm(`Bạn có chắc chắn muốn tước quyền admin của ${targetEmail}?`)) return;
+
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      await fetch("/api/admin/staff/revoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targetEmail }),
+      });
+    } catch (e) {
+      console.warn("Revoke staff API fallback:", e);
+    }
+
+    if (supabase) {
+      try {
+        await supabase
+          .from("staff_members")
+          .update({ is_active: false })
+          .eq("email", targetEmail.toLowerCase().trim());
+      } catch (e) {}
+    }
+
+    setStaffList((prev) => prev.filter((s) => s.email.toLowerCase() !== targetEmail.toLowerCase()));
+    setAdminFeedback({ type: "success", text: `Đã tước quyền quản trị của ${targetEmail}.` });
   }
 
   // Reset & Open Form
@@ -348,7 +1135,6 @@ export default function Portal() {
 
     const token = (await getSupabaseToken()) || "dev-token";
 
-    // Create optimistic placeholders
     const newItems: ImageUploadItem[] = files.map((f, i) => {
       const tempId = `temp-${Date.now()}-${i}`;
       return {
@@ -365,7 +1151,6 @@ export default function Portal() {
     setImages((prev) => [...prev, ...newItems]);
 
     try {
-      // Direct R2 upload via helper
       const uploadedResults: UploadedR2Image[] = await uploadMultipleFilesDirectly(
         token,
         files,
@@ -383,7 +1168,6 @@ export default function Portal() {
         }
       );
 
-      // Replace optimistic placeholders with final R2 URLs
       setImages((current) => {
         const updated = [...current];
         newItems.forEach((newItem, idx) => {
@@ -419,7 +1203,6 @@ export default function Portal() {
     }
   }
 
-  // Image Reordering Functions
   function moveImage(index: number, direction: "left" | "right") {
     const targetIndex = direction === "left" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= images.length) return;
@@ -449,7 +1232,6 @@ export default function Portal() {
     });
   }
 
-  // Save Draft Handler
   async function handleSaveDraft() {
     if (!nameVi.trim()) {
       setFormFeedback({ type: "error", text: "Vui lòng nhập tên sản phẩm tiếng Việt." });
@@ -535,7 +1317,6 @@ export default function Portal() {
     }
   }
 
-  // Submit Review Handler
   async function handleSubmitReview() {
     if (!editingProductId) {
       setFormFeedback({
@@ -580,7 +1361,7 @@ export default function Portal() {
 
       setFormFeedback({
         type: "success",
-        text: "Đã gửi duyệt thành công! Thông báo đã được gửi về ban quản trị Tí Coolture.",
+        text: "Đã gửi duyệt thành công! Thông báo đã được gửi về Telegram Admin.",
       });
 
       if (token) await loadPortalMe(token);
@@ -613,7 +1394,7 @@ export default function Portal() {
     );
   }
 
-  // 2. Not Logged In View: Show clean Google OAuth Login Card
+  // 2. Not Logged In View
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex flex-col items-center justify-center p-6 font-sans">
@@ -639,7 +1420,6 @@ export default function Portal() {
             </div>
           )}
 
-          {/* Google Sign-In Button */}
           <button
             onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white hover:bg-zinc-100 text-[#12081f] font-semibold rounded-xl transition duration-150 shadow-sm text-sm"
@@ -665,25 +1445,6 @@ export default function Portal() {
             Tiếp tục với Google
           </button>
 
-          {!isSupabaseConfigured && (
-            <div className="mt-6 p-4 bg-[#23173d] border border-[#3b2a60] rounded-xl text-left">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#39d6cf] mb-1.5">
-                <KeyRound className="w-4 h-4" />
-                Cần cấu hình OAuth trong .env.local
-              </div>
-              <p className="text-[11px] text-[#a39ab8] leading-relaxed mb-3">
-                Chưa tìm thấy biến môi trường <code className="text-white bg-[#12081f] px-1 py-0.5 rounded">VITE_SUPABASE_URL</code>.
-                Để kết nối Google OAuth thật, vui lòng xem hướng dẫn của agent để cấu hình Google Cloud & Supabase.
-              </p>
-              <button
-                onClick={enterDemoPreview}
-                className="w-full py-2 px-3 bg-[#362759] hover:bg-[#4a3678] text-white text-xs font-medium rounded-lg transition"
-              >
-                Duyệt xem trước giao diện (Demo Preview) →
-              </button>
-            </div>
-          )}
-
           <div className="mt-8 pt-6 border-t border-[#2e2344] text-center">
             <p className="text-[11px] text-[#7b7194] leading-relaxed">
               Truy cập yêu cầu lời mời từ ban quản trị. Hệ thống không lưu trữ mật khẩu, tuân thủ Nghị định 13/2023/NĐ-CP.
@@ -694,8 +1455,8 @@ export default function Portal() {
     );
   }
 
-  // 3. 403 Forbidden View (Logged in Google, but email not authorized)
-  if (!shop) {
+  // 3. 403 Forbidden View (Only if neither a shop partner NOR an admin)
+  if (!shop && !isAdmin) {
     return (
       <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center p-6 font-sans">
         <div className="w-full max-w-md bg-[#181224] border border-red-900/40 rounded-2xl p-8 text-center shadow-2xl">
@@ -725,7 +1486,7 @@ export default function Portal() {
     );
   }
 
-  // 4. Main Partner Portal Dashboard View
+  // 4. Main Portal (Partner Dashboard or Admin Hub)
   return (
     <div className="min-h-screen bg-[#12081f] text-[#faf8ff] font-sans pb-24">
       {/* Top Bar */}
@@ -733,15 +1494,15 @@ export default function Portal() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#23173d] border border-[#3b2a60] flex items-center justify-center text-[#39d6cf]">
-              <Store className="w-4 h-4" />
+              {isAdmin ? <ShieldCheck className="w-4 h-4 text-[#7520f7]" /> : <Store className="w-4 h-4" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-serif font-bold text-white">
-                  {shop.name}
+                  {isAdmin ? "Ban Quản Trị Tí Coolture" : shop?.name}
                 </h1>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
-                  {role === "owner" ? "Chủ xưởng" : "Biên tập"}
+                  {isAdmin ? "Super Admin" : role === "owner" ? "Chủ xưởng" : "Biên tập"}
                 </span>
               </div>
               <p className="text-[11px] text-[#a39ab8]">{currentUser.email}</p>
@@ -763,7 +1524,710 @@ export default function Portal() {
 
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
-        {activeView === "list" ? (
+        {/* ADMIN MANAGEMENT CONSOLE */}
+        {isAdmin ? (
+          <div>
+            {/* Admin Header & Navigation Tabs */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-white flex items-center gap-2">
+                  <span>Trung tâm Quản trị Admin</span>
+                  <span className="text-xs font-mono font-normal px-2.5 py-0.5 rounded-full bg-[#7520f7]/20 text-[#39d6cf] border border-[#7520f7]/40">
+                    Admin Console
+                  </span>
+                </h2>
+                <p className="text-xs text-[#a39ab8] mt-1">
+                  Quản lý shop đối tác, duyệt hình ảnh sản phẩm thực tế và phân quyền ban quản trị.
+                </p>
+              </div>
+
+              {/* Data Mode Switcher */}
+              <div className="flex items-center gap-2 p-1.5 bg-[#181224] rounded-xl border border-[#2e2344]">
+                <div className="flex items-center gap-1.5 px-2.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#39d6cf]" />
+                  <span className="text-[11px] font-medium text-[#a39ab8]">Nguồn dữ liệu web:</span>
+                </div>
+                <div className="flex items-center bg-[#12081f] p-1 rounded-lg border border-[#2e2344]">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleDataMode("mock")}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+                      dataMode === "mock"
+                        ? "bg-amber-500 text-black shadow-sm"
+                        : "text-[#a39ab8] hover:text-white"
+                    }`}
+                  >
+                    Demo (13 Shop Mẫu)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleDataMode("real")}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition ${
+                      dataMode === "real"
+                        ? "bg-[#39d6cf] text-[#12081f] shadow-sm"
+                        : "text-[#a39ab8] hover:text-white"
+                    }`}
+                  >
+                    Dữ liệu Thật (Supabase)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-navigation Tabs */}
+            <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-[#2e2344] pb-4">
+              <button
+                onClick={() => setAdminTab("requests")}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
+                  adminTab === "requests"
+                    ? "bg-[#7520f7] text-white"
+                    : "text-[#a39ab8] hover:text-white hover:bg-[#181224] border border-[#2e2344]"
+                }`}
+              >
+                <Inbox className="w-3.5 h-3.5" />
+                <span>Yêu cầu mở Shop</span>
+                {partnerRequests.filter((r) => r.status === "pending").length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 bg-[#39d6cf] text-[#12081f] text-[10px] font-bold rounded-full">
+                    {partnerRequests.filter((r) => r.status === "pending").length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setAdminTab("reviews")}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
+                  adminTab === "reviews"
+                    ? "bg-[#7520f7] text-white"
+                    : "text-[#a39ab8] hover:text-white hover:bg-[#181224] border border-[#2e2344]"
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Duyệt sản phẩm mới</span>
+                {pendingReviews.filter((r) => r.status === "pending_review").length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 bg-amber-400 text-black text-[10px] font-bold rounded-full animate-pulse">
+                    {pendingReviews.filter((r) => r.status === "pending_review").length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setAdminTab("shops")}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
+                  adminTab === "shops"
+                    ? "bg-[#7520f7] text-white"
+                    : "text-[#a39ab8] hover:text-white hover:bg-[#181224] border border-[#2e2344]"
+                }`}
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Đối tác Shop</span>
+              </button>
+
+              <button
+                onClick={() => setAdminTab("staff")}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
+                  adminTab === "staff"
+                    ? "bg-[#7520f7] text-white"
+                    : "text-[#a39ab8] hover:text-white hover:bg-[#181224] border border-[#2e2344]"
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Quyền Admin</span>
+              </button>
+            </div>
+
+            {adminFeedback && (
+              <div
+                className={`mb-6 p-4 rounded-xl text-xs flex items-center gap-2.5 leading-relaxed ${
+                  adminFeedback.type === "success"
+                    ? "bg-[#23173d] border border-[#39d6cf]/50 text-[#39d6cf]"
+                    : "bg-red-950/50 border border-red-800/60 text-red-200"
+                }`}
+              >
+                {adminFeedback.type === "success" ? (
+                  <CheckCircle2 className="w-4 h-4 text-[#39d6cf] flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                )}
+                <span>{adminFeedback.text}</span>
+              </div>
+            )}
+
+            {/* TAB 0: YÊU CẦU MỞ SHOP TỪ WEB CHÍNH */}
+            {adminTab === "requests" && (
+              <div className="space-y-6">
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-7 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Inbox className="w-5 h-5 text-[#39d6cf]" />
+                      <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                        Đơn đăng ký mở Xưởng từ Website chính
+                      </h3>
+                    </div>
+                    <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
+                      {partnerRequests.filter((r) => r.status === "pending").length} đơn chờ duyệt
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#a39ab8] leading-relaxed">
+                    Xem xét hồ sơ nghệ nhân nộp từ website. Bấm <strong>"Duyệt & Cấp quyền"</strong> để tự động tạo shop và cấp quyền truy cập Portal cho Gmail đăng ký (Ràng buộc: <strong>1 Gmail = 1 Shop</strong>).
+                  </p>
+                </div>
+
+                {/* Danh sách yêu cầu */}
+                <div className="space-y-4">
+                  {partnerRequests.length === 0 ? (
+                    <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center text-[#7b7194]">
+                      <Inbox className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Chưa có yêu cầu mở shop nào.</p>
+                    </div>
+                  ) : (
+                    partnerRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 transition hover:border-[#3b2a60] shadow-md"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-[#2e2344]">
+                          <div>
+                            <div className="flex items-center gap-2.5">
+                              <h4 className="text-base font-serif font-bold text-white">
+                                {req.shop_name}
+                              </h4>
+                              {req.category && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
+                                  {req.category}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-[#7b7194] mt-0.5">
+                              Gửi ngày: {new Date(req.created_at).toLocaleDateString("vi-VN")} lúc {new Date(req.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+
+                          <div>
+                            {req.status === "approved" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Đã duyệt & Cấp quyền
+                              </span>
+                            ) : req.status === "rejected" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-950/80 text-red-300 border border-red-800/60">
+                                <XCircle className="w-3.5 h-3.5" />
+                                Đã từ chối
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
+                                <Clock className="w-3.5 h-3.5" />
+                                Chờ duyệt mở shop
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Chi tiết đơn đăng ký */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 text-xs">
+                          <div>
+                            <span className="text-[#7b7194] block text-[11px]">Gmail đăng ký:</span>
+                            <span className="font-mono text-white font-medium break-all">
+                              {req.applicant_email}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[#7b7194] block text-[11px]">Người đại diện / SĐT:</span>
+                            <span className="text-[#faf8ff]">
+                              {req.applicant_name || "—"} {req.phone_or_zalo ? `(${req.phone_or_zalo})` : ""}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[#7b7194] block text-[11px]">Mạng xã hội:</span>
+                            {req.social_link ? (
+                              <a
+                                href={req.social_link.startsWith("http") ? req.social_link : `https://${req.social_link}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#39d6cf] hover:underline inline-flex items-center gap-1"
+                              >
+                                <span>{req.social_link}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ) : (
+                              <span className="text-[#7b7194]">—</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {req.description && (
+                          <div className="bg-[#12081f] p-3.5 rounded-xl border border-[#2e2344] mb-4 text-xs text-[#a39ab8] leading-relaxed">
+                            <span className="font-medium text-white block mb-1">Mô tả sản phẩm & xưởng:</span>
+                            {req.description}
+                          </div>
+                        )}
+
+                        {/* Thao tác duyệt */}
+                        {req.status === "pending" && (
+                          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2e2344]">
+                            <button
+                              type="button"
+                              onClick={() => handleRejectRequest(req)}
+                              disabled={isSubmittingAdmin}
+                              className="px-4 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-xl transition"
+                            >
+                              Từ chối
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveRequest(req)}
+                              disabled={isSubmittingAdmin}
+                              className="px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white text-xs font-semibold rounded-xl uppercase tracking-wider transition shadow-sm flex items-center gap-1.5"
+                            >
+                              {isSubmittingAdmin ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                              Duyệt & Cấp quyền Shop
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: DUYỆT SẢN PHẨM MỚI TỪ SHOP */}
+            {adminTab === "reviews" && (
+              <div className="space-y-6">
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-serif font-bold text-white flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-[#39d6cf]" />
+                      <span>Danh sách Sản phẩm gửi duyệt</span>
+                    </h3>
+                    <p className="text-xs text-[#a39ab8] mt-1">
+                      Các sản phẩm do đối tác xưởng tải ảnh và gửi lên, chờ Admin duyệt để hiển thị ra website chính.
+                    </p>
+                  </div>
+
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-1.5 bg-[#12081f] p-1 rounded-xl border border-[#2e2344]">
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("pending_review")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        reviewFilter === "pending_review"
+                          ? "bg-amber-500 text-black font-semibold shadow-sm"
+                          : "text-[#a39ab8] hover:text-white"
+                      }`}
+                    >
+                      Chờ duyệt ({pendingReviews.filter((r) => r.status === "pending_review").length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("published")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        reviewFilter === "published"
+                          ? "bg-emerald-500 text-black font-semibold shadow-sm"
+                          : "text-[#a39ab8] hover:text-white"
+                      }`}
+                    >
+                      Đã xuất bản ({pendingReviews.filter((r) => r.status === "published").length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("all")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        reviewFilter === "all"
+                          ? "bg-[#7520f7] text-white font-semibold shadow-sm"
+                          : "text-[#a39ab8] hover:text-white"
+                      }`}
+                    >
+                      Tất cả ({pendingReviews.length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Review Products List */}
+                <div className="space-y-4">
+                  {pendingReviews
+                    .filter((p) => (reviewFilter === "all" ? true : p.status === reviewFilter))
+                    .length === 0 ? (
+                    <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center">
+                      <FileImage className="w-8 h-8 text-[#a39ab8] mx-auto mb-3 opacity-40" />
+                      <p className="text-sm text-white font-medium">Không có sản phẩm nào trong mục này</p>
+                      <p className="text-xs text-[#a39ab8] mt-1">
+                        Khi các shop đối tác nộp bài duyệt, sản phẩm sẽ xuất hiện ở đây ngay lập tức.
+                      </p>
+                    </div>
+                  ) : (
+                    pendingReviews
+                      .filter((p) => (reviewFilter === "all" ? true : p.status === reviewFilter))
+                      .map((prod) => {
+                        const coverImg = (prod.product_images || []).find((i: any) => i.is_cover) || prod.product_images?.[0];
+                        return (
+                          <div
+                            key={prod.id}
+                            className="bg-[#181224] border border-[#2e2344] rounded-2xl p-5 sm:p-6 shadow-lg flex flex-col md:flex-row gap-6 items-start"
+                          >
+                            {/* Images Gallery */}
+                            <div className="w-full md:w-56 flex-shrink-0">
+                              <div className="w-full aspect-square rounded-xl bg-[#12081f] border border-[#2e2344] overflow-hidden relative">
+                                {coverImg?.url ? (
+                                  <img
+                                    src={resolveImageUrl(coverImg.url)}
+                                    alt={prod.name_vi}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-xs text-[#a39ab8]">
+                                    Chưa có ảnh
+                                  </div>
+                                )}
+                                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-mono bg-black/70 text-white backdrop-blur-sm">
+                                  {prod.product_images?.length || 0} ảnh
+                                </span>
+                              </div>
+
+                              {/* Thumbnail preview strip */}
+                              {prod.product_images && prod.product_images.length > 1 && (
+                                <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
+                                  {prod.product_images.slice(0, 5).map((img: any, idx: number) => (
+                                    <div
+                                      key={img.id || idx}
+                                      className="w-10 h-10 rounded-md bg-[#12081f] border border-[#2e2344] overflow-hidden flex-shrink-0"
+                                    >
+                                      <img
+                                        src={resolveImageUrl(img.url)}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Details */}
+                            <div className="flex-1 space-y-2.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-base font-serif font-bold text-white">
+                                    {prod.name_vi}
+                                  </h4>
+                                  {prod.name_en && (
+                                    <span className="text-xs text-[#a39ab8] italic">({prod.name_en})</span>
+                                  )}
+                                </div>
+
+                                {/* Status badge */}
+                                {prod.status === "pending_review" && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                    Đang chờ duyệt
+                                  </span>
+                                )}
+                                {prod.status === "published" && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                    Đang hiển thị trên web
+                                  </span>
+                                )}
+                                {prod.status === "rejected" && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                    Bị từ chối
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-[#a39ab8]">
+                                <span>🏪 Xưởng: <strong className="text-white">{prod.shops?.name || "Chưa rõ"}</strong></span>
+                                <span>📧 {prod.shops?.contact_email}</span>
+                                <span>📂 Danh mục: <strong className="text-white">{prod.categories?.name_vi || "Chung"}</strong></span>
+                              </div>
+
+                              <div className="flex items-baseline gap-3 text-sm">
+                                <span className="font-mono font-bold text-[#39d6cf]">
+                                  {prod.price_vnd
+                                    ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(prod.price_vnd)
+                                    : "Liên hệ xưởng"}
+                                </span>
+                                {prod.dimensions && (
+                                  <span className="text-xs text-[#a39ab8]">Kích thước: {prod.dimensions}</span>
+                                )}
+                              </div>
+
+                              {prod.short_desc_vi && (
+                                <p className="text-xs text-white/80 leading-relaxed bg-[#12081f]/60 p-2.5 rounded-xl border border-[#2e2344]">
+                                  {prod.short_desc_vi}
+                                </p>
+                              )}
+
+                              {prod.story_vi && (
+                                <p className="text-xs text-[#a39ab8] italic line-clamp-2">
+                                  " {prod.story_vi} "
+                                </p>
+                              )}
+
+                              {/* Review Actions */}
+                              <div className="pt-3 border-t border-[#2e2344] flex items-center justify-end gap-3">
+                                {prod.status !== "published" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReviewAction(prod.id, "approve", prod.name_vi)}
+                                    disabled={isSubmittingAdmin}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl uppercase tracking-wider transition shadow flex items-center gap-1.5"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Phê duyệt xuất bản</span>
+                                  </button>
+                                )}
+
+                                {prod.status !== "rejected" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReviewAction(prod.id, "reject", prod.name_vi)}
+                                    disabled={isSubmittingAdmin}
+                                    className="px-4 py-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-900/60 rounded-xl transition"
+                                  >
+                                    Từ chối bài duyệt
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+            )}
+            {adminTab === "shops" && (
+              <div className="space-y-8">
+                {/* Form cấp quyền mở shop */}
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-7 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <UserCheck className="w-4 h-4 text-[#39d6cf]" />
+                    <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                      Cấp quyền mở Shop cho Gmail mới (1 Gmail = 1 Shop)
+                    </h3>
+                  </div>
+
+                  <form onSubmit={handleGrantShop} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
+                        Email Google của đối tác *
+                      </label>
+                      <input
+                        type="email"
+                        value={newShopEmail}
+                        onChange={(e) => setNewShopEmail(e.target.value)}
+                        placeholder="doitac@gmail.com"
+                        className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
+                        Tên Xưởng / Thương hiệu *
+                      </label>
+                      <input
+                        type="text"
+                        value={newShopName}
+                        onChange={(e) => setNewShopName(e.target.value)}
+                        placeholder="Ví dụ: Gốm Mộc Chân"
+                        className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="submit"
+                        disabled={isSubmittingAdmin}
+                        className="w-full py-2.5 px-4 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
+                      >
+                        {isSubmittingAdmin ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        Cấp quyền Shop
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Danh sách shop đã cấp quyền */}
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden shadow-lg">
+                  <div className="px-6 py-4 border-b border-[#2e2344] flex items-center justify-between">
+                    <h3 className="text-xs font-serif font-bold text-white uppercase tracking-wider">
+                      Danh sách đối tác xưởng đã cấp quyền
+                    </h3>
+                    <span className="text-xs font-mono text-[#39d6cf]">
+                      {invitations.length} xưởng
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#12081f] text-[#a39ab8] uppercase tracking-wider text-[11px] border-b border-[#2e2344]">
+                        <tr>
+                          <th className="py-3 px-6">Email Google đối tác</th>
+                          <th className="py-3 px-6">Tên Xưởng</th>
+                          <th className="py-3 px-6">Trạng thái</th>
+                          <th className="py-3 px-6 text-right">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#2e2344] text-[#faf8ff]">
+                        {invitations.map((inv) => (
+                          <tr key={inv.id} className="hover:bg-[#23173d]/40 transition">
+                            <td className="py-4 px-6 font-mono text-white">
+                              {inv.invited_email}
+                            </td>
+                            <td className="py-4 px-6 font-medium text-[#39d6cf]">
+                              {inv.shops?.name || "Chưa gắn tên"}
+                            </td>
+                            <td className="py-4 px-6">
+                              {inv.status === "accepted" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Đã đăng nhập
+                                </span>
+                              ) : inv.status === "pending" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
+                                  <Clock className="w-3 h-3" />
+                                  Đang chờ đăng nhập
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-red-950/80 text-red-300 border border-red-800/60">
+                                  Đã thu hồi
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              {inv.status !== "revoked" && (
+                                <button
+                                  onClick={() => handleRevokeShop(inv.id, inv.invited_email)}
+                                  className="text-xs text-red-400 hover:text-red-300 transition"
+                                >
+                                  Thu hồi quyền
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: QUẢN LÝ QUYỀN ADMIN / STAFF */}
+            {adminTab === "staff" && (
+              <div className="space-y-8">
+                {/* Form cấp quyền admin */}
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-7 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ShieldCheck className="w-4 h-4 text-[#7520f7]" />
+                    <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                      Cấp quyền Admin / Staff cho tài khoản Google khác
+                    </h3>
+                  </div>
+
+                  <form onSubmit={handleAddStaff} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
+                        Email Google nhân sự *
+                      </label>
+                      <input
+                        type="email"
+                        value={newStaffEmail}
+                        onChange={(e) => setNewStaffEmail(e.target.value)}
+                        placeholder="admin2@gmail.com"
+                        className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
+                        Vai trò phân quyền *
+                      </label>
+                      <select
+                        value={newStaffRole}
+                        onChange={(e: any) => setNewStaffRole(e.target.value)}
+                        className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                      >
+                        <option value="admin">Quản trị viên tối cao (Admin)</option>
+                        <option value="moderator">Kiểm duyệt viên (Moderator)</option>
+                        <option value="viewer">Chỉ xem (Viewer)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="submit"
+                        disabled={isSubmittingAdmin}
+                        className="w-full py-2.5 px-4 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
+                      >
+                        {isSubmittingAdmin ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                        Cấp quyền Staff
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Danh sách Admin / Staff */}
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden shadow-lg">
+                  <div className="px-6 py-4 border-b border-[#2e2344] flex items-center justify-between">
+                    <h3 className="text-xs font-serif font-bold text-white uppercase tracking-wider">
+                      Danh sách nhân sự quản trị hệ thống
+                    </h3>
+                    <span className="text-xs font-mono text-[#7520f7]">
+                      {staffList.length} người
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#12081f] text-[#a39ab8] uppercase tracking-wider text-[11px] border-b border-[#2e2344]">
+                        <tr>
+                          <th className="py-3 px-6">Email Google</th>
+                          <th className="py-3 px-6">Họ tên / Nhãn</th>
+                          <th className="py-3 px-6">Vai trò</th>
+                          <th className="py-3 px-6 text-right">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#2e2344] text-[#faf8ff]">
+                        {staffList.map((st) => (
+                          <tr key={st.user_id} className="hover:bg-[#23173d]/40 transition">
+                            <td className="py-4 px-6 font-mono text-white">
+                              {st.email}
+                            </td>
+                            <td className="py-4 px-6">
+                              {st.full_name}
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
+                                {st.role === "admin" ? "Admin tối cao" : st.role === "moderator" ? "Moderator" : "Viewer"}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              {st.email.toLowerCase() !== currentUser?.email?.toLowerCase() ? (
+                                <button
+                                  onClick={() => handleRevokeStaff(st.email)}
+                                  className="text-xs text-red-400 hover:text-red-300 transition"
+                                >
+                                  Tước quyền Admin
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-[#7b7194] italic">
+                                  (Tài khoản của bạn)
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* REGULAR PARTNER SHOP DASHBOARD */
           <div>
             {/* Header section */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -820,7 +2284,6 @@ export default function Portal() {
                       key={prod.id}
                       className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden hover:border-[#7520f7]/50 transition flex flex-col"
                     >
-                      {/* Image Thumbnail */}
                       <div className="aspect-[4/3] bg-[#23173d] relative overflow-hidden flex items-center justify-center">
                         {imgUrl ? (
                           <img
@@ -835,7 +2298,6 @@ export default function Portal() {
                           </div>
                         )}
 
-                        {/* Status Badge */}
                         <div className="absolute top-3 left-3">
                           {prod.status === "draft" && (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-[#12081f]/90 text-[#a39ab8] backdrop-blur-sm border border-[#3b2a60]">
@@ -862,7 +2324,6 @@ export default function Portal() {
                         </div>
                       </div>
 
-                      {/* Content */}
                       <div className="p-4 flex-1 flex flex-col justify-between">
                         <div>
                           <h3 className="font-serif font-bold text-white text-base mb-1">
@@ -895,281 +2356,6 @@ export default function Portal() {
                 })}
               </div>
             )}
-          </div>
-        ) : (
-          /* Editor View */
-          <div className="max-w-3xl mx-auto">
-            {/* Top Navigation Back */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={() => setActiveView("list")}
-                className="flex items-center gap-1.5 text-xs text-[#a39ab8] hover:text-white transition"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Quay lại danh sách
-              </button>
-
-              <span className="text-xs font-mono text-[#7b7194]">
-                {editingProductId ? "Chỉnh sửa sản phẩm" : "Thêm mới"}
-              </span>
-            </div>
-
-            {formFeedback && (
-              <div
-                className={`mb-6 p-4 rounded-xl text-xs flex items-center gap-2.5 leading-relaxed ${
-                  formFeedback.type === "success"
-                    ? "bg-[#23173d] border border-[#39d6cf]/50 text-[#39d6cf]"
-                    : "bg-red-950/50 border border-red-800/60 text-red-200"
-                }`}
-              >
-                {formFeedback.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-[#39d6cf] flex-shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                )}
-                <span>{formFeedback.text}</span>
-              </div>
-            )}
-
-            <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-8 space-y-6">
-              {/* Product Basic Info */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
-                    Tên sản phẩm (Tiếng Việt) <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={nameVi}
-                    onChange={(e) => setNameVi(e.target.value)}
-                    placeholder="Ví dụ: Bình gốm vuốt tay Men Tro"
-                    className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
-                      Danh mục <span className="text-red-400">*</span>
-                    </label>
-                    <select
-                      value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
-                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
-                    >
-                      {CATEGORIES.map((catGroup) => (
-                        <optgroup key={catGroup.group} label={catGroup.group}>
-                          {catGroup.items.map((it) => (
-                            <option key={it.id} value={it.id}>
-                              {it.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
-                      Giá tham khảo (VNĐ)
-                    </label>
-                    <input
-                      type="number"
-                      value={priceVnd}
-                      onChange={(e) =>
-                        setPriceVnd(e.target.value ? Number(e.target.value) : "")
-                      }
-                      placeholder="450000"
-                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
-                      Kích thước / Trọng lượng
-                    </label>
-                    <input
-                      type="text"
-                      value={dimensions}
-                      onChange={(e) => setDimensions(e.target.value)}
-                      placeholder="Ví dụ: 18 x 25 cm, 800g"
-                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
-                      Tên tiếng Anh (tuỳ chọn)
-                    </label>
-                    <input
-                      type="text"
-                      value={nameEn}
-                      onChange={(e) => setNameEn(e.target.value)}
-                      placeholder="Ash-glaze ceramic vase"
-                      className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#7520f7] transition"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-[#a39ab8] uppercase tracking-wider mb-1.5">
-                    Câu chuyện / Mô tả nghệ nhân
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={storyVi}
-                    onChange={(e) => setStoryVi(e.target.value)}
-                    placeholder="Chia sẻ về chất liệu, cảm hứng chế tác và nét độc đáo của sản phẩm này..."
-                    className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl p-4 text-sm text-white focus:outline-none focus:border-[#7520f7] transition leading-relaxed resize-none"
-                  ></textarea>
-                </div>
-              </div>
-
-              {/* Multiple Direct-to-R2 Image Upload & Reorder */}
-              <div className="pt-6 border-t border-[#2e2344]">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="text-xs font-medium text-[#a39ab8] uppercase tracking-wider">
-                      Hình ảnh sản phẩm (Cloudflare R2 Direct Upload)
-                    </h3>
-                    <p className="text-[11px] text-[#7b7194] mt-0.5">
-                      Kéo thả để sắp xếp thứ tự. Vị trí đầu tiên là Ảnh đại diện.
-                    </p>
-                  </div>
-                  <span className="text-xs font-mono text-[#39d6cf]">
-                    {images.length} ảnh
-                  </span>
-                </div>
-
-                {/* Upload Dropzone */}
-                <label className="border-2 border-dashed border-[#2e2344] hover:border-[#39d6cf]/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition bg-[#12081f]/50 hover:bg-[#12081f] mb-6">
-                  <UploadCloud className="w-8 h-8 text-[#a39ab8] mb-2" />
-                  <span className="text-xs font-medium text-white">
-                    Chọn nhiều ảnh hoặc thả vào đây
-                  </span>
-                  <span className="text-[11px] text-[#7b7194] mt-1">
-                    Tối đa 12MB/ảnh · Định dạng WebP, JPEG, PNG
-                  </span>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
-
-                {/* Image Thumbnails & Reordering Grid */}
-                {images.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {images.map((img, idx) => (
-                      <div
-                        key={img.id}
-                        className={`relative aspect-square rounded-xl overflow-hidden border bg-[#23173d] group transition ${
-                          idx === 0
-                            ? "border-[#39d6cf] ring-2 ring-[#39d6cf]/20"
-                            : "border-[#2e2344]"
-                        }`}
-                      >
-                        <img
-                          src={img.previewUrl || img.url}
-                          alt={`Product view ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-
-                        {/* Uploading indicator */}
-                        {img.isUploading && (
-                          <div className="absolute inset-0 bg-[#12081f]/85 flex flex-col items-center justify-center p-2">
-                            <RefreshCw className="w-4 h-4 animate-spin text-[#39d6cf] mb-1.5" />
-                            <div className="w-full bg-[#2e2344] rounded-full h-1 overflow-hidden">
-                              <div
-                                className="bg-[#39d6cf] h-1 transition-all"
-                                style={{ width: `${img.progress || 0}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-[10px] font-mono text-white mt-1">
-                              {img.progress || 0}%
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Cover Tag */}
-                        {idx === 0 && (
-                          <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-[#39d6cf] text-[#12081f] shadow-sm font-semibold">
-                            Ảnh chính
-                          </span>
-                        )}
-
-                        {/* Controls Overlay */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
-                          {idx > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => moveImage(idx, "left")}
-                              className="p-1.5 bg-[#23173d] hover:bg-[#362759] rounded-lg text-white transition"
-                              title="Sang trái"
-                            >
-                              <ChevronLeft className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => removeImage(idx)}
-                            className="p-1.5 bg-red-950/80 hover:bg-red-800 rounded-lg text-red-200 transition"
-                            title="Xóa ảnh này"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-
-                          {idx < images.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={() => moveImage(idx, "right")}
-                              className="p-1.5 bg-[#23173d] hover:bg-[#362759] rounded-lg text-white transition"
-                              title="Sang phải"
-                            >
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-6 border-t border-[#2e2344] flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-[11px] text-[#7b7194] text-center sm:text-left">
-                  Sau khi lưu nháp, bạn có thể gửi bài để đội ngũ Tí Coolture duyệt lên website.
-                </p>
-
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={handleSaveDraft}
-                    disabled={isSaving}
-                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#23173d] hover:bg-[#2e2344] text-white font-medium rounded-xl text-xs transition border border-[#3b2a60] flex items-center justify-center gap-2"
-                  >
-                    {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                    Lưu bản nháp
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSubmitReview}
-                    disabled={isSubmitting}
-                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
-                  >
-                    {isSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                    Gửi bài duyệt
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>
