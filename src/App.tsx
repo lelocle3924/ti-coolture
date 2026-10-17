@@ -14,6 +14,7 @@ import ProductDetail from "./views/ProductDetail";
 import ShopDashboard from "./views/ShopDashboard";
 import UserProfile from "./views/UserProfile";
 import AuthGateway from "./views/AuthGateway";
+import Portal from "./views/Portal";
 import Products from "./views/Products";
 import Wishlist from "./views/Wishlist";
 import Stores from "./views/Stores";
@@ -208,6 +209,7 @@ function SiteShell() {
      page and the nav pill would be in the way. It is not linked from the nav
      either — you get there by typing /lab. */
   const isLab = pathname === "/lab" || pathname.startsWith("/lab/");
+  const isPortal = pathname === "/portal" || pathname.startsWith("/portal");
 
   /* Team 08/09: "mọi trang /products/[slug], /products, /stores, /discover đều
      phải có reveal footer giống với homepage."
@@ -218,6 +220,7 @@ function SiteShell() {
   const REVEAL_FOOTER = ["/products", "/stores", "/discover", "/open-shop"];
   const hasRevealFooter =
     !isLab &&
+    !isPortal &&
     REVEAL_FOOTER.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 
   /* Team 14/09, from /lab/titles: titles pop in word by word as they come
@@ -225,22 +228,22 @@ function SiteShell() {
      phẩm và một shop". Those two open on a photograph with its name beside
      it, which should simply be there. Never in the lab, which plays its own. */
   const pageRef = useRef<HTMLDivElement>(null);
-  const titlesArrive = !isLab && !/^\/(products|stores)\/[^/]+/.test(pathname);
+  const titlesArrive = !isLab && !isPortal && !/^\/(products|stores)\/[^/]+/.test(pathname);
   useTitleEntrance(pageRef, titlesArrive);
 
   return (
     <div className="min-h-screen bg-ink flex flex-col justify-between selection:bg-wave selection:text-ink font-sans text-ink">
-      {!isLab && <Header />}
+      {!isLab && !isPortal && <Header />}
       {/* The nav is a floating pill, so it sits over the page rather than
           pushing it down. Every page therefore needs the pill's height cleared
           at the top — except the homepage, whose hero owns that space and puts
           the deck under the pill on purpose. */}
-      <div ref={pageRef} className={`flex-grow ${isHome || isLab ? "" : "pt-24 md:pt-28"}`}>
+      <div ref={pageRef} className={`flex-grow ${isHome || isLab || isPortal ? "" : "pt-24 md:pt-28"}`}>
         <PageBody reveal={hasRevealFooter}>
           <Outlet />
         </PageBody>
       </div>
-      {!isHome && !isLab && !hasRevealFooter && <Footer />}
+      {!isHome && !isLab && !isPortal && !hasRevealFooter && <Footer />}
     </div>
   );
 }
@@ -316,6 +319,8 @@ const router = createBrowserRouter([
       { path: "shop-dashboard", element: <ShopDashboard /> },
       { path: "user-profile", element: <UserProfile /> },
       { path: "auth-gateway", element: <AuthGateway /> },
+      { path: "portal", element: <Portal /> },
+      { path: "portal/*", element: <Portal /> },
 
       /* Exploration. Not linked from the nav — you get there by typing /lab. */
       { path: "lab", element: <LabIndex /> },

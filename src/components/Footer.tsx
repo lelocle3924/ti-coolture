@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import Brandmark from "./Brandmark";
+import PartnerApplyModal from "./PartnerApplyModal";
 
 /**
  * Four-column footer, structure taken from the Lovable mockup
@@ -8,6 +10,8 @@ import Brandmark from "./Brandmark";
  * guidelines' violet/ink dominance.
  */
 export default function Footer() {
+  const [isApplyOpen, setIsApplyOpen] = useState(false);
+
   return (
     <footer className="bg-ink text-paper border-t border-white/10">
       <div className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-20">
@@ -53,13 +57,30 @@ export default function Footer() {
               Thông tin
             </h2>
             <ul className="mt-4 space-y-1">
-              {["Về Tí", "Hợp tác với Tí", "Điều khoản sử dụng", "Chính sách bảo mật"].map((label) => (
-                <li key={label}>
-                  <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
-                    {label}
-                  </span>
-                </li>
-              ))}
+              <li>
+                <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
+                  Về Tí
+                </span>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setIsApplyOpen(true)}
+                  className="inline-flex items-center min-h-11 text-sm text-wave hover:underline font-medium cursor-pointer"
+                >
+                  Hợp tác với Tí (Mở xưởng)
+                </button>
+              </li>
+              <li>
+                <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
+                  Điều khoản sử dụng
+                </span>
+              </li>
+              <li>
+                <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
+                  Chính sách bảo mật
+                </span>
+              </li>
             </ul>
           </nav>
         </div>
@@ -71,7 +92,7 @@ export default function Footer() {
           </p>
         </div>
 
-        
+        <PartnerApplyModal isOpen={isApplyOpen} onClose={() => setIsApplyOpen(false)} />
       </div>
     </footer>
   );

@@ -310,38 +310,7 @@ export default function Stores() {
           </div>
         )}
 
-        {/* ============ FLOW F: MAKER RECRUITMENT BANNER ============ */}
-        <div className="p-2 rounded-[2.5rem] bg-brand text-paper mt-16 relative overflow-hidden shadow-2xl">
-          <RibbonLoop
-            className="pointer-events-none absolute -right-12 -bottom-12 z-0 opacity-15"
-            style={{ width: "20rem" }}
-            ribbon="var(--color-wave)"
-            dot="var(--color-paper)"
-          />
 
-          <div className="bg-brand-deep/60 backdrop-blur-md rounded-[2.125rem] p-8 md:p-12 relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-white/10">
-            <div className="max-w-xl space-y-2">
-              <span className="label text-wave text-xs font-semibold block">DÀNH CHO NGHỆ NHÂN & LOCAL BRAND</span>
-              <h2 className="display text-2xl md:text-4xl normal-case font-medium text-paper leading-snug">
-                Bạn sở hữu xưởng chế tác thủ công?
-              </h2>
-              <p className="text-xs md:text-sm text-white/80 leading-relaxed">
-                Đăng ký gian trưng bày trên Tí Coolture hoàn toàn miễn phí. Tiếp cận cộng đồng yêu nghệ thuật thủ công và kết nối trực tiếp khách hàng về mạng xã hội của xưởng.
-              </p>
-            </div>
-
-            <Link
-              to="/auth-gateway"
-              viewTransition
-              className="group inline-flex items-center gap-3 rounded-full bg-paper pl-6 pr-2 py-2.5 text-brand label font-semibold hover:bg-wave hover:text-ink transition-all duration-300 shrink-0 shadow-lg"
-            >
-              <span>Đăng ký mở xưởng</span>
-              <div className="w-8 h-8 rounded-full bg-brand/10 group-hover:bg-ink group-hover:text-wave flex items-center justify-center transition-all group-hover:translate-x-1">
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </Link>
-          </div>
-        </div>
 
       </div>
 

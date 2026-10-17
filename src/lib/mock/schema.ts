@@ -10,7 +10,18 @@
  * + Cloudflare R2 for images. This mock layer stands in until that exists.
  */
 
-export type PublishStatus = "draft" | "pending" | "published" | "archived";
+export type PublishStatus =
+  | "draft"
+  | "pending"
+  | "pending_review"
+  | "published"
+  | "rejected"
+  | "hidden"
+  | "archived";
+
+export type PortalInviteStatus = "active" | "locked_pending" | "completed" | "revoked";
+
+export type InviteStatus = "pending" | "accepted" | "revoked";
 
 export type SocialPlatform = "instagram" | "tiktok" | "facebook" | "threads" | "website" | "zalo";
 
@@ -229,6 +240,33 @@ export interface CollectionProductRow {
   sort_order: number;
 }
 
+export interface PortalInviteRow {
+  id: string;
+  shop_id: string;
+  token_hash: string;
+  passcode: string | null;
+  status: PortalInviteStatus;
+  created_by: string | null;
+  expires_at: string;
+  submitted_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShopInvitationRow {
+  id: string;
+  shop_id: string;
+  invited_email: string;
+  shop_role: "owner" | "editor";
+  status: InviteStatus;
+  created_by: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   categories: CategoryRow[];
   blog_topics: BlogTopicRow[];
@@ -246,4 +284,8 @@ export interface Database {
   featured_items: FeaturedItemRow[];
   site_settings: SiteSettingRow[];
   click_events: ClickEventRow[];
+  portal_invites?: PortalInviteRow[];
+  shop_invitations?: ShopInvitationRow[];
 }
+
+
