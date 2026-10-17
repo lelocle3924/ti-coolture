@@ -864,3 +864,139 @@ export async function logApprovalActivity(_logData: Record<string, any>): Promis
 export async function fetchApprovalLogs(_storeId?: string): Promise<any[]> {
   return delay([]);
 }
+
+/* ── search products (fuzzy & full-text hybrid) ────────────────────────── */
+
+export interface SearchProductsOptions {
+  searchTerm?: string;
+  categorySlug?: string;
+  shopId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: "relevance" | "price_asc" | "price_desc" | "newest";
+  limit?: number;
+  offset?: number;
+}
+
+export interface SearchProductsResult {
+  products: Product[];
+  totalCount: number;
+}
+
+function normalizeSearchVi(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .trim();
+}
+
+export async function searchProducts(
+  opts: SearchProductsOptions = {}
+): Promise<SearchProductsResult> {
+  const {
+    searchTerm = "",
+    categorySlug,
+    shopId,
+    minPrice,
+    maxPrice,
+    sortBy = "relevance",
+    limit = 24,
+    offset = 0,
+  } = opts;
+
+  if (getDataSourceMode() === "real" && supabase) {
+    try {
+      const { data, error } = await supabase.rpc("search_products", {
+        search_term: searchTerm.trim() || null,
+        filter_category_slug: categorySlug || null,
+        filter_shop_id: shopId || null,
+        filter_min_price: minPrice ?? null,
+        filter_max_price: maxPrice ?? null,
+        sort_by: sortBy,
+        page_limit: limit,
+        page_offset: offset,
+      });
+
+      if (!error && data) {
+        const totalCount = data.length > 0 ? Number(data[0].total_count) : 0;
+        const products: Product[] = data.map((row: any) => {
+          const images =
+            Array.isArray(row.images) && row.images.length > 0
+              ? row.images.map((img: any) => resolveImageUrl(img.url))
+              : row.cover_image_url
+              ? [resolveImageUrl(row.cover_image_url)]
+              : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"];
+
+          return {
+            id: row.id,
+            storeId: row.shop_id,
+            storeName: row.shop_name ?? "",
+            storeLogo: row.shop_logo_url ? resolveImageUrl(row.shop_logo_url) : undefined,
+            name: row.name_vi,
+            price: row.price_vnd ?? 0,
+            currency: "VND",
+            description: row.short_desc_vi ?? "",
+            images,
+            category: row.category_name_vi ?? "",
+            categorySlug: row.category_slug ?? "",
+            categoryGroup: row.category_group_name_vi ?? row.category_name_vi ?? "",
+            categoryGroupSlug: row.category_group_slug ?? row.category_slug ?? "",
+            variants: [],
+            material: "",
+            size: row.dimensions ?? undefined,
+            story: row.story_vi ?? undefined,
+            clicks: 0,
+            views: 0,
+            status: "Approved",
+            createdAt: row.published_at || new Date().toISOString(),
+            hidden: false,
+          };
+        });
+
+        return { products, totalCount };
+      }
+    } catch (e) {
+      console.warn("Error calling search_products RPC:", e);
+    }
+  }
+
+  // Mock mode fallback with diacritic-insensitive fuzzy search
+  const allApproved = db.products
+    .filter((p) => p.status === "published")
+    .map(toProduct);
+
+  const cleanQuery = normalizeSearchVi(searchTerm);
+
+  let filtered = allApproved.filter((p) => {
+    if (shopId && p.storeId !== shopId) return false;
+    if (minPrice !== undefined && p.price < minPrice) return false;
+    if (maxPrice !== undefined && p.price > maxPrice) return false;
+    if (categorySlug && p.categorySlug !== categorySlug && p.categoryGroupSlug !== categorySlug) {
+      return false;
+    }
+    if (cleanQuery) {
+      const matchName = normalizeSearchVi(p.name).includes(cleanQuery);
+      const matchStore = normalizeSearchVi(p.storeName).includes(cleanQuery);
+      const matchDesc = normalizeSearchVi(p.description).includes(cleanQuery);
+      const matchCategory = normalizeSearchVi(p.category).includes(cleanQuery);
+      if (!matchName && !matchStore && !matchDesc && !matchCategory) return false;
+    }
+    return true;
+  });
+
+  if (sortBy === "price_asc") {
+    filtered.sort((a, b) => a.price - b.price);
+  } else if (sortBy === "price_desc") {
+    filtered.sort((a, b) => b.price - a.price);
+  } else if (sortBy === "newest") {
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  const totalCount = filtered.length;
+  const products = filtered.slice(offset, offset + limit);
+
+  return delay({ products, totalCount });
+}
+

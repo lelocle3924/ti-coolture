@@ -23,6 +23,22 @@ Hạ tầng phải được thiết kế để hạn chế tối đa việc ngư
 2. **Zero-Egress Cost:** Tách toàn bộ việc lưu trữ và phân phối ảnh ra khỏi máy chủ ứng dụng. Dùng Cloudflare R2 để chi phí băng thông đọc/tải ảnh luôn là **0 VNĐ**, bất kể lượt truy cập tăng đột biến.
 3. **Pháp lý tối giản (Tuân thủ Nghị định 13/2023/NĐ-CP):** Giảm thiểu tối đa việc thu thập dữ liệu cá nhân nhạy cảm, mật khẩu, và quy trình đăng ký tài khoản rườm rà.
 
+### 1.3 Rationale Kiến trúc: Serverless vs Dedicated VPS & Upstash Redis Cache
+
+#### 1. Tại sao chọn Serverless thay vì thuê VPS riêng?
+* **Không tốn chi phí bảo trì hệ điều hành (Zero Ops):** Một VPS truyền thống đòi hỏi cấu hình Linux, SSH hardening, tường lửa (ufw), SSL auto-renewal (Certbot), reverse proxy (Nginx/Caddy), công cụ giữ tiến trình (PM2/Docker), và cập nhật vá lỗi bảo mật định kỳ. Với đội ngũ 1 người giám sát, đây là gánh nặng không cần thiết.
+* **Chi phí nhàn rỗi là 0 VNĐ:** Serverless (Vercel + Supabase + Cloudflare R2) tính phí theo mức sử dụng thực tế (pay-as-you-go / free tier). Khi chưa có traffic, chi phí duy trì hàng tháng là 0 đồng, thay vì phải trả tiền thuê máy chủ VPS cố định.
+* **Tự động co giãn (Auto-elasticity):** Khi một bài viết hoặc sản phẩm viral, serverless tự động mở rộng instance phục vụ hàng chục nghìn lượt truy cập đồng thời mà không bao giờ bị nghẽn RAM hay sập máy chủ.
+* **Hạn chế rủi ro "báo động lúc 2 giờ sáng":** Không lo kẹt ổ đĩa, rò rỉ bộ nhớ (memory leaks) làm treo tiến trình Node.js trên VPS.
+
+#### 2. Tại sao chọn Upstash Redis (REST over HTTP) thay vì Redis TCP truyền thống?
+* **Khắc phục điểm nghẽn Connection Pool:** Trong môi trường Vercel Serverless Functions, mỗi request có thể sinh ra một hàm độc lập (stateless ephemeral containers). Kết nối Redis truyền thống dùng socket TCP (`ioredis`) sẽ liên tục mở mới kết nối, dễ dẫn tới lỗi `Max client connections reached` làm sập cụm Redis.
+* **Upstash Redis chạy qua HTTP REST API (`@upstash/redis`):** Không duy trì kết nối TCP socket thường trực, tối ưu hoàn hảo cho kiến trúc serverless không trạng thái.
+* **Free tier hào phóng:** 10.000 requests/ngày, hoàn toàn miễn phí, tích hợp sẵn tính năng tự xóa theo thời gian (TTL).
+* **Chiến lược Caching & Graceful Fallback:**
+  * Endpoint `/api/search` lưu cache kết quả tìm kiếm với TTL 180 giây (3 phút).
+  * Mã nguồn được thiết kế tự thích ứng (Graceful Fallback): Nếu môi trường chưa cấu hình biến môi trường Redis, hệ thống tự động bypass cache và truy vấn trực tiếp vào Supabase RPC mà không gây lỗi ứng dụng (zero-downtime).
+
 ---
 
 ## 2. PHÂN HỆ SHOP ONBOARDING PORTAL (CỔNG ĐĂNG SẢN PHẨM)

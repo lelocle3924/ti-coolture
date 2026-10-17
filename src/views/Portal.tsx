@@ -3491,19 +3491,22 @@ export default function Portal() {
                   {/* Social Buttons (white discs matching ShopDisplay.tsx design) */}
                   <div className="flex items-center gap-2 pb-1 flex-wrap">
                     {Object.entries(shopSocials)
-                      .filter(([, url]) => Boolean(url && url.trim()))
-                      .map(([platform, url]) => (
-                        <a
-                          key={platform}
-                          href={url.startsWith("http") ? url : `https://${url}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="w-10 h-10 rounded-full bg-white hover:bg-[#7520f7] text-[#7520f7] hover:text-white flex items-center justify-center shadow-lg transition"
-                          title={platform}
-                        >
-                          <PlatformGlyph platform={platform} className="w-5 h-5" />
-                        </a>
-                      ))}
+                      .filter(([, url]) => typeof url === "string" && Boolean(url.trim()))
+                      .map(([platform, url]) => {
+                        const href = typeof url === "string" && url.startsWith("http") ? url : `https://${url}`;
+                        return (
+                          <a
+                            key={platform}
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-10 h-10 rounded-full bg-white hover:bg-[#7520f7] text-[#7520f7] hover:text-white flex items-center justify-center shadow-lg transition"
+                            title={platform}
+                          >
+                            <PlatformGlyph platform={platform} className="w-5 h-5" />
+                          </a>
+                        );
+                      })}
                   </div>
                 </div>
 
