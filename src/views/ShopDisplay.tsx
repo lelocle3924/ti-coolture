@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Heart } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
 import { NO_TRANSACTION, PRICE_NOTE } from "../lib/continuity";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import { useMediaQuery } from "../lib/useAutoHideChrome";
+import { useSavedStores } from "../lib/useSavedStores";
 import PlatformGlyph from "../components/PlatformGlyph";
 import { Dropdown, PRICE_BANDS, ProductCard, SORTS } from "./Products";
 import "./shop.css";
@@ -272,7 +273,7 @@ function ShopIntro({ text, className = "" }: { text: string; className?: string 
 
   return (
     <div className={`flex ${className}`}>
-      <p ref={ref} className={`ti-shop-intro min-w-0 ${open ? "" : "is-clamped"}`}>
+      <p ref={ref} className={`ti-shop-intro min-w-0 text-justify ${open ? "" : "is-clamped"}`}>
         {!open && overflows && (
           <button type="button" onClick={() => setOpen(true)} className="ti-shop-intro-more">
             … xem thêm
@@ -301,6 +302,7 @@ export default function ShopDisplay() {
   const { store, products, resolved } = useShopPage(storeId);
   const wide = useMediaQuery("(min-width: 768px)");
   const coverRef = useRef<HTMLDivElement>(null);
+  const savedStores = useSavedStores();
 
   const [band, setBand] = useState("all");
   const [material, setMaterial] = useState("all");
@@ -344,7 +346,7 @@ export default function ShopDisplay() {
     return resolved ? (
       <div
         data-surface="dark"
-        className="-mt-24 grid min-h-[70dvh] place-items-center bg-brand px-6 pt-24 text-center text-paper md:-mt-28 md:pt-28"
+        className="-mt-24 grid min-h-[calc(100dvh+6rem)] place-items-center bg-brand px-6 pt-24 text-center text-paper md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pt-28"
       >
         <div className="space-y-4">
           <h1 className="display text-2xl normal-case">Không tìm thấy shop</h1>
@@ -357,7 +359,7 @@ export default function ShopDisplay() {
         </div>
       </div>
     ) : (
-      <div data-surface="dark" className="-mt-24 min-h-[70dvh] bg-brand md:-mt-28" />
+      <div data-surface="dark" className="-mt-24 min-h-[calc(100dvh+6rem)] bg-brand md:-mt-28 md:min-h-[calc(100dvh+7rem)]" />
     );
   }
 
@@ -382,7 +384,7 @@ export default function ShopDisplay() {
           starts on the first paint; --col is the column's width as the page
           lays it out. */}
       <div
-        className="ti-shop relative -mt-24 pb-28 text-ink md:-mt-28 md:pb-24 [--pill:81px] md:[--pill:93px] [--col:calc(100vw_-_2rem)] md:[--col:min(60rem,calc(100vw_-_4rem))] [--cover-h:calc(var(--col)*9/16)] md:[--cover-h:calc(var(--col)*256/702)]"
+        className="ti-shop relative -mt-24 min-h-[calc(100dvh+6rem)] pb-28 text-ink md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pb-24 [--pill:81px] md:[--pill:93px] [--col:calc(100vw_-_2rem)] md:[--col:min(60rem,calc(100vw_-_4rem))] [--cover-h:calc(var(--col)*9/16)] md:[--cover-h:calc(var(--col)*256/702)]"
         style={{
           ["--u" as string]: "calc(0.875rem * 0.5475)",
           ["--ramp" as string]: "clamp(11rem, 18vw, 17.25rem)",
@@ -454,7 +456,7 @@ export default function ShopDisplay() {
                   whatever follows starts at the ring's foot. On a phone it
                   also stops short of the loop at the right edge (14/09). */}
               <div
-                className="flex items-center pr-16 md:pr-0"
+                className="flex flex-wrap items-center justify-between gap-3 pr-4 md:pr-0"
                 style={{
                   minHeight: "calc(var(--avatar-outer) / 2)",
                   paddingLeft: "calc(var(--avatar-x) + var(--avatar-outer) / 2)",
@@ -463,6 +465,24 @@ export default function ShopDisplay() {
                 <h1 className="display py-1 text-[length:clamp(1.5rem,4.7cqw,2.85rem)] normal-case leading-[1.2] text-wave">
                   {store.name}
                 </h1>
+
+                <button
+                  type="button"
+                  onClick={() => savedStores.toggle(store.id)}
+                  aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name} vào mục yêu thích`}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold backdrop-blur-md transition-all duration-300 hover:scale-105 ${
+                    savedStores.has(store.id)
+                      ? "bg-wave text-ink shadow-[0_8px_20px_-8px_rgba(40,240,200,0.8)]"
+                      : "bg-paper/20 text-paper ring-1 ring-white/20 hover:bg-paper/30 hover:text-wave"
+                  }`}
+                >
+                  <Heart
+                    className={`h-4 w-4 ${
+                      savedStores.has(store.id) ? "fill-ink stroke-ink" : "stroke-current"
+                    }`}
+                  />
+                  <span>{savedStores.has(store.id) ? "Đã lưu shop" : "Lưu shop"}</span>
+                </button>
               </div>
             </div>
           </header>
@@ -586,7 +606,7 @@ export default function ShopDisplay() {
           aria-label={`Kênh của ${store.name}`}
           className="pointer-events-none fixed inset-x-4 bottom-[max(0.875rem,env(safe-area-inset-bottom))] z-40 flex justify-center md:hidden"
         >
-          <ul className="pointer-events-auto flex gap-3">
+          <ul className="pointer-events-auto flex items-center gap-3">
             {channels.map((channel) => (
               <li key={channel.key}>
                 <a
@@ -600,6 +620,18 @@ export default function ShopDisplay() {
                 </a>
               </li>
             ))}
+            <li>
+              <button
+                type="button"
+                onClick={() => savedStores.toggle(store.id)}
+                aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name} vào mục yêu thích`}
+                className={`${CHANNEL_BUTTON} h-12 w-12 shadow-[0_14px_30px_-12px_rgba(40,8,90,0.45),inset_0_0_0_1px_rgba(117,32,247,0.16)] ${
+                  savedStores.has(store.id) ? "!bg-wave !text-ink" : ""
+                }`}
+              >
+                <Heart className={`h-5 w-5 ${savedStores.has(store.id) ? "fill-ink stroke-ink" : "stroke-current"}`} />
+              </button>
+            </li>
           </ul>
         </nav>
       )}

@@ -6,6 +6,7 @@ import { useAutoHideChrome } from "../lib/useAutoHideChrome";
 import { useSurfaceTone } from "../lib/useSurfaceTone";
 import { fetchProducts } from "../lib/dbService";
 import { useSavedProducts } from "../lib/useSavedProducts";
+import { normalizeVietnamese } from "../lib/vietnamese";
 import type { Product } from "../types";
 
 /**
@@ -173,22 +174,14 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Diacritic-insensitive, per UX-TASKS 3.1 — "ao dai" has to find "áo dài".
-  const norm = (s: string) =>
-    s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
-
-  /* Drawn once per opening, not once per keystroke and not once per scroll
-     tick: a suggestion list that reshuffles while you are reading it is worse
-     than an empty one. The seed is fixed for the life of the panel, so even a
-     refetch cannot reorder it. */
   const seed = useRef(Math.floor(Math.random() * 0xffffffff));
   const suggestions = useMemo(() => sample(products, SEARCH_ROWS, seed.current), [products]);
 
   const hits = useMemo(() => {
     if (!query.trim()) return [];
-    const q = norm(query);
+    const q = normalizeVietnamese(query);
     return products
-      .filter((p) => norm(`${p.name} ${p.storeName} ${p.category}`).includes(q))
+      .filter((p) => normalizeVietnamese(`${p.name} ${p.storeName} ${p.category}`).includes(q))
       .slice(0, SEARCH_ROWS + 2);
   }, [query, products]);
 

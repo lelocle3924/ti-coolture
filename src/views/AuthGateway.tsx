@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/useAuth";
-import { resetUserPassword, findUserByEmail } from "../lib/dbService";
+import { resetUserPassword, findUserByEmail, checkSingleRoleConflict } from "../lib/dbService";
 import { Shield, ArrowRight, Sparkles, Store, Compass, Check, ChevronLeft } from "lucide-react";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 
@@ -143,8 +143,10 @@ export default function AuthGateway() {
 
     try {
       const mockUid = `usr_${Date.now()}`;
+      const cleanEmail = email.trim().toLowerCase();
+
       if (formType === "Login") {
-        const userData = await findUserByEmail(email);
+        const userData = await findUserByEmail(cleanEmail);
         if (!userData) {
           setError("Không tìm thấy tài khoản. Vui lòng kiểm tra lại email.");
           setLoading(false);
@@ -152,6 +154,17 @@ export default function AuthGateway() {
         }
         if (userData.password && userData.password !== password) {
           setError("Mật khẩu không chính xác.");
+          setLoading(false);
+          return;
+        }
+
+        if (mode === "ShopForm" && userData.role !== "Shop") {
+          setError(`Tài khoản này được đăng ký với vai trò ${userData.role === "Admin" ? "Quản trị viên" : "Khách hàng"}, không thể đăng nhập vào cổng Shop. Mỗi Gmail chỉ có 1 vai trò duy nhất.`);
+          setLoading(false);
+          return;
+        }
+        if (mode === "UserForm" && userData.role !== "User") {
+          setError(`Tài khoản này được đăng ký với vai trò ${userData.role === "Admin" ? "Quản trị viên" : "Chủ Shop"}, không thể đăng nhập vào cổng Khách hàng.`);
           setLoading(false);
           return;
         }
@@ -168,14 +181,23 @@ export default function AuthGateway() {
           navigate("/user-profile");
         }
       } else {
-        let registerEmail = email;
-        if (mode === "ShopForm" && !email.endsWith("@shop.vn") && !email.includes("@")) {
+        const targetRole: "Shop" | "User" = mode === "ShopForm" ? "Shop" : "User";
+
+        if (mode === "ShopForm" && !cleanEmail.includes("@")) {
           setError("Tài khoản shop yêu cầu email hợp lệ.");
           setLoading(false);
           return;
         }
 
-        const existing = await findUserByEmail(registerEmail);
+        // Fallback: 1 Gmail chỉ có thể đăng ký 1 role duy nhất
+        const roleCheck = await checkSingleRoleConflict(cleanEmail, targetRole);
+        if (roleCheck.conflict) {
+          setError(roleCheck.message || "Email này đã được sử dụng cho vai trò khác. Mỗi Gmail chỉ được đăng ký 1 vai trò duy nhất.");
+          setLoading(false);
+          return;
+        }
+
+        const existing = await findUserByEmail(cleanEmail);
         if (existing) {
           setError("Email này đã được đăng ký. Vui lòng đăng nhập.");
           setLoading(false);
@@ -183,7 +205,7 @@ export default function AuthGateway() {
         }
 
         if (loginAsMockUser) {
-          await loginAsMockUser(mockUid, registerEmail, password, mode === "ShopForm" ? "Shop" : "User");
+          await loginAsMockUser(mockUid, cleanEmail, password, targetRole);
         } else {
           await refreshProfile();
         }

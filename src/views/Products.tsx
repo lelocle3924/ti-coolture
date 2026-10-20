@@ -9,6 +9,7 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import { ContinuityLink } from "../lib/continuity";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 import { useMediaQuery } from "../lib/useAutoHideChrome";
+import { matchesVietnameseSearch } from "../lib/vietnamese";
 
 /**
  * Categories, in two tiers.
@@ -563,12 +564,11 @@ export default function Products() {
       }
     }
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchName = prod.name.toLowerCase().includes(query);
-      const matchStore = prod.storeName.toLowerCase().includes(query);
-      const matchDesc = (prod.description || "").toLowerCase().includes(query);
-      const matchCat = (prod.category || "").toLowerCase().includes(query);
-      const matchGroup = (prod.categoryGroup || "").toLowerCase().includes(query);
+      const matchName = matchesVietnameseSearch(prod.name, searchQuery);
+      const matchStore = matchesVietnameseSearch(prod.storeName, searchQuery);
+      const matchDesc = matchesVietnameseSearch(prod.description || "", searchQuery);
+      const matchCat = matchesVietnameseSearch(prod.category || "", searchQuery);
+      const matchGroup = matchesVietnameseSearch(prod.categoryGroup || "", searchQuery);
       if (!matchName && !matchStore && !matchDesc && !matchCat && !matchGroup) return false;
     }
     return true;
@@ -650,7 +650,7 @@ export default function Products() {
        would be cut off and the shell's ink would show through — which is the
        black band the 26/08 note is about. Cancelling the shell's clearance on
        the clipping element itself moves the whole page up instead. */
-    <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
+    <div className="min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
       {/* Toast Notification (Flow E) */}
       {wishlistToast && (
         <div

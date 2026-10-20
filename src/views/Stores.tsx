@@ -9,6 +9,8 @@ import { vtShopLogo, vtShopCover } from "../lib/viewTransitions";
 import { ContinuityLink } from "../lib/continuity";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 
+import { matchesVietnameseSearch } from "../lib/vietnamese";
+
 export default function Stores() {
   const [stores, setStores] = useState<StoreProfile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,10 +34,9 @@ export default function Stores() {
 
   const filteredStores = stores.filter(store => {
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchName = store.name.toLowerCase().includes(query);
-      const matchDesc = (store.description || "").toLowerCase().includes(query);
-      const matchAddr = (store.address || "").toLowerCase().includes(query);
+      const matchName = matchesVietnameseSearch(store.name, searchQuery);
+      const matchDesc = matchesVietnameseSearch(store.description || "", searchQuery);
+      const matchAddr = matchesVietnameseSearch(store.address || "", searchQuery);
       if (!matchName && !matchDesc && !matchAddr) return false;
     }
     return true;
@@ -49,7 +50,7 @@ export default function Stores() {
     /* Same reason as /products: the negative margin belongs on the clipping
        element, so the violet reaches y=0 and the header pill floats on it
        instead of on the shell's ink. */
-    <div className="min-h-[100dvh] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
+    <div className="min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] -mt-24 bg-paper text-ink pb-28 select-none relative overflow-x-hidden w-full md:-mt-28">
 
       {/* ============ HERO ============
           Team 26/08: "distinct from /products, yet still united in design
@@ -95,7 +96,7 @@ export default function Stores() {
           {/* leading-[1.25] rather than .display's 1.02 — see index.css on
               how far Vietnamese uppercase reaches in DFVN. */}
           <h1 className="display mx-auto max-w-3xl text-center text-4xl normal-case font-medium leading-[1.25] text-paper md:text-6xl">
-            Các bạn đồng hành
+            Các shop
           </h1>
         </div>
       </section>
@@ -103,7 +104,7 @@ export default function Stores() {
       <div data-surface="light" className="max-w-7xl mx-auto px-4 md:px-8 mt-2 space-y-6 relative z-10">
 
         <Breadcrumbs
-          trail={[{ label: "Trang chủ", to: "/" }, { label: "Các bạn đồng hành" }]}
+          trail={[{ label: "Trang chủ", to: "/" }, { label: "Các shop" }]}
         />
 
         {/* Search only. The district-hub filter strip came out on 26/08

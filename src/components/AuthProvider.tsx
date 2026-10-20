@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { UserProfile } from "../types";
+import { UserProfile, UserRole } from "../types";
 import { getOrCreateUserProfile } from "../lib/dbService";
 import { AuthContext } from "../lib/useAuth";
 
@@ -17,16 +17,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (uid: string, email: string, password?: string) => {
+  const fetchProfile = async (uid: string, email: string, password?: string, role?: UserRole) => {
     try {
-      setProfile(await getOrCreateUserProfile(uid, email, password));
+      setProfile(await getOrCreateUserProfile(uid, email, password, role));
     } catch (e) {
       console.error("Error fetching user profile:", e);
     }
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.uid, user.email || "");
+    if (user) await fetchProfile(user.uid, user.email || "", undefined, user.role);
   };
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           setUser(parsed);
-          await fetchProfile(parsed.uid, parsed.email || "");
+          await fetchProfile(parsed.uid, parsed.email || "", undefined, parsed.role);
         } catch {
           localStorage.removeItem(SESSION_KEY);
         }
@@ -47,11 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restore();
   }, []);
 
-  const loginAsMockUser = async (uid: string, email: string, password?: string) => {
-    const mockUser = { uid, email };
+  const loginAsMockUser = async (uid: string, email: string, password?: string, role?: UserRole) => {
+    const mockUser = { uid, email, role };
     localStorage.setItem(SESSION_KEY, JSON.stringify(mockUser));
     setUser(mockUser);
-    await fetchProfile(uid, email, password);
+    await fetchProfile(uid, email, password, role);
   };
 
   const logout = async () => {
