@@ -825,8 +825,7 @@ export default function Portal() {
     if (supabase) {
       try {
         const nowIso = new Date().toISOString();
-        const newStatus = action === "approve" ? "published" : "rejected";
-        await supabase
+        const { error: prodErr } = await supabase
           .from("products")
           .update({
             status: newStatus,
@@ -834,6 +833,8 @@ export default function Portal() {
             updated_at: nowIso,
           })
           .eq("id", productId);
+
+        if (prodErr) throw prodErr;
 
         if (action === "approve") {
           const prod = pendingReviews.find((p) => p.id === productId);
@@ -915,17 +916,19 @@ export default function Portal() {
       const now = new Date().toISOString();
       if (supabase) {
         // 1. Update shop status
-        await supabase
+        const { error: sErr } = await supabase
           .from("shops")
           .update({ status: newStatus, updated_at: now })
           .eq("id", shopId);
+        if (sErr) throw sErr;
 
         // 2. If hiding shop, hide ALL products of this shop!
         if (newStatus === "hidden") {
-          await supabase
+          const { error: pErr } = await supabase
             .from("products")
             .update({ status: "hidden", updated_at: now })
             .eq("shop_id", shopId);
+          if (pErr) throw pErr;
         }
       }
 
@@ -1007,7 +1010,7 @@ export default function Portal() {
     try {
       const now = new Date().toISOString();
       if (supabase) {
-        await supabase
+        const { error: pErr } = await supabase
           .from("products")
           .update({
             status: newStatus,
@@ -1015,6 +1018,7 @@ export default function Portal() {
             updated_at: now,
           })
           .eq("id", productId);
+        if (pErr) throw pErr;
       }
 
       // Update pendingReviews list

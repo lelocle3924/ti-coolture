@@ -24,13 +24,15 @@
 import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, UserRole, RouteStop } from "../types";
 import { seed } from "./mock/seed";
 import type { Database, ProductRow, ShopRow } from "./mock/schema";
-import { supabase } from "./supabaseClient";
+import { supabase, isSupabaseConfigured } from "./supabaseClient";
 
 export type DataSourceMode = "mock" | "real";
 
 export function getDataSourceMode(): DataSourceMode {
-  if (typeof window === "undefined") return "mock";
-  return (localStorage.getItem("ti_data_source_mode") as DataSourceMode) || "mock";
+  if (typeof window === "undefined") return "real";
+  const stored = localStorage.getItem("ti_data_source_mode") as DataSourceMode | null;
+  if (stored === "mock" || stored === "real") return stored;
+  return isSupabaseConfigured ? "real" : "mock";
 }
 
 export function setDataSourceMode(mode: DataSourceMode) {
