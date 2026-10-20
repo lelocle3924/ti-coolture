@@ -28,15 +28,16 @@ export async function notifyAdminProductSubmission(
   payload: ProductSubmissionNotification
 ): Promise<boolean> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  const rawChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
 
-  if (!botToken || !chatId) {
+  if (!botToken || !rawChatId) {
     console.info(
       "[Telegram] Skipping notification: TELEGRAM_BOT_TOKEN or TELEGRAM_ADMIN_CHAT_ID not configured."
     );
     return false;
   }
 
+  const chatIds = rawChatId.split(",").map((c) => c.trim()).filter(Boolean);
   const publicDomain = (process.env.VITE_SITE_URL || "https://ticoolture.vn").replace(/\/+$/, "");
   const previewUrl = `${publicDomain}/admin/preview/product/${payload.productId}`;
 
@@ -53,26 +54,73 @@ export async function notifyAdminProductSubmission(
   ].join("\n");
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: "Markdown",
-        disable_web_page_preview: false,
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn(`[Telegram] Failed to send message (HTTP ${res.status}): ${errText}`);
-      return false;
-    }
-
+    await Promise.all(
+      chatIds.map((cid) =>
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: cid,
+            text: message,
+            parse_mode: "Markdown",
+            disable_web_page_preview: false,
+          }),
+        })
+      )
+    );
     return true;
   } catch (err: any) {
     console.error("[Telegram] Network error sending notification:", err.message);
+    return false;
+  }
+}
+
+export interface ShopProfileUpdateNotification {
+  shopName: string;
+  shopEmail: string;
+  updatedFields: string[];
+}
+
+/**
+ * Sends Telegram notification when a shop submits a profile change request.
+ */
+export async function notifyAdminShopProfileUpdate(
+  payload: ShopProfileUpdateNotification
+): Promise<boolean> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const rawChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+  if (!botToken || !rawChatId) return false;
+
+  const chatIds = rawChatId.split(",").map((c) => c.trim()).filter(Boolean);
+  const message = [
+    `🔔 *[TÍ COOLTURE] SHOP CẬP NHẬT PROFILE CHỜ DUYỆT*`,
+    ``,
+    `🏪 *Xưởng / Shop:* ${payload.shopName}`,
+    `📧 *Email đối tác:* \`${payload.shopEmail}\``,
+    `📝 *Các mục đã chỉnh sửa:* ${payload.updatedFields.join(", ")}`,
+    ``,
+    `👉 Vui lòng vào Portal Admin (tab "Yêu cầu đối tác") để thẩm định và bấm duyệt.`,
+  ].join("\n");
+
+  try {
+    await Promise.all(
+      chatIds.map((cid) =>
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: cid,
+            text: message,
+            parse_mode: "Markdown",
+            disable_web_page_preview: false,
+          }),
+        })
+      )
+    );
+    return true;
+  } catch (err: any) {
+    console.error("[Telegram] Error sending profile update notification:", err.message);
     return false;
   }
 }

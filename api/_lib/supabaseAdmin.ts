@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import ws from "ws";
 
 let cachedAdminClient: SupabaseClient | null = null;
 
@@ -20,6 +21,9 @@ export function getSupabaseAdmin(): SupabaseClient {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
+    },
+    realtime: {
+      transport: ws,
     },
   });
 

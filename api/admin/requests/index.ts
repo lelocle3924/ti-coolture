@@ -75,13 +75,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // APPROVE ACTION:
-      // 1. Ràng buộc 1 Gmail = 1 Shop
+      // Kiểm tra nếu đây là yêu cầu CẬP NHẬT PROFILE shop
+      let profilePayload: any = null;
+      try {
+        if (requestItem.notes) {
+          const parsed = JSON.parse(requestItem.notes);
+          if (parsed && parsed.type === "profile_update") {
+            profilePayload = parsed;
+          }
+        }
+      } catch {}
+
+      if (profilePayload && profilePayload.shop_id) {
+        const { shop_id, type, socials, ...updateFields } = profilePayload;
+        const { error: updErr } = await supabase.from("shops").update(updateFields).eq("id", shop_id);
+        if (updErr) throw updErr;
+
+        if (socials && typeof socials === "object") {
+          for (const [platform, url] of Object.entries(socials)) {
+            if (url) {
+              await supabase.from("shop_socials").upsert(
+                {
+                  shop_id,
+                  platform,
+                  url: String(url),
+                  is_visible: true,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "shop_id,platform" }
+              );
+            }
+          }
+        }
+
+        await supabase
+          .from("partner_requests")
+          .update({
+            status: "approved",
+            reviewed_by: staff.userId,
+            reviewed_at: new Date().toISOString(),
+            notes: "Đã duyệt và áp dụng thay đổi thông tin xưởng.",
+          })
+          .eq("id", requestId);
+
+        return res.status(200).json({
+          success: true,
+          message: `Đã duyệt và áp dụng cập nhật profile cho xưởng "${requestItem.shop_name}"!`,
+        });
+      }
+
+      // 1. Ràng buộc 1 Gmail = 1 Role duy nhất
+      const { data: existingStaff } = await supabase
+        .from("staff_members")
+        .select("id, role")
+        .eq("email", email)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (existingStaff) {
+        return res.status(400).json({
+          success: false,
+          error: `Email ${email} đã được đăng ký vai trò Ban Quản Trị (Admin). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
+        });
+      }
+
+      // Ràng buộc 1 Gmail = 1 Shop
       const { data: existingInvite } = await supabase
         .from("shop_invitations")
         .select("id, status, shops(name)")
         .eq("invited_email", email)
         .neq("status", "revoked")
-        .single();
+        .maybeSingle();
 
       if (existingInvite) {
         const existingShop = (existingInvite.shops as any)?.name || "một xưởng khác";

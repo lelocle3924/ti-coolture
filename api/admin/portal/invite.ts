@@ -64,13 +64,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const normalizedEmail = email.toLowerCase().trim();
       const assignedRole = role === "editor" ? "editor" : "owner";
 
-      // 1. RÀNG BUỘC: 1 GMAIL = 1 SHOP DUY NHẤT
+      // 1. RÀNG BUỘC: 1 GMAIL = 1 ROLE DUY NHẤT (Không được vừa là Admin vừa là Shop)
+      const { data: existingStaff } = await supabase
+        .from("staff_members")
+        .select("id, role")
+        .eq("email", normalizedEmail)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (existingStaff) {
+        return res.status(400).json({
+          success: false,
+          error: `Email ${normalizedEmail} đã được đăng ký vai trò Ban Quản Trị (Admin). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
+        });
+      }
+
+      // RÀNG BUỘC: 1 GMAIL = 1 SHOP DUY NHẤT
       const { data: existingInvite } = await supabase
         .from("shop_invitations")
         .select("id, shop_id, status, shops(name)")
         .eq("invited_email", normalizedEmail)
         .neq("status", "revoked")
-        .single();
+        .maybeSingle();
 
       if (existingInvite) {
         const existingShopName = (existingInvite.shops as any)?.name || "một xưởng khác";

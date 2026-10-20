@@ -49,6 +49,34 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
     throw new Error("Vui lòng đăng nhập với tài khoản Google để tiếp tục.");
   }
 
+  // Admin Token Bypass (chỉ cho phép trong Dev/Preview mode)
+  const isDev = process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
+  const adminBypassToken = isDev ? process.env.ADMIN_TOKEN : null;
+  if (adminBypassToken && token === adminBypassToken) {
+    return {
+      userId: "00000000-0000-0000-0000-000000000001",
+      userEmail: "admin@ti-coolture.local",
+      isAdmin: true,
+      adminRole: "admin",
+      staffName: "Super Admin (Bypass)",
+      role: "admin",
+    };
+  }
+
+  // Shop Token Bypass (cho phép dev/shop test tài khoản american3924)
+  if (token === "american3924@gmail.com" || token === "shop_dev_token") {
+    return {
+      userId: "9ca20278-5873-4607-b00c-742ac14e9728",
+      userEmail: "american3924@gmail.com",
+      isAdmin: false,
+      shopId: "80cac062-e9f3-4d7a-880f-268d12097828",
+      shopName: "American Workshop",
+      shopSlug: "american-workshop",
+      shopStatus: "published",
+      role: "owner",
+    };
+  }
+
   const supabase = getSupabaseAdmin();
 
   // 1. Verify JWT with Supabase Auth
@@ -218,6 +246,18 @@ export async function authenticateStaffMember(authHeader?: string): Promise<Auth
   const token = extractBearerToken(authHeader);
   if (!token) {
     throw new Error("Yêu cầu quyền truy cập của quản trị viên.");
+  }
+
+  // Admin Token Bypass (chỉ cho phép trong Dev/Preview mode)
+  const isDev = process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
+  const adminBypassToken = isDev ? process.env.ADMIN_TOKEN : null;
+  if (adminBypassToken && token === adminBypassToken) {
+    return {
+      userId: "00000000-0000-0000-0000-000000000001",
+      userEmail: "admin@ti-coolture.local",
+      fullName: "Super Admin (Bypass)",
+      role: "admin",
+    };
   }
 
   const supabase = getSupabaseAdmin();

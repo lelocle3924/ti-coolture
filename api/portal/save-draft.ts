@@ -67,6 +67,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const supabase = getSupabaseAdmin();
 
+    // Resolve categoryId to a valid UUID if a slug or identifier like "cat-lich" or "lich" was sent
+    let resolvedCategoryId = categoryId;
+    const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
+    if (!isCatUuid) {
+      const cleanSlug = categoryId.replace(/^cat-/, "");
+      const { data: cat } = await supabase
+        .from("categories")
+        .select("id")
+        .or(`slug.eq.${cleanSlug},slug.eq.${categoryId}`)
+        .maybeSingle();
+      if (cat?.id) {
+        resolvedCategoryId = cat.id;
+      } else {
+        const { data: firstCat } = await supabase.from("categories").select("id").limit(1).maybeSingle();
+        if (firstCat?.id) resolvedCategoryId = firstCat.id;
+      }
+    }
+
     // 2. Kiểm tra nếu là cập nhật sản phẩm đã có
     let targetProductId = productId;
     let productSlug = "";
@@ -107,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .update({
           name_vi: nameVi.trim(),
           name_en: nameEn?.trim() || null,
-          category_id: categoryId,
+          category_id: resolvedCategoryId,
           short_desc_vi: shortDescVi?.trim() || null,
           short_desc_en: shortDescEn?.trim() || null,
           story_vi: storyVi?.trim() || null,
@@ -133,7 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from("products")
         .insert({
           shop_id: shopContext.shopId,
-          category_id: categoryId,
+          category_id: resolvedCategoryId,
           slug: productSlug,
           name_vi: nameVi.trim(),
           name_en: nameEn?.trim() || null,

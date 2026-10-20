@@ -41,6 +41,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const targetEmail = email.toLowerCase().trim();
       const targetRole = ["admin", "moderator", "viewer"].includes(role) ? role : "viewer";
 
+      // 0. RÀNG BUỘC 1 GMAIL = 1 ROLE DUY NHẤT: Không cấp quyền Admin cho Gmail đang giữ vai trò Shop
+      const { data: existingShopInvite } = await supabase
+        .from("shop_invitations")
+        .select("id, shops(name)")
+        .eq("invited_email", targetEmail)
+        .neq("status", "revoked")
+        .maybeSingle();
+
+      if (existingShopInvite) {
+        const shopName = (existingShopInvite.shops as any)?.name || "một shop đối tác";
+        return res.status(400).json({
+          success: false,
+          error: `Email ${targetEmail} đã được đăng ký vai trò Đối tác Shop ("${shopName}"). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
+        });
+      }
+
       // 1. Tìm user trong auth.users nếu đã từng đăng nhập
       let existingUid: string | null = null;
       try {

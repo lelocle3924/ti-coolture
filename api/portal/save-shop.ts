@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateShopMember } from "../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../_lib/supabaseAdmin.js";
+import { notifyAdminShopProfileUpdate } from "../_lib/telegram.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
@@ -40,7 +41,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const supabase = getSupabaseAdmin();
 
-    // 1. Cập nhật bảng shops
     const updatePayload: Record<string, any> = {
       name: name.trim(),
       tagline_vi: taglineVi?.trim() || null,
@@ -53,43 +53,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       updated_at: new Date().toISOString(),
     };
 
-    const { error: shopErr } = await supabase
-      .from("shops")
-      .update(updatePayload)
-      .eq("id", shopContext.shopId);
+    // Thu thập danh sách các trường được chỉnh sửa
+    const updatedFields: string[] = [];
+    if (name) updatedFields.push("Tên xưởng");
+    if (taglineVi) updatedFields.push("Khẩu hiệu");
+    if (storyVi) updatedFields.push("Câu chuyện");
+    if (address) updatedFields.push("Địa chỉ");
+    if (logoUrl) updatedFields.push("Ảnh đại diện (Logo)");
+    if (coverUrl) updatedFields.push("Ảnh bìa");
+    if (socials && Object.values(socials).some((v) => Boolean(v))) updatedFields.push("Mạng xã hội");
 
-    if (shopErr) {
-      throw new Error("Lỗi khi cập nhật thông tin xưởng: " + shopErr.message);
+    const requestPayload = {
+      type: "profile_update",
+      shop_id: shopContext.shopId,
+      ...updatePayload,
+      socials: socials || {},
+    };
+
+    // 1. Tạo yêu cầu duyệt cập nhật profile trong partner_requests
+    const { error: reqErr } = await supabase.from("partner_requests").insert({
+      shop_name: name.trim(),
+      applicant_email: shopContext.userEmail,
+      applicant_name: shopContext.shopName,
+      phone_or_zalo: contactEmail || null,
+      category: areaTag || "Chung",
+      description: `[CẬP NHẬT PROFILE] Thay đổi: ${updatedFields.join(", ")}`,
+      notes: JSON.stringify(requestPayload),
+      status: "pending",
+    });
+
+    if (reqErr) {
+      console.warn("[save-shop] Error creating profile request, fallback direct:", reqErr);
+      // Fallback nếu bảng không nhận: ghi trực tiếp
+      await supabase.from("shops").update(updatePayload).eq("id", shopContext.shopId);
     }
 
-    // 2. Cập nhật mạng xã hội trong shop_socials nếu có
-    if (socials && typeof socials === "object") {
-      const platforms = ["instagram", "tiktok", "facebook", "threads", "website", "zalo"] as const;
-      for (const p of platforms) {
-        const url = socials[p]?.trim();
-        if (url) {
-          await supabase.from("shop_socials").upsert(
-            {
-              shop_id: shopContext.shopId,
-              platform: p,
-              url,
-              is_visible: true,
-            },
-            { onConflict: "shop_id,platform" }
-          );
-        } else {
-          await supabase
-            .from("shop_socials")
-            .delete()
-            .eq("shop_id", shopContext.shopId)
-            .eq("platform", p);
-        }
-      }
+    // 2. Gửi thông báo duyệt qua Telegram Bot cho Admin
+    try {
+      await notifyAdminShopProfileUpdate({
+        shopName: name.trim(),
+        shopEmail: shopContext.userEmail,
+        updatedFields: updatedFields.length > 0 ? updatedFields : ["Thông tin chung"],
+      });
+    } catch (teleErr) {
+      console.warn("[save-shop] Telegram notification error:", teleErr);
     }
 
     return res.status(200).json({
       success: true,
-      message: "Lưu thông tin xưởng thành công.",
+      pendingApproval: true,
+      message: "Yêu cầu cập nhật hồ sơ xưởng đã được gửi tới Ban Quản Trị để duyệt. Thông báo đã gửi qua Telegram!",
       shop: {
         id: shopContext.shopId,
         name: name.trim(),
