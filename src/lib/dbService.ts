@@ -21,7 +21,7 @@
  * the map are the exception since 14/09: they are the team's own list.
  */
 
-import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, RouteStop } from "../types";
+import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, UserRole, RouteStop } from "../types";
 import { seed } from "./mock/seed";
 import type { Database, ProductRow, ShopRow } from "./mock/schema";
 import { supabase } from "./supabaseClient";
@@ -39,6 +39,52 @@ export function setDataSourceMode(mode: DataSourceMode) {
     window.dispatchEvent(new CustomEvent("ti_data_source_changed", { detail: mode }));
   }
 }
+
+export function isSandboxEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("ti_admin_sandbox_mode") === "true";
+}
+
+export function setSandboxEnabled(enabled: boolean) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("ti_admin_sandbox_mode", enabled ? "true" : "false");
+    window.dispatchEvent(new CustomEvent("ti_sandbox_changed", { detail: enabled }));
+  }
+}
+
+export function getSandboxOverrides(): {
+  products: Record<string, "published" | "hidden" | "rejected" | "pending_review">;
+  shops: Record<string, "published" | "hidden">;
+} {
+  if (typeof window === "undefined") return { products: {}, shops: {} };
+  try {
+    return JSON.parse(localStorage.getItem("ti_admin_sandbox_overrides") || '{"products":{},"shops":{}}');
+  } catch {
+    return { products: {}, shops: {} };
+  }
+}
+
+export function setSandboxOverrides(overrides: {
+  products?: Record<string, "published" | "hidden" | "rejected" | "pending_review">;
+  shops?: Record<string, "published" | "hidden">;
+}) {
+  if (typeof window === "undefined") return;
+  const current = getSandboxOverrides();
+  const updated = {
+    products: { ...current.products, ...(overrides.products || {}) },
+    shops: { ...current.shops, ...(overrides.shops || {}) },
+  };
+  localStorage.setItem("ti_admin_sandbox_overrides", JSON.stringify(updated));
+  window.dispatchEvent(new CustomEvent("ti_sandbox_changed", { detail: updated }));
+}
+
+export function clearSandboxOverrides() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("ti_admin_sandbox_overrides");
+    window.dispatchEvent(new CustomEvent("ti_sandbox_changed"));
+  }
+}
+
 
 const R2_PUBLIC_DOMAIN =
   import.meta.env.VITE_R2_PUBLIC_DOMAIN ||
@@ -214,7 +260,12 @@ export async function fetchStores(): Promise<StoreProfile[]> {
         .eq("status", "published");
 
       if (!error && data) {
-        return data.map((row: any) => {
+        const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+        const filtered = data.filter((row: any) => {
+          if (sandbox.shops[row.id] === "hidden") return false;
+          return true;
+        });
+        return filtered.map((row: any) => {
           const socials = row.shop_socials || [];
           const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
           return {
@@ -257,7 +308,12 @@ export async function fetchStores(): Promise<StoreProfile[]> {
       console.warn("Error fetching real stores from Supabase:", e);
     }
   }
-  return delay(db.shops.filter((s) => s.status !== "archived").map(toStore));
+  const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+  return delay(
+    db.shops
+      .filter((s) => s.status !== "archived" && sandbox.shops[s.id] !== "hidden")
+      .map(toStore)
+  );
 }
 
 export async function fetchStoreById(storeId: string): Promise<StoreProfile | null> {
@@ -326,7 +382,13 @@ export async function fetchProducts(
         .eq("status", dbStatus);
 
       if (!error && data) {
-        return data.map((row: any) => {
+        const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+        const filtered = data.filter((row: any) => {
+          if (sandbox.products[row.id] === "hidden" || sandbox.products[row.id] === "rejected") return false;
+          if (sandbox.shops[row.shop_id] === "hidden") return false;
+          return true;
+        });
+        return filtered.map((row: any) => {
           const shop = row.shops;
           const category = row.categories;
           const images = (row.product_images || [])
@@ -363,7 +425,12 @@ export async function fetchProducts(
       console.warn("Error fetching real products:", e);
     }
   }
-  const rows = db.products.filter((p) => statusFromPublish(p.status) === status);
+  const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+  const rows = db.products.filter((p) => {
+    if (sandbox.products[p.id] === "hidden" || sandbox.products[p.id] === "rejected") return false;
+    if (sandbox.shops[p.shop_id] === "hidden") return false;
+    return statusFromPublish(p.status) === status;
+  });
   return delay(rows.map(toProduct));
 }
 
@@ -380,6 +447,11 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
         const { data: s } = await supabase.from("shops").select("id").eq("slug", storeId).maybeSingle();
         if (s?.id) targetShopId = s.id;
       }
+      const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+      if (sandbox.shops[targetShopId] === "hidden") {
+        return [];
+      }
+
       const { data, error } = await supabase
         .from("products")
         .select("*, shops(*), categories(*), product_images(*)")
@@ -387,7 +459,11 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
         .eq("status", "published");
 
       if (!error && data) {
-        return data.map((row: any) => {
+        const filtered = data.filter((row: any) => {
+          if (sandbox.products[row.id] === "hidden" || sandbox.products[row.id] === "rejected") return false;
+          return true;
+        });
+        return filtered.map((row: any) => {
           const shop = row.shops;
           const category = row.categories;
           const images = (row.product_images || [])
@@ -612,14 +688,15 @@ export async function incrementProductView(productId: string): Promise<void> {
 export async function getOrCreateUserProfile(
   userId: string,
   email: string,
-  password?: string
+  password?: string,
+  role?: UserRole
 ): Promise<UserProfile> {
   const users = readUsers();
   if (!users[userId]) {
     users[userId] = {
       id: userId,
       email,
-      role: "User",
+      role: role || "User",
       wishlist: [],
       followedShops: [],
       createdAt: new Date().toISOString(),
@@ -628,6 +705,65 @@ export async function getOrCreateUserProfile(
     writeUsers(users);
   }
   return delay(clone(users[userId]));
+}
+
+export async function checkSingleRoleConflict(
+  email: string,
+  targetRole: UserRole
+): Promise<{ conflict: boolean; message?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail) return { conflict: false };
+
+  // 1. Check local users
+  const localUser = Object.values(readUsers()).find((u) => u.email.toLowerCase() === cleanEmail);
+  if (localUser && localUser.role !== targetRole) {
+    const roleMap: Record<string, string> = {
+      Admin: "Ban Quản Trị (Admin)",
+      Shop: "Chủ Shop",
+      User: "Khách hàng (User)",
+    };
+    return {
+      conflict: true,
+      message: `Email này đã được đăng ký vai trò ${roleMap[localUser.role] || localUser.role}. Mỗi Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
+    };
+  }
+
+  // 2. Check Supabase staff_members (Admin/Staff)
+  if (supabase) {
+    try {
+      const { data: staff } = await supabase
+        .from("staff_members")
+        .select("user_id, role, is_active")
+        .eq("email", cleanEmail)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (staff && targetRole !== "Admin") {
+        return {
+          conflict: true,
+          message: "Email này đã thuộc Ban Quản Trị (Admin). Mỗi Gmail chỉ được đăng ký duy nhất 1 vai trò!",
+        };
+      }
+
+      // Check shop_invitations
+      const { data: shopInv } = await supabase
+        .from("shop_invitations")
+        .select("id")
+        .eq("invited_email", cleanEmail)
+        .maybeSingle();
+
+      if (shopInv && targetRole !== "Shop") {
+        return {
+          conflict: true,
+          message: "Email này đã được cấp quyền Shop trên hệ thống. Mỗi Gmail chỉ được đăng ký duy nhất 1 vai trò!",
+        };
+      }
+    } catch (e) {
+      console.warn("checkSingleRoleConflict DB query skipped:", e);
+    }
+  }
+
+  return { conflict: false };
 }
 
 export async function findUserByEmail(email: string): Promise<UserProfile | null> {

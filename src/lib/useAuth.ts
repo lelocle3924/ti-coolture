@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { UserProfile } from "../types";
+import { UserProfile, UserRole } from "../types";
 
 /**
  * Auth context. Firebase Auth was removed on 2026-08-14; the target stack
@@ -12,7 +12,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  loginAsMockUser?: (uid: string, email: string, password?: string) => Promise<void>;
+  loginAsMockUser?: (uid: string, email: string, password?: string, role?: UserRole) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({

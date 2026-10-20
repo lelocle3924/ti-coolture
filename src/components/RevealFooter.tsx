@@ -36,13 +36,10 @@ import { useReducedMotion } from "../lib/useAutoHideChrome";
 const SITEMAP = [
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
-  { to: "/kham-pha", label: "Khám phá" },
-  { to: "/about", label: "Tạp chí" },
-  { to: "/gioi-thieu", label: "Về Tí" },
-  { to: "/hop-tac", label: "Hợp tác" },
-  { to: "/faq", label: "FAQ" },
-  { to: "/dieu-khoan", label: "Điều khoản" },
-  { to: "/bao-mat", label: "Bảo mật" },
+  { to: "/discover", label: "Khám phá" },
+  { to: "/about", label: "Về Tí" },
+  { to: "/terms", label: "Điều khoản" },
+  { to: "/open-shop", label: "Hợp tác" },
 ];
 
 /* Structural ref type — the project has no @types/react, so `React.RefObject`
@@ -97,10 +94,10 @@ function RevealFooter({ reveal }: { reveal: number }) {
             Nơi tuyển chọn local brand và artist Việt.
           </p>
           <a
-            href="mailto:ticoolture@gmail.com"
+            href="mailto:creativespace.ticoolture@gmail.com"
             className="mt-4 inline-flex min-h-11 items-center text-sm text-paper underline underline-offset-4 decoration-white/40 hover:decoration-paper"
           >
-            ticoolture@gmail.com
+            creativespace.ticoolture@gmail.com
           </a>
         </div>
 
@@ -141,14 +138,17 @@ function RevealFooter({ reveal }: { reveal: number }) {
         />
       </div>
 
-      <div className="mt-[clamp(0.75rem,3dvh,2rem)] flex flex-col gap-[clamp(0.4rem,1.4dvh,0.75rem)] border-t border-white/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="m-0 text-xs text-white/60">© 2026 Tí Coolture</p>
-        <p className="m-0 text-xs text-white/60">
+      <div className="mt-[clamp(0.75rem,3dvh,2rem)] flex flex-col gap-[clamp(0.4rem,1.4dvh,0.75rem)] border-t border-white/20 pt-5 sm:flex-row sm:items-center sm:justify-between text-xs text-white/60">
+        <p className="m-0">© 2026 Tí Coolture</p>
+        <p className="m-0">
           Tí Coolture không bán hàng và không xử lý giao dịch.
         </p>
-        <p className="m-0 text-xs text-white/60">
-          <span className="text-paper">VI</span> / EN
-        </p>
+        <div className="flex items-center gap-4">
+          <Link to="/terms" className="hover:text-wave transition-colors underline underline-offset-2">
+            Điều khoản &amp; Quyền riêng tư
+          </Link>
+          <span><span className="text-paper">VI</span> / EN</span>
+        </div>
       </div>
     </footer>
   );
@@ -173,7 +173,11 @@ export default function RevealFooterLayout({
       <RevealFooter reveal={reveal} />
       {/* The bottom margin must equal the footer's height, or the last row of
           the footer is unreachable (UX-FOUNDATIONS §4.2, open note 2). */}
-      <div ref={sheetRef} className={`relative z-10 ${sheet}`} style={{ marginBottom: "100dvh" }}>
+      <div
+        ref={sheetRef}
+        className={`relative z-10 ${sheet} min-h-[100dvh] flex flex-col`}
+        style={{ marginBottom: "100dvh" }}
+      >
         {children}
       </div>
     </>

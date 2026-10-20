@@ -31,9 +31,39 @@ export default function PartnerApplyModal({ isOpen, onClose }: PartnerApplyModal
     setIsSubmitting(true);
     setError(null);
 
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Enforce 1 Gmail = 1 Role: Không thể đăng ký làm Shop nếu đã là Admin hoặc đã có Shop
+    if (supabase) {
+      const { data: existingStaff } = await supabase
+        .from("staff_members")
+        .select("user_id")
+        .eq("email", cleanEmail)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (existingStaff) {
+        setError("Email này đã được đăng ký vai trò Ban Quản Trị (Admin). Mỗi Gmail chỉ được đăng ký 1 vai trò duy nhất.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: existingShop } = await supabase
+        .from("shop_invitations")
+        .select("id")
+        .eq("invited_email", cleanEmail)
+        .maybeSingle();
+
+      if (existingShop) {
+        setError("Email này đã được cấp quyền quản lý cho một Shop. Mỗi Gmail chỉ được đăng ký 1 vai trò duy nhất.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const payload = {
       shop_name: shopName.trim(),
-      applicant_email: email.toLowerCase().trim(),
+      applicant_email: cleanEmail,
       applicant_name: name.trim() || null,
       phone_or_zalo: phone.trim() || null,
       social_link: socialLink.trim() || null,

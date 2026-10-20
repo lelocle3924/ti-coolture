@@ -285,7 +285,7 @@ function NotFound({ index }: { index: 1 | 2 | 3 }) {
   return (
     <div
       data-surface="light"
-      className={`grid min-h-[60dvh] place-items-center bg-paper px-6 text-center text-ink ${UNDER_PILL}`}
+      className={`grid min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] place-items-center bg-paper px-6 text-center text-ink ${UNDER_PILL}`}
     >
       <div className="space-y-4">
         <h1 className="display text-2xl normal-case">Không tìm thấy sản phẩm</h1>
@@ -335,12 +335,12 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
     return resolved ? (
       <NotFound index={1} />
     ) : (
-      <div data-surface="light" className={`min-h-[60dvh] bg-paper ${UNDER_PILL}`} />
+      <div data-surface="light" className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] bg-paper ${UNDER_PILL}`} />
     );
   const images = product.images?.length ? product.images : [""];
 
   return (
-    <div data-surface="light" className={`min-h-[100dvh] bg-paper text-ink ${UNDER_PILL}`}>
+    <div data-surface="light" className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] bg-paper text-ink ${UNDER_PILL}`}>
       <InquiryModal inquiry={inquiry} storeName={store?.name ?? product.storeName} />
 
       <div className="mx-auto max-w-6xl px-5 py-6 md:px-8">

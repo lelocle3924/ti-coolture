@@ -13,6 +13,8 @@
    wrapper in ShopIntro provides. */
 .ti-shop-intro {
   line-height: 1.5;
+  text-align: justify;
+  text-justify: inter-word;
 }
 .ti-shop-intro.is-clamped {
   max-height: 4.5em;

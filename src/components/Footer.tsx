@@ -22,10 +22,10 @@ export default function Footer() {
               Nơi tuyển chọn local brand và artist Việt.
             </p>
             <a
-              href="mailto:ticoolture@gmail.com"
+              href="mailto:creativespace.ticoolture@gmail.com"
               className="mt-4 inline-flex items-center min-h-11 text-sm text-wave hover:underline"
             >
-              ticoolture@gmail.com
+              creativespace.ticoolture@gmail.com
             </a>
           </div>
 
@@ -37,8 +37,7 @@ export default function Footer() {
               {[
                 { to: "/products", label: "Sản phẩm" },
                 { to: "/stores", label: "Shop" },
-                { to: "/blog", label: "Tạp chí" },
-                { to: "/#lotrinh", label: "Lộ trình khám phá" },
+                { to: "/discover", label: "Khám phá" },
               ].map((item) => (
                 <li key={item.label}>
                   <Link
@@ -58,28 +57,28 @@ export default function Footer() {
             </h2>
             <ul className="mt-4 space-y-1">
               <li>
-                <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
+                <Link
+                  to="/about"
+                  className="inline-flex items-center min-h-11 text-sm text-white/86 hover:text-wave transition-colors"
+                >
                   Về Tí
-                </span>
+                </Link>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setIsApplyOpen(true)}
+                <Link
+                  to="/terms"
+                  className="inline-flex items-center min-h-11 text-sm text-white/86 hover:text-wave transition-colors"
+                >
+                  Điều khoản &amp; Điều kiện
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/open-shop"
                   className="inline-flex items-center min-h-11 text-sm text-wave hover:underline font-medium cursor-pointer"
                 >
                   Hợp tác với Tí (Mở shop)
-                </button>
-              </li>
-              <li>
-                <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
-                  Điều khoản sử dụng
-                </span>
-              </li>
-              <li>
-                <span className="inline-flex items-center min-h-11 text-sm text-white/50" title="Chưa có trang này">
-                  Chính sách bảo mật
-                </span>
+                </Link>
               </li>
             </ul>
           </nav>

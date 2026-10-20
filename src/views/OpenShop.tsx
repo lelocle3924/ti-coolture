@@ -16,11 +16,13 @@
  * checked, both acceptable, neither free.
  */
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Send, Sparkles, X } from "lucide-react";
 import { triggerWebhook } from "../lib/dbService";
 import { NO_TRANSACTION } from "../lib/continuity";
+import { supabase } from "../lib/supabaseClient";
+import PolicyContent from "../components/PolicyContent";
 
 /* ── the submission, shared ─────────────────────────────────────────────── */
 
@@ -83,10 +85,70 @@ function useSignup() {
     setErrors((prev) => (prev[k] ? { ...prev, [k]: undefined } : prev));
   };
 
-  const submit = (only?: Array<keyof SignupFields>) => {
+  const submit = async (only?: Array<keyof SignupFields>) => {
     const found = validate(values, only);
+    const cleanEmail = values.email.trim().toLowerCase();
+
+    if (cleanEmail && (!only || only.includes("email"))) {
+      if (supabase) {
+        try {
+          const { data: staff } = await supabase
+            .from("staff_members")
+            .select("user_id")
+            .eq("email", cleanEmail)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (staff) {
+            found.email = "Email này đã thuộc Ban Quản Trị (Admin). Mỗi Gmail chỉ được đăng ký 1 vai trò duy nhất.";
+          }
+
+          const { data: existingShop } = await supabase
+            .from("shop_invitations")
+            .select("id")
+            .eq("invited_email", cleanEmail)
+            .maybeSingle();
+
+          if (existingShop) {
+            found.email = "Email này đã được cấp quyền quản lý cho một Shop. Mỗi Gmail chỉ được mở 1 shop duy nhất.";
+          }
+        } catch (e) {
+          console.warn("OpenShop role check error:", e);
+        }
+      }
+    }
+
     setErrors(found);
     if (Object.keys(found).length) return false;
+
+    // Persist to Supabase partner_requests & localStorage for Admin review
+    try {
+      const payload = {
+        shop_name: values.shopName.trim(),
+        applicant_email: cleanEmail,
+        applicant_name: values.contactName.trim() || null,
+        phone_or_zalo: values.phone.trim() || null,
+        social_link: values.channel.trim() || null,
+        category: values.area.trim() || "Chung",
+        description: (values.makes + (values.links ? ` - Ảnh: ${values.links}` : "")).trim() || null,
+        status: "pending",
+      };
+
+      if (supabase) {
+        await supabase.from("partner_requests").insert(payload);
+      }
+
+      const stored = JSON.parse(localStorage.getItem("ti_partner_requests") || "[]");
+      stored.unshift({
+        ...payload,
+        id: `req-${Date.now()}`,
+        created_at: new Date().toISOString(),
+      });
+      localStorage.setItem("ti_partner_requests", JSON.stringify(stored));
+    } catch (e) {
+      console.warn("Failed to persist partner request:", e);
+    }
+
     triggerWebhook("SHOP_SIGNUP_SUBMITTED", { ...values, timestamp: new Date().toISOString() });
     setSent(true);
     return true;
@@ -110,41 +172,37 @@ const AREA_HINTS = [
   "Khác",
 ];
 
-function Sent({ values, tone = "ink" }: { values: SignupFields; tone?: "ink" | "paper" }) {
+function Sent({ tone = "ink" }: { values?: SignupFields; tone?: "ink" | "paper" }) {
   const muted = tone === "paper" ? "text-white/70" : "text-ink/65";
   return (
     <div
-      className={`mx-auto max-w-lg space-y-5 border p-8 ${
-        tone === "paper" ? "border-white/25" : "border-ink/15 bg-paper"
+      className={`mx-auto max-w-md space-y-6 rounded-[2rem] border p-8 md:p-10 shadow-2xl text-center transition-all duration-700 animate-in fade-in zoom-in-95 ${
+        tone === "paper" ? "border-white/25 bg-brand-deep/90 text-paper" : "border-ink/10 bg-paper text-ink"
       }`}
     >
-      <span
-        className={`grid h-11 w-11 place-items-center ${
-          tone === "paper" ? "bg-wave text-ink" : "bg-brand text-paper"
-        }`}
-      >
-        <Check className="h-5 w-5 stroke-[3]" />
-      </span>
-      <h2 className="display text-2xl normal-case">Tí nhận được rồi</h2>
-      <p className={`text-sm leading-relaxed ${muted}`}>
-        Đăng ký của <strong>{values.shopName || "shop"}</strong> đã gửi tới ban tuyển chọn. Tí đọc
-        tay từng hồ sơ và trả lời qua email <strong>{values.email}</strong> trong khoảng 5 ngày làm
-        việc.
-      </p>
-      <ul className={`space-y-1.5 text-xs leading-relaxed ${muted}`}>
-        <li>· Không có tài khoản nào được tạo, và bạn không cần đăng nhập.</li>
-        <li>· Nếu hợp, Tí hẹn một buổi xem hàng và xin ảnh chụp thật.</li>
-        <li>· {NO_TRANSACTION}</li>
-      </ul>
-      <Link
-        to="/stores"
-        viewTransition
-        className={`inline-flex items-center gap-2 text-xs font-semibold underline underline-offset-4 ${
-          tone === "paper" ? "text-wave" : "text-brand"
-        }`}
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Về danh bạ shop
-      </Link>
+      <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl shadow-md transition-transform duration-500 animate-bounce bg-wave text-ink">
+        <Check className="h-8 w-8 stroke-[3]" />
+      </div>
+      <div>
+        <span className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand">
+          <Sparkles className="h-3.5 w-3.5 text-wave" /> Gửi thành công!
+        </span>
+        <h2 className="display text-2xl normal-case md:text-3xl mt-1">Đã đăng ký thành công</h2>
+        <p className={`mt-3 text-sm leading-relaxed ${muted}`}>
+          Tí đã nhận được đơn mở shop của bạn và sẽ liên hệ phản hồi sớm nhất.
+        </p>
+      </div>
+      <div className="pt-2">
+        <Link
+          to="/stores"
+          viewTransition
+          className={`inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-xs font-semibold shadow-sm transition-transform hover:scale-105 ${
+            tone === "paper" ? "bg-wave text-ink" : "bg-brand text-paper"
+          }`}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Về danh bạ shop
+        </Link>
+      </div>
     </div>
   );
 }
@@ -258,10 +316,23 @@ function Blank({
 
 export default function OpenShop() {
   const { values, set, errors, sent, submit } = useSignup();
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   const missing = useMemo(
     () => Object.entries(errors).filter(([, v]) => !!v).map(([k]) => LABELS[k as keyof SignupFields]),
     [errors]
   );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agreedTerms) {
+      setTermsError(true);
+      return;
+    }
+    await submit();
+  };
 
   return (
     <div data-surface="light" className="min-h-[100dvh] bg-paper-warm text-ink">
@@ -271,27 +342,23 @@ export default function OpenShop() {
         {sent ? (
           <Sent values={values} />
         ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit();
-            }}
-            noValidate
-          >
-            <p className="label text-wave-ink">Gửi Tí</p>
-            <h1 className="display mt-2 text-3xl normal-case md:text-5xl">Shop mình muốn tham gia</h1>
+          <form onSubmit={handleSubmit} noValidate>
+            <h1 className="display text-3xl normal-case md:text-5xl text-brand">
+              Dear Tí Coolture,
+            </h1>
 
             <div className="mt-10 space-y-7 text-lg leading-[2.6] md:text-xl md:leading-[2.8]">
               <p>
-                Shop của mình tên là{" "}
-                <Blank name="shopName" values={values} set={set} errors={errors} width="14ch" placeholder="tên shop" />
-                , làm ở{" "}
-                <Blank name="area" values={values} set={set} errors={errors} width="11ch" placeholder="khu vực" />.
-              </p>
-              <p>
                 Mình là{" "}
-                <Blank name="contactName" values={values} set={set} errors={errors} width="11ch" placeholder="tên bạn" />
-                , liên lạc qua{" "}
+                <Blank
+                  name="contactName"
+                  values={values}
+                  set={set}
+                  errors={errors}
+                  width="14ch"
+                  placeholder="tên bạn"
+                />
+                , email mình qua{" "}
                 <Blank
                   name="email"
                   type="email"
@@ -299,37 +366,62 @@ export default function OpenShop() {
                   set={set}
                   errors={errors}
                   width="18ch"
-                  placeholder="email"
+                  placeholder="email của bạn"
                 />{" "}
-                hoặc{" "}
+                hoặc gọi số{" "}
                 <Blank
                   name="phone"
                   type="tel"
                   values={values}
                   set={set}
                   errors={errors}
-                  width="13ch"
+                  width="14ch"
                   placeholder="số điện thoại"
                 />.
               </p>
               <p>
-                Khách đang đặt hàng của mình ở{" "}
-                <Blank name="channel" values={values} set={set} errors={errors} width="16ch" placeholder="kênh bán" />
-                , và ảnh sản phẩm mình để ở{" "}
-                <Blank name="links" values={values} set={set} errors={errors} width="16ch" placeholder="đường dẫn ảnh" />.
+                Shop mình tên là{" "}
+                <Blank
+                  name="shopName"
+                  values={values}
+                  set={set}
+                  errors={errors}
+                  width="16ch"
+                  placeholder="tên shop"
+                />
+                , ở{" "}
+                <Blank
+                  name="area"
+                  values={values}
+                  set={set}
+                  errors={errors}
+                  width="14ch"
+                  placeholder="khu vực"
+                />.
+              </p>
+              <p>
+                Mọi người thường mua đồ của tụi mình qua trang{" "}
+                <Blank
+                  name="channel"
+                  values={values}
+                  set={set}
+                  errors={errors}
+                  width="22ch"
+                  placeholder="đường dẫn trang IG/FB/TikTok"
+                />.
               </p>
             </div>
 
             <div className="mt-10 space-y-2">
-              <label htmlFor="makes" className="label block text-ink/55">
-                Shop mình làm <span className="text-brand">*</span>
+              <label htmlFor="makes" className="label block text-ink font-semibold">
+                Kể Tí về bạn nhé <span className="text-brand">*</span>
               </label>
               <textarea
                 id="makes"
                 rows={5}
                 value={values.makes}
                 onChange={(e) => set("makes", e.target.value)}
-                placeholder="Kể ngắn gọn: làm gì, bằng chất liệu gì, mỗi mẻ bao nhiêu, giá tham khảo khoảng bao nhiêu…"
+                placeholder="Kể ngắn gọn về mặt hàng chủ đạo và phong cách của shop nhé: Sản phẩm chính, chất liệu, khoảng giá tham khảo..."
                 aria-invalid={!!errors.makes}
                 className={`ti-field resize-y bg-paper text-base leading-relaxed ${
                   errors.makes ? "border-brand" : ""
@@ -343,21 +435,102 @@ export default function OpenShop() {
               </p>
             )}
 
-            <div className="mt-10 flex flex-wrap items-center gap-5 border-t border-ink/15 pt-8">
+            <div className="mt-8 space-y-3 rounded-2xl border border-ink/10 bg-paper p-5">
+              <p className="text-xs text-ink/70">
+                Bạn vui lòng đọc kỹ điều khoản và điều kiện trước khi đăng ký nha
+              </p>
+              <label className="flex items-center gap-3 cursor-pointer text-xs font-medium text-ink select-none">
+                <input
+                  type="checkbox"
+                  checked={agreedTerms}
+                  onChange={(e) => {
+                    setAgreedTerms(e.target.checked);
+                    if (e.target.checked) setTermsError(false);
+                  }}
+                  className="h-4 w-4 rounded border-ink/20 text-brand focus:ring-brand cursor-pointer"
+                />
+                <span>
+                  Tôi đồng ý với{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(true)}
+                    className="font-semibold text-brand underline underline-offset-4 hover:text-brand-deep cursor-pointer"
+                  >
+                    Điều khoản &amp; Điều kiện
+                  </button>
+                </span>
+              </label>
+              {termsError && (
+                <p role="alert" className="text-xs text-brand font-medium">
+                  Vui lòng chọn đồng ý với Điều khoản &amp; Điều kiện trước khi gửi đơn.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-5 border-t border-ink/15 pt-8">
               <button
                 type="submit"
-                className="border border-brand bg-brand px-10 py-3.5 text-xs font-semibold text-paper transition-colors hover:bg-brand-deep"
+                className="inline-flex items-center gap-2 rounded-full border border-brand bg-brand px-8 py-3.5 text-xs font-semibold text-paper shadow-md transition-all hover:bg-brand-deep hover:scale-105 active:scale-95 cursor-pointer"
               >
-                Gửi cho Tí
+                <Send className="h-4 w-4" />
+                <span>Gửi cho Tí</span>
               </button>
               <p className="max-w-xs text-[11px] leading-relaxed text-ink/50">
-                Không tạo tài khoản, không mật khẩu. Tí đọc tay và trả lời qua email trong khoảng 5
-                ngày làm việc.
+                Tí đọc duyệt hồ sơ và gửi thông báo qua email trong khoảng 5 ngày làm việc.
               </p>
             </div>
           </form>
         )}
       </div>
+
+      {showTermsModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm"
+          onClick={() => setShowTermsModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl rounded-3xl bg-paper p-6 md:p-8 shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 pb-3">
+              <h3 className="display text-xl normal-case font-medium">Điều khoản &amp; Điều kiện</h3>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="grid h-9 w-9 place-items-center rounded-full hover:bg-ink/5 transition-colors cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X className="h-5 w-5 text-ink/60" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-1">
+              <PolicyContent initialTab="terms" showTabs={true} />
+            </div>
+            <div className="pt-3 border-t border-ink/10 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="rounded-full border border-ink/20 px-5 py-2 text-xs font-medium text-ink hover:bg-ink/5 cursor-pointer"
+              >
+                Đóng (X)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAgreedTerms(true);
+                  setTermsError(false);
+                  setShowTermsModal(false);
+                }}
+                className="rounded-full bg-brand px-6 py-2 text-xs font-semibold text-paper hover:bg-brand-deep cursor-pointer"
+              >
+                Tôi đồng ý &amp; Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -106,7 +106,7 @@ export interface DistrictPlan {
 export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
   "route-quan-1": {
     district: "Quận 1",
-    region: "Quận 1",
+    region: "Ở Quận 1",
     walk: "~7,9 km",
     shapes: [
       "M140,240 L330,200 L392,320 L276,398 L152,352 Z",
@@ -118,7 +118,7 @@ export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
   },
   "route-quan-2": {
     district: "Quận 2",
-    region: "Quận 2",
+    region: "Tại Quận 2",
     walk: "~7,3 km",
     shapes: [
       "M96,190 L286,150 L370,262 L268,352 L120,318 Z",
@@ -130,7 +130,7 @@ export const DISTRICT_PLANS: Record<string, DistrictPlan> = {
   },
   "route-quan-3": {
     district: "Quận 3",
-    region: "Quận 3",
+    region: "Ngay tại Quận 3",
     walk: "~7,6 km",
     shapes: [
       "M60,300 L210,236 L330,268 L392,392 L296,486 L142,452 Z",

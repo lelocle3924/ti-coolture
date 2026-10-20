@@ -64,28 +64,28 @@ import "../home/home.css";
 const HOW_STEPS = [
   {
     n: "01",
-    vi: { title: "Chọn món bạn ưng", body: "Lướt qua sản phẩm từ các local brand Tí tuyển chọn. Thấy món hợp gu thì mở ra xem kỹ hơn." },
+    vi: { title: "Chọn món hợp gu", body: "Khám phá sản phẩm từ các thương hiệu local và chọn món bạn thích." },
     en: { title: "Find something you like", body: "Browse pieces from the local brands Tí has picked. Something catches your eye, open it up." },
   },
   {
     n: "02",
-    vi: { title: "Bấm ORDER NOW, chọn kênh", body: "Mỗi shop bán trên kênh riêng — Instagram, TikTok hay Facebook. Chọn kênh bạn hay dùng." },
+    vi: { title: "Chọn kênh liên hệ", body: "Nhấn “Order Now”, rồi chọn Instagram, TikTok hoặc Facebook để liên hệ với shop." },
     en: { title: "Tap ORDER NOW, pick a channel", body: "Every shop sells on its own channel. Pick the one you already use." },
   },
   {
     n: "03",
-    vi: { title: "Dán tin nhắn có sẵn", body: "Tí soạn sẵn tên món kèm link và copy vào máy bạn. Qua shop chỉ việc dán rồi gửi." },
+    vi: { title: "Nhắn tin cho shop", body: "Tên và link sản phẩm đã được sao chép sẵn. Bạn chỉ cần dán vào tin nhắn và gửi đi." },
     en: { title: "Paste the message we wrote", body: "Tí writes it out with the product name and link, and copies it for you. Paste, send." },
   },
   {
     n: "04",
-    vi: { title: "Shop nhắn lại cho bạn", body: "Giá, còn hàng hay không, ship thế nào — bạn chốt trực tiếp với shop. Tí không giữ tiền, không qua trung gian." },
+    vi: { title: "Chốt đơn trực tiếp", body: "Trao đổi với shop về giá, tình trạng hàng và giao nhận, rồi chốt đơn khi bạn đã ưng ý." },
     en: { title: "The shop gets back to you", body: "Price, stock, delivery — you settle it straight with the shop. Tí never handles your money." },
   },
 ];
 
 const HOW_TURN = {
-  vi: { title: "Chưa biết mua gì?", body: "Ngó thử mấy bộ sưu tập này xem, biết đâu lại đúng gu bạn." },
+  vi: { title: "Chưa biết mua gì?", body: "Xem thử mấy bộ sưu tập này đi, biết đâu lại đúng gu bạn." },
   en: { title: "Nothing in mind yet?", body: "Have a look through these collections — something might land." },
 };
 
@@ -162,7 +162,7 @@ function ScrollHint() {
 function Collaborate() {
   return (
     <section className="bg-brand-deep px-5 pb-16 pt-6 text-center text-paper md:px-10 md:pb-20">
-      <p className="text-[11px] tracking-[0.22em] text-white/75">DÀNH CHO CÁC SHOP</p>
+      <p className="text-[11px] tracking-[0.22em] text-white/75">DÀNH RIÊNG CHO CÁC BẠN SHOP</p>
       {/* Two lines, always — team 09/09. The question and the invitation are
           doing different jobs, and at max-w-[18ch] the break landed wherever
           the measure happened to put it: "Bạn làm đồ đẹp? Kể" / "Tí nghe" at
@@ -1223,7 +1223,7 @@ function HowItWorks() {
                 sized in dvh precisely because a rem-sized version clipped its
                 last row on short Windows laptops. */}
             <div
-              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(13.5rem,36dvh,23rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
+              className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(15rem,38dvh,25rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
                 } ${i % 2 === 0 ? "bg-brand" : "bg-brand-deep"} text-paper`}
             >
               <h3 className="display text-[clamp(1.25rem,min(2.3vw,3.2dvh),2rem)] normal-case leading-[1.05]">
@@ -1235,7 +1235,7 @@ function HowItWorks() {
               >
                 {step.n}.
               </p>
-              <p className="mt-[clamp(0.75rem,2.2dvh,1.5rem)] max-w-[32ch] text-[13px] leading-relaxed text-white/75">
+              <p className="mt-[clamp(0.75rem,2.2dvh,1.5rem)] text-lg md:text-[clamp(1.5rem,min(1.75vw,2.3dvh),1.85rem)] leading-snug text-white/85">
                 {step.vi.body}
               </p>
             </div>
@@ -2114,10 +2114,7 @@ function CollectionsSpringTabs({
         Chưa biết mua gì?
       </h2>
       <p className="mx-auto mt-4 max-w-[46ch] text-base leading-relaxed text-white/70">
-        Ngó thử mấy bộ sưu tập này xem, biết đâu lại đúng gu bạn.
-      </p>
-      <p className="mt-3 text-xs text-white/45">
-        Tên bộ sưu tập là placeholder — chờ ban biên tập đặt tên thật.
+        Xem thử mấy bộ sưu tập này đi, biết đâu lại đúng gu bạn.
       </p>
     </div>
   );
