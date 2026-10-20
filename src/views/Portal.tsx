@@ -590,9 +590,45 @@ export default function Portal() {
   }
 
   async function loadAdminData() {
-    // 1. Load Requests
+    const token = (await getSupabaseToken()) || (typeof localStorage !== "undefined" ? localStorage.getItem("ti_admin_bypass_token") : null) || "dev-token";
+
+    // 1. Try Backend API first for Reviews & Shops (uses service role key, works on both Localhost & Production)
+    let apiReviewsLoaded = false;
+    try {
+      const res = await fetch("/api/admin/reviews", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          if (Array.isArray(data.products)) setPendingReviews(data.products);
+          if (Array.isArray(data.shops)) setAdminShops(data.shops);
+          apiReviewsLoaded = true;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load reviews from /api/admin/reviews:", e);
+    }
+
+    // 2. Try Backend API for Partner Requests
     let requests = getInitialRequests();
-    if (supabase) {
+    let apiRequestsLoaded = false;
+    try {
+      const res = await fetch("/api/admin/requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.requests) && data.requests.length > 0) {
+          requests = data.requests;
+          apiRequestsLoaded = true;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load requests from /api/admin/requests:", e);
+    }
+
+    if (!apiRequestsLoaded && supabase) {
       try {
         const { data: dbReqs } = await supabase
           .from("partner_requests")
@@ -666,8 +702,8 @@ export default function Portal() {
     }
     setStaffList(staff);
 
-    // 4. Load Products for Review
-    if (supabase) {
+    // 4. Load Products for Review (Fallback)
+    if (!apiReviewsLoaded && supabase) {
       try {
         const { data: revData } = await supabase
           .from("products")
@@ -681,8 +717,8 @@ export default function Portal() {
       }
     }
 
-    // 5. Load All Shops & their Products for Admin Visibility Management (Ẩn / Hiện)
-    if (supabase) {
+    // 5. Load All Shops & their Products for Admin Visibility Management (Fallback)
+    if (!apiReviewsLoaded && supabase) {
       try {
         const { data: dbShops } = await supabase
           .from("shops")
