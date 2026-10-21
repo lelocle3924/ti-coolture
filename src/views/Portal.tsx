@@ -795,7 +795,7 @@ export default function Portal() {
 
     // 1. Try serverless API
     try {
-      const res = await fetch("/api/admin/reviews/action", {
+      const res = await fetch("/api/admin/reviews", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
