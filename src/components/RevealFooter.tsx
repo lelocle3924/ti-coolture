@@ -33,11 +33,11 @@ import { useReducedMotion } from "../lib/useAutoHideChrome";
    height. The wordmark is the brand lockup as SVG — vector, so the diacritic
    cannot clip — scrubbing opacity 0.25 → 1 and translateY 26 → 0. */
 
+// GHI CHÚ: Trang /about còn đang rất tạm bợ, tuyệt đối ẩn không để users thấy
 const SITEMAP = [
   { to: "/products", label: "Sản phẩm" },
   { to: "/stores", label: "Shop" },
   { to: "/discover", label: "Khám phá" },
-  { to: "/about", label: "Về Tí" },
   { to: "/terms", label: "Điều khoản" },
   { to: "/open-shop", label: "Hợp tác" },
 ];

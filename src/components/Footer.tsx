@@ -56,14 +56,7 @@ export default function Footer() {
               Thông tin
             </h2>
             <ul className="mt-4 space-y-1">
-              <li>
-                <Link
-                  to="/about"
-                  className="inline-flex items-center min-h-11 text-sm text-white/86 hover:text-wave transition-colors"
-                >
-                  Về Tí
-                </Link>
-              </li>
+              {/* GHI CHÚ: Trang /about còn đang rất tạm bợ, tuyệt đối ẩn không để users thấy */}
               <li>
                 <Link
                   to="/terms"
