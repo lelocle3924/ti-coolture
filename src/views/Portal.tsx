@@ -824,6 +824,7 @@ export default function Portal() {
     // 2. Direct Supabase
     if (supabase) {
       try {
+        const newStatus = action === "approve" ? "published" : "rejected";
         const nowIso = new Date().toISOString();
         const { error: prodErr } = await supabase
           .from("products")

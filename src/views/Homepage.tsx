@@ -124,8 +124,10 @@ function ScrollHint() {
       frame = requestAnimationFrame(() => {
         frame = 0;
         const collections = document.getElementById("dong-collections");
-        if (!collections) return;
-        const passed = collections.getBoundingClientRect().bottom <= window.innerHeight;
+        const fallback = document.getElementById("dong-how") || document.getElementById("dong-store");
+        const anchor = collections || fallback;
+        if (!anchor) return;
+        const passed = anchor.getBoundingClientRect().bottom <= window.innerHeight;
         setVisible(!passed);
       });
     };
@@ -2096,7 +2098,7 @@ function CollectionRail({
   );
 }
 
-function CollectionsSpringTabs({
+export function CollectionsSpringTabs({
   collections,
   onOpen,
 }: {
@@ -2280,7 +2282,8 @@ export default function Homepage() {
             HowItWorks is the whole transition now — it rises out of this
             section's own violet, so the two grounds meet on the shape rather
             than on a fade. */}
-          <CollectionsSpringTabs collections={collections} onOpen={open} />
+          {/* TẠM ẨN: Quyết định 2026-10-23 — Ẩn Collections khỏi UI homepage (mục pending, xử lý trước cuối năm). Giữ nguyên component. */}
+          {/* <CollectionsSpringTabs collections={collections} onOpen={open} /> */}
 
           {/* No ramp above the map any more (13/09). It was a 10vh band from
             this violet into brand-deep, and with the map's title centred
