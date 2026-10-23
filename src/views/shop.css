@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------------
-   The shop page, /stores/:storeId (13/09). Imported by ShopDisplay.tsx.
+   The shop page, /stores/:storeId (v3 — Motion). Imported by ShopDisplay.tsx.
    Every colour resolves to a token from src/index.css.
    --------------------------------------------------------------------------- */
 
@@ -42,14 +42,27 @@
   text-underline-offset: 3px;
 }
 
-/* The loop's pupil changes colour with the ground under the eye; ease it
-   rather than cut it. The second <path> in the mark is the pupil. */
-.ti-shop-loop path:nth-of-type(2) {
-  transition: fill 240ms ease;
+/* ---------------------------------------------------------------------------
+   Product card staggered reveal — start state set in CSS, resolved by JS.
+   GPU-safe: only transform, opacity, and filter are animated.
+   --------------------------------------------------------------------------- */
+.shop-card-reveal {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  filter: blur(6px);
+  transition:
+    opacity 700ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 700ms cubic-bezier(0.32, 0.72, 0, 1),
+    filter 700ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ti-shop-loop path:nth-of-type(2) {
+  .shop-card-reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
     transition: none;
+    will-change: auto;
   }
 }

@@ -1,134 +1,42 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Heart } from "lucide-react";
+import { ArrowRight, Heart, MapPin, ArrowUpRight, SlidersHorizontal } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
-import { NO_TRANSACTION, PRICE_NOTE } from "../lib/continuity";
-import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
-import { useMediaQuery } from "../lib/useAutoHideChrome";
+import { formatPrice, ContinuityLink } from "../lib/continuity";
+import { ArcTopRight } from "../components/BrandShapes";
 import { useSavedStores } from "../lib/useSavedStores";
 import PlatformGlyph from "../components/PlatformGlyph";
-import { Dropdown, PRICE_BANDS, ProductCard, SORTS } from "./Products";
+import SaveButton from "../components/SaveButton";
+import { Dropdown, PRICE_BANDS, SORTS } from "./Products";
 import "./shop.css";
 
-/**
- * Trang shop — /stores/:storeId
- *
- * Redrawn to the team's 13/09 drawing. It replaces the split ("Chia đôi",
- * 09/09): the drawing puts the shop's photograph whole across the top, the
- * shop's face on its lower edge and the ways to reach the shop straight under
- * it, so a visitor meets who the shop is and where to find it before anything
- * else — and then the products, with as little text as the page can manage.
- *
- * Read end to end, the note asks for:
- *
- *   · less: no district, no email, no "hình thức", no "Theo dõi shop";
- *   · the way back to the directory as an arrow alone;
- *   · the arc on the left and the blinking loop on the right, fixed to the
- *     screen while the page scrolls under them, the arc turned -150°;
- *   · nav, cover, avatar, name, up to four platform buttons (a platform the
- *     shop does not use is simply absent, the rest start from the left), the
- *     shop's own words;
- *   · on a phone, the platform links in a bar floating at the bottom.
- *
- * The unit. "Lấy chiều cao của chữ 'o' trong chữ 'Shop' trên nav bar là 10":
- * the nav sets its links at 14px Alexandria 600, whose o measures 547.46/1000
- * em overshoot to overshoot, 7.66px. The gap from the nav pill to the cover
- * and the avatar's ring are each one of those (--u). The drawing itself
- * measures both at about 1.8u; asked on 13/09, the team chose the written
- * rule, so the drawing governs everything the rule does not state.
- *
- * Measured off the drawing, a 1118×538 frame of a ~1536×739 viewport (its nav
- * pill, a real 1152px max-w-6xl, is 839 of it):
- *
- *     column    702 of 1118                      → 60rem
- *     cover     702 × 256, top corners ~10       → 2.742 : 1, 14px top, square foot
- *     avatar    photo Ø114.6, centre 90 in       → 16.3% of the column, centred at 12.8%
- *     name      cap 23, left edge on the ring,   → 45px, from the ring, centred in the
- *               centred under the cover            ring's lower half
- *     buttons   4 × 160, gap 17, 53 tall, flush  → starting at the ring's foot; since
- *               under the ring                     16/09 round white buttons carrying
- *                                                  the platform's mark (PlatformGlyph)
- *     text      3 lines at 21.5, "…xem thêm"     → 20px / 1.5, the control inline
- *     ground    violet to the cover's foot, then → a ramp of 17.25rem at 1536
- *               a ~200 ramp to paper
- *
- * On a phone, which the drawing does not show: the cover goes 16:9 (2.742:1
- * at 358px is a 130px sliver), the avatar and the name keep their places with
- * floors under their sizes, and the buttons move into the floating bar.
- */
+/* ---------------------------------------------------------------------------
+   Trang Shop — /stores/:storeId (Redesign v3 — Motion)
+   High-end parallax cover, staggered product reveal, no ribbon loops.
+   --------------------------------------------------------------------------- */
 
-/* The two marks, fitted the way the hero's were: each mark's real path drawn
-   over the drawing at the brief's rotation, placement kept where its
-   silhouette best overlaps the drawing's teal (IoU 0.978 arc, 0.987 loop).
-
-   They are fixed to the screen, so the screen is what they are placed
-   against: on a desktop, the centre of each mark's box and its width in
-   percent of the viewport, exactly as measured, with a floor so a narrow
-   window cannot shrink them to a smudge.
-
-   A phone has no margin beside the column to hold them, and the drawing does
-   not show one. The first answer pushed them out to the screen's edges and
-   left them fixed there, so the page scrolled a crescent of arc past the
-   shop's words and a length of ribbon across the grid and the price note —
-   the "2 cái element đang bị lỗi hiển thị" of 14/09. On a phone the loop now
-   belongs to the header instead: it scrolls with the page, comes out from
-   behind the cover's lower right corner beside the shop's name with its eye
-   on the violet, and is gone by the time the products arrive. The arc has no
-   room of its own there — tried behind the cover, round the avatar and beside
-   the product count, it crossed the photograph, the face or the words every
-   time — so it is the desktop's alone. */
-const SHOP_MARKS = {
-  wide: {
-    arc: { left: "-1.34%", top: "41.9%", width: "max(31.2%, 15rem)" },
-    loop: { left: "100.54%", top: "15.15%", width: "max(33.3%, 16rem)" },
-  },
-  phone: {
-    // just inside the right edge, half a rem above the cover's foot
-    loop: {
-      left: "calc(100% - 0.375rem)",
-      top: "calc(var(--pill) + var(--u) + var(--cover-h) - 0.5rem)",
-      width: "9.5rem",
-    },
-  },
-} as const;
-
-/** The loop's eye, below the loop's centre, in loop widths — at -90°. */
-const EYE_BELOW_CENTRE = 0.275;
-
-/* In the order the drawing gives them.
-
-   They used to wear the platforms' own colours — Threads black, Instagram's
-   sunset, Facebook blue, TikTok grey — with the names in capitals. Team 16/09,
-   choosing from /lab/shop-buttons: "chọn phương án màu trắng, chỉ để logo, nút
-   tròn gọn". So all four share one skin: a white disc, the platform's mark in
-   the brand's violet, a violet hairline and a soft violet shadow; under the
-   pointer the disc fills violet and the mark turns white. The platform's name
-   is still there for a screen reader, on the link's label. */
 const PLATFORMS = [
-  { key: "threads", label: "Threads" },
-  { key: "instagram", label: "Instagram" },
-  { key: "facebook", label: "Facebook" },
-  { key: "tiktok", label: "TikTok" },
+  { key: "instagram", label: "Instagram", primaryPrefix: "Nhắn qua" },
+  { key: "tiktok", label: "TikTok", primaryPrefix: "Xem" },
+  { key: "facebook", label: "Facebook", primaryPrefix: "Nhắn qua" },
+  { key: "threads", label: "Threads", primaryPrefix: "Xem" },
 ] as const;
 
 interface Channel {
   key: string;
   label: string;
   href: string;
+  prefix: string;
 }
-
-/** The disc every platform button is; each placement adds its size and shadow. */
-const CHANNEL_BUTTON =
-  "grid place-items-center rounded-full bg-paper text-brand transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-brand hover:text-paper active:translate-y-0 active:scale-[0.98] active:duration-100 focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-wave motion-reduce:transition-colors motion-reduce:hover:translate-y-0";
 
 function channelsOf(store: StoreProfile): Channel[] {
   return PLATFORMS.flatMap((platform) => {
-    const url = store.socials?.[platform.key];
+    const url = store.socials?.[platform.key as keyof typeof store.socials];
     if (!url) return [];
     const base = url.startsWith("http") ? url : `https://${url}`;
     const href = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=shop`;
-    return [{ ...platform, href }];
+    return [{ key: platform.key, label: platform.label, href, prefix: platform.primaryPrefix }];
   });
 }
 
@@ -157,160 +65,257 @@ function useShopPage(storeId: string | undefined) {
   return { store, products, resolved };
 }
 
-/**
- * The arc and the loop, fixed to the screen — on a desktop. A phone gets the
- * loop alone, pinned to the header (see SHOP_MARKS).
- *
- * Painted between the page's ground and its content: the root is clipped
- * (clip-path: inset(0)), which contains a fixed descendant's painting the way
- * overflow cannot, so the marks end with the page instead of riding over the
- * footer.
- *
- * The loop's pupil is white while the eye looks onto the violet and turns
- * violet once it looks onto paper, as the drawing shows it in both places —
- * a white dot on white would be an eye with nothing in it. The switch is at
- * the middle of the ramp, where neither colour is the ground.
- */
-function ShopMarks({ coverRef }: { coverRef: { current: HTMLElement | null } }) {
-  const wide = useMediaQuery("(min-width: 768px)");
-  const loopRef = useRef<HTMLDivElement>(null);
-  const [onPaper, setOnPaper] = useState(false);
+/* ---------------------------------------------------------------------------
+   Motion hooks — GPU-safe, transform + opacity only
+   --------------------------------------------------------------------------- */
+
+/** Parallax: cover image shifts slower than scroll for depth */
+function useParallaxCover(factor = 0.35) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const ticking = useRef(false);
 
   useEffect(() => {
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      const cover = coverRef.current;
-      const loop = loopRef.current;
-      if (!cover || !loop) return;
-      /* Read off the rendered loop rather than re-derived from the
-         placement: the box turns about its centre, so the centre of its
-         bounding rect is the centre of the mark, and offsetWidth is its
-         unturned width. */
-      const box = loop.getBoundingClientRect();
-      const eyeY = box.top + box.height / 2 + EYE_BELOW_CENTRE * loop.offsetWidth;
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      // the same clamp as --ramp on the page root
-      const ramp = Math.min(17.25 * rem, Math.max(11 * rem, 0.18 * window.innerWidth));
-      setOnPaper(cover.getBoundingClientRect().bottom + ramp / 2 < eyeY);
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) return;
+
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        ticking.current = false;
+        const el = containerRef.current;
+        const img = imgRef.current;
+        if (!el || !img) return;
+        const rect = el.getBoundingClientRect();
+        // Only apply when visible
+        if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+        const offset = rect.top * factor;
+        img.style.transform = `translate3d(0, ${offset}px, 0) scale(1.12)`;
+      });
     };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    };
-    measure();
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule, { passive: true });
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, [coverRef, wide]);
 
-  const place = (at: { left: string; top: string; width: string }, rotate: number) => ({
-    left: at.left,
-    top: at.top,
-    width: at.width,
-    transform: `translate(-50%, -50%) rotate(${rotate}deg)`,
-  });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [factor]);
 
-  const loop = (
-    <RibbonLoop
-      className="ti-shop-loop w-full"
-      ribbon="var(--color-wave)"
-      dot={onPaper ? "var(--color-brand)" : "var(--color-paper)"}
-      blink
-    />
-  );
-
-  if (!wide) {
-    /* Pinned to the page, not the screen, in a box that clips what runs past
-       the right edge. The root's clip-path hides that part from view but
-       still counts it as overflow, and a phone would scroll sideways to it. */
-    return (
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
-        <div ref={loopRef} className="absolute" style={place(SHOP_MARKS.phone.loop, -90)}>
-          {loop}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div aria-hidden="true" className="pointer-events-none">
-      <div className="fixed z-[1]" style={place(SHOP_MARKS.wide.arc, -150)}>
-        <ArcTopRight className="w-full" fill="var(--color-wave)" />
-      </div>
-      <div ref={loopRef} className="fixed z-[1]" style={place(SHOP_MARKS.wide.loop, -90)}>
-        {loop}
-      </div>
-    </div>
-  );
+  return { containerRef, imgRef };
 }
 
-/**
- * The shop's own words, three lines, with the way to the rest at the end of
- * the third — inline, as drawn, rather than a control under the paragraph.
- *
- * The control is floated into the last clamped line (see .ti-shop-intro in
- * shop.css) and only exists when the words actually overflow, measured, so a
- * one-line tagline never offers to expand.
- */
-function ShopIntro({ text, className = "" }: { text: string; className?: string }) {
-  const ref = useRef<HTMLParagraphElement>(null);
+/** IntersectionObserver-based reveal: fade-up with stagger */
+function useRevealOnScroll() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const el = containerRef.current;
+    if (!el || prefersReduced) {
+      // Instantly show everything
+      if (el) {
+        const children = el.querySelectorAll("[data-reveal]");
+        children.forEach((child) => {
+          (child as HTMLElement).style.opacity = "1";
+          (child as HTMLElement).style.transform = "none";
+        });
+      }
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const target = entry.target as HTMLElement;
+            const stagger = parseInt(target.dataset.revealDelay || "0", 10);
+            setTimeout(() => {
+              target.style.opacity = "1";
+              target.style.transform = "translate3d(0, 0, 0)";
+              target.style.filter = "blur(0)";
+            }, stagger);
+            observer.unobserve(target);
+          }
+        });
+      },
+      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
+    );
+
+    const children = el.querySelectorAll("[data-reveal]");
+    children.forEach((child) => observer.observe(child));
+
+    return () => observer.disconnect();
+  }, []);
+
+  return containerRef;
+}
+
+/** Profile card entrance — slides up + fades in on mount */
+function useCardEntrance() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
+      el.style.opacity = "1";
+      el.style.transform = "none";
+      return;
+    }
+    // Start hidden
+    el.style.opacity = "0";
+    el.style.transform = "translate3d(0, 28px, 0)";
+    el.style.transition = "opacity 800ms cubic-bezier(0.32, 0.72, 0, 1), transform 800ms cubic-bezier(0.32, 0.72, 0, 1)";
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.opacity = "1";
+        el.style.transform = "translate3d(0, 0, 0)";
+      });
+    });
+  }, []);
+
+  return ref;
+}
+
+/** Đoạn văn mô tả xưởng (VỀ XƯỞNG) với nút xem thêm / thu gọn */
+function ShopBio({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const [overflows, setOverflows] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const pRef = useRef<HTMLParagraphElement>(null);
 
   useLayoutEffect(() => {
-    const el = ref.current;
+    const el = pRef.current;
     if (!el || open) return;
-    const check = () => setOverflows(el.scrollHeight - el.clientHeight > 2);
-    check();
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
+    setIsClamped(el.scrollHeight > el.clientHeight + 4);
   }, [text, open]);
 
   return (
-    <div className={`flex ${className}`}>
-      <p ref={ref} className={`ti-shop-intro min-w-0 text-justify ${open ? "" : "is-clamped"}`}>
-        {!open && overflows && (
-          <button type="button" onClick={() => setOpen(true)} className="ti-shop-intro-more">
-            … xem thêm
-          </button>
-        )}
+    <div className="space-y-1.5">
+      <p
+        ref={pRef}
+        className={`text-[14px] leading-[1.75] text-[#2C2538] text-justify transition-all duration-300 ${
+          open ? "" : "line-clamp-4"
+        }`}
+      >
         {text}
-        {open && (
-          <>
-            {" "}
-            <button type="button" onClick={() => setOpen(false)} className="ti-shop-intro-less">
-              Thu gọn
-            </button>
-          </>
-        )}
       </p>
+      {isClamped && (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="text-xs font-semibold text-[#7520F7] hover:underline cursor-pointer"
+        >
+          {open ? "Thu gọn ⌃" : "Xem thêm ⌄"}
+        </button>
+      )}
     </div>
   );
 }
 
-/* The column every block of the page shares: 60rem, with a gutter that
-   narrows on a phone. It is also the container the page's cqw units read. */
-const COLUMN = "@container mx-auto w-[min(60rem,calc(100%_-_2rem))] md:w-[min(60rem,calc(100%_-_4rem))]";
+/** Thẻ sản phẩm — v3 with reveal-ready data attributes */
+function ShopProductCard({ product, index }: { key?: string; product: Product; index: number }) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const primaryImg = product.images?.[0] || "";
+  const hoverImg = product.images?.[1] || primaryImg;
+
+  return (
+    <div
+      data-reveal
+      data-reveal-delay={String(index * 80)}
+      className="shop-card-reveal group flex flex-col"
+    >
+      {/* Double-bezel outer shell */}
+      <div className="rounded-[22px] md:rounded-[26px] bg-[#F7F4FB]/60 p-[3px] ring-1 ring-[#ECE6F5] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:ring-[#7520F7]/30 group-hover:shadow-[0_20px_44px_-12px_rgba(60,20,120,0.12)]">
+        {/* Inner core */}
+        <div className="rounded-[20px] md:rounded-[24px] bg-white overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] flex flex-col">
+          {/* Khung ảnh — 4:5 ratio */}
+          <div className="relative overflow-hidden bg-paper-warm" style={{ aspectRatio: "4/5" }}>
+            <ContinuityLink
+              product={product}
+              to={`/products/${product.id}`}
+              imgRef={imageRef}
+              className="block h-full w-full"
+            >
+              <img
+                ref={imageRef}
+                src={primaryImg}
+                alt={product.name}
+                loading="lazy"
+                className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.06]"
+              />
+              {hoverImg !== primaryImg && (
+                <img
+                  src={hoverImg}
+                  alt={`${product.name} góc khác`}
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-600 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:opacity-100"
+                />
+              )}
+
+              {/* Nhãn category */}
+              <span className="hidden md:inline-flex absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-0.5 text-[11px] font-semibold text-[#17121F] shadow-[0_2px_8px_rgba(0,0,0,0.06)] backdrop-blur-xs">
+                {product.category || "Thủ công"}
+              </span>
+            </ContinuityLink>
+
+            {/* Nút tim */}
+            <SaveButton
+              product={product}
+              revealOnHover
+              className="absolute right-2.5 top-2.5 z-10"
+            />
+          </div>
+
+          {/* Thông tin sản phẩm */}
+          <div className="p-4 md:p-5 flex flex-1 flex-col justify-between space-y-2.5">
+            <ContinuityLink
+              product={product}
+              to={`/products/${product.id}`}
+              imgRef={imageRef}
+              className="block"
+            >
+              <h3 className="line-clamp-2 text-[14px] md:text-[15px] font-semibold leading-[1.4] text-[#17121F] group-hover:text-[#7520F7] transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+                {product.name}
+              </h3>
+            </ContinuityLink>
+
+            <div className="flex items-center justify-between pt-1.5 border-t border-ink/5">
+              <span className="text-[15px] md:text-[17px] font-extrabold text-[#17121F]">
+                {formatPrice(product.price)}
+              </span>
+
+              <ContinuityLink
+                product={product}
+                to={`/products/${product.id}`}
+                imgRef={imageRef}
+                className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#F1E9FF] text-[#7520F7] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:bg-[#7520F7] group-hover:text-white group-hover:translate-x-[1px] group-hover:-translate-y-[1px] group-hover:scale-105"
+                aria-label={`Xem chi tiết ${product.name}`}
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </ContinuityLink>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ShopDisplay() {
   const { storeId } = useParams<{ storeId: string }>();
   const { store, products, resolved } = useShopPage(storeId);
-  const wide = useMediaQuery("(min-width: 768px)");
-  const coverRef = useRef<HTMLDivElement>(null);
   const savedStores = useSavedStores();
 
   const [band, setBand] = useState("all");
   const [material, setMaterial] = useState("all");
   const [sort, setSort] = useState("newest");
 
-  /* Filters built from this shop's own products. The catalogue's lists are
-     about the whole site; a shop with four candles does not need a "Gốm"
-     option that empties the page. */
+  // Motion hooks
+  const parallax = useParallaxCover(0.3);
+  const cardEntranceRef = useCardEntrance();
+  const productGridRef = useRevealOnScroll();
+
   const materials = useMemo(
     () =>
       Array.from(
@@ -318,6 +323,7 @@ export default function ShopDisplay() {
       ).sort((a, b) => a.localeCompare(b, "vi")),
     [products]
   );
+
   const bands = useMemo(
     () =>
       PRICE_BANDS.filter(
@@ -327,6 +333,7 @@ export default function ShopDisplay() {
       ),
     [products]
   );
+
   const shown = useMemo(() => {
     const chosen = PRICE_BANDS.find((b) => b.id === band);
     return products
@@ -342,200 +349,290 @@ export default function ShopDisplay() {
       );
   }, [products, band, material, sort]);
 
-  if (!store) {
-    return resolved ? (
-      <div
-        data-surface="dark"
-        className="-mt-24 grid min-h-[calc(100dvh+6rem)] place-items-center bg-brand px-6 pt-24 text-center text-paper md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pt-28"
-      >
-        <div className="space-y-4">
-          <h1 className="display text-2xl normal-case">Không tìm thấy shop</h1>
-          <Link
-            to="/stores"
-            className="inline-block rounded-full bg-paper px-5 py-2.5 text-xs font-semibold text-ink"
-          >
-            Về danh bạ shop
-          </Link>
-        </div>
-      </div>
-    ) : (
-      <div data-surface="dark" className="-mt-24 min-h-[calc(100dvh+6rem)] bg-brand md:-mt-28 md:min-h-[calc(100dvh+7rem)]" />
-    );
-  }
-
-  const channels = channelsOf(store);
-  const intro = store.story || store.vibe || store.description || "";
   const clearFilters = () => {
     setBand("all");
     setMaterial("all");
     setSort("newest");
   };
 
-  return (
-    <>
-      {/* The page root carries the ground, so the marks can sit between it
-          and the content. The shell clears the floating pill with pt-24; the
-          negative margin gives that back so the violet runs to y=0, as on
-          /products, /stores and /discover.
+  const hasActiveFilter = band !== "all" || material !== "all" || sort !== "newest";
 
-          The ground is violet down to the cover's foot and then ramps to
-          paper. The foot is computed rather than measured — the pill's own
-          bottom, one unit, and the cover's height at its ratio — so the ramp
-          starts on the first paint; --col is the column's width as the page
-          lays it out. */}
+  if (!store) {
+    return resolved ? (
       <div
-        className="ti-shop relative -mt-24 min-h-[calc(100dvh+6rem)] pb-28 text-ink md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pb-24 [--pill:81px] md:[--pill:93px] [--col:calc(100vw_-_2rem)] md:[--col:min(60rem,calc(100vw_-_4rem))] [--cover-h:calc(var(--col)*9/16)] md:[--cover-h:calc(var(--col)*256/702)]"
+        data-surface="dark"
+        className="-mt-24 grid min-h-[calc(100dvh+6rem)] place-items-center bg-[#7520F7] px-6 pt-24 text-center text-paper md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pt-28"
+      >
+        <div className="space-y-4">
+          <h1 className="display text-3xl normal-case font-medium">Không tìm thấy shop</h1>
+          <Link
+            to="/stores"
+            className="inline-block rounded-full bg-paper px-6 py-2.5 text-xs font-semibold text-ink shadow-sm hover:scale-105 transition-transform"
+          >
+            Về danh bạ shop
+          </Link>
+        </div>
+      </div>
+    ) : (
+      <div data-surface="dark" className="-mt-24 min-h-[calc(100dvh+6rem)] bg-[#7520F7] md:-mt-28 md:min-h-[calc(100dvh+7rem)]" />
+    );
+  }
+
+  const channels = channelsOf(store);
+  const primaryChannel = channels[0];
+  const secondaryChannel = channels[1];
+  const otherChannels = channels.slice(2);
+  const storyText =
+    store.story || store.vibe || store.description || "Không gian sáng tạo và chế tác thủ công độc lập.";
+  const mapQuery = store.address || store.area || `${store.name} Việt Nam`;
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+
+  return (
+    <div className="min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] -mt-24 md:-mt-28 bg-white text-ink relative overflow-x-hidden w-full pb-28 md:pb-36">
+
+      {/* =========================================================================
+          1. DẢI TÍM ĐẦU TRANG (PURPLE HEADER BAND)
+          Parallax cover image — depth illusion.
+          ========================================================================= */}
+      <section
+        data-surface="dark"
+        className="relative z-10 bg-[#7520F7] text-paper pt-[104px] md:pt-[128px] pb-[160px] md:pb-[210px] overflow-hidden"
         style={{
-          ["--u" as string]: "calc(0.875rem * 0.5475)",
-          ["--ramp" as string]: "clamp(11rem, 18vw, 17.25rem)",
-          clipPath: "inset(0)",
-          background:
-            "linear-gradient(to bottom, var(--color-brand) 0, var(--color-brand) calc(var(--pill) + var(--u) + var(--cover-h)), var(--color-paper) calc(var(--pill) + var(--u) + var(--cover-h) + var(--ramp)))",
+          borderRadius: "0 0 50% 50% / 0 0 clamp(48px, 8vw, 100px)",
         }}
       >
-        <ShopMarks coverRef={coverRef} />
+        {/* Subtle ambient arc — brand accent without clutter */}
+        <ArcTopRight
+          className="pointer-events-none absolute -left-12 -top-12 z-0 opacity-[0.08] rotate-180"
+          style={{ width: "clamp(12rem, 24vw, 20rem)" }}
+          fill="#39D6CF"
+        />
 
-        <div className="relative z-[2]">
-          <header data-surface="dark" className="pt-[calc(var(--pill)_+_var(--u))]">
+        {/* Ambient gradient orbs for depth — no ribbon loops */}
+        <div
+          className="pointer-events-none absolute z-0"
+          style={{
+            top: "-10%",
+            right: "-5%",
+            width: "clamp(20rem, 40vw, 36rem)",
+            height: "clamp(20rem, 40vw, 36rem)",
+            background: "radial-gradient(circle, rgba(57,214,207,0.12) 0%, transparent 70%)",
+            filter: "blur(60px)",
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Khung chứa ảnh bìa (Cover Image) — parallax enabled */}
+        <div className="relative z-10 max-w-[1360px] mx-auto px-5 md:px-8">
+          <div
+            ref={parallax.containerRef}
+            className="overflow-hidden rounded-[22px] md:rounded-[28px] h-[200px] md:h-[320px] w-full bg-[#5a12c6] shadow-[0_8px_32px_rgba(0,0,0,0.15)] relative"
+          >
+            {store.coverUrl ? (
+              <img
+                ref={parallax.imgRef}
+                src={store.coverUrl}
+                alt={`Ảnh bìa của ${store.name}`}
+                className="h-[130%] w-full object-cover will-change-transform"
+                style={{ transform: "translate3d(0, 0, 0) scale(1.12)" }}
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-[#7520F7] to-[#5a12c6] flex items-center justify-center opacity-90">
+                <span className="font-display text-4xl text-white/30 uppercase">{store.name}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          2. BỐ CỤC CHÍNH (THẺ HỒ SƠ TRÁI + LƯỚI SẢN PHẨM PHẢI)
+          Profile card with entrance animation.
+          ========================================================================= */}
+      <div className="relative z-20 max-w-[1360px] mx-auto px-5 md:px-8 -mt-[96px] md:-mt-[210px]">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:gap-12">
+
+          {/* ──────────────────────────────────────────────────────────────────
+              CỘT TRÁI: THẺ HỒ SƠ SHOP (PROFILE CARD)
+              Entrance animation: slide-up + fade-in.
+              Double-bezel card structure for premium depth.
+              ────────────────────────────────────────────────────────────────── */}
+          <aside className="w-full lg:w-[380px] shrink-0 lg:sticky lg:top-24 z-20">
+            {/* Double-bezel outer shell */}
             <div
-              className={COLUMN}
-              style={{
-                ["--avatar" as string]: "clamp(5.5rem, 16.3cqw, 10rem)",
-                ["--avatar-outer" as string]: "calc(var(--avatar) + 2 * var(--u))",
-                ["--avatar-x" as string]: "max(12.8cqw, calc(var(--avatar-outer) / 2 + 0.75rem))",
-              }}
+              ref={cardEntranceRef}
+              className="rounded-[26px] md:rounded-[30px] bg-[#F7F4FB]/50 p-[3px] ring-1 ring-[#ECE6F5]"
             >
-              <div className="relative">
-                {/* The photograph, whole, one unit under the pill. */}
-                <div
-                  ref={coverRef}
-                  className="aspect-[16/9] overflow-hidden rounded-[0.875rem] bg-brand-deep md:aspect-[702/256]"
-                  style={{
-                    maskImage:
-                      "radial-gradient(circle at var(--avatar-x) 100%, transparent calc(var(--avatar-outer) / 2), black calc(var(--avatar-outer) / 2 + 0.5px))",
-                    WebkitMaskImage:
-                      "radial-gradient(circle at var(--avatar-x) 100%, transparent calc(var(--avatar-outer) / 2), black calc(var(--avatar-outer) / 2 + 0.5px))",
-                  }}
-                >
-                  {store.coverUrl && (
-                    <img
-                      src={store.coverUrl}
-                      alt={`Ảnh bìa của ${store.name}`}
-                      className="h-full w-full object-cover"
-                    />
-                  )}
-                </div>
+              {/* Inner core */}
+              <div className="rounded-[24px] md:rounded-[28px] bg-white p-6 md:p-8 shadow-[0_20px_56px_-16px_rgba(60,20,120,0.12),inset_0_1px_1px_rgba(255,255,255,0.6)] relative flex flex-col">
 
-                {/* Centre on the cover's foot; the ring is one unit of the
-                    page's own violet, so it reads as the ground reaching round
-                    the face rather than as a border drawn on it.
-
-                    Padding rather than a border: a border's width is snapped
-                    to whole pixels, so 7.66px drew as 7, while padding is
-                    laid out at the width it is given. */}
-                <div
-                  className="absolute bottom-0 z-10 rounded-full bg-transparent"
-                  style={{
-                    left: "var(--avatar-x)",
-                    width: "var(--avatar-outer)",
-                    height: "var(--avatar-outer)",
-                    padding: "var(--u)",
-                    transform: "translate(-50%, 50%)",
-                  }}
-                >
-                  <div className="h-full w-full overflow-hidden rounded-full bg-brand-deep">
-                    {store.logoUrl && (
-                      <img src={store.logoUrl} alt="" className="h-full w-full object-cover" />
+                {/* Avatar tròn viền teal nhô lên trên thẻ */}
+                <div className="relative self-start -mt-[72px] md:-mt-[88px] mb-3">
+                  <div className="w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full overflow-hidden border-[5px] md:border-[6px] border-[#39D6CF] bg-white shadow-[0_6px_20px_rgba(57,214,207,0.2)]">
+                    {store.logoUrl ? (
+                      <img
+                        src={store.logoUrl}
+                        alt={store.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-paper-warm grid place-items-center text-brand font-bold text-2xl">
+                        {store.name.charAt(0)}
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
 
-              {/* The name starts where the ring ends and sits in the ring's
-                  lower half, as drawn; the row is exactly that half tall, so
-                  whatever follows starts at the ring's foot. On a phone it
-                  also stops short of the loop at the right edge (14/09). */}
-              <div
-                className="flex flex-wrap items-center justify-between gap-3 pr-4 md:pr-0"
-                style={{
-                  minHeight: "calc(var(--avatar-outer) / 2)",
-                  paddingLeft: "calc(var(--avatar-x) + var(--avatar-outer) / 2)",
-                }}
-              >
-                <h1 className="display py-1 text-[length:clamp(1.5rem,4.7cqw,2.85rem)] normal-case leading-[1.2] text-wave">
+                {/* Tên shop */}
+                <h1 className="font-display uppercase text-[42px] md:text-[50px] leading-[0.9] text-[#7520F7] tracking-normal pt-1">
                   {store.name}
                 </h1>
 
+                {/* Tagline */}
+                {store.vibe && (
+                  <p className="font-sans italic text-[15px] md:text-[17px] leading-snug text-[#2C2538] mt-3">
+                    &ldquo;{store.vibe}&rdquo;
+                  </p>
+                )}
+
+                {/* Địa điểm / Khu vực & link Mở bản đồ */}
+                <div className="flex items-center justify-between gap-2 mt-4 text-xs text-[#5B4F6E] flex-wrap">
+                  <span className="flex items-center gap-1.5 font-semibold text-[#17121F]">
+                    <MapPin className="h-3.5 w-3.5 text-[#7520F7]" />
+                    {store.address || store.area || "Việt Nam"}
+                  </span>
+                  <a
+                    href={mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-0.5 text-[#7520F7] font-semibold hover:underline"
+                  >
+                    <span>Mở bản đồ</span>
+                    <ArrowUpRight className="h-3 w-3" />
+                  </a>
+                </div>
+
+                {/* Divider */}
+                <div className="my-5 border-t border-[#ECE6F5]" />
+
+                {/* Nút lưu shop (Wishlist) */}
                 <button
                   type="button"
                   onClick={() => savedStores.toggle(store.id)}
-                  aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name} vào mục yêu thích`}
-                  className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold backdrop-blur-md transition-all duration-300 hover:scale-105 ${
+                  aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name}`}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-xs font-semibold cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${
                     savedStores.has(store.id)
-                      ? "bg-wave text-ink shadow-[0_8px_20px_-8px_rgba(40,240,200,0.8)]"
-                      : "bg-paper/20 text-paper ring-1 ring-white/20 hover:bg-paper/30 hover:text-wave"
+                      ? "bg-[#39D6CF] text-[#17121F] shadow-[0_4px_14px_rgba(57,214,207,0.25)] font-bold"
+                      : "bg-[#F7F4FB] text-[#17121F] ring-1 ring-[#ECE6F5] hover:ring-[#7520F7] hover:text-[#7520F7]"
                   }`}
                 >
                   <Heart
-                    className={`h-4 w-4 ${
-                      savedStores.has(store.id) ? "fill-ink stroke-ink" : "stroke-current"
+                    className={`h-3.5 w-3.5 ${
+                      savedStores.has(store.id) ? "fill-[#17121F] stroke-[#17121F]" : "stroke-current"
                     }`}
                   />
-                  <span>{savedStores.has(store.id) ? "Đã lưu shop" : "Lưu shop"}</span>
+                  <span>{savedStores.has(store.id) ? "Đã lưu shop vào mục yêu thích" : "Lưu shop"}</span>
                 </button>
-              </div>
-            </div>
-          </header>
 
-          <div data-surface="light" className={COLUMN}>
-            {/* "4 nút nằm ngay dưới viền dưới của ảnh đại diện" — flush under
-                the ring, from the left; a platform the shop does not use is
-                simply absent. Round and sized to the mark since 16/09, so the
-                row is only as long as the shop's platforms. On a phone these
-                live in the floating bar instead. */}
-            {channels.length > 0 && (
-              <ul className="hidden flex-wrap gap-3 md:flex">
-                {channels.map((channel) => (
-                  <li key={channel.key}>
+                {/* Nhóm nút liên hệ (Actions) */}
+                <div className="mt-5 space-y-2.5">
+                  {primaryChannel ? (
                     <a
-                      href={channel.href}
+                      href={primaryChannel.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`${channel.label} của ${store.name}`}
-                      className={`${CHANNEL_BUTTON} h-14 w-14 shadow-[0_12px_24px_-16px_rgba(58,10,128,0.75),inset_0_0_0_1px_rgba(117,32,247,0.16)]`}
+                      className="h-[48px] md:h-[52px] w-full rounded-full bg-[#7520F7] text-white font-bold text-sm md:text-base flex items-center justify-center gap-2.5 shadow-[0_6px_20px_-4px_rgba(117,32,247,0.35)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#5a12c6] hover:shadow-[0_10px_28px_-4px_rgba(117,32,247,0.45)] active:scale-[0.98]"
                     >
-                      <PlatformGlyph platform={channel.key} className="h-6 w-6" />
+                      <PlatformGlyph platform={primaryChannel.key} className="h-5 w-5 text-white" />
+                      <span>{primaryChannel.prefix} {primaryChannel.label}</span>
                     </a>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  ) : (
+                    <a
+                      href={`mailto:${store.email || "creativespace.ticoolture@gmail.com"}`}
+                      className="h-[48px] md:h-[52px] w-full rounded-full bg-[#7520F7] text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-[0_6px_20px_-4px_rgba(117,32,247,0.35)]"
+                    >
+                      <span>Liên hệ shop</span>
+                    </a>
+                  )}
 
-            {intro && (
-              <ShopIntro
-                text={intro}
-                className="mt-4 text-base font-medium text-ink md:mt-[1.125rem] md:text-[length:clamp(1.0625rem,2.1cqw,1.25rem)]"
-              />
-            )}
+                  {secondaryChannel && (
+                    <a
+                      href={secondaryChannel.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-[48px] md:h-[52px] w-full rounded-full bg-[#39D6CF] text-[#17121F] font-bold text-sm md:text-base flex items-center justify-center gap-2.5 shadow-[0_6px_20px_-4px_rgba(57,214,207,0.3)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#2fc4bd] hover:shadow-[0_10px_28px_-4px_rgba(57,214,207,0.4)] active:scale-[0.98]"
+                    >
+                      <PlatformGlyph platform={secondaryChannel.key} className="h-5 w-5 text-[#17121F]" />
+                      <span>{secondaryChannel.prefix} {secondaryChannel.label}</span>
+                    </a>
+                  )}
+                </div>
 
-            {/* ── everything the shop has ─────────────────────────────── */}
-            <section aria-label={`Sản phẩm của ${store.name}`} className="mt-12 md:mt-14">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-medium text-brand md:text-xl">
-                  {shown.length} sản phẩm
+                {/* Các kênh mạng xã hội phụ khác */}
+                {otherChannels.length > 0 && (
+                  <div className="flex items-center gap-2.5 pt-4 justify-center">
+                    {otherChannels.map((c) => (
+                      <a
+                        key={c.key}
+                        href={c.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${c.label} của ${store.name}`}
+                        className="h-10 w-10 rounded-full bg-[#F7F4FB] ring-1 ring-[#ECE6F5] text-[#7520F7] grid place-items-center hover:bg-[#7520F7] hover:text-white hover:ring-[#7520F7] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                      >
+                        <PlatformGlyph platform={c.key} className="h-4 w-4" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Mục VỀ XƯỞNG */}
+                <div className="mt-6 pt-5 border-t border-[#ECE6F5]">
+                  <h2 className="font-bold text-[12px] tracking-[0.16em] text-[#6B6478] uppercase">
+                    VỀ XƯỞNG
+                  </h2>
+                  <div className="mt-3">
+                    <ShopBio text={storyText} />
+                  </div>
+                </div>
+
+                {/* Ô ghi chú giá tham khảo */}
+                <div className="mt-5 rounded-2xl bg-[#F7F4FB] ring-1 ring-[#ECE6F5] p-4">
+                  <p className="text-[12px] leading-relaxed text-[#5B4F6E]">
+                    Giá tham khảo, giá cuối do shop quyết định. Tí Coolture không bán hàng và không xử lý giao dịch.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          </aside>
+
+          {/* ──────────────────────────────────────────────────────────────────
+              CỘT PHẢI: LƯỚI SẢN PHẨM (PRODUCT GRID & TOOLBAR)
+              Staggered reveal animation on product cards.
+              ────────────────────────────────────────────────────────────────── */}
+          <main className="flex-1 min-w-0 pt-8 lg:pt-[234px] relative">
+
+            {/* Toolbar: Số lượng sản phẩm + Dropdown Bộ lọc */}
+            <div className="relative z-10 flex items-center justify-between pb-5 flex-wrap gap-4 border-b border-[#ECE6F5]/70">
+              <div className="flex items-baseline gap-3">
+                <h2 className="font-bold text-[24px] md:text-[28px] text-[#7520F7] leading-none">
+                  {shown.length}
                 </h2>
-                {products.length > 0 && (
-                  /* Right-aligned at every width, so each dropdown's list —
-                     which opens from its right edge — has the room to its
-                     left that it needs. Wrapping rather than scrolling, so
-                     no clipping container can cut the list off. */
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <Dropdown
-                      label="Giá"
-                      value={band}
-                      options={bands.map((b) => ({ id: b.id, label: b.label }))}
-                      onChange={setBand}
-                    />
+                <span className="text-[15px] md:text-[17px] font-medium text-[#5B4F6E]">
+                  sản phẩm
+                </span>
+              </div>
+
+              {products.length > 0 && (
+                <div className="flex flex-wrap items-center justify-end gap-2.5">
+                  <Dropdown
+                    label="Giá"
+                    value={band}
+                    options={bands.map((b) => ({ id: b.id, label: b.label }))}
+                    onChange={setBand}
+                  />
+                  {materials.length > 0 && (
                     <Dropdown
                       label="Chất liệu"
                       value={material}
@@ -545,96 +642,55 @@ export default function ShopDisplay() {
                       ]}
                       onChange={setMaterial}
                     />
-                    <Dropdown label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
-                  </div>
-                )}
-              </div>
+                  )}
+                  <Dropdown label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
 
+                  {hasActiveFilter && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="text-xs font-semibold text-[#7520F7] hover:underline underline-offset-2 cursor-pointer flex items-center gap-1 ml-1 transition-colors duration-300"
+                    >
+                      <SlidersHorizontal className="h-3 w-3" />
+                      Xoá lọc
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Danh sách sản phẩm — staggered reveal */}
+            <div ref={productGridRef} className="relative mt-7">
               {products.length === 0 ? (
-                <p className="py-12 text-center text-sm text-ink/55">
-                  Shop chưa đăng sản phẩm nào lên Tí.
-                </p>
+                <div className="relative z-10 py-20 text-center rounded-[24px] border border-dashed border-[#ECE6F5] bg-[#F7F4FB]/50 p-10">
+                  <p className="text-sm font-medium text-[#5B4F6E]">
+                    Shop chưa đăng sản phẩm nào lên Tí.
+                  </p>
+                </div>
               ) : shown.length === 0 ? (
-                <div className="py-12 text-center">
-                  <p className="text-sm text-ink/55">Không có món nào khớp bộ lọc này.</p>
+                <div className="relative z-10 py-16 text-center rounded-[24px] ring-1 ring-[#ECE6F5] bg-white p-10 space-y-3">
+                  <p className="text-sm text-[#5B4F6E]">Không có món nào khớp với bộ lọc này.</p>
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="mt-3 text-xs font-semibold text-brand underline underline-offset-4"
+                    className="px-5 py-2 rounded-full bg-[#7520F7] text-white text-xs font-semibold hover:bg-brand-deep transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] cursor-pointer active:scale-[0.97]"
                   >
                     Xoá bộ lọc
                   </button>
                 </div>
               ) : (
-                /* The catalogue's own card, so a product looks the same here
-                   as on /products — which is what the drawing shows. */
-                <div className="mt-5 grid grid-cols-2 gap-x-1 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
-                  {shown.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      ratio={1}
-                      dense={!wide}
-                      onSaved={() => {}}
-                    />
+                <div className="relative z-10 grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-7">
+                  {shown.map((product, i) => (
+                    <ShopProductCard key={product.id} product={product} index={i} />
                   ))}
                 </div>
               )}
+            </div>
 
-              {products.length > 0 && (
-                <p className="mt-10 text-center text-xs leading-relaxed text-ink/50">
-                  {PRICE_NOTE} · {NO_TRANSACTION}
-                </p>
-              )}
-            </section>
-          </div>
+          </main>
+
         </div>
       </div>
-
-      {/* "Trên mobile: thanh floating ở dưới chứa link đến social media của
-          shop." Outside the clipped root, or the page's own clip would cut it
-          off as the footer comes up.
-
-          14/09: the buttons sat in a tray of the nav's dark glass, and on the
-          page's white that tray read as a thick grey outline round them — the
-          other thing on the phone page that looked broken. They float on
-          their own now, each with a soft shadow to lift it off whatever
-          scrolls under it. Since 16/09 they are the desktop's white discs,
-          centred as a group. */}
-      {channels.length > 0 && (
-        <nav
-          aria-label={`Kênh của ${store.name}`}
-          className="pointer-events-none fixed inset-x-4 bottom-[max(0.875rem,env(safe-area-inset-bottom))] z-40 flex justify-center md:hidden"
-        >
-          <ul className="pointer-events-auto flex items-center gap-3">
-            {channels.map((channel) => (
-              <li key={channel.key}>
-                <a
-                  href={channel.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${channel.label} của ${store.name}`}
-                  className={`${CHANNEL_BUTTON} h-12 w-12 shadow-[0_14px_30px_-12px_rgba(40,8,90,0.45),inset_0_0_0_1px_rgba(117,32,247,0.16)]`}
-                >
-                  <PlatformGlyph platform={channel.key} className="h-[1.375rem] w-[1.375rem]" />
-                </a>
-              </li>
-            ))}
-            <li>
-              <button
-                type="button"
-                onClick={() => savedStores.toggle(store.id)}
-                aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name} vào mục yêu thích`}
-                className={`${CHANNEL_BUTTON} h-12 w-12 shadow-[0_14px_30px_-12px_rgba(40,8,90,0.45),inset_0_0_0_1px_rgba(117,32,247,0.16)] ${
-                  savedStores.has(store.id) ? "!bg-wave !text-ink" : ""
-                }`}
-              >
-                <Heart className={`h-5 w-5 ${savedStores.has(store.id) ? "fill-ink stroke-ink" : "stroke-current"}`} />
-              </button>
-            </li>
-          </ul>
-        </nav>
-      )}
-    </>
+    </div>
   );
 }
