@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   supabase,
   isSupabaseConfigured,
@@ -215,8 +215,116 @@ interface PartnerRequest {
   social_link?: string;
   category?: string;
   description?: string;
-  status: "pending" | "approved" | "rejected";
+  notes?: string | null;
+  status: "pending" | "approved" | "rejected" | "withdrawn" | "superseded";
   created_at: string;
+}
+
+interface ProfileUpdateRequestPayload {
+  type: "profile_update";
+  shop_id: string;
+  name?: string;
+  tagline_vi?: string | null;
+  story_vi?: string | null;
+  address?: string | null;
+  area_tag?: string | null;
+  contact_email?: string | null;
+  logo_url?: string | null;
+  cover_url?: string | null;
+  socials?: Record<string, string>;
+}
+
+interface PendingProfileRequest {
+  id: string;
+  created_at: string;
+}
+
+function parseProfileUpdateRequest(notes?: string | null): ProfileUpdateRequestPayload | null {
+  if (!notes) return null;
+
+  try {
+    const payload = JSON.parse(notes);
+    if (payload?.type === "profile_update" && typeof payload.shop_id === "string") {
+      return payload as ProfileUpdateRequestPayload;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function ProfileRequestDetails({ request }: { request: PartnerRequest }) {
+  const payload = parseProfileUpdateRequest(request.notes);
+  if (!payload) return null;
+
+  const fields: Array<[string, string | null | undefined]> = [
+    ["Tên shop", payload.name],
+    ["Khẩu hiệu", payload.tagline_vi],
+    ["Địa chỉ", payload.address],
+    ["Khu vực", payload.area_tag],
+    ["Email liên hệ", payload.contact_email],
+    ["Câu chuyện", payload.story_vi],
+  ];
+  const socials = Object.entries(payload.socials || {}).filter(([, url]) => Boolean(url));
+
+  return (
+    <div className="bg-[#12081f] p-3.5 rounded-xl border border-[#2e2344] mb-4 space-y-3">
+      <div>
+        <span className="font-medium text-white block mb-2">Nội dung hồ sơ mới nhất</span>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          {fields.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-[#7b7194]">{label}</dt>
+              <dd className="text-[#faf8ff] break-words">{value || "—"}</dd>
+            </div>
+          ))}
+          {socials.length > 0 && (
+            <div className="sm:col-span-2">
+              <dt className="text-[#7b7194]">Mạng xã hội</dt>
+              <dd className="flex flex-wrap gap-x-3 gap-y-1">
+                {socials.map(([platform, url]) => (
+                  <a
+                    key={platform}
+                    href={url.startsWith("http") ? url : `https://${url}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#39d6cf] hover:underline"
+                  >
+                    {platform}
+                  </a>
+                ))}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </div>
+      {(payload.logo_url || payload.cover_url) && (
+        <div className="flex flex-wrap gap-3 border-t border-[#2e2344] pt-3">
+          {payload.logo_url && (
+            <div>
+              <span className="text-[10px] text-[#7b7194] block mb-1">Ảnh đại diện</span>
+              <img
+                src={resolveImageUrl(payload.logo_url)}
+                alt="Ảnh đại diện đề xuất"
+                className="w-16 h-16 rounded-full object-cover border border-[#3b2a60]"
+              />
+            </div>
+          )}
+          {payload.cover_url && (
+            <div>
+              <span className="text-[10px] text-[#7b7194] block mb-1">Ảnh bìa</span>
+              <img
+                src={resolveImageUrl(payload.cover_url)}
+                alt="Ảnh bìa đề xuất"
+                className="w-40 aspect-[2.74/1] rounded-lg object-cover border border-[#3b2a60]"
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface ShopInvitation {
@@ -285,6 +393,7 @@ export default function Portal() {
   const [images, setImages] = useState<ImageUploadItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingReviewRef = useRef(false);
   const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Shop Partner Tabs & Profile Form State
@@ -302,6 +411,8 @@ export default function Portal() {
   const [shopFeedback, setShopFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [pendingProfileRequest, setPendingProfileRequest] = useState<PendingProfileRequest | null>(null);
+  const [isWithdrawingProfileRequest, setIsWithdrawingProfileRequest] = useState(false);
 
   // Preview Modal State ("store" | "product" | null)
   const [previewModal, setPreviewModal] = useState<"store" | "product" | null>(null);
@@ -369,6 +480,35 @@ export default function Portal() {
       },
     ];
   }
+
+  useEffect(() => {
+    if (!isAdmin || adminTab !== "requests" || sandboxMode) return;
+
+    let active = true;
+    const refreshRequests = async () => {
+      try {
+        const token = (await getSupabaseToken()) || "dev-token";
+        const response = await fetch("/api/admin/requests", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success || !Array.isArray(data.requests)) {
+          throw new Error(data.error || "Không thể làm mới danh sách yêu cầu.");
+        }
+        if (active) setPartnerRequests(data.requests);
+      } catch (err) {
+        if (active) console.warn("[portal] Failed to refresh partner requests:", err);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void refreshRequests();
+    }, 20000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [isAdmin, adminTab, sandboxMode]);
 
   // Listen to Supabase session & fetch portal data
   useEffect(() => {
@@ -455,6 +595,25 @@ export default function Portal() {
     }
   }
 
+  async function loadPendingProfileRequest(token: string) {
+    try {
+      const response = await fetch("/api/portal/save-shop", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Không thể tải trạng thái yêu cầu hồ sơ.");
+      }
+      setPendingProfileRequest(data.request || null);
+    } catch (err: any) {
+      console.error("[portal] Failed to load pending profile request:", err);
+      setShopFeedback({
+        type: "error",
+        text: err.message || "Không thể tải trạng thái yêu cầu hồ sơ.",
+      });
+    }
+  }
+
   async function loadPortalMe(token: string, userObj?: any) {
     try {
       setAuthError(null);
@@ -481,6 +640,8 @@ export default function Portal() {
             setIsAdmin(Boolean(data.isAdmin || isSuperAdminEmail));
             if (data.isAdmin || isSuperAdminEmail) {
               await loadAdminData();
+            } else if (data.shop) {
+              await loadPendingProfileRequest(token);
             }
             return;
           }
@@ -539,6 +700,7 @@ export default function Portal() {
             });
             setShopSocials(sm);
           }
+          await loadPendingProfileRequest(token);
           return;
         }
 
@@ -619,7 +781,7 @@ export default function Portal() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.success && Array.isArray(data.requests) && data.requests.length > 0) {
+        if (data.success && Array.isArray(data.requests)) {
           requests = data.requests;
           apiRequestsLoaded = true;
         }
@@ -634,9 +796,7 @@ export default function Portal() {
           .from("partner_requests")
           .select("*")
           .order("created_at", { ascending: false });
-        if (dbReqs && dbReqs.length > 0) {
-          requests = dbReqs;
-        }
+        requests = dbReqs || [];
       } catch (e) {
         console.warn("Could not fetch partner_requests from Supabase:", e);
       }
@@ -1104,23 +1264,26 @@ export default function Portal() {
   // Admin Action: Approve Partner Request from Main Website (Enforcing 1 Gmail = 1 Role)
   async function handleApproveRequest(reqItem: PartnerRequest) {
     const email = reqItem.applicant_email.toLowerCase().trim();
+    const isProfileUpdate = Boolean(parseProfileUpdateRequest(reqItem.notes));
 
-    // Check 1 Gmail = 1 Role: Không được là Admin
-    if (staffList.some((s) => s.email.toLowerCase() === email && s.is_active)) {
-      setAdminFeedback({
-        type: "error",
-        text: `Email ${email} đã được đăng ký vai trò Ban Quản Trị (Admin). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
-      });
-      return;
-    }
+    if (!isProfileUpdate) {
+      // Check 1 Gmail = 1 Role: Không được là Admin
+      if (staffList.some((s) => s.email.toLowerCase() === email && s.is_active)) {
+        setAdminFeedback({
+          type: "error",
+          text: `Email ${email} đã được đăng ký vai trò Ban Quản Trị (Admin). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
+        });
+        return;
+      }
 
-    // Check 1 Gmail = 1 Shop
-    if (invitations.some((inv) => inv.invited_email.toLowerCase() === email && inv.status !== "revoked")) {
-      setAdminFeedback({
-        type: "error",
-        text: `Email ${email} đã được cấp quyền quản lý cho một shop khác. Mỗi tài khoản Gmail chỉ được mở 1 shop duy nhất theo quy định!`,
-      });
-      return;
+      // Check 1 Gmail = 1 Shop
+      if (invitations.some((inv) => inv.invited_email.toLowerCase() === email && inv.status !== "revoked")) {
+        setAdminFeedback({
+          type: "error",
+          text: `Email ${email} đã được cấp quyền quản lý cho một shop khác. Mỗi tài khoản Gmail chỉ được mở 1 shop duy nhất theo quy định!`,
+        });
+        return;
+      }
     }
 
     setIsSubmittingAdmin(true);
@@ -1132,7 +1295,9 @@ export default function Portal() {
       );
       setAdminFeedback({
         type: "success",
-        text: `[SANDBOX LOCAL] Đã duyệt thử nghiệm yêu cầu "${reqItem.shop_name}" (chỉ lưu trên localhost, không thay đổi database thật)!`,
+        text: isProfileUpdate
+          ? `[SANDBOX LOCAL] Đã duyệt thử nghiệm cập nhật hồ sơ "${reqItem.shop_name}".`
+          : `[SANDBOX LOCAL] Đã duyệt thử nghiệm yêu cầu "${reqItem.shop_name}" (chỉ lưu trên localhost, không thay đổi database thật)!`,
       });
       setIsSubmittingAdmin(false);
       return;
@@ -1161,13 +1326,24 @@ export default function Portal() {
         await loadAdminData();
         setAdminFeedback({
           type: "success",
-          text: `Đã duyệt và cấp quyền mở shop "${reqItem.shop_name}" cho ${email} thành công!`,
+          text: data.message || (isProfileUpdate
+            ? `Đã duyệt cập nhật hồ sơ shop "${reqItem.shop_name}".`
+            : `Đã duyệt và cấp quyền mở shop "${reqItem.shop_name}" cho ${email} thành công!`),
         });
         setIsSubmittingAdmin(false);
         return;
       }
     } catch (e) {
       console.warn("Backend API not reachable, falling back to direct Supabase or local state:", e);
+    }
+
+    if (isProfileUpdate) {
+      setAdminFeedback({
+        type: "error",
+        text: "Không thể duyệt cập nhật hồ sơ vì API quản trị không phản hồi. Vui lòng thử lại.",
+      });
+      setIsSubmittingAdmin(false);
+      return;
     }
 
     // 2. Direct Supabase
@@ -1249,26 +1425,43 @@ export default function Portal() {
 
   // Admin Action: Reject Partner Request
   async function handleRejectRequest(reqItem: PartnerRequest) {
-    if (!window.confirm(`Bạn có chắc chắn muốn từ chối yêu cầu mở shop của "${reqItem.shop_name}"?`)) return;
+    const isProfileUpdate = Boolean(parseProfileUpdateRequest(reqItem.notes));
+    if (!window.confirm(
+      isProfileUpdate
+        ? `Bạn có chắc muốn từ chối cập nhật hồ sơ của "${reqItem.shop_name}"?`
+        : `Bạn có chắc chắn muốn từ chối yêu cầu mở shop của "${reqItem.shop_name}"?`
+    )) return;
 
-    if (supabase) {
-      try {
-        await supabase
-          .from("partner_requests")
-          .update({ status: "rejected", reviewed_at: new Date().toISOString() })
-          .eq("id", reqItem.id);
-      } catch (e) {
-        console.warn("Reject request error:", e);
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+    try {
+      const token = (await getSupabaseToken()) || "dev-token";
+      const response = await fetch("/api/admin/requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ requestId: reqItem.id, action: "reject" }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Không thể từ chối yêu cầu.");
       }
-    }
 
-    setPartnerRequests((prev) =>
-      prev.map((r) => (r.id === reqItem.id ? { ...r, status: "rejected" } : r))
-    );
-    setAdminFeedback({
-      type: "success",
-      text: `Đã từ chối yêu cầu của shop "${reqItem.shop_name}".`,
-    });
+      setPartnerRequests((prev) =>
+        prev.map((r) => (r.id === reqItem.id ? { ...r, status: "rejected" } : r))
+      );
+      await loadAdminData();
+      setAdminFeedback({ type: "success", text: data.message });
+    } catch (err: any) {
+      setAdminFeedback({
+        type: "error",
+        text: err.message || "Không thể từ chối yêu cầu.",
+      });
+    } finally {
+      setIsSubmittingAdmin(false);
+    }
   }
 
   // Admin Action: Grant Shop Permission to Gmail (1 Gmail = 1 Shop)
@@ -1656,66 +1849,45 @@ export default function Portal() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Không thể lưu thông tin shop.");
       }
-      setShopFeedback({ type: "success", text: "Đã lưu thông tin shop thành công!" });
-      setShop((prev: any) => ({
-        ...prev,
-        name: payload.name,
-        tagline_vi: payload.taglineVi,
-        story_vi: payload.storyVi,
-        address: payload.address,
-        area_tag: payload.areaTag,
-        logo_url: payload.logoUrl,
-        cover_url: payload.coverUrl,
-      }));
+      setPendingProfileRequest(data.request || null);
+      setShopFeedback({ type: "success", text: data.message });
     } catch (err: any) {
-      if (supabase && shop?.id) {
-        try {
-          await supabase
-            .from("shops")
-            .update({
-              name: payload.name,
-              tagline_vi: payload.taglineVi || null,
-              story_vi: payload.storyVi || null,
-              address: payload.address || null,
-              area_tag: payload.areaTag || null,
-              logo_url: payload.logoUrl || null,
-              cover_url: payload.coverUrl || null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", shop.id);
-
-          const platforms = ["instagram", "tiktok", "facebook", "threads", "website", "zalo"];
-          for (const p of platforms) {
-            const url = shopSocials[p]?.trim();
-            if (url) {
-              await supabase.from("shop_socials").upsert(
-                {
-                  shop_id: shop.id,
-                  platform: p,
-                  url,
-                  is_visible: true,
-                },
-                { onConflict: "shop_id,platform" }
-              );
-            }
-          }
-        } catch (dbErr) {
-          console.warn("Direct Supabase shop update error:", dbErr);
-        }
-      }
-      setShopFeedback({ type: "success", text: "Đã lưu thông tin shop thành công!" });
-      setShop((prev: any) => ({
-        ...prev,
-        name: payload.name,
-        tagline_vi: payload.taglineVi,
-        story_vi: payload.storyVi,
-        address: payload.address,
-        area_tag: payload.areaTag,
-        logo_url: payload.logoUrl,
-        cover_url: payload.coverUrl,
-      }));
+      console.error("[portal] Failed to submit profile update:", err);
+      setShopFeedback({
+        type: "error",
+        text: err.message || "Không thể gửi yêu cầu cập nhật thông tin shop.",
+      });
     } finally {
       setIsSavingShop(false);
+    }
+  }
+
+  async function handleWithdrawProfileRequest() {
+    if (!pendingProfileRequest || isWithdrawingProfileRequest) return;
+    if (!window.confirm("Bạn có chắc muốn thu hồi yêu cầu cập nhật hồ sơ đang chờ duyệt?")) return;
+
+    setIsWithdrawingProfileRequest(true);
+    setShopFeedback(null);
+    try {
+      const token = (await getSupabaseToken()) || "dev-token";
+      const response = await fetch("/api/portal/save-shop", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Không thể thu hồi yêu cầu.");
+      }
+      setPendingProfileRequest(null);
+      setShopFeedback({ type: "success", text: data.message });
+    } catch (err: any) {
+      console.error("[portal] Failed to withdraw profile request:", err);
+      setShopFeedback({
+        type: "error",
+        text: err.message || "Không thể thu hồi yêu cầu.",
+      });
+    } finally {
+      setIsWithdrawingProfileRequest(false);
     }
   }
 
@@ -2053,6 +2225,18 @@ export default function Portal() {
   }
 
   async function handleSubmitReview() {
+    if (isSubmittingReviewRef.current) return;
+    isSubmittingReviewRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await submitReviewWorkflow();
+    } finally {
+      isSubmittingReviewRef.current = false;
+      setIsSubmitting(false);
+    }
+  }
+
+  async function submitReviewWorkflow() {
     let targetId = editingProductId;
 
     // If product draft is not yet saved, auto-save first so the partner is not blocked!
@@ -2109,7 +2293,9 @@ export default function Portal() {
         if (data.success) {
           setFormFeedback({
             type: "success",
-            text: "Đã gửi duyệt thành công! Thông báo đã được gửi về ban quản trị.",
+            text: data.alreadySubmitted
+              ? "Sản phẩm đã được gửi duyệt trước đó và đang chờ ban quản trị xử lý."
+              : "Đã gửi duyệt thành công! Thông báo đã được gửi về ban quản trị.",
           });
           if (token) await loadPortalMe(token);
           setActiveView("list");
@@ -2517,7 +2703,7 @@ export default function Portal() {
                     <div className="flex items-center gap-2">
                       <Inbox className="w-5 h-5 text-[#39d6cf]" />
                       <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
-                        Đơn đăng ký mở Shop từ Website chính
+                        Yêu cầu đối tác
                       </h3>
                     </div>
                     <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
@@ -2525,7 +2711,7 @@ export default function Portal() {
                     </span>
                   </div>
                   <p className="text-xs text-[#a39ab8] leading-relaxed">
-                    Xem xét hồ sơ nghệ nhân nộp từ website. Bấm <strong>"Duyệt & Cấp quyền"</strong> để tự động tạo shop và cấp quyền truy cập Portal cho Gmail đăng ký (Ràng buộc: <strong>1 Gmail = 1 Shop</strong>).
+                    Xem xét đăng ký mở shop và các yêu cầu cập nhật hồ sơ do đối tác gửi từ Portal.
                   </p>
                 </div>
 
@@ -2570,6 +2756,16 @@ export default function Portal() {
                                 <XCircle className="w-3.5 h-3.5" />
                                 Đã từ chối
                               </span>
+                            ) : req.status === "withdrawn" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#23173d] text-[#a39ab8] border border-[#3b2a60]">
+                                <X className="w-3.5 h-3.5" />
+                                Đã thu hồi
+                              </span>
+                            ) : req.status === "superseded" ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#23173d] text-[#a39ab8] border border-[#3b2a60]">
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                Đã được thay thế
+                              </span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
                                 <Clock className="w-3.5 h-3.5" />
@@ -2613,10 +2809,13 @@ export default function Portal() {
 
                         {req.description && (
                           <div className="bg-[#12081f] p-3.5 rounded-xl border border-[#2e2344] mb-4 text-xs text-[#a39ab8] leading-relaxed">
-                            <span className="font-medium text-white block mb-1">Mô tả sản phẩm & shop:</span>
+                            <span className="font-medium text-white block mb-1">
+                              {parseProfileUpdateRequest(req.notes) ? "Tóm tắt cập nhật:" : "Mô tả sản phẩm & shop:"}
+                            </span>
                             {req.description}
                           </div>
                         )}
+                        <ProfileRequestDetails request={req} />
 
                         {/* Thao tác duyệt */}
                         {req.status === "pending" && (
@@ -2636,7 +2835,7 @@ export default function Portal() {
                               className="px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white text-xs font-semibold rounded-xl uppercase tracking-wider transition shadow-sm flex items-center gap-1.5"
                             >
                               {isSubmittingAdmin ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                              Duyệt & Cấp quyền Shop
+                              {parseProfileUpdateRequest(req.notes) ? "Duyệt cập nhật hồ sơ" : "Duyệt & Cấp quyền Shop"}
                             </button>
                           </div>
                         )}
@@ -3423,9 +3622,38 @@ export default function Portal() {
                     Chỉnh sửa trang chủ shop (Storefront)
                   </h2>
                   <p className="text-xs text-[#a39ab8] mt-1">
-                    Mọi thông tin hiển thị trên trang <span className="font-mono text-[#39d6cf]">/stores/{shop?.slug || "..."}</span> có thể được cập nhật tại đây và xem trước ngay lập tức.
+                    Chỉnh sửa tại đây sẽ hiển thị trong bản xem trước và được áp dụng lên trang shop sau khi Ban Quản Trị duyệt.
                   </p>
                 </div>
+
+                {pendingProfileRequest && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-500/40 bg-amber-950/20">
+                    <div className="flex items-start gap-2.5">
+                      <Clock className="w-4 h-4 text-amber-300 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-amber-200">
+                          Yêu cầu cập nhật hồ sơ đang chờ duyệt
+                        </p>
+                        <p className="text-[11px] text-[#a39ab8] mt-1">
+                          Gửi lúc {new Date(pendingProfileRequest.created_at).toLocaleString("vi-VN")}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleWithdrawProfileRequest}
+                      disabled={isWithdrawingProfileRequest}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs text-red-300 border border-red-800/60 hover:bg-red-950/40 disabled:opacity-50 transition"
+                    >
+                      {isWithdrawingProfileRequest ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <X className="w-3.5 h-3.5" />
+                      )}
+                      Thu hồi yêu cầu
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left Column: Cover & Logo Imagery */}

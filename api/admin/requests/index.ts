@@ -55,10 +55,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ success: false, error: "Không tìm thấy yêu cầu đối tác." });
       }
 
+      if (requestItem.status !== "pending") {
+        return res.status(409).json({
+          success: false,
+          error: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
+        });
+      }
+
       const email = requestItem.applicant_email.toLowerCase().trim();
 
       if (action === "reject") {
-        await supabase
+        const { error: rejectErr } = await supabase
           .from("partner_requests")
           .update({
             status: "rejected",
@@ -67,6 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             notes: notes || "Không phù hợp tiêu chí tuyển chọn tại thời điểm này.",
           })
           .eq("id", requestId);
+
+        if (rejectErr) throw rejectErr;
 
         return res.status(200).json({
           success: true,
@@ -94,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (socials && typeof socials === "object") {
           for (const [platform, url] of Object.entries(socials)) {
             if (url) {
-              await supabase.from("shop_socials").upsert(
+              const { error: socialErr } = await supabase.from("shop_socials").upsert(
                 {
                   shop_id,
                   platform,
@@ -104,11 +113,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 },
                 { onConflict: "shop_id,platform" }
               );
+              if (socialErr) throw socialErr;
             }
           }
         }
 
-        await supabase
+        const { error: requestUpdateErr } = await supabase
           .from("partner_requests")
           .update({
             status: "approved",
@@ -117,6 +127,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             notes: "Đã duyệt và áp dụng thay đổi thông tin xưởng.",
           })
           .eq("id", requestId);
+
+        if (requestUpdateErr) throw requestUpdateErr;
 
         return res.status(200).json({
           success: true,

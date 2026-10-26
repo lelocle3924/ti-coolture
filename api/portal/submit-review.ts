@@ -62,9 +62,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Kiểm tra trạng thái hiện tại
     if (product.status === "pending_review") {
-      return res.status(400).json({
-        success: false,
-        error: "Sản phẩm này đã được gửi duyệt trước đó và đang chờ ban quản trị xử lý.",
+      return res.status(200).json({
+        success: true,
+        alreadySubmitted: true,
+        message: "Sản phẩm đã được gửi duyệt và đang chờ ban quản trị xử lý.",
+        status: "pending_review",
       });
     }
 
@@ -85,16 +87,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 5. Cập nhật trạng thái sang pending_review
-    const { error: updateErr } = await supabase
+    const { data: updatedProduct, error: updateErr } = await supabase
       .from("products")
       .update({
         status: "pending_review",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", productId);
+      .eq("id", productId)
+      .eq("status", product.status)
+      .select("id")
+      .maybeSingle();
 
     if (updateErr) {
       throw new Error("Lỗi khi cập nhật trạng thái sản phẩm: " + updateErr.message);
+    }
+
+    if (!updatedProduct) {
+      const { data: latestProduct, error: latestErr } = await supabase
+        .from("products")
+        .select("status")
+        .eq("id", productId)
+        .single();
+
+      if (latestErr) throw latestErr;
+      if (latestProduct.status === "pending_review") {
+        return res.status(200).json({
+          success: true,
+          alreadySubmitted: true,
+          message: "Sản phẩm đã được gửi duyệt và đang chờ ban quản trị xử lý.",
+          status: "pending_review",
+        });
+      }
+
+      return res.status(409).json({
+        success: false,
+        error: "Trạng thái sản phẩm đã thay đổi. Vui lòng tải lại danh sách.",
+      });
     }
 
     // 6. Gửi thông báo Telegram cho Admin (Bất đồng bộ, không chặn luồng response)
