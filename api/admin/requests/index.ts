@@ -100,8 +100,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { error: updErr } = await supabase.from("shops").update(updateFields).eq("id", shop_id);
         if (updErr) throw updErr;
 
-        if (socials && typeof socials === "object") {
-          for (const [platform, url] of Object.entries(socials)) {
+        if (socials && typeof socials === "object" && !Array.isArray(socials)) {
+          const platforms = new Set([
+            "facebook",
+            "instagram",
+            "tiktok",
+            "threads",
+            "website",
+            "zalo",
+            ...Object.keys(socials),
+          ]);
+          for (const platform of platforms) {
+            const url = String((socials as Record<string, unknown>)[platform] || "").trim();
             if (url) {
               const { error: socialErr } = await supabase.from("shop_socials").upsert(
                 {
@@ -114,6 +124,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 { onConflict: "shop_id,platform" }
               );
               if (socialErr) throw socialErr;
+            } else {
+              const { error: socialDeleteErr } = await supabase
+                .from("shop_socials")
+                .delete()
+                .eq("shop_id", shop_id)
+                .eq("platform", platform);
+              if (socialDeleteErr) throw socialDeleteErr;
             }
           }
         }
