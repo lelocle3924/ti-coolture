@@ -66,6 +66,7 @@ import {
 } from "lucide-react";
 import PlatformGlyph from "../components/PlatformGlyph";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
+import ImageCropDialog from "../components/ImageCropDialog";
 
 // Standard taxonomy categories
 const CATEGORIES = [
@@ -413,6 +414,10 @@ export default function Portal() {
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [pendingProfileRequest, setPendingProfileRequest] = useState<PendingProfileRequest | null>(null);
   const [isWithdrawingProfileRequest, setIsWithdrawingProfileRequest] = useState(false);
+  const [profileImageCrop, setProfileImageCrop] = useState<{
+    kind: "logo" | "cover";
+    file: File;
+  } | null>(null);
 
   // Preview Modal State ("store" | "product" | null)
   const [previewModal, setPreviewModal] = useState<"store" | "product" | null>(null);
@@ -1432,6 +1437,19 @@ export default function Portal() {
         : `Bạn có chắc chắn muốn từ chối yêu cầu mở shop của "${reqItem.shop_name}"?`
     )) return;
 
+    if (sandboxMode) {
+      setPartnerRequests((prev) =>
+        prev.map((request) =>
+          request.id === reqItem.id ? { ...request, status: "rejected" } : request
+        )
+      );
+      setAdminFeedback({
+        type: "success",
+        text: `[SANDBOX LOCAL] Đã từ chối thử nghiệm yêu cầu "${reqItem.shop_name}".`,
+      });
+      return;
+    }
+
     setIsSubmittingAdmin(true);
     setAdminFeedback(null);
     try {
@@ -1891,44 +1909,64 @@ export default function Portal() {
     }
   }
 
-  // Upload shop cover image
-  async function handleUploadCover(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleProfileImageSelection(
+    event: React.ChangeEvent<HTMLInputElement>,
+    kind: "logo" | "cover"
+  ) {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
-    setIsUploadingCover(true);
-    const token = (await getSupabaseToken()) || "dev-token";
+
+    const allowedTypes = new Set([
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ]);
+    if (!allowedTypes.has(file.type.toLowerCase())) {
+      setShopFeedback({
+        type: "error",
+        text: "Ảnh cần có định dạng JPG, PNG, WebP hoặc AVIF.",
+      });
+      return;
+    }
+
+    setShopFeedback(null);
+    setProfileImageCrop({ kind, file });
+  }
+
+  async function handleConfirmProfileImageCrop(file: File) {
+    const kind = profileImageCrop?.kind;
+    if (!kind) throw new Error("Không xác định được loại ảnh cần tải lên.");
+
+    if (kind === "cover") setIsUploadingCover(true);
+    else setIsUploadingLogo(true);
+    setShopFeedback(null);
     try {
+      const token = (await getSupabaseToken()) || "dev-token";
       const results = await uploadMultipleFilesDirectly(token, [file]);
-      if (results[0]?.r2Key) {
-        setShopCoverUrl(results[0].r2Key);
-      } else {
-        setShopCoverUrl(URL.createObjectURL(file));
-      }
-    } catch {
-      setShopCoverUrl(URL.createObjectURL(file));
+      const r2Key = results[0]?.r2Key;
+      if (!r2Key) throw new Error("Tải ảnh lên không trả về đường dẫn hợp lệ.");
+      if (kind === "cover") setShopCoverUrl(r2Key);
+      else setShopLogoUrl(r2Key);
+      setProfileImageCrop(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Không thể tải ảnh lên.";
+      setShopFeedback({ type: "error", text: message });
+      throw err;
     } finally {
-      setIsUploadingCover(false);
+      if (kind === "cover") setIsUploadingCover(false);
+      else setIsUploadingLogo(false);
     }
   }
 
-  // Upload shop logo
-  async function handleUploadLogo(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setIsUploadingLogo(true);
-    const token = (await getSupabaseToken()) || "dev-token";
-    try {
-      const results = await uploadMultipleFilesDirectly(token, [file]);
-      if (results[0]?.r2Key) {
-        setShopLogoUrl(results[0].r2Key);
-      } else {
-        setShopLogoUrl(URL.createObjectURL(file));
-      }
-    } catch {
-      setShopLogoUrl(URL.createObjectURL(file));
-    } finally {
-      setIsUploadingLogo(false);
-    }
+  function handleUploadCover(event: React.ChangeEvent<HTMLInputElement>) {
+    handleProfileImageSelection(event, "cover");
+  }
+
+  function handleUploadLogo(event: React.ChangeEvent<HTMLInputElement>) {
+    handleProfileImageSelection(event, "logo");
   }
 
   // Direct Image Upload Handler
@@ -3699,7 +3737,7 @@ export default function Portal() {
                           <span>{isUploadingCover ? "Đang tải ảnh..." : "Đổi ảnh bìa mới"}</span>
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/jpeg,image/png,image/webp,image/avif"
                             onChange={handleUploadCover}
                             disabled={isUploadingCover}
                             className="hidden"
@@ -3746,7 +3784,7 @@ export default function Portal() {
                             <span>{isUploadingLogo ? "Đang tải..." : "Đổi logo"}</span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/jpeg,image/png,image/webp,image/avif"
                               onChange={handleUploadLogo}
                               disabled={isUploadingLogo}
                               className="hidden"
@@ -4876,6 +4914,16 @@ export default function Portal() {
             </div>
           )}
         </div>
+      )}
+      {profileImageCrop && (
+        <ImageCropDialog
+          file={profileImageCrop.file}
+          title={profileImageCrop.kind === "cover" ? "Căn ảnh bìa shop" : "Căn ảnh đại diện shop"}
+          aspectRatio={profileImageCrop.kind === "cover" ? 2.74 : 1}
+          shape={profileImageCrop.kind === "cover" ? "rectangle" : "circle"}
+          onCancel={() => setProfileImageCrop(null)}
+          onConfirm={handleConfirmProfileImageCrop}
+        />
       )}
     </div>
   );
