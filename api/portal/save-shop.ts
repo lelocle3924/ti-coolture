@@ -241,6 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let requestId = latestRequest?.id;
     let createdAt = latestRequest?.created_at;
+    let isNewRequest = false;
 
     if (latestRequest && shopRequests.length > 1) {
       const { error: supersedeError } = await supabase
@@ -282,9 +283,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       requestId = insertedRequest.id;
       createdAt = insertedRequest.created_at;
+      isNewRequest = true;
     }
 
-    if (hasChanges) {
+    if (isNewRequest) {
       await notifyAdminShopProfileUpdate({
         shopName: nextPayload.name,
         shopEmail: shopContext.userEmail,
