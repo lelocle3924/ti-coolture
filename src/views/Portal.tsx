@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   supabase,
   isSupabaseConfigured,
@@ -67,83 +67,24 @@ import {
 import PlatformGlyph from "../components/PlatformGlyph";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import ImageCropDialog from "../components/ImageCropDialog";
+import { ShopView } from "./ShopDisplay";
+import type { StoreProfile, Product } from "../types";
 
-// Standard taxonomy categories
-const CATEGORIES = [
-  {
-    group: "Thời trang",
-    items: [
-      { id: "cat-quan-ao", name: "Quần áo" },
-      { id: "cat-phu-kien", name: "Phụ kiện" },
-      { id: "cat-phu-kien-dien-thoai", name: "Phụ kiện điện thoại" },
-    ],
-  },
-  {
-    group: "Sản phẩm nghệ thuật",
-    items: [
-      { id: "cat-tranh-ky-thuat-so", name: "Tranh Kỹ thuật số" },
-      { id: "cat-tranh-riso", name: "Tranh Riso" },
-      { id: "cat-tranh-nguyen-ban", name: "Tranh nguyên bản" },
-      { id: "cat-zine", name: "Zine" },
-    ],
-  },
-  {
-    group: "Văn phòng phẩm",
-    items: [
-      { id: "cat-so", name: "Sổ" },
-      { id: "cat-giay-ghi-chu", name: "Giấy ghi chú" },
-      { id: "cat-so-lap-ke-hoach", name: "Sổ lập kế hoạch" },
-      { id: "cat-lich", name: "Lịch" },
-      { id: "cat-van-phong-pham-khac", name: "Văn phòng phẩm khác" },
-    ],
-  },
-  {
-    group: "Quà tặng & Lưu niệm",
-    items: [
-      { id: "cat-thiep", name: "Thiệp" },
-      { id: "cat-buu-thiep", name: "Bưu thiếp" },
-      { id: "cat-nam-cham", name: "Nam châm" },
-      { id: "cat-moc-khoa", name: "Móc khoá" },
-      { id: "cat-hinh-dan", name: "Hình dán" },
-      { id: "cat-dac-san", name: "Đặc sản" },
-    ],
-  },
-  {
-    group: "Nội thất & Không gian",
-    items: [
-      { id: "cat-dung-cu-an-uong", name: "Dụng cụ ăn uống" },
-      { id: "cat-trang-tri", name: "Trang trí" },
-      { id: "cat-den", name: "Đèn" },
-      { id: "cat-do-gom", name: "Đồ gốm" },
-    ],
-  },
-  {
-    group: "Dưỡng & Chăm sóc da",
-    items: [
-      { id: "cat-nuoc-hoa", name: "Nước hoa" },
-      { id: "cat-nen-thom", name: "Nến thơm" },
-      { id: "cat-tam-goi", name: "Sản phẩm tắm - gội" },
-      { id: "cat-goi-chuom", name: "Gối chườm" },
-      { id: "cat-duong-da", name: "Dưỡng da" },
-    ],
-  },
-  {
-    group: "Giải trí",
-    items: [
-      { id: "cat-bo-tro-choi", name: "Bộ trò chơi" },
-      { id: "cat-do-choi-thu-bong", name: "Đồ chơi/Thú bông" },
-      { id: "cat-sach-tap-chi", name: "Sách và tạp chí" },
-    ],
-  },
-];
+import { TAXONOMY, findCategory, getCategoryDisplayName } from "../lib/taxonomy";
+
+// Standard taxonomy categories mapped from single source of truth
+const CATEGORIES = TAXONOMY.map((g) => ({
+  group: g.name,
+  items: g.items.map((i) => ({
+    id: i.slug,
+    uuid: i.id,
+    name: i.name,
+    legacyId: i.legacyId,
+  })),
+}));
 
 function getCategoryName(catId: string): string {
-  for (const group of CATEGORIES) {
-    for (const item of group.items) {
-      if (item.id === catId) return item.name;
-    }
-  }
-  return "Chung";
+  return getCategoryDisplayName(catId);
 }
 
 interface PortalShop {
@@ -387,7 +328,7 @@ export default function Portal() {
   // Form State
   const [nameVi, setNameVi] = useState("");
   const [nameEn, setNameEn] = useState("");
-  const [categoryId, setCategoryId] = useState("cat-do-gom");
+  const [categoryId, setCategoryId] = useState("do-gom");
   const [priceVnd, setPriceVnd] = useState<number | "">("");
   const [material, setMaterial] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -423,6 +364,62 @@ export default function Portal() {
 
   // Preview Modal State ("store" | "product" | null)
   const [previewModal, setPreviewModal] = useState<"store" | "product" | null>(null);
+
+  const previewStore = useMemo<StoreProfile>(() => {
+    return {
+      id: shop?.id || "preview-shop",
+      userId: currentUser?.id || "",
+      name: shopName || shop?.name || "Tên shop",
+      logoUrl: shopLogoUrl ? resolveImageUrl(shopLogoUrl) : (shop?.logo_url ? resolveImageUrl(shop?.logo_url) : ""),
+      coverUrl: shopCoverUrl ? resolveImageUrl(shopCoverUrl) : (shop?.cover_url ? resolveImageUrl(shop?.cover_url) : ""),
+      story: shopStoryVi || shop?.story_vi || "",
+      vibe: shopTaglineVi || shop?.tagline_vi || "",
+      description: shopStoryVi || shop?.story_vi || "",
+      phone: "",
+      email: shopContactEmail || shop?.contact_email || "",
+      address: shopAddress || shop?.address || "",
+      taxId: "",
+      socials: shopSocials || shop?.socials || {},
+      socialToggles: {
+        facebook: true,
+        instagram: true,
+        tiktok: true,
+        threads: true,
+        website: true,
+        zalo: true,
+      },
+      registered: true,
+      createdAt: (shop as any)?.created_at || new Date().toISOString(),
+    };
+  }, [shop, currentUser, shopName, shopLogoUrl, shopCoverUrl, shopStoryVi, shopTaglineVi, shopContactEmail, shopAddress, shopSocials]);
+
+  const previewProducts = useMemo<Product[]>(() => {
+    return products.map((p) => {
+      const images = (p.product_images || [])
+        .slice()
+        .sort((a, b) => (b.is_cover ? 1 : 0) - (a.is_cover ? 1 : 0) || a.sort_order - b.sort_order)
+        .map((img) => resolveImageUrl(img.url));
+
+      return {
+        id: p.id,
+        storeId: shop?.id || "preview-shop",
+        storeName: shopName || shop?.name || "Tên shop",
+        storeLogo: shopLogoUrl ? resolveImageUrl(shopLogoUrl) : (shop?.logo_url ? resolveImageUrl(shop?.logo_url) : ""),
+        name: p.name_vi,
+        price: p.price_vnd || 0,
+        currency: "VND",
+        description: p.short_desc_vi || p.story_vi || "",
+        images: images.length > 0 ? images : ["https://placehold.co/600x600/f7f4fb/7520f7?text=Sản+phẩm"],
+        category: getCategoryName(p.category_id || "do-gom"),
+        categorySlug: p.category_id || "do-gom",
+        categoryGroup: "Thủ công",
+        categoryGroupSlug: "thu-cong",
+        featured: false,
+        order: 0,
+        createdAt: p.created_at || new Date().toISOString(),
+      };
+    });
+  }, [products, shop, shopName, shopLogoUrl]);
 
   // Enforce noindex, nofollow
   useEffect(() => {
@@ -1918,7 +1915,7 @@ export default function Portal() {
     setEditingProductId(null);
     setNameVi("");
     setNameEn("");
-    setCategoryId("cat-do-gom");
+    setCategoryId("do-gom");
     setPriceVnd("");
     setMaterial("");
     setDimensions("");
@@ -1934,7 +1931,8 @@ export default function Portal() {
     setEditingProductId(prod.id);
     setNameVi(prod.name_vi);
     setNameEn(prod.name_en || "");
-    setCategoryId(prod.category_id || "cat-do-gom");
+    const matched = findCategory(prod.category_id || (prod as any).categorySlug || (prod as any).category);
+    setCategoryId(matched ? matched.slug : "do-gom");
     setPriceVnd(typeof prod.price_vnd === "number" ? prod.price_vnd : "");
     const matVal = prod.material || (Array.isArray(prod.variants) ? prod.variants.find((v: any) => v.type === "material")?.value : "") || "";
     setMaterial(matVal);
@@ -2208,11 +2206,14 @@ export default function Portal() {
 
     const token = (await getSupabaseToken()) || "dev-token";
 
+    const resolvedCat = findCategory(categoryId);
+    const resolvedCatId = resolvedCat?.id || categoryId;
+
     const payload = {
       productId: editingProductId || undefined,
       nameVi: nameVi.trim(),
       nameEn: nameEn.trim() || undefined,
-      categoryId,
+      categoryId: resolvedCatId,
       priceVnd: typeof priceVnd === "number" ? priceVnd : undefined,
       dimensions: dimensions.trim() || undefined,
       variants: material.trim() ? [{ type: "material", value: material.trim() }] : [],
@@ -2264,20 +2265,15 @@ export default function Portal() {
     if (supabase && shop?.id) {
       try {
         const cleanSlug = categoryId.replace(/^cat-/, "");
-        let resolvedCatId = categoryId;
-        const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
+        let directCatId = resolvedCatId;
+        const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(directCatId);
         if (!isCatUuid) {
           const { data: cat } = await supabase
             .from("categories")
             .select("id")
             .or(`slug.eq.${cleanSlug},slug.eq.${categoryId}`)
             .maybeSingle();
-          if (cat?.id) {
-            resolvedCatId = cat.id;
-          } else {
-            const { data: firstCat } = await supabase.from("categories").select("id").limit(1).maybeSingle();
-            if (firstCat?.id) resolvedCatId = firstCat.id;
-          }
+          if (cat?.id) directCatId = cat.id;
         }
 
         const now = new Date().toISOString();
@@ -2287,7 +2283,7 @@ export default function Portal() {
             .update({
               name_vi: nameVi.trim(),
               name_en: nameEn.trim() || null,
-              category_id: resolvedCatId,
+              category_id: directCatId,
               price_vnd: typeof priceVnd === "number" ? priceVnd : null,
               dimensions: dimensions.trim() || null,
               short_desc_vi: shortDescVi.trim() || null,
@@ -2304,7 +2300,7 @@ export default function Portal() {
             .from("products")
             .insert({
               shop_id: shop.id,
-              category_id: resolvedCatId,
+              category_id: directCatId,
               slug,
               name_vi: nameVi.trim(),
               name_en: nameEn.trim() || null,
@@ -4715,24 +4711,41 @@ export default function Portal() {
       {previewModal && (
         <div
           className={`fixed inset-0 z-50 overflow-y-auto ${
-            previewModal === "product" ? "bg-paper text-ink" : "bg-[#0d0714]/95 backdrop-blur-md text-white"
+            previewModal === "product" || previewModal === "store"
+              ? "bg-paper text-ink"
+              : "bg-[#0d0714]/95 backdrop-blur-md text-white"
           }`}
         >
           {/* Top Sticky Header */}
           <div
             className={`sticky top-0 z-50 px-4 sm:px-6 py-3 flex items-center justify-between border-b shadow-md transition-colors ${
-              previewModal === "product"
+              previewModal === "product" || previewModal === "store"
                 ? "bg-paper/95 backdrop-blur-md border-ink/10 text-ink"
                 : "bg-[#181224] border-[#2e2344] text-white"
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${previewModal === "product" ? "bg-brand" : "bg-[#39d6cf]"}`}></span>
-              <span className={`text-xs font-mono font-bold ${previewModal === "product" ? "text-brand" : "text-[#39d6cf]"}`}>
+              <span
+                className={`w-2.5 h-2.5 rounded-full animate-pulse ${
+                  previewModal === "product" || previewModal === "store" ? "bg-brand" : "bg-[#39d6cf]"
+                }`}
+              ></span>
+              <span
+                className={`text-xs font-mono font-bold ${
+                  previewModal === "product" || previewModal === "store" ? "text-brand" : "text-[#39d6cf]"
+                }`}
+              >
                 CHẾ ĐỘ XEM TRƯỚC (LIVE PREVIEW)
               </span>
-              <span className={`text-xs hidden sm:inline ${previewModal === "product" ? "text-ink/60" : "text-[#a39ab8]"}`}>
-                · {previewModal === "store" ? `Trang chủ shop (/stores/${shop?.slug || "xem-truoc"})` : `Chi tiết sản phẩm (/products/${editingProductId || "xem-truoc"})`}
+              <span
+                className={`text-xs hidden sm:inline ${
+                  previewModal === "product" || previewModal === "store" ? "text-ink/60" : "text-[#a39ab8]"
+                }`}
+              >
+                ·{" "}
+                {previewModal === "store"
+                  ? `Trang chủ shop (/stores/${shop?.slug || "xem-truoc"})`
+                  : `Chi tiết sản phẩm (/products/${editingProductId || "xem-truoc"})`}
               </span>
             </div>
 
@@ -4742,7 +4755,7 @@ export default function Portal() {
                 setActivePreviewImg(0);
               }}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition shadow-sm ${
-                previewModal === "product"
+                previewModal === "product" || previewModal === "store"
                   ? "bg-paper hover:bg-paper-warm text-ink border-ink/15 hover:border-ink/30"
                   : "bg-[#23173d] hover:bg-[#322056] text-white border-[#3b2a60]"
               }`}
@@ -4752,134 +4765,10 @@ export default function Portal() {
             </button>
           </div>
 
-          {/* STORE PREVIEW */}
+          {/* STORE PREVIEW (EXACTLY REPLICATING MAIN WEBSITE ShopDisplay.tsx) */}
           {previewModal === "store" && (
-            <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 font-sans">
-              {/* Header Box mimicking ShopDisplay.tsx */}
-              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-b from-[#2a124e] to-[#12081f] border border-[#2e2344] p-6 sm:p-8">
-                {/* 2.74:1 Cover banner */}
-                <div className="aspect-[2.74/1] w-full bg-[#181224] rounded-2xl overflow-hidden border border-white/10 relative shadow-2xl">
-                  {shopCoverUrl ? (
-                    <img
-                      src={resolveImageUrl(shopCoverUrl)}
-                      alt={shopName || "Cover shop"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
-                      Chưa có ảnh bìa (Hiển thị tỷ lệ 2.74:1)
-                    </div>
-                  )}
-                </div>
-
-                {/* Avatar and Info Row */}
-                <div className="relative -mt-10 sm:-mt-14 px-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                  <div className="flex items-end gap-4">
-                    <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full border-4 border-[#181224] bg-[#23173d] overflow-hidden shadow-2xl flex-shrink-0">
-                      {shopLogoUrl ? (
-                        <img
-                          src={resolveImageUrl(shopLogoUrl)}
-                          alt={shopName}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[#39d6cf] font-bold text-xl">
-                          {shopName ? shopName[0] : "X"}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pb-1">
-                      <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-tight">
-                        {shopName || "Tên shop"}
-                      </h1>
-                      {shopTaglineVi && (
-                        <p className="text-xs sm:text-sm text-[#39d6cf] font-medium mt-0.5">
-                          {shopTaglineVi}
-                        </p>
-                      )}
-                      {shopAddress && (
-                        <p className="text-[11px] text-[#a39ab8] flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3 text-[#a39ab8]" />
-                          <span>{shopAddress}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Social Buttons (white discs matching ShopDisplay.tsx design) */}
-                  <div className="flex items-center gap-2 pb-1 flex-wrap">
-                    {Object.entries(shopSocials)
-                      .filter(([, url]) => typeof url === "string" && Boolean(url.trim()))
-                      .map(([platform, url]) => {
-                        const href = typeof url === "string" && url.startsWith("http") ? url : `https://${url}`;
-                        return (
-                          <a
-                            key={platform}
-                            href={href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="w-10 h-10 rounded-full bg-white hover:bg-[#7520f7] text-[#7520f7] hover:text-white flex items-center justify-center shadow-lg transition"
-                            title={platform}
-                          >
-                            <PlatformGlyph platform={platform} className="w-5 h-5" />
-                          </a>
-                        );
-                      })}
-                  </div>
-                </div>
-
-                {/* Story text */}
-                {shopStoryVi && (
-                  <div className="mt-6 pt-6 border-t border-white/10 px-4 text-xs sm:text-sm text-white/80 leading-relaxed font-sans max-w-3xl whitespace-pre-line">
-                    {shopStoryVi}
-                  </div>
-                )}
-              </div>
-
-              {/* Products Grid in Storefront Preview */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-[#2e2344] pb-3">
-                  <h3 className="text-base font-serif font-bold text-white">
-                    {products.length} sản phẩm từ {shopName || "shop"}
-                  </h3>
-                </div>
-
-                {products.length === 0 ? (
-                  <div className="text-center py-12 text-xs text-[#a39ab8] bg-[#181224] rounded-2xl border border-[#2e2344]">
-                    Shop chưa có sản phẩm nào. Hãy tạo sản phẩm bên Tab Quản lý sản phẩm.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {products.map((p) => {
-                      const cov = p.product_images?.find((i) => i.is_cover) || p.product_images?.[0];
-                      const covUrl = cov?.url ? resolveImageUrl(cov.url) : null;
-                      return (
-                        <div
-                          key={p.id}
-                          className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden shadow group"
-                        >
-                          <div className="aspect-square bg-[#23173d] overflow-hidden flex items-center justify-center">
-                            {covUrl ? (
-                              <img src={covUrl} alt={p.name_vi} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                            ) : (
-                              <FileImage className="w-6 h-6 text-[#7b7194]" />
-                            )}
-                          </div>
-                          <div className="p-3">
-                            <h4 className="text-xs font-serif font-bold text-white truncate">
-                              {p.name_vi}
-                            </h4>
-                            <p className="text-[11px] font-mono text-[#39d6cf] font-medium mt-1">
-                              {p.price_vnd ? `${p.price_vnd.toLocaleString("vi-VN")} ₫` : "Giá liên hệ"}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+            <div className="min-h-screen bg-white text-ink">
+              <ShopView store={previewStore} products={previewProducts} isPreview={true} />
             </div>
           )}
 

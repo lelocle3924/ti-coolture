@@ -67,21 +67,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const supabase = getSupabaseAdmin();
 
-    // Resolve categoryId to a valid UUID if a slug or identifier like "cat-lich" or "lich" was sent
+    // Resolve categoryId to a valid UUID if a slug or identifier like "cat-nen-thom" or "nen-thom" or "Nến thơm" was sent
     let resolvedCategoryId = categoryId;
     const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId);
     if (!isCatUuid) {
-      const cleanSlug = categoryId.replace(/^cat-/, "");
+      const cleanSlug = String(categoryId).replace(/^cat-/, "").trim().toLowerCase();
       const { data: cat } = await supabase
         .from("categories")
         .select("id")
-        .or(`slug.eq.${cleanSlug},slug.eq.${categoryId}`)
+        .or(`slug.eq.${cleanSlug},slug.eq.${categoryId},name_vi.ilike.${categoryId}`)
+        .limit(1)
         .maybeSingle();
+
       if (cat?.id) {
         resolvedCategoryId = cat.id;
       } else {
-        const { data: firstCat } = await supabase.from("categories").select("id").limit(1).maybeSingle();
-        if (firstCat?.id) resolvedCategoryId = firstCat.id;
+        const { data: searchCat } = await supabase
+          .from("categories")
+          .select("id")
+          .ilike("name_vi", `%${cleanSlug}%`)
+          .limit(1)
+          .maybeSingle();
+        if (searchCat?.id) {
+          resolvedCategoryId = searchCat.id;
+        } else {
+          const { data: defaultCat } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("slug", "do-gom")
+            .maybeSingle();
+          if (defaultCat?.id) resolvedCategoryId = defaultCat.id;
+        }
       }
     }
 

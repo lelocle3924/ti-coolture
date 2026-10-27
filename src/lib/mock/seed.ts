@@ -92,7 +92,7 @@ export const seed: Database = {
     sub("van-phong-pham", "lich", "Lịch", "Calendars", 4),
     sub("van-phong-pham", "van-phong-pham-khac", "Văn phòng phẩm khác", "Other stationery", 5),
 
-    cat("qua-tang", "Quà tặng/Quà lưu niệm", "Gifts & Souvenirs", 4),
+    cat("qua-tang", "Quà tặng & Lưu niệm", "Gifts & Souvenirs", 4),
     sub("qua-tang", "thiep", "Thiệp", "Greeting cards", 1),
     sub("qua-tang", "buu-thiep", "Bưu thiếp", "Postcards", 2),
     sub("qua-tang", "nam-cham", "Nam châm", "Magnets", 3),
@@ -100,13 +100,13 @@ export const seed: Database = {
     sub("qua-tang", "hinh-dan", "Hình dán", "Stickers", 5),
     sub("qua-tang", "dac-san", "Đặc sản", "Regional specialties", 6),
 
-    cat("noi-that", "Nội thất", "Interiors", 5),
+    cat("noi-that", "Nội thất & Không gian", "Interiors", 5),
     sub("noi-that", "dung-cu-an-uong", "Dụng cụ ăn uống", "Tableware", 1),
     sub("noi-that", "trang-tri", "Trang trí", "Decor", 2),
     sub("noi-that", "den", "Đèn", "Lighting", 3),
     sub("noi-that", "do-gom", "Đồ gốm", "Ceramics", 4),
 
-    cat("cham-soc-da", "Dưỡng/Chăm sóc da", "Skincare", 6),
+    cat("cham-soc-da", "Dưỡng & Chăm sóc da", "Skincare", 6),
     sub("cham-soc-da", "nuoc-hoa", "Nước hoa", "Fragrance", 1),
     sub("cham-soc-da", "nen-thom", "Nến thơm", "Scented candles", 2),
     sub("cham-soc-da", "tam-goi", "Sản phẩm tắm - gội", "Bath & hair", 3),

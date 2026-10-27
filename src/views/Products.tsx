@@ -56,7 +56,7 @@ const PRICE_BANDS = [
   { id: "over-1m", label: "Trên 1.000.000đ", min: 1000000, max: Infinity }
 ];
 
-const MATERIALS = ["Gốm", "Gỗ", "Vải canvas", "Sơn mài", "Bạc", "Giấy thủ công", "Đá"];
+const MATERIALS: string[] = [];
 
 const SORTS = [
   { id: "newest", label: "Mới nhất" },
@@ -415,7 +415,6 @@ export default function Products() {
   const activeGroup = searchParams.get("group") || ALL_GROUP;
   const activeKind = searchParams.get("kind") || "";
   const activePriceBand = searchParams.get("price") || "all";
-  const activeMaterial = searchParams.get("material") || "all";
   const activeSort = searchParams.get("sort") || "newest";
   const searchQuery = searchParams.get("q") || "";
 
@@ -491,17 +490,6 @@ export default function Products() {
     setSearchParams(next);
   };
 
-  const handleMaterialSelect = (mat: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (mat === "all") {
-      next.delete("material");
-    } else {
-      next.set("material", mat);
-    }
-    next.delete("page");
-    setSearchParams(next);
-  };
-
   const handleSortChange = (sort: string) => {
     const next = new URLSearchParams(searchParams);
     next.set("sort", sort);
@@ -555,9 +543,6 @@ export default function Products() {
      press "Đèn 19" with a price band on and you get those 19, not 19 minus
      however many the band was already hiding. */
   const baseRows = products.filter(prod => {
-    if (activeMaterial !== "all" && prod.material && !prod.material.toLowerCase().includes(activeMaterial.toLowerCase())) {
-      return false;
-    }
     if (selectedBand && selectedBand.id !== "all") {
       if (prod.price < selectedBand.min! || prod.price > selectedBand.max!) {
         return false;
@@ -641,7 +626,6 @@ export default function Products() {
     (activeGroup !== ALL_GROUP ? 1 : 0) +
     (activeKind ? 1 : 0) +
     (activePriceBand !== "all" ? 1 : 0) +
-    (activeMaterial !== "all" ? 1 : 0) +
     (searchQuery ? 1 : 0);
 
   return (
@@ -873,15 +857,6 @@ export default function Products() {
                 onChange={handlePriceSelect}
               />
               <Dropdown
-                label="Chất liệu"
-                value={activeMaterial}
-                options={[
-                  { id: "all", label: "Tất cả" },
-                  ...MATERIALS.map((m) => ({ id: m, label: m })),
-                ]}
-                onChange={handleMaterialSelect}
-              />
-              <Dropdown
                 label="Sắp xếp"
                 value={activeSort}
                 options={SORTS}
@@ -919,15 +894,6 @@ export default function Products() {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
                 {selectedBand?.label}
                 <button onClick={() => handlePriceSelect("all")} aria-label="Bỏ lọc giá">
-                  <X className="h-3 w-3 hover:text-brand-deep" />
-                </button>
-              </span>
-            )}
-
-            {activeMaterial !== "all" && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
-                {activeMaterial}
-                <button onClick={() => handleMaterialSelect("all")} aria-label="Bỏ lọc chất liệu">
                   <X className="h-3 w-3 hover:text-brand-deep" />
                 </button>
               </span>

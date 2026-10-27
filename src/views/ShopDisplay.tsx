@@ -7,7 +7,7 @@ import { formatPrice, ContinuityLink } from "../lib/continuity";
 import { useSavedStores } from "../lib/useSavedStores";
 import PlatformGlyph from "../components/PlatformGlyph";
 import SaveButton from "../components/SaveButton";
-import { Dropdown, MATERIALS, PRICE_BANDS, SORTS } from "./Products";
+import { Dropdown, PRICE_BANDS, SORTS } from "./Products";
 import "./shop.css";
 
 /* ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ function useShopPage(storeId: string | undefined) {
    --------------------------------------------------------------------------- */
 
 /** Parallax: cover image shifts slower than scroll for depth */
-function useParallaxCover(factor = 0.35) {
+function useParallaxCover(factor = 0.22) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const ticking = useRef(false);
@@ -88,8 +88,10 @@ function useParallaxCover(factor = 0.35) {
         const rect = el.getBoundingClientRect();
         // Only apply when visible
         if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-        const offset = rect.top * factor;
-        img.style.transform = `translate3d(0, ${offset}px, 0) scale(1.12)`;
+        // Bound travel so oversized image never detaches from container edges
+        const maxTravel = el.clientHeight * 0.16;
+        const offset = Math.max(-maxTravel, Math.min(maxTravel, rect.top * factor));
+        img.style.transform = `translate3d(0, ${offset.toFixed(1)}px, 0) scale(1.04)`;
       });
     };
 
@@ -146,8 +148,8 @@ function useRevealOnScroll(items: Product[]) {
   return containerRef;
 }
 
-/** Đoạn văn mô tả xưởng (VỀ XƯỞNG) với nút xem thêm / thu gọn */
-function ShopBio({ text }: { text: string }) {
+/** Đoạn văn mô tả shop (VỀ SHOP) với nút xem thêm / thu gọn */
+export function ShopBio({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const [isClamped, setIsClamped] = useState(false);
   const pRef = useRef<HTMLParagraphElement>(null);
@@ -182,10 +184,26 @@ function ShopBio({ text }: { text: string }) {
 }
 
 /** Thẻ sản phẩm — v3 with reveal-ready data attributes */
-function ShopProductCard({ product, index }: { key?: string; product: Product; index: number }) {
+export function ShopProductCard({
+  product,
+  index,
+  isPreview = false,
+}: {
+  key?: string;
+  product: Product;
+  index: number;
+  isPreview?: boolean;
+}) {
   const imageRef = useRef<HTMLImageElement>(null);
   const primaryImg = product.images?.[0] || "";
   const hoverImg = product.images?.[1] || primaryImg;
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (isPreview) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   return (
     <div
@@ -201,9 +219,10 @@ function ShopProductCard({ product, index }: { key?: string; product: Product; i
           <div className="relative overflow-hidden bg-paper-warm" style={{ aspectRatio: "4/5" }}>
             <ContinuityLink
               product={product}
-              to={`/products/${product.id}`}
+              to={isPreview ? "#" : `/products/${product.id}`}
               imgRef={imageRef}
               className="block h-full w-full"
+              onClick={handleLinkClick}
             >
               <img
                 ref={imageRef}
@@ -228,20 +247,23 @@ function ShopProductCard({ product, index }: { key?: string; product: Product; i
             </ContinuityLink>
 
             {/* Nút tim */}
-            <SaveButton
-              product={product}
-              revealOnHover
-              className="absolute right-2.5 top-2.5 z-10"
-            />
+            {!isPreview && (
+              <SaveButton
+                product={product}
+                revealOnHover
+                className="absolute right-2.5 top-2.5 z-10"
+              />
+            )}
           </div>
 
           {/* Thông tin sản phẩm */}
           <div className="p-4 md:p-5 flex flex-1 flex-col justify-between space-y-2.5">
             <ContinuityLink
               product={product}
-              to={`/products/${product.id}`}
+              to={isPreview ? "#" : `/products/${product.id}`}
               imgRef={imageRef}
               className="block"
+              onClick={handleLinkClick}
             >
               <h3 className="line-clamp-2 text-[14px] md:text-[15px] font-semibold leading-[1.4] text-[#17121F] group-hover:text-[#7520F7] transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
                 {product.name}
@@ -255,10 +277,11 @@ function ShopProductCard({ product, index }: { key?: string; product: Product; i
 
               <ContinuityLink
                 product={product}
-                to={`/products/${product.id}`}
+                to={isPreview ? "#" : `/products/${product.id}`}
                 imgRef={imageRef}
                 className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#F1E9FF] text-[#7520F7] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:bg-[#7520F7] group-hover:text-white group-hover:translate-x-[1px] group-hover:-translate-y-[1px] group-hover:scale-105"
                 aria-label={`Xem chi tiết ${product.name}`}
+                onClick={handleLinkClick}
               >
                 <ArrowRight className="h-3.5 w-3.5" />
               </ContinuityLink>
@@ -270,17 +293,20 @@ function ShopProductCard({ product, index }: { key?: string; product: Product; i
   );
 }
 
-export default function ShopDisplay() {
-  const { storeId } = useParams<{ storeId: string }>();
-  const { store, products, resolved } = useShopPage(storeId);
+export interface ShopViewProps {
+  store: StoreProfile;
+  products: Product[];
+  isPreview?: boolean;
+}
+
+export function ShopView({ store, products, isPreview = false }: ShopViewProps) {
   const savedStores = useSavedStores();
 
   const [band, setBand] = useState("all");
-  const [material, setMaterial] = useState("all");
   const [sort, setSort] = useState("newest");
 
   // Motion hooks
-  const parallax = useParallaxCover(0.3);
+  const parallax = useParallaxCover(0.22);
 
   const shown = useMemo(() => {
     const chosen = PRICE_BANDS.find((b) => b.id === band);
@@ -291,46 +317,19 @@ export default function ShopDisplay() {
           !chosen ||
           (p.price >= (chosen.min ?? 0) && p.price <= (chosen.max ?? Infinity))
       )
-      .filter(
-        (p) =>
-          material === "all" ||
-          (!!p.material && p.material.toLowerCase().includes(material.toLowerCase()))
-      )
       .sort((a, b) =>
         sort === "price-asc" ? a.price - b.price : sort === "price-desc" ? b.price - a.price : 0
       );
-  }, [products, band, material, sort]);
+  }, [products, band, sort]);
 
   const productGridRef = useRevealOnScroll(shown);
 
   const clearFilters = () => {
     setBand("all");
-    setMaterial("all");
     setSort("newest");
   };
 
-  const hasActiveFilter = band !== "all" || material !== "all" || sort !== "newest";
-
-  if (!store) {
-    return resolved ? (
-      <div
-        data-surface="dark"
-        className="-mt-24 grid min-h-[calc(100dvh+6rem)] place-items-center bg-[#7520F7] px-6 pt-24 text-center text-paper md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pt-28"
-      >
-        <div className="space-y-4">
-          <h1 className="display text-3xl normal-case font-medium">Không tìm thấy shop</h1>
-          <Link
-            to="/stores"
-            className="inline-block rounded-full bg-paper px-6 py-2.5 text-xs font-semibold text-ink shadow-sm hover:scale-105 transition-transform"
-          >
-            Về danh bạ shop
-          </Link>
-        </div>
-      </div>
-    ) : (
-      <div data-surface="dark" className="-mt-24 min-h-[calc(100dvh+6rem)] bg-[#7520F7] md:-mt-28 md:min-h-[calc(100dvh+7rem)]" />
-    );
-  }
+  const hasActiveFilter = band !== "all" || sort !== "newest";
 
   const channels = channelsOf(store);
   const storyText =
@@ -339,25 +338,30 @@ export default function ShopDisplay() {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
   return (
-    <div className="min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] -mt-24 md:-mt-28 bg-white text-ink relative overflow-x-clip w-full pb-28 md:pb-36">
-
-      <section data-surface="dark" className="shop-hero">
-        <div ref={parallax.containerRef} className="shop-hero__media" aria-hidden="true">
-          {store.coverUrl ? (
-            <img
-              ref={parallax.imgRef}
-              src={store.coverUrl}
-              alt=""
-              className="shop-hero__image"
-              style={{ transform: "translate3d(0, 0, 0) scale(1.12)" }}
-            />
-          ) : (
-            <div className="shop-hero__fallback">
-              <span className="font-sans">{store.name}</span>
-            </div>
-          )}
+    <div
+      className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] bg-white text-ink relative overflow-x-clip w-full pb-28 md:pb-36 ${
+        isPreview ? "pt-0 -mt-0" : "-mt-24 md:-mt-28"
+      }`}
+    >
+      <section data-surface="dark" className={`shop-hero ${isPreview ? "pt-4 md:pt-6" : ""}`}>
+        <div className="shop-hero__container">
+          <div ref={parallax.containerRef} className="shop-hero__media" aria-hidden="true">
+            {store.coverUrl ? (
+              <img
+                ref={parallax.imgRef}
+                src={store.coverUrl}
+                alt=""
+                className="shop-hero__image"
+                style={{ transform: "translate3d(0, 0, 0) scale(1.04)" }}
+              />
+            ) : (
+              <div className="shop-hero__fallback">
+                <span className="font-sans">{store.name}</span>
+              </div>
+            )}
+            <div className="shop-hero__veil" aria-hidden="true" />
+          </div>
         </div>
-        <div className="shop-hero__veil" aria-hidden="true" />
       </section>
 
       <div className="shop-content">
@@ -392,6 +396,9 @@ export default function ShopDisplay() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-0.5 font-semibold text-brand hover:underline"
+                  onClick={(e) => {
+                    if (isPreview) e.preventDefault();
+                  }}
                 >
                   <span>Mở bản đồ</span>
                   <ArrowUpRight className="h-3 w-3" />
@@ -402,7 +409,9 @@ export default function ShopDisplay() {
 
               <button
                 type="button"
-                onClick={() => savedStores.toggle(store.id)}
+                onClick={() => {
+                  if (!isPreview) savedStores.toggle(store.id);
+                }}
                 aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name}`}
                 className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-xs font-semibold cursor-pointer transition-[background-color,color,border-color,box-shadow] duration-200 ease-out active:scale-[0.97] ${
                   savedStores.has(store.id)
@@ -432,6 +441,9 @@ export default function ShopDisplay() {
                         rel="noopener noreferrer"
                         aria-label={`${channel.label} của ${store.name}`}
                         className="shop-social-link"
+                        onClick={(e) => {
+                          if (isPreview) e.preventDefault();
+                        }}
                       >
                         <PlatformGlyph platform={channel.key} className="h-[18px] w-[18px]" />
                       </a>
@@ -442,6 +454,9 @@ export default function ShopDisplay() {
                 <a
                   href={`mailto:${store.email || "creativespace.ticoolture@gmail.com"}`}
                   className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wave"
+                  onClick={(e) => {
+                    if (isPreview) e.preventDefault();
+                  }}
                 >
                   <span>Liên hệ shop</span>
                 </a>
@@ -484,15 +499,6 @@ export default function ShopDisplay() {
                   options={PRICE_BANDS.map((b) => ({ id: b.id, label: b.label }))}
                   onChange={setBand}
                 />
-                <Dropdown
-                  label="Chất liệu"
-                  value={material}
-                  options={[
-                    { id: "all", label: "Tất cả" },
-                    ...MATERIALS.map((m) => ({ id: m, label: m })),
-                  ]}
-                  onChange={setMaterial}
-                />
                 <Dropdown label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
 
                 {hasActiveFilter && (
@@ -530,7 +536,7 @@ export default function ShopDisplay() {
               ) : (
                 <div className="relative z-10 grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-7">
                   {shown.map((product, i) => (
-                    <ShopProductCard key={product.id} product={product} index={i} />
+                    <ShopProductCard key={product.id} product={product} index={i} isPreview={isPreview} />
                   ))}
                 </div>
               )}
@@ -542,4 +548,32 @@ export default function ShopDisplay() {
       </div>
     </div>
   );
+}
+
+export default function ShopDisplay() {
+  const { storeId } = useParams<{ storeId: string }>();
+  const { store, products, resolved } = useShopPage(storeId);
+
+  if (!store) {
+    return resolved ? (
+      <div
+        data-surface="dark"
+        className="-mt-24 grid min-h-[calc(100dvh+6rem)] place-items-center bg-[#7520F7] px-6 pt-24 text-center text-paper md:-mt-28 md:min-h-[calc(100dvh+7rem)] md:pt-28"
+      >
+        <div className="space-y-4">
+          <h1 className="display text-3xl normal-case font-medium">Không tìm thấy shop</h1>
+          <Link
+            to="/stores"
+            className="inline-block rounded-full bg-paper px-6 py-2.5 text-xs font-semibold text-ink shadow-sm hover:scale-105 transition-transform"
+          >
+            Về danh bạ shop
+          </Link>
+        </div>
+      </div>
+    ) : (
+      <div data-surface="dark" className="-mt-24 min-h-[calc(100dvh+6rem)] bg-[#7520F7] md:-mt-28 md:min-h-[calc(100dvh+7rem)]" />
+    );
+  }
+
+  return <ShopView store={store} products={products} />;
 }

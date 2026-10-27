@@ -25,6 +25,7 @@ import { CategoryNode, Product, StoreProfile, TouristRoute, UserProfile, UserRol
 import { seed } from "./mock/seed";
 import type { Database, ProductRow, ShopRow } from "./mock/schema";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
+import { resolveProductCategory, getCanonicalCategoryTree } from "./taxonomy";
 
 export type DataSourceMode = "mock" | "real";
 
@@ -131,7 +132,7 @@ function toProduct(row: ProductRow): Product {
   /* A product is filed against a leaf; the group is read off the leaf rather
      than stored on the product, so the two can never disagree. */
   const category = db.categories.find((c) => c.id === row.category_id);
-  const group = db.categories.find((c) => c.id === category?.parent_id);
+  const resolved = resolveProductCategory(category?.name_vi || category?.slug || row.category_id);
   const materialLink = db.product_materials.find((m) => m.product_id === row.id);
   const material = db.materials.find((m) => m.id === materialLink?.material_id);
 
@@ -145,10 +146,10 @@ function toProduct(row: ProductRow): Product {
     currency: "VND",
     description: row.short_desc_vi ?? "",
     images: imagesFor(row.id),
-    category: category?.name_vi ?? "",
-    categorySlug: category?.slug ?? "",
-    categoryGroup: group?.name_vi ?? category?.name_vi ?? "",
-    categoryGroupSlug: group?.slug ?? category?.slug ?? "",
+    category: resolved.category,
+    categorySlug: resolved.categorySlug,
+    categoryGroup: resolved.categoryGroup,
+    categoryGroupSlug: resolved.categoryGroupSlug,
     variants: row.variants.flatMap((v) => v.values.map((val) => val.vi)),
     material: material?.name_vi,
     size: row.dimensions ?? undefined,
@@ -407,6 +408,16 @@ export async function fetchProducts(
             .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
             .map((img: any) => resolveImageUrl(img.url));
 
+          const resolved = resolveProductCategory(
+            category?.slug || category?.id || category?.name_vi || row.category_id
+          );
+          const matVal = Array.isArray(row.variants)
+            ? (row.variants.find((v: any) => v.type === "material")?.value || "")
+            : "";
+          const variantList = Array.isArray(row.variants)
+            ? row.variants.map((v: any) => v.value || v.name || String(v))
+            : [];
+
           return {
             id: row.id,
             storeId: row.shop_id,
@@ -417,12 +428,12 @@ export async function fetchProducts(
             currency: "VND",
             description: row.short_desc_vi ?? "",
             images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
-            category: category?.name_vi ?? "",
-            categorySlug: category?.slug ?? "",
-            categoryGroup: category?.name_vi ?? "",
-            categoryGroupSlug: category?.slug ?? "",
-            variants: [],
-            material: "",
+            category: resolved.category,
+            categorySlug: resolved.categorySlug,
+            categoryGroup: resolved.categoryGroup,
+            categoryGroupSlug: resolved.categoryGroupSlug,
+            variants: variantList,
+            material: matVal,
             size: row.dimensions ?? undefined,
             story: row.story_vi ?? undefined,
             clicks: 0,
@@ -498,6 +509,16 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
             .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
             .map((img: any) => resolveImageUrl(img.url));
 
+          const resolved = resolveProductCategory(
+            category?.slug || category?.id || category?.name_vi || row.category_id
+          );
+          const matVal = Array.isArray(row.variants)
+            ? (row.variants.find((v: any) => v.type === "material")?.value || "")
+            : "";
+          const variantList = Array.isArray(row.variants)
+            ? row.variants.map((v: any) => v.value || v.name || String(v))
+            : [];
+
           return {
             id: row.id,
             storeId: row.shop_id,
@@ -508,12 +529,12 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
             currency: "VND",
             description: row.short_desc_vi ?? "",
             images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
-            category: category?.name_vi ?? "",
-            categorySlug: category?.slug ?? "",
-            categoryGroup: category?.name_vi ?? "",
-            categoryGroupSlug: category?.slug ?? "",
-            variants: [],
-            material: "",
+            category: resolved.category,
+            categorySlug: resolved.categorySlug,
+            categoryGroup: resolved.categoryGroup,
+            categoryGroupSlug: resolved.categoryGroupSlug,
+            variants: variantList,
+            material: matVal,
             size: row.dimensions ?? undefined,
             story: row.story_vi ?? undefined,
             clicks: 0,
@@ -568,6 +589,16 @@ export async function fetchProductById(productId: string): Promise<Product | nul
           .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
           .map((img: any) => resolveImageUrl(img.url));
 
+        const resolved = resolveProductCategory(
+          category?.slug || category?.id || category?.name_vi || data.category_id
+        );
+        const matVal = Array.isArray(data.variants)
+          ? (data.variants.find((v: any) => v.type === "material")?.value || "")
+          : "";
+        const variantList = Array.isArray(data.variants)
+          ? data.variants.map((v: any) => v.value || v.name || String(v))
+          : [];
+
         return {
           id: data.id,
           storeId: data.shop_id,
@@ -578,12 +609,12 @@ export async function fetchProductById(productId: string): Promise<Product | nul
           currency: "VND",
           description: data.short_desc_vi ?? "",
           images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
-          category: category?.name_vi ?? "",
-          categorySlug: category?.slug ?? "",
-          categoryGroup: category?.name_vi ?? "",
-          categoryGroupSlug: category?.slug ?? "",
-          variants: [],
-          material: "",
+          category: resolved.category,
+          categorySlug: resolved.categorySlug,
+          categoryGroup: resolved.categoryGroup,
+          categoryGroupSlug: resolved.categoryGroupSlug,
+          variants: variantList,
+          material: matVal,
           size: data.dimensions ?? undefined,
           story: data.story_vi ?? undefined,
           clicks: 0,
@@ -620,23 +651,7 @@ export async function fetchProductById(productId: string): Promise<Product | nul
  * one be pressed, which is the half of the 08/09 chip bug that mattered.
  */
 export async function fetchCategoryTree(): Promise<CategoryNode[]> {
-  const node = (row: (typeof db.categories)[number]): CategoryNode => ({
-    id: row.id,
-    slug: row.slug,
-    name: row.name_vi,
-    nameEn: row.name_en,
-    children: db.categories
-      .filter((c) => c.parent_id === row.id && c.is_active)
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(node),
-  });
-
-  return delay(
-    db.categories
-      .filter((c) => c.parent_id === null && c.is_active)
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(node)
-  );
+  return delay(getCanonicalCategoryTree());
 }
 
 export async function fetchTouristRoutes(_opts?: { throwOnError?: boolean }): Promise<TouristRoute[]> {
@@ -919,9 +934,14 @@ export async function createProduct(
     /* A leaf, never a group: db.categories[0] is "Thời trang", which holds
        no products directly, so falling back to it would file the product
        somewhere no filter reaches. */
-    category_id:
-      db.categories.find((c) => c.parent_id !== null && c.name_vi === productData.category)?.id ??
-      db.categories.find((c) => c.parent_id !== null)!.id,
+    /* A leaf, never a group: resolve accurately with taxonomy */
+    category_id: (() => {
+      const resolvedCat = resolveProductCategory(productData.category);
+      const matched = db.categories.find(
+        (c) => c.slug === resolvedCat.categorySlug || c.name_vi === resolvedCat.category
+      );
+      return matched?.id ?? db.categories.find((c) => c.parent_id !== null)!.id;
+    })(),
     slug: id,
     name_vi: productData.name,
     name_en: null,
@@ -938,8 +958,23 @@ export async function createProduct(
     published_at: null,
     created_at: now,
     updated_at: now,
-    variants: [],
+    variants: productData.variants?.map((v) => ({ name: { vi: v, en: v }, values: [{ vi: v, en: v }] })) ?? [],
   });
+
+  if (productData.material) {
+    let mat = db.materials.find((m) => m.name_vi.toLowerCase() === productData.material!.toLowerCase());
+    if (!mat) {
+      mat = {
+        id: `mat-${Date.now()}`,
+        slug: `mat-${Date.now()}`,
+        name_vi: productData.material,
+        name_en: productData.material,
+      };
+      db.materials.push(mat);
+    }
+    db.product_materials.push({ product_id: id, material_id: mat.id });
+  }
+
   (productData.images || []).forEach((url, i) => {
     db.product_images.push({
       id: `img-${id}-${i}`,
@@ -964,6 +999,29 @@ export async function updateProduct(productId: string, productData: Partial<Prod
   if (productData.description !== undefined) row.short_desc_vi = productData.description;
   if (productData.story !== undefined) row.story_vi = productData.story;
   if (productData.hidden !== undefined) row.status = productData.hidden ? "archived" : "published";
+  if (productData.category !== undefined) {
+    const resolvedCat = resolveProductCategory(productData.category);
+    const matched = db.categories.find(
+      (c) => c.slug === resolvedCat.categorySlug || c.name_vi === resolvedCat.category
+    );
+    if (matched) row.category_id = matched.id;
+  }
+  if (productData.material !== undefined) {
+    db.product_materials = db.product_materials.filter((pm) => pm.product_id !== productId);
+    if (productData.material) {
+      let mat = db.materials.find((m) => m.name_vi.toLowerCase() === productData.material!.toLowerCase());
+      if (!mat) {
+        mat = {
+          id: `mat-${Date.now()}`,
+          slug: `mat-${Date.now()}`,
+          name_vi: productData.material,
+          name_en: productData.material,
+        };
+        db.materials.push(mat);
+      }
+      db.product_materials.push({ product_id: productId, material_id: mat.id });
+    }
+  }
   row.updated_at = new Date().toISOString();
 }
 
