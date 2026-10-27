@@ -324,16 +324,15 @@ export function useHomeData(): HomeData {
     setLoading(true);
     setError(false);
     try {
-      const [approved, shopList, routeList, hiddenGems] = await Promise.all([
+      const [approved, shopList, routeList] = await Promise.all([
         fetchProducts("Approved", { throwOnError: true }),
         fetchStores(),
         fetchTouristRoutes({ throwOnError: true }),
-        fetchHiddenGems(),
       ]);
       setProducts(approved);
       setStores(shopList);
       setRoutes(routeList);
-      setGems(hiddenGems);
+      setGems(await fetchHiddenGems(approved));
     } catch (err) {
       console.error("[lab] data load failed:", err);
       setError(true);

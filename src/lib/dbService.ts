@@ -381,11 +381,17 @@ export async function fetchProducts(
   if (getDataSourceMode() === "real" && supabase) {
     try {
       const dbStatus = status === "Approved" ? "published" : status === "Pending" ? "pending_review" : "rejected";
-      const { data, error } = await supabase
+      let productQuery = supabase
         .from("products")
         .select("*, shops!inner(*), categories(*), product_images(*)")
         .eq("status", dbStatus)
         .eq("shops.status", "published");
+      if (status === "Approved") {
+        productQuery = productQuery
+          .eq("product_hidden", false)
+          .eq("shop_hidden", false);
+      }
+      const { data, error } = await productQuery;
 
       if (!error && data) {
         const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
@@ -476,7 +482,9 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
         .select("*, shops!inner(*), categories(*), product_images(*)")
         .eq("shop_id", targetShopId)
         .eq("status", "published")
-        .eq("shops.status", "published");
+        .eq("shops.status", "published")
+        .eq("product_hidden", false)
+        .eq("shop_hidden", false);
 
       if (!error && data) {
         const filtered = data.filter((row: any) => {
@@ -520,7 +528,24 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
       console.warn("Error fetching real products for store:", e);
     }
   }
-  return delay(db.products.filter((p) => p.shop_id === storeId).map(toProduct));
+  const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+  const shop = db.shops.find((row) => row.id === storeId || row.slug === storeId);
+  if (
+    !shop ||
+    statusFromPublish(shop.status) !== "Approved" ||
+    sandbox.shops[shop.id] === "hidden"
+  ) {
+    return delay([]);
+  }
+  return delay(
+    db.products
+      .filter((p) => {
+        if (p.shop_id !== shop.id || statusFromPublish(p.status) !== "Approved") return false;
+        if (sandbox.products[p.id] === "hidden" || sandbox.products[p.id] === "rejected") return false;
+        return true;
+      })
+      .map(toProduct)
+  );
 }
 
 export async function fetchProductById(productId: string): Promise<Product | null> {
@@ -530,7 +555,10 @@ export async function fetchProductById(productId: string): Promise<Product | nul
       const query = supabase
         .from("products")
         .select("*, shops!inner(*), categories(*), product_images(*)")
-        .eq("shops.status", "published");
+        .eq("status", "published")
+        .eq("shops.status", "published")
+        .eq("product_hidden", false)
+        .eq("shop_hidden", false);
       const { data, error } = await (isUuid ? query.eq("id", productId) : query.eq("slug", productId)).maybeSingle();
 
       if (!error && data) {
@@ -569,7 +597,16 @@ export async function fetchProductById(productId: string): Promise<Product | nul
       console.warn("Error fetching real product by id:", e);
     }
   }
-  const row = db.products.find((p) => p.id === productId || p.slug === productId);
+  const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+  const row = db.products.find((p) => {
+    if (p.id !== productId && p.slug !== productId) return false;
+    const shop = db.shops.find((candidate) => candidate.id === p.shop_id);
+    if (!shop || statusFromPublish(shop.status) !== "Approved") return false;
+    if (statusFromPublish(p.status) !== "Approved") return false;
+    if (sandbox.shops[p.shop_id] === "hidden") return false;
+    if (sandbox.products[p.id] === "hidden" || sandbox.products[p.id] === "rejected") return false;
+    return true;
+  });
   return delay(row ? toProduct(row) : null);
 }
 

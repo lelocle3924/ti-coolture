@@ -1147,4 +1147,4 @@ export default function Products() {
 
 /* The shop page draws its products with the catalogue's own card and filter
    control (13/09), so a product looks the same wherever it is listed. */
-export { Dropdown, PRICE_BANDS, ProductCard, SORTS };
+export { Dropdown, MATERIALS, PRICE_BANDS, ProductCard, SORTS };

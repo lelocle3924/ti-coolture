@@ -1,7 +1,199 @@
 /* ---------------------------------------------------------------------------
-   The shop page, /stores/:storeId (v3 — Motion). Imported by ShopDisplay.tsx.
-   Every colour resolves to a token from src/index.css.
+   The shop page, /stores/:storeId. Imported by ShopDisplay.tsx.
    --------------------------------------------------------------------------- */
+
+.shop-hero {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  padding-inline: 1rem;
+  background: var(--color-brand-deep);
+}
+
+.shop-hero__media {
+  position: relative;
+  width: min(100%, 1200px);
+  height: 50svh;
+  overflow: hidden;
+  border-radius: 0 0 1.5rem 1.5rem;
+  background: var(--color-brand-deep);
+}
+
+.shop-hero__veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shop-hero__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  will-change: transform;
+}
+
+.shop-hero__fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  background: var(--color-brand-deep);
+  color: rgb(255 255 255 / 36%);
+  font-size: clamp(2.5rem, 8vw, 7rem);
+  text-transform: uppercase;
+}
+
+.shop-hero__veil {
+  background: linear-gradient(180deg, rgb(18 8 31 / 22%), transparent 48%, rgb(18 8 31 / 12%));
+}
+
+.shop-content {
+  position: relative;
+  z-index: 20;
+  width: min(100%, 1360px);
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 3vw, 2rem);
+  padding-top: clamp(2rem, 3vw, 2.75rem);
+}
+
+.shop-content__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.75fr);
+  align-items: start;
+  gap: clamp(1.5rem, 4vw, 4rem);
+}
+
+.shop-profile-sticky {
+  position: sticky;
+  top: max(6rem, 10dvh);
+  align-self: start;
+  height: min(90dvh, calc(100dvh - max(6rem, 10dvh)));
+  max-height: calc(100dvh - max(6rem, 10dvh));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgb(117 32 247 / 32%) transparent;
+  scrollbar-width: thin;
+}
+
+.shop-profile-card {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  padding: clamp(1.5rem, 2.4vw, 2rem);
+  border: 1px solid var(--color-wave);
+  border-radius: 1.75rem;
+  background: var(--color-paper);
+  box-shadow: 0 24px 64px -32px rgb(18 8 31 / 32%);
+}
+
+.shop-profile-card > * {
+  flex-shrink: 0;
+}
+
+.shop-profile-story {
+  flex: 1 0 auto;
+}
+
+.shop-profile-note {
+  margin-top: auto;
+  padding-top: clamp(1rem, 3dvh, 2rem);
+}
+
+.shop-product-column {
+  min-width: 0;
+}
+
+.shop-profile-avatar {
+  display: grid;
+  width: 6.5rem;
+  height: 6.5rem;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-paper-warm);
+  color: var(--color-brand);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.shop-social-link {
+  display: grid;
+  width: 2.875rem;
+  height: 2.875rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: var(--color-paper);
+  transition:
+    background-color 180ms ease-out,
+    color 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.shop-social-link:focus-visible {
+  outline: 2px solid var(--color-wave-ink);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shop-social-link:hover {
+    transform: translateY(-2px);
+    background: var(--color-wave);
+    color: var(--color-ink);
+  }
+}
+
+@media (max-width: 767px) {
+  .shop-hero {
+    padding-inline: 0;
+  }
+
+  .shop-hero__media {
+    border-radius: 0 0 1.25rem 1.25rem;
+  }
+
+  .shop-content__layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .shop-profile-sticky {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .shop-profile-card {
+    min-height: 0;
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+  }
+
+  .shop-profile-story {
+    flex: initial;
+  }
+
+  .shop-profile-note {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-hero__image {
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .shop-social-link {
+    transition: none;
+  }
+}
 
 /* The shop's words: three lines, and "… xem thêm" at the end of the third.
 
@@ -48,12 +240,10 @@
    --------------------------------------------------------------------------- */
 .shop-card-reveal {
   opacity: 0;
-  transform: translate3d(0, 24px, 0);
-  filter: blur(6px);
+  transform: translate3d(0, 16px, 0);
   transition:
-    opacity 700ms cubic-bezier(0.32, 0.72, 0, 1),
-    transform 700ms cubic-bezier(0.32, 0.72, 0, 1),
-    filter 700ms cubic-bezier(0.32, 0.72, 0, 1);
+    opacity 260ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: transform, opacity;
 }
 
@@ -61,7 +251,6 @@
   .shop-card-reveal {
     opacity: 1;
     transform: none;
-    filter: none;
     transition: none;
     will-change: auto;
   }

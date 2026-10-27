@@ -98,6 +98,8 @@ export interface ProductRow {
   price_updated_at: string | null;
   dimensions: string | null;
   status: PublishStatus;
+  product_hidden?: boolean;
+  shop_hidden?: boolean;
   is_featured: boolean;
   published_at: string | null;
   created_at: string;
@@ -287,5 +289,4 @@ export interface Database {
   portal_invites?: PortalInviteRow[];
   shop_invitations?: ShopInvitationRow[];
 }
-
 

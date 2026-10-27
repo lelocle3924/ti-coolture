@@ -157,7 +157,7 @@ Thay vì yêu cầu shop lưu giữ những chuỗi token bí mật dài dòng d
 ### 2.5 Quy trình Kiểm duyệt & Thông báo Quản trị (Review & Approval Flow)
 
 #### Vòng đời trạng thái (State Machine):
-Trường `publish_status` áp dụng cho cả `shops` và `products`:
+Trường `publish_status` áp dụng cho cả `shops` và `products`. Trạng thái `hidden` của shop điều khiển trạng thái xuất bản của shop; việc ẩn sản phẩm được quản lý riêng bằng hai cờ `products.product_hidden` và `products.shop_hidden`:
 
 ```mermaid
 stateDiagram-v2
@@ -165,15 +165,13 @@ stateDiagram-v2
     draft --> pending_review: Shop bấm "Gửi duyệt cho Tí Coolture" (Khóa sửa tạm thời)
     pending_review --> published: Admin phê duyệt trên CMS (Hiện lên website)
     pending_review --> draft: Admin từ chối / Yêu cầu sửa (Mở lại quyền sửa)
-    published --> hidden: Admin tạm ẩn
-    hidden --> published: Admin hiển thị lại
     published --> edit_draft: Shop lưu yêu cầu chỉnh sửa riêng
-    hidden --> edit_draft: Shop lưu yêu cầu chỉnh sửa riêng
     edit_draft --> edit_pending: Shop gửi yêu cầu chỉnh sửa
     edit_pending --> published: Admin duyệt và áp dụng dữ liệu đề xuất
-    edit_pending --> hidden: Admin duyệt và giữ trạng thái ẩn
     edit_pending --> published: Admin từ chối, giữ nguyên dữ liệu cũ
 ```
+
+Admin ẩn/hiện shop sẽ đồng thời đặt `shop_hidden` cho sản phẩm thuộc shop. Admin ẩn/hiện riêng sản phẩm chỉ thay đổi `product_hidden`; thao tác này không ghi đè trạng thái ẩn của shop.
 
 1. **Giai đoạn `draft`:** Dữ liệu đang được shop chỉnh sửa, lưu nháp tự động (Auto-save) sau mỗi 30 giây.
 2. **Giai đoạn `pending_review`:**
@@ -192,11 +190,14 @@ stateDiagram-v2
    * Khi shop gửi duyệt, yêu cầu xuất hiện ở tab riêng trong Admin. Admin có thể xem preview, duyệt hoặc từ chối.
    * Duyệt sẽ cập nhật sản phẩm và ảnh trong cùng transaction; từ chối chỉ đổi trạng thái yêu cầu.
 5. **Nguyên tắc cô lập hiển thị công khai (Isolate Data):**
-   * Mọi câu lệnh truy vấn dữ liệu phía Client trên trang chủ `ticoolture.vn` (qua Supabase RLS hoặc API route) **bắt buộc phải có điều kiện**:
+   * Sản phẩm chỉ được công khai và có thể tìm kiếm khi cả sản phẩm và shop đã xuất bản, đồng thời cả hai cờ ẩn đều `false`:
      ```sql
-     WHERE publish_status = 'published'
+     WHERE products.status = 'published'
+       AND shops.status = 'published'
+       AND products.product_hidden = false
+       AND products.shop_hidden = false
      ```
-   * Sản phẩm chỉ được công khai khi shop liên kết cũng có trạng thái `published`. Ẩn shop không đổi trạng thái riêng của sản phẩm; hiện lại shop không tự bật lại sản phẩm đã bị ẩn độc lập.
+   * Ẩn shop không đổi `product_hidden`; hiện lại shop không tự bật lại sản phẩm đã bị ẩn độc lập.
    * Dữ liệu đang ở `draft` hoặc `pending_review` không bao giờ xuất hiện trên trang chủ, danh mục, hay kết quả tìm kiếm của khách vãng lai. Dữ liệu đề xuất trong `product_edit_requests` cũng không được truy vấn công khai.
 
 ---

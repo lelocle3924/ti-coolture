@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Heart, MapPin, ArrowUpRight, SlidersHorizontal } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
 import { formatPrice, ContinuityLink } from "../lib/continuity";
-import { ArcTopRight } from "../components/BrandShapes";
 import { useSavedStores } from "../lib/useSavedStores";
 import PlatformGlyph from "../components/PlatformGlyph";
 import SaveButton from "../components/SaveButton";
-import { Dropdown, PRICE_BANDS, SORTS } from "./Products";
+import { Dropdown, MATERIALS, PRICE_BANDS, SORTS } from "./Products";
 import "./shop.css";
 
 /* ---------------------------------------------------------------------------
@@ -17,17 +16,16 @@ import "./shop.css";
    --------------------------------------------------------------------------- */
 
 const PLATFORMS = [
-  { key: "instagram", label: "Instagram", primaryPrefix: "Nhắn qua" },
-  { key: "tiktok", label: "TikTok", primaryPrefix: "Xem" },
-  { key: "facebook", label: "Facebook", primaryPrefix: "Nhắn qua" },
-  { key: "threads", label: "Threads", primaryPrefix: "Xem" },
+  { key: "instagram", label: "Instagram" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "facebook", label: "Facebook" },
+  { key: "threads", label: "Threads" },
 ] as const;
 
 interface Channel {
   key: string;
   label: string;
   href: string;
-  prefix: string;
 }
 
 function channelsOf(store: StoreProfile): Channel[] {
@@ -36,7 +34,7 @@ function channelsOf(store: StoreProfile): Channel[] {
     if (!url) return [];
     const base = url.startsWith("http") ? url : `https://${url}`;
     const href = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=shop`;
-    return [{ key: platform.key, label: platform.label, href, prefix: platform.primaryPrefix }];
+    return [{ key: platform.key, label: platform.label, href }];
   });
 }
 
@@ -104,7 +102,7 @@ function useParallaxCover(factor = 0.35) {
 }
 
 /** IntersectionObserver-based reveal: fade-up with stagger */
-function useRevealOnScroll() {
+function useRevealOnScroll(items: Product[]) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,7 +129,6 @@ function useRevealOnScroll() {
             setTimeout(() => {
               target.style.opacity = "1";
               target.style.transform = "translate3d(0, 0, 0)";
-              target.style.filter = "blur(0)";
             }, stagger);
             observer.unobserve(target);
           }
@@ -144,38 +141,9 @@ function useRevealOnScroll() {
     children.forEach((child) => observer.observe(child));
 
     return () => observer.disconnect();
-  }, []);
+  }, [items]);
 
   return containerRef;
-}
-
-/** Profile card entrance — slides up + fades in on mount */
-function useCardEntrance() {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReduced) {
-      el.style.opacity = "1";
-      el.style.transform = "none";
-      return;
-    }
-    // Start hidden
-    el.style.opacity = "0";
-    el.style.transform = "translate3d(0, 28px, 0)";
-    el.style.transition = "opacity 800ms cubic-bezier(0.32, 0.72, 0, 1), transform 800ms cubic-bezier(0.32, 0.72, 0, 1)";
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        el.style.opacity = "1";
-        el.style.transform = "translate3d(0, 0, 0)";
-      });
-    });
-  }, []);
-
-  return ref;
 }
 
 /** Đoạn văn mô tả xưởng (VỀ XƯỞNG) với nút xem thêm / thu gọn */
@@ -222,7 +190,7 @@ function ShopProductCard({ product, index }: { key?: string; product: Product; i
   return (
     <div
       data-reveal
-      data-reveal-delay={String(index * 80)}
+      data-reveal-delay={String(index * 50)}
       className="shop-card-reveal group flex flex-col"
     >
       {/* Double-bezel outer shell */}
@@ -313,26 +281,6 @@ export default function ShopDisplay() {
 
   // Motion hooks
   const parallax = useParallaxCover(0.3);
-  const cardEntranceRef = useCardEntrance();
-  const productGridRef = useRevealOnScroll();
-
-  const materials = useMemo(
-    () =>
-      Array.from(
-        new Set<string>(products.map((p) => p.material).filter((m): m is string => !!m))
-      ).sort((a, b) => a.localeCompare(b, "vi")),
-    [products]
-  );
-
-  const bands = useMemo(
-    () =>
-      PRICE_BANDS.filter(
-        (b) =>
-          b.id === "all" ||
-          products.some((p) => p.price >= (b.min ?? 0) && p.price <= (b.max ?? Infinity))
-      ),
-    [products]
-  );
 
   const shown = useMemo(() => {
     const chosen = PRICE_BANDS.find((b) => b.id === band);
@@ -343,11 +291,17 @@ export default function ShopDisplay() {
           !chosen ||
           (p.price >= (chosen.min ?? 0) && p.price <= (chosen.max ?? Infinity))
       )
-      .filter((p) => material === "all" || p.material === material)
+      .filter(
+        (p) =>
+          material === "all" ||
+          (!!p.material && p.material.toLowerCase().includes(material.toLowerCase()))
+      )
       .sort((a, b) =>
         sort === "price-asc" ? a.price - b.price : sort === "price-desc" ? b.price - a.price : 0
       );
   }, [products, band, material, sort]);
+
+  const productGridRef = useRevealOnScroll(shown);
 
   const clearFilters = () => {
     setBand("all");
@@ -379,242 +333,141 @@ export default function ShopDisplay() {
   }
 
   const channels = channelsOf(store);
-  const primaryChannel = channels[0];
-  const secondaryChannel = channels[1];
-  const otherChannels = channels.slice(2);
   const storyText =
     store.story || store.vibe || store.description || "Không gian sáng tạo và chế tác thủ công độc lập.";
   const mapQuery = store.address || store.area || `${store.name} Việt Nam`;
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
   return (
-    <div className="min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] -mt-24 md:-mt-28 bg-white text-ink relative overflow-x-hidden w-full pb-28 md:pb-36">
+    <div className="min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] -mt-24 md:-mt-28 bg-white text-ink relative overflow-x-clip w-full pb-28 md:pb-36">
 
-      {/* =========================================================================
-          1. DẢI TÍM ĐẦU TRANG (PURPLE HEADER BAND)
-          Parallax cover image — depth illusion.
-          ========================================================================= */}
-      <section
-        data-surface="dark"
-        className="relative z-10 bg-[#7520F7] text-paper pt-[104px] md:pt-[128px] pb-[160px] md:pb-[210px] overflow-hidden"
-        style={{
-          borderRadius: "0 0 50% 50% / 0 0 clamp(48px, 8vw, 100px)",
-        }}
-      >
-        {/* Subtle ambient arc — brand accent without clutter */}
-        <ArcTopRight
-          className="pointer-events-none absolute -left-12 -top-12 z-0 opacity-[0.08] rotate-180"
-          style={{ width: "clamp(12rem, 24vw, 20rem)" }}
-          fill="#39D6CF"
-        />
-
-        {/* Ambient gradient orbs for depth — no ribbon loops */}
-        <div
-          className="pointer-events-none absolute z-0"
-          style={{
-            top: "-10%",
-            right: "-5%",
-            width: "clamp(20rem, 40vw, 36rem)",
-            height: "clamp(20rem, 40vw, 36rem)",
-            background: "radial-gradient(circle, rgba(57,214,207,0.12) 0%, transparent 70%)",
-            filter: "blur(60px)",
-          }}
-          aria-hidden="true"
-        />
-
-        {/* Khung chứa ảnh bìa (Cover Image) — parallax enabled */}
-        <div className="relative z-10 max-w-[1360px] mx-auto px-5 md:px-8">
-          <div
-            ref={parallax.containerRef}
-            className="overflow-hidden rounded-[22px] md:rounded-[28px] h-[200px] md:h-[320px] w-full bg-[#5a12c6] shadow-[0_8px_32px_rgba(0,0,0,0.15)] relative"
-          >
-            {store.coverUrl ? (
-              <img
-                ref={parallax.imgRef}
-                src={store.coverUrl}
-                alt={`Ảnh bìa của ${store.name}`}
-                className="h-[130%] w-full object-cover will-change-transform"
-                style={{ transform: "translate3d(0, 0, 0) scale(1.12)" }}
-              />
-            ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[#7520F7] to-[#5a12c6] flex items-center justify-center opacity-90">
-                <span className="font-display text-4xl text-white/30 uppercase">{store.name}</span>
-              </div>
-            )}
-          </div>
+      <section data-surface="dark" className="shop-hero">
+        <div ref={parallax.containerRef} className="shop-hero__media" aria-hidden="true">
+          {store.coverUrl ? (
+            <img
+              ref={parallax.imgRef}
+              src={store.coverUrl}
+              alt=""
+              className="shop-hero__image"
+              style={{ transform: "translate3d(0, 0, 0) scale(1.12)" }}
+            />
+          ) : (
+            <div className="shop-hero__fallback">
+              <span className="font-sans">{store.name}</span>
+            </div>
+          )}
         </div>
+        <div className="shop-hero__veil" aria-hidden="true" />
       </section>
 
-      {/* =========================================================================
-          2. BỐ CỤC CHÍNH (THẺ HỒ SƠ TRÁI + LƯỚI SẢN PHẨM PHẢI)
-          Profile card with entrance animation.
-          ========================================================================= */}
-      <div className="relative z-20 max-w-[1360px] mx-auto px-5 md:px-8 -mt-[96px] md:-mt-[210px]">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:gap-12">
-
-          {/* ──────────────────────────────────────────────────────────────────
-              CỘT TRÁI: THẺ HỒ SƠ SHOP (PROFILE CARD)
-              Entrance animation: slide-up + fade-in.
-              Double-bezel card structure for premium depth.
-              ────────────────────────────────────────────────────────────────── */}
-          <aside className="w-full lg:w-[380px] shrink-0 lg:sticky lg:top-24 z-20">
-            {/* Double-bezel outer shell */}
-            <div
-              ref={cardEntranceRef}
-              className="rounded-[26px] md:rounded-[30px] bg-[#F7F4FB]/50 p-[3px] ring-1 ring-[#ECE6F5]"
-            >
-              {/* Inner core */}
-              <div className="rounded-[24px] md:rounded-[28px] bg-white p-6 md:p-8 shadow-[0_20px_56px_-16px_rgba(60,20,120,0.12),inset_0_1px_1px_rgba(255,255,255,0.6)] relative flex flex-col">
-
-                {/* Avatar tròn viền teal nhô lên trên thẻ */}
-                <div className="relative self-start -mt-[72px] md:-mt-[88px] mb-3">
-                  <div className="w-[100px] h-[100px] md:w-[120px] md:h-[120px] rounded-full overflow-hidden border-[5px] md:border-[6px] border-[#39D6CF] bg-white shadow-[0_6px_20px_rgba(57,214,207,0.2)]">
-                    {store.logoUrl ? (
-                      <img
-                        src={store.logoUrl}
-                        alt={store.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-paper-warm grid place-items-center text-brand font-bold text-2xl">
-                        {store.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Tên shop */}
-                <h1 className="font-display uppercase text-[42px] md:text-[50px] leading-[0.9] text-[#7520F7] tracking-normal pt-1">
-                  {store.name}
-                </h1>
-
-                {/* Tagline */}
-                {store.vibe && (
-                  <p className="font-sans italic text-[15px] md:text-[17px] leading-snug text-[#2C2538] mt-3">
-                    &ldquo;{store.vibe}&rdquo;
-                  </p>
+      <div className="shop-content">
+        <div className="shop-content__layout">
+          <aside className="shop-profile-sticky">
+            <div className="shop-profile-card">
+              <div className="shop-profile-avatar">
+                {store.logoUrl ? (
+                  <img src={store.logoUrl} alt={store.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span aria-hidden="true">{store.name.charAt(0)}</span>
                 )}
+              </div>
 
-                {/* Địa điểm / Khu vực & link Mở bản đồ */}
-                <div className="flex items-center justify-between gap-2 mt-4 text-xs text-[#5B4F6E] flex-wrap">
-                  <span className="flex items-center gap-1.5 font-semibold text-[#17121F]">
-                    <MapPin className="h-3.5 w-3.5 text-[#7520F7]" />
-                    {store.address || store.area || "Việt Nam"}
-                  </span>
-                  <a
-                    href={mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-0.5 text-[#7520F7] font-semibold hover:underline"
-                  >
-                    <span>Mở bản đồ</span>
-                    <ArrowUpRight className="h-3 w-3" />
-                  </a>
-                </div>
+              <h1 className="mt-5 font-sans uppercase text-[42px] md:text-[50px] leading-[0.95] text-brand tracking-normal">
+                {store.name}
+              </h1>
 
-                {/* Divider */}
-                <div className="my-5 border-t border-[#ECE6F5]" />
+              {store.vibe && (
+                <p className="mt-3 font-sans text-[15px] md:text-[17px] italic leading-snug text-ink">
+                  &ldquo;{store.vibe}&rdquo;
+                </p>
+              )}
 
-                {/* Nút lưu shop (Wishlist) */}
-                <button
-                  type="button"
-                  onClick={() => savedStores.toggle(store.id)}
-                  aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name}`}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-xs font-semibold cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${
-                    savedStores.has(store.id)
-                      ? "bg-[#39D6CF] text-[#17121F] shadow-[0_4px_14px_rgba(57,214,207,0.25)] font-bold"
-                      : "bg-[#F7F4FB] text-[#17121F] ring-1 ring-[#ECE6F5] hover:ring-[#7520F7] hover:text-[#7520F7]"
-                  }`}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-[#5B4F6E]">
+                <span className="flex items-center gap-1.5 font-semibold text-ink">
+                  <MapPin className="h-3.5 w-3.5 text-brand" />
+                  {store.address || store.area || "Việt Nam"}
+                </span>
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-0.5 font-semibold text-brand hover:underline"
                 >
-                  <Heart
-                    className={`h-3.5 w-3.5 ${
-                      savedStores.has(store.id) ? "fill-[#17121F] stroke-[#17121F]" : "stroke-current"
-                    }`}
-                  />
-                  <span>{savedStores.has(store.id) ? "Đã lưu shop vào mục yêu thích" : "Lưu shop"}</span>
-                </button>
+                  <span>Mở bản đồ</span>
+                  <ArrowUpRight className="h-3 w-3" />
+                </a>
+              </div>
 
-                {/* Nhóm nút liên hệ (Actions) */}
-                <div className="mt-5 space-y-2.5">
-                  {primaryChannel ? (
-                    <a
-                      href={primaryChannel.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-[48px] md:h-[52px] w-full rounded-full bg-[#7520F7] text-white font-bold text-sm md:text-base flex items-center justify-center gap-2.5 shadow-[0_6px_20px_-4px_rgba(117,32,247,0.35)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#5a12c6] hover:shadow-[0_10px_28px_-4px_rgba(117,32,247,0.45)] active:scale-[0.98]"
-                    >
-                      <PlatformGlyph platform={primaryChannel.key} className="h-5 w-5 text-white" />
-                      <span>{primaryChannel.prefix} {primaryChannel.label}</span>
-                    </a>
-                  ) : (
-                    <a
-                      href={`mailto:${store.email || "creativespace.ticoolture@gmail.com"}`}
-                      className="h-[48px] md:h-[52px] w-full rounded-full bg-[#7520F7] text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-[0_6px_20px_-4px_rgba(117,32,247,0.35)]"
-                    >
-                      <span>Liên hệ shop</span>
-                    </a>
-                  )}
+              <div className="my-5 border-t border-[#ECE6F5]" />
 
-                  {secondaryChannel && (
-                    <a
-                      href={secondaryChannel.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-[48px] md:h-[52px] w-full rounded-full bg-[#39D6CF] text-[#17121F] font-bold text-sm md:text-base flex items-center justify-center gap-2.5 shadow-[0_6px_20px_-4px_rgba(57,214,207,0.3)] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[#2fc4bd] hover:shadow-[0_10px_28px_-4px_rgba(57,214,207,0.4)] active:scale-[0.98]"
-                    >
-                      <PlatformGlyph platform={secondaryChannel.key} className="h-5 w-5 text-[#17121F]" />
-                      <span>{secondaryChannel.prefix} {secondaryChannel.label}</span>
-                    </a>
-                  )}
-                </div>
+              <button
+                type="button"
+                onClick={() => savedStores.toggle(store.id)}
+                aria-label={savedStores.has(store.id) ? `Bỏ lưu ${store.name}` : `Lưu ${store.name}`}
+                className={`mt-5 inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-xs font-semibold cursor-pointer transition-[background-color,color,border-color,box-shadow] duration-200 ease-out active:scale-[0.97] ${
+                  savedStores.has(store.id)
+                    ? "bg-wave text-ink shadow-[0_4px_14px_rgba(57,214,207,0.25)] font-bold"
+                    : "bg-paper-warm text-ink ring-1 ring-[#ECE6F5] hover:ring-brand hover:text-brand"
+                }`}
+              >
+                <Heart
+                  className={`h-3.5 w-3.5 ${
+                    savedStores.has(store.id) ? "fill-ink stroke-ink" : "stroke-current"
+                  }`}
+                />
+                <span>{savedStores.has(store.id) ? "Đã lưu shop vào mục yêu thích" : "Lưu shop"}</span>
+              </button>
 
-                {/* Các kênh mạng xã hội phụ khác */}
-                {otherChannels.length > 0 && (
-                  <div className="flex items-center gap-2.5 pt-4 justify-center">
-                    {otherChannels.map((c) => (
+              {channels.length > 0 ? (
+                <div className="mt-6">
+                  <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#6B6478]">
+                    Kết nối với shop
+                  </h2>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {channels.map((channel) => (
                       <a
-                        key={c.key}
-                        href={c.href}
+                        key={channel.key}
+                        href={channel.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`${c.label} của ${store.name}`}
-                        className="h-10 w-10 rounded-full bg-[#F7F4FB] ring-1 ring-[#ECE6F5] text-[#7520F7] grid place-items-center hover:bg-[#7520F7] hover:text-white hover:ring-[#7520F7] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                        aria-label={`${channel.label} của ${store.name}`}
+                        className="shop-social-link"
                       >
-                        <PlatformGlyph platform={c.key} className="h-4 w-4" />
+                        <PlatformGlyph platform={channel.key} className="h-[18px] w-[18px]" />
                       </a>
                     ))}
                   </div>
-                )}
-
-                {/* Mục VỀ XƯỞNG */}
-                <div className="mt-6 pt-5 border-t border-[#ECE6F5]">
-                  <h2 className="font-bold text-[12px] tracking-[0.16em] text-[#6B6478] uppercase">
-                    VỀ XƯỞNG
-                  </h2>
-                  <div className="mt-3">
-                    <ShopBio text={storyText} />
-                  </div>
                 </div>
+              ) : (
+                <a
+                  href={`mailto:${store.email || "creativespace.ticoolture@gmail.com"}`}
+                  className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wave"
+                >
+                  <span>Liên hệ shop</span>
+                </a>
+              )}
 
-                {/* Ô ghi chú giá tham khảo */}
-                <div className="mt-5 rounded-2xl bg-[#F7F4FB] ring-1 ring-[#ECE6F5] p-4">
-                  <p className="text-[12px] leading-relaxed text-[#5B4F6E]">
-                    Giá tham khảo, giá cuối do shop quyết định. Tí Coolture không bán hàng và không xử lý giao dịch.
-                  </p>
+              <div className="shop-profile-story mt-6 border-t border-[#ECE6F5] pt-5">
+                <h2 className="font-bold text-[12px] tracking-[0.16em] text-[#6B6478] uppercase">
+                  VỀ SHOP
+                </h2>
+                <div className="mt-3">
+                  <ShopBio text={storyText} />
                 </div>
+              </div>
 
+              <div className="shop-profile-note border-t border-[#ECE6F5]">
+                <p className="text-[12px] leading-relaxed text-[#5B4F6E]">
+                  Giá tham khảo, giá cuối do shop quyết định. Tí Coolture không bán hàng và không xử lý giao dịch.
+                </p>
               </div>
             </div>
           </aside>
 
-          {/* ──────────────────────────────────────────────────────────────────
-              CỘT PHẢI: LƯỚI SẢN PHẨM (PRODUCT GRID & TOOLBAR)
-              Staggered reveal animation on product cards.
-              ────────────────────────────────────────────────────────────────── */}
-          <main className="flex-1 min-w-0 pt-8 lg:pt-[234px] relative">
+          <main className="shop-product-column relative">
 
             {/* Toolbar: Số lượng sản phẩm + Dropdown Bộ lọc */}
-            <div className="relative z-10 flex items-center justify-between pb-5 flex-wrap gap-4 border-b border-[#ECE6F5]/70">
+            <div className="relative z-20 flex items-center justify-between pb-5 flex-wrap gap-4 border-b border-[#ECE6F5]/70">
               <div className="flex items-baseline gap-3">
                 <h2 className="font-bold text-[24px] md:text-[28px] text-[#7520F7] leading-none">
                   {shown.length}
@@ -624,39 +477,35 @@ export default function ShopDisplay() {
                 </span>
               </div>
 
-              {products.length > 0 && (
-                <div className="flex flex-wrap items-center justify-end gap-2.5">
-                  <Dropdown
-                    label="Giá"
-                    value={band}
-                    options={bands.map((b) => ({ id: b.id, label: b.label }))}
-                    onChange={setBand}
-                  />
-                  {materials.length > 0 && (
-                    <Dropdown
-                      label="Chất liệu"
-                      value={material}
-                      options={[
-                        { id: "all", label: "Tất cả" },
-                        ...materials.map((m) => ({ id: m, label: m })),
-                      ]}
-                      onChange={setMaterial}
-                    />
-                  )}
-                  <Dropdown label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
+              <div className="flex flex-wrap items-center justify-end gap-2.5">
+                <Dropdown
+                  label="Giá"
+                  value={band}
+                  options={PRICE_BANDS.map((b) => ({ id: b.id, label: b.label }))}
+                  onChange={setBand}
+                />
+                <Dropdown
+                  label="Chất liệu"
+                  value={material}
+                  options={[
+                    { id: "all", label: "Tất cả" },
+                    ...MATERIALS.map((m) => ({ id: m, label: m })),
+                  ]}
+                  onChange={setMaterial}
+                />
+                <Dropdown label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
 
-                  {hasActiveFilter && (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className="text-xs font-semibold text-[#7520F7] hover:underline underline-offset-2 cursor-pointer flex items-center gap-1 ml-1 transition-colors duration-300"
-                    >
-                      <SlidersHorizontal className="h-3 w-3" />
-                      Xoá lọc
-                    </button>
-                  )}
-                </div>
-              )}
+                {hasActiveFilter && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="text-xs font-semibold text-[#7520F7] hover:underline underline-offset-2 cursor-pointer flex items-center gap-1 ml-1 transition-colors duration-300"
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    Xoá lọc
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Danh sách sản phẩm — staggered reveal */}

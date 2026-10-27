@@ -45,6 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             name_vi,
             price_vnd,
             status,
+            product_hidden,
+            shop_hidden,
             category_id,
             product_images (
               id,
@@ -109,11 +111,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const now = new Date().toISOString();
         let nextStatus: string;
+        let productHidden: boolean | undefined;
+        let shopHidden: boolean | undefined;
 
         if (action === "toggle_product") {
           const { data: product, error: productErr } = await supabase
             .from("products")
-            .select("id, shop_id, status")
+            .select("id, shop_id, status, product_hidden, shop_hidden")
             .eq("id", recordId)
             .single();
           if (productErr || !product) {
@@ -125,31 +129,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               error: "Chỉ có thể ẩn hoặc hiện sản phẩm đã xuất bản.",
             });
           }
-          if (visible) {
-            const { data: parentShop, error: shopErr } = await supabase
-              .from("shops")
-              .select("status")
-              .eq("id", product.shop_id)
-              .single();
-            if (shopErr) throw shopErr;
-            if (parentShop.status !== "published") {
-              return res.status(409).json({
-                success: false,
-                error: "Cần hiển thị shop trước khi hiện sản phẩm.",
-              });
-            }
-          }
-
-          nextStatus = visible ? "published" : "hidden";
+          nextStatus = product.status === "hidden" ? "published" : product.status;
           const { data: updatedProduct, error: updateErr } = await supabase
             .from("products")
             .update({
               status: nextStatus,
+              product_hidden: !visible,
               updated_at: now,
             })
             .eq("id", recordId)
             .eq("status", product.status)
-            .select("id")
+            .eq("product_hidden", product.product_hidden)
+            .select("id, product_hidden, shop_hidden")
             .maybeSingle();
           if (updateErr) throw updateErr;
           if (!updatedProduct) {
@@ -158,6 +149,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               error: "Trạng thái sản phẩm vừa thay đổi. Vui lòng tải lại danh sách.",
             });
           }
+          product.product_hidden = updatedProduct.product_hidden;
+          product.shop_hidden = updatedProduct.shop_hidden;
+          productHidden = updatedProduct.product_hidden;
+          shopHidden = updatedProduct.shop_hidden;
         } else {
           const { data: shop, error: shopErr } = await supabase
             .from("shops")
@@ -175,28 +170,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
 
           nextStatus = visible ? "published" : "hidden";
-          const { data: updatedShop, error: updateErr } = await supabase
-            .from("shops")
-            .update({ status: nextStatus, updated_at: now })
-            .eq("id", recordId)
-            .eq("status", shop.status)
-            .select("id")
-            .maybeSingle();
+          const { error: updateErr } = await supabase.rpc("set_shop_visibility", {
+            p_shop_id: recordId,
+            p_visible: visible,
+          });
           if (updateErr) throw updateErr;
-          if (!updatedShop) {
-            return res.status(409).json({
-              success: false,
-              error: "Trạng thái shop vừa thay đổi. Vui lòng tải lại danh sách.",
-            });
-          }
         }
 
         return res.status(200).json({
           success: true,
           status: nextStatus,
+          productHidden,
+          shopHidden: action === "toggle_product" ? shopHidden : !visible,
           message: action === "toggle_product"
-            ? `Đã ${visible ? "hiện" : "ẩn"} sản phẩm.`
-            : `Đã ${visible ? "hiện" : "ẩn"} shop.`,
+            ? visible && shopHidden
+              ? "Đã bật hiển thị riêng cho sản phẩm, nhưng sản phẩm vẫn ẩn theo shop."
+              : `Đã ${visible ? "hiện" : "ẩn"} sản phẩm.`
+            : `Đã ${visible ? "hiện" : "ẩn"} shop và cập nhật trạng thái ẩn của sản phẩm.`,
         });
       }
 
@@ -326,9 +316,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const isClientError =
       err.message.includes("bắt buộc") ||
       err.message.includes("không có quyền") ||
-      err.message.includes("Không tìm thấy");
+      err.message.includes("Không tìm thấy") ||
+      err.message.includes("Chỉ có thể");
 
-    return res.status(isClientError ? 400 : 500).json({
+    return res.status(err.message.includes("Chỉ có thể") ? 409 : isClientError ? 400 : 500).json({
       success: false,
       error: err.message || "Lỗi xử lý yêu cầu xét duyệt.",
     });

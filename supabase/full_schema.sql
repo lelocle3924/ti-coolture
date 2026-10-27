@@ -153,6 +153,8 @@ CREATE TABLE products (
   price_updated_at date,
   dimensions     text,                  -- '20 x 30 cm'
   status         publish_status NOT NULL DEFAULT 'draft',
+  product_hidden boolean NOT NULL DEFAULT false,
+  shop_hidden    boolean NOT NULL DEFAULT false,
   is_featured    boolean NOT NULL DEFAULT false,
   published_at   timestamptz,
   created_at     timestamptz NOT NULL DEFAULT now(),
@@ -675,6 +677,9 @@ BEGIN
     LEFT JOIN categories parent_c ON parent_c.id = c.parent_id
     WHERE
       p.status = 'published'
+      AND s.status = 'published'
+      AND p.product_hidden = false
+      AND p.shop_hidden = false
       AND (filter_shop_id IS NULL OR p.shop_id = filter_shop_id)
       AND (filter_min_price IS NULL OR p.price_vnd >= filter_min_price)
       AND (filter_max_price IS NULL OR p.price_vnd <= filter_max_price)
@@ -739,4 +744,42 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION search_products(text, text, uuid, int, int, text, int, int) TO anon, authenticated;
 
+CREATE OR REPLACE FUNCTION set_shop_visibility(
+  p_shop_id uuid,
+  p_visible boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  current_status publish_status;
+BEGIN
+  SELECT status INTO current_status
+  FROM shops
+  WHERE id = p_shop_id
+  FOR UPDATE;
 
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy shop.';
+  END IF;
+
+  IF current_status NOT IN ('published', 'hidden') THEN
+    RAISE EXCEPTION 'Chỉ có thể ẩn hoặc hiện shop đã xuất bản.';
+  END IF;
+
+  UPDATE shops
+  SET status = CASE WHEN p_visible THEN 'published'::publish_status ELSE 'hidden'::publish_status END,
+      updated_at = now()
+  WHERE id = p_shop_id;
+
+  UPDATE products
+  SET shop_hidden = NOT p_visible,
+      updated_at = now()
+  WHERE shop_id = p_shop_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION set_shop_visibility(uuid, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION set_shop_visibility(uuid, boolean) TO service_role;

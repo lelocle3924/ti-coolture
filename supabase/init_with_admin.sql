@@ -157,6 +157,8 @@ CREATE TABLE IF NOT EXISTS products (
   price_note_vi  text DEFAULT 'Giá tham khảo, giá cuối do shop quyết định',
   dimensions     text,
   status         publish_status NOT NULL DEFAULT 'draft',
+  product_hidden boolean NOT NULL DEFAULT false,
+  shop_hidden    boolean NOT NULL DEFAULT false,
   is_featured    boolean NOT NULL DEFAULT false,
   variants       jsonb DEFAULT '[]'::jsonb,
   created_at     timestamptz NOT NULL DEFAULT now(),
@@ -273,6 +275,46 @@ SET
   user_id = COALESCE(EXCLUDED.user_id, staff_members.user_id),
   role = 'admin', 
   is_active = true;
+
+CREATE OR REPLACE FUNCTION set_shop_visibility(
+  p_shop_id uuid,
+  p_visible boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  current_status publish_status;
+BEGIN
+  SELECT status INTO current_status
+  FROM shops
+  WHERE id = p_shop_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Không tìm thấy shop.';
+  END IF;
+
+  IF current_status NOT IN ('published', 'hidden') THEN
+    RAISE EXCEPTION 'Chỉ có thể ẩn hoặc hiện shop đã xuất bản.';
+  END IF;
+
+  UPDATE shops
+  SET status = CASE WHEN p_visible THEN 'published'::publish_status ELSE 'hidden'::publish_status END,
+      updated_at = now()
+  WHERE id = p_shop_id;
+
+  UPDATE products
+  SET shop_hidden = NOT p_visible,
+      updated_at = now()
+  WHERE shop_id = p_shop_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION set_shop_visibility(uuid, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION set_shop_visibility(uuid, boolean) TO service_role;
 
 -- 10. CHÈN MẪU MỘT SỐ XƯỞNG THỰC TẾ
 INSERT INTO shops (slug, name, tagline_vi, status) VALUES

@@ -1097,7 +1097,7 @@ export default function Portal() {
     setIsSubmittingAdmin(false);
   }
 
-  // Admin Action: Toggle Show/Hide Shop (also toggles all products of the shop)
+  // Shop visibility is independent from each product's own visibility flag.
   async function handleToggleShopStatus(shopId: string, currentStatus: string, shopName: string) {
     const isCurrentlyPublished = currentStatus === "published";
     const newStatus = isCurrentlyPublished ? "hidden" : "published";
@@ -1112,29 +1112,21 @@ export default function Portal() {
     setAdminFeedback(null);
 
     if (sandboxMode) {
-      const shopObj = adminShops.find((s) => s.id === shopId);
-      const prodOverrides = (shopObj?.products || []).reduce(
-        (acc: any, p: any) => ({ ...acc, [p.id]: newStatus === "hidden" ? "hidden" : "published" }),
-        {}
-      );
-      setSandboxOverrides({
-        shops: { [shopId]: newStatus as any },
-        ...(newStatus === "hidden" ? { products: prodOverrides } : {}),
-      });
+      setSandboxOverrides({ shops: { [shopId]: newStatus as any } });
       setAdminShops((prev) =>
         prev.map((s) => {
           if (s.id !== shopId) return s;
-          const updatedProds =
-            newStatus === "hidden"
-              ? (s.products || []).map((p: any) => ({ ...p, status: "hidden" }))
-              : s.products;
+          const updatedProds = (s.products || []).map((p: any) => ({
+            ...p,
+            shop_hidden: newStatus === "hidden",
+          }));
           return { ...s, status: newStatus, products: updatedProds };
         })
       );
       setPendingReviews((prev) =>
         prev.map((p) => {
-          if (p.shop_id === shopId && newStatus === "hidden") {
-            return { ...p, status: "hidden" };
+          if (p.shop_id === shopId) {
+            return { ...p, shop_hidden: newStatus === "hidden" };
           }
           return p;
         })
@@ -1227,13 +1219,12 @@ export default function Portal() {
   }
 
   // Admin Action: Toggle Show/Hide Individual Product
-  async function handleToggleProductStatus(productId: string, currentStatus: string, productName: string) {
-    const isCurrentlyPublished = currentStatus === "published";
-    const newStatus = isCurrentlyPublished ? "hidden" : "published";
+  async function handleToggleProductStatus(productId: string, isProductHidden: boolean, productName: string) {
+    const newStatus = isProductHidden ? "published" : "hidden";
 
-    const confirmMsg = isCurrentlyPublished
-      ? `Bạn có chắc muốn ẨN sản phẩm "${productName}" khỏi website chính?`
-      : `Bạn có chắc muốn HIỂN THỊ / XUẤT BẢN sản phẩm "${productName}" lên website chính?`;
+    const confirmMsg = isProductHidden
+      ? `Bạn có chắc muốn bật hiển thị riêng cho sản phẩm "${productName}"? Sản phẩm vẫn ẩn nếu shop đang bị ẩn.`
+      : `Bạn có chắc muốn ẨN riêng sản phẩm "${productName}" khỏi website chính?`;
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -1243,34 +1234,34 @@ export default function Portal() {
     if (sandboxMode) {
       setSandboxOverrides({ products: { [productId]: newStatus as any } });
       setPendingReviews((prev) =>
-        prev.map((p) => (p.id === productId ? { ...p, status: newStatus } : p))
+        prev.map((p) => (p.id === productId ? { ...p, product_hidden: !isProductHidden } : p))
       );
       setAdminShops((prev) =>
         prev.map((s) => ({
           ...s,
           products: (s.products || []).map((p: any) =>
-            p.id === productId ? { ...p, status: newStatus } : p
+            p.id === productId ? { ...p, product_hidden: !isProductHidden } : p
           ),
         }))
       );
       setAdminFeedback({
         type: "success",
-        text: isCurrentlyPublished
-          ? `[SANDBOX LOCAL] Đã ẩn sản phẩm "${productName}" trên localhost!`
-          : `[SANDBOX LOCAL] Đã hiển thị sản phẩm "${productName}" trên localhost!`,
+        text: isProductHidden
+          ? `[SANDBOX LOCAL] Đã bật hiển thị riêng cho sản phẩm "${productName}"!`
+          : `[SANDBOX LOCAL] Đã ẩn riêng sản phẩm "${productName}" trên localhost!`,
       });
       setIsSubmittingAdmin(false);
       return;
     }
 
     try {
-      await postAdminReviewAction({ action: "toggle_product", productId, visible: !isCurrentlyPublished });
+      await postAdminReviewAction({ action: "toggle_product", productId, visible: isProductHidden });
       await loadAdminData();
       setAdminFeedback({
         type: "success",
-        text: isCurrentlyPublished
-          ? `Đã ẩn sản phẩm "${productName}" khỏi website!`
-          : `Đã hiển thị sản phẩm "${productName}" lên website!`,
+        text: isProductHidden
+          ? `Đã bật hiển thị riêng cho sản phẩm "${productName}". Sản phẩm vẫn chịu trạng thái ẩn của shop.`
+          : `Đã ẩn riêng sản phẩm "${productName}" khỏi website!`,
       });
     } catch (err: any) {
       setAdminFeedback({
@@ -1313,7 +1304,7 @@ export default function Portal() {
 
       setAdminFeedback({
         type: "success",
-        text: isCurrentlyPublished
+        text: !isProductHidden
           ? `Đã ẩn sản phẩm "${productName}" khỏi website!`
           : `Đã hiển thị sản phẩm "${productName}" lên website!`,
       });
@@ -3233,23 +3224,27 @@ export default function Portal() {
                                 {/* Toggle Individual Product Hide/Show Button */}
                                 {!prod.review_request_id && ["published", "hidden"].includes(prod.status) && <button
                                   type="button"
-                                  onClick={() => handleToggleProductStatus(prod.id, prod.status, prod.name_vi)}
+                                  onClick={() => handleToggleProductStatus(
+                                    prod.id,
+                                    Boolean(prod.product_hidden) || prod.status === "hidden",
+                                    prod.name_vi
+                                  )}
                                   disabled={isSubmittingAdmin}
                                   className={`px-3.5 py-2 text-xs font-medium rounded-xl transition flex items-center gap-1.5 ${
-                                    prod.status === "hidden"
+                                    prod.product_hidden || prod.status === "hidden"
                                       ? "bg-[#39d6cf]/20 text-[#39d6cf] border border-[#39d6cf]/40 hover:bg-[#39d6cf]/30"
                                       : "bg-amber-950/40 text-amber-300 border border-amber-800/60 hover:bg-amber-900/40"
                                   }`}
                                 >
-                                  {prod.status === "hidden" ? (
+                                  {prod.product_hidden || prod.status === "hidden" ? (
                                     <>
                                       <Eye className="w-3.5 h-3.5" />
-                                      <span>Hiện sản phẩm</span>
+                                      <span>Bật hiển thị riêng</span>
                                     </>
                                   ) : (
                                     <>
                                       <EyeOff className="w-3.5 h-3.5" />
-                                      <span>Ẩn sản phẩm</span>
+                                      <span>Ẩn riêng sản phẩm</span>
                                     </>
                                   )}
                                 </button>}
@@ -3437,7 +3432,7 @@ export default function Portal() {
                                   <div className="divide-y divide-[#2e2344] border border-[#2e2344] rounded-xl overflow-hidden bg-[#12081f]">
                                     {shopProds.map((prod: any) => {
                                       const pCover = (prod.product_images || []).find((i: any) => i.is_cover) || prod.product_images?.[0];
-                                      const isProdPublished = prod.status === "published";
+                                      const isProductHidden = Boolean(prod.product_hidden) || prod.status === "hidden";
 
                                       return (
                                         <div
@@ -3468,17 +3463,17 @@ export default function Portal() {
 
                                           <div className="flex items-center gap-3 self-end sm:self-auto">
                                             {/* Product status badge */}
-                                            {s.status === "hidden" ? (
+                                            {prod.shop_hidden || s.status === "hidden" ? (
                                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">
                                                 Ẩn theo shop
+                                              </span>
+                                            ) : isProductHidden ? (
+                                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                                Ẩn riêng
                                               </span>
                                             ) : prod.status === "published" ? (
                                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                                                 Hiển thị
-                                              </span>
-                                            ) : prod.status === "hidden" ? (
-                                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                                                Đang ẩn
                                               </span>
                                             ) : (
                                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
@@ -3489,23 +3484,23 @@ export default function Portal() {
                                             {/* Toggle Product Status */}
                                             <button
                                               type="button"
-                                              onClick={() => handleToggleProductStatus(prod.id, prod.status, prod.name_vi)}
-                                              disabled={isSubmittingAdmin || s.status !== "published" || !["published", "hidden"].includes(prod.status)}
+                                              onClick={() => handleToggleProductStatus(prod.id, isProductHidden, prod.name_vi)}
+                                              disabled={isSubmittingAdmin || !["published", "hidden"].includes(prod.status)}
                                               className={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
-                                                isProdPublished
-                                                  ? "bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/60"
-                                                  : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                                                isProductHidden
+                                                  ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                                                  : "bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/60"
                                               }`}
                                             >
-                                              {isProdPublished ? (
+                                              {isProductHidden ? (
                                                 <>
                                                   <EyeOff className="w-3 h-3" />
-                                                  <span>Ẩn</span>
+                                                  <span>Bật hiển thị riêng</span>
                                                 </>
                                               ) : (
                                                 <>
                                                   <Eye className="w-3 h-3" />
-                                                  <span>Hiện</span>
+                                                  <span>Ẩn riêng</span>
                                                 </>
                                               )}
                                             </button>
