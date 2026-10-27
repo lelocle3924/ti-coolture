@@ -60,6 +60,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    if (product.status === "published" || product.status === "hidden") {
+      const { data: editRequest, error: editFetchErr } = await supabase
+        .from("product_edit_requests")
+        .select("id, status, proposed_data")
+        .eq("product_id", productId)
+        .eq("shop_id", shopContext.shopId)
+        .eq("status", "draft")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (editFetchErr) throw editFetchErr;
+
+      if (!editRequest) {
+        const { data: pendingEdit, error: pendingFetchErr } = await supabase
+          .from("product_edit_requests")
+          .select("id")
+          .eq("product_id", productId)
+          .eq("status", "pending")
+          .maybeSingle();
+        if (pendingFetchErr) throw pendingFetchErr;
+        if (pendingEdit) {
+          return res.status(200).json({
+            success: true,
+            alreadySubmitted: true,
+            message: "Yêu cầu chỉnh sửa sản phẩm đang chờ ban quản trị xử lý.",
+            status: "pending_review",
+          });
+        }
+
+        return res.status(400).json({
+          success: false,
+          error: "Vui lòng lưu thay đổi trước khi gửi yêu cầu chỉnh sửa.",
+        });
+      }
+
+      const proposedImages = editRequest.proposed_data?.images;
+      if (!Array.isArray(proposedImages) || proposedImages.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Sản phẩm phải có ít nhất 1 hình ảnh trước khi gửi yêu cầu chỉnh sửa.",
+        });
+      }
+
+      const { data: submittedEdit, error: submitEditErr } = await supabase
+        .from("product_edit_requests")
+        .update({ status: "pending", updated_at: new Date().toISOString() })
+        .eq("id", editRequest.id)
+        .eq("status", "draft")
+        .select("id")
+        .maybeSingle();
+
+      if (submitEditErr) throw submitEditErr;
+      if (!submittedEdit) {
+        return res.status(409).json({
+          success: false,
+          error: "Yêu cầu chỉnh sửa đã thay đổi. Vui lòng tải lại trang.",
+        });
+      }
+
+      notifyAdminProductSubmission({
+        shopName: shopContext.shopName,
+        shopEmail: shopContext.userEmail,
+        productName: editRequest.proposed_data.name_vi || product.name_vi,
+        productId: product.id,
+        imageCount: proposedImages.length,
+        priceVnd: editRequest.proposed_data.price_vnd,
+      }).catch((err) => {
+        console.warn("[submit-review] Failed to send Telegram alert:", err);
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Yêu cầu chỉnh sửa đã được gửi duyệt. Phiên bản đang xuất bản vẫn được giữ nguyên.",
+        status: "pending_review",
+        editRequest: true,
+      });
+    }
+
     // 3. Kiểm tra trạng thái hiện tại
     if (product.status === "pending_review") {
       return res.status(200).json({

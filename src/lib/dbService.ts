@@ -322,7 +322,10 @@ export async function fetchStoreById(storeId: string): Promise<StoreProfile | nu
   if (getDataSourceMode() === "real" && supabase) {
     try {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId);
-      const query = supabase.from("shops").select("*, shop_socials(*)");
+      const query = supabase
+        .from("shops")
+        .select("*, shop_socials(*)")
+        .eq("status", "published");
       const { data, error } = await (isUuid ? query.eq("id", storeId) : query.eq("slug", storeId)).maybeSingle();
 
       if (!error && data) {
@@ -380,8 +383,9 @@ export async function fetchProducts(
       const dbStatus = status === "Approved" ? "published" : status === "Pending" ? "pending_review" : "rejected";
       const { data, error } = await supabase
         .from("products")
-        .select("*, shops(*), categories(*), product_images(*)")
-        .eq("status", dbStatus);
+        .select("*, shops!inner(*), categories(*), product_images(*)")
+        .eq("status", dbStatus)
+        .eq("shops.status", "published");
 
       if (!error && data) {
         const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
@@ -423,9 +427,16 @@ export async function fetchProducts(
           };
         });
       }
+      throw error ?? new Error("Không tải được sản phẩm từ database.");
     } catch (e) {
       console.warn("Error fetching real products:", e);
+      if (_opts?.throwOnError) throw e;
+      return [];
     }
+  }
+  if (getDataSourceMode() === "real") {
+    if (_opts?.throwOnError) throw new Error("Chưa cấu hình kết nối database.");
+    return [];
   }
   const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
   const rows = db.products.filter((p) => {
@@ -446,8 +457,14 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId);
       let targetShopId = storeId;
       if (!isUuid) {
-        const { data: s } = await supabase.from("shops").select("id").eq("slug", storeId).maybeSingle();
+        const { data: s } = await supabase
+          .from("shops")
+          .select("id")
+          .eq("slug", storeId)
+          .eq("status", "published")
+          .maybeSingle();
         if (s?.id) targetShopId = s.id;
+        else return [];
       }
       const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
       if (sandbox.shops[targetShopId] === "hidden") {
@@ -456,9 +473,10 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
 
       const { data, error } = await supabase
         .from("products")
-        .select("*, shops(*), categories(*), product_images(*)")
+        .select("*, shops!inner(*), categories(*), product_images(*)")
         .eq("shop_id", targetShopId)
-        .eq("status", "published");
+        .eq("status", "published")
+        .eq("shops.status", "published");
 
       if (!error && data) {
         const filtered = data.filter((row: any) => {
@@ -509,7 +527,10 @@ export async function fetchProductById(productId: string): Promise<Product | nul
   if (getDataSourceMode() === "real" && supabase) {
     try {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId);
-      const query = supabase.from("products").select("*, shops(*), categories(*), product_images(*)");
+      const query = supabase
+        .from("products")
+        .select("*, shops!inner(*), categories(*), product_images(*)")
+        .eq("shops.status", "published");
       const { data, error } = await (isUuid ? query.eq("id", productId) : query.eq("slug", productId)).maybeSingle();
 
       if (!error && data) {
@@ -594,17 +615,10 @@ export async function fetchMessageTemplate(): Promise<string> {
   return delay(row?.value ?? "");
 }
 
-/** Hidden Gems — SRS §4 stores these in featured_items alongside the carousel. */
-export async function fetchHiddenGems(): Promise<Array<{ product: Product; note: string }>> {
-  const gems = db.featured_items
-    .filter((f) => f.placement === "hidden_gem" && f.is_active)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((f) => {
-      const row = db.products.find((p) => p.id === f.product_id);
-      return row ? { product: toProduct(row), note: f.note_vi ?? "" } : null;
-    })
-    .filter((g): g is { product: Product; note: string } => g !== null);
-  return delay(gems);
+/** Hidden Gems uses the published product pool, shared with the homepage. */
+export async function fetchHiddenGems(products?: Product[]): Promise<Array<{ product: Product; note: string }>> {
+  const pool = products ?? await fetchProducts("Approved", { throwOnError: true });
+  return pool.map((product) => ({ product, note: product.description ?? "" }));
 }
 
 export interface BlogPost {
@@ -1137,4 +1151,3 @@ export async function searchProducts(
 
   return delay({ products, totalCount });
 }
-

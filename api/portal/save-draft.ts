@@ -106,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (existingProd.shop_id !== shopContext.shopId) {
         return res.status(403).json({
           success: false,
-          error: "Bạn không có quyền chỉnh sửa sản phẩm của xưởng khác.",
+          error: "Bạn không có quyền chỉnh sửa sản phẩm của shop khác.",
         });
       }
 
@@ -118,6 +118,89 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       productSlug = existingProd.slug;
+
+      if (existingProd.status === "published" || existingProd.status === "hidden") {
+        const proposedData = {
+          name_vi: nameVi.trim(),
+          name_en: nameEn?.trim() || null,
+          category_id: resolvedCategoryId,
+          short_desc_vi: shortDescVi?.trim() || null,
+          short_desc_en: shortDescEn?.trim() || null,
+          story_vi: storyVi?.trim() || null,
+          story_en: storyEn?.trim() || null,
+          price_vnd: typeof priceVnd === "number" ? priceVnd : null,
+          price_note_vi: priceNoteVi || "Giá tham khảo, giá cuối do shop quyết định",
+          dimensions: dimensions?.trim() || null,
+          variants: Array.isArray(variants) ? variants : [],
+          images: Array.isArray(images)
+            ? images.map((img: any, idx: number) => ({
+                url: String(img.url || ""),
+                is_cover: idx === 0 || Boolean(img.isCover),
+                sort_order: typeof img.sortOrder === "number" ? img.sortOrder : idx,
+                alt_vi: img.altVi || nameVi,
+                alt_en: img.altEn || nameEn || null,
+                width: img.width ? Number(img.width) : null,
+                height: img.height ? Number(img.height) : null,
+              }))
+            : [],
+        };
+
+        const { data: pendingEdit, error: pendingEditErr } = await supabase
+          .from("product_edit_requests")
+          .select("id")
+          .eq("product_id", targetProductId)
+          .eq("status", "pending")
+          .maybeSingle();
+
+        if (pendingEditErr) throw pendingEditErr;
+        if (pendingEdit) {
+          return res.status(409).json({
+            success: false,
+            error: "Sản phẩm đang có yêu cầu chỉnh sửa chờ duyệt.",
+          });
+        }
+
+        const { data: draftEdit, error: draftEditErr } = await supabase
+          .from("product_edit_requests")
+          .select("id")
+          .eq("product_id", targetProductId)
+          .eq("shop_id", shopContext.shopId)
+          .eq("status", "draft")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (draftEditErr) throw draftEditErr;
+
+        if (draftEdit) {
+          const { error: updateEditErr } = await supabase
+            .from("product_edit_requests")
+            .update({ proposed_data: proposedData, updated_at: new Date().toISOString() })
+            .eq("id", draftEdit.id);
+          if (updateEditErr) throw updateEditErr;
+        } else {
+          const { error: createEditErr } = await supabase
+            .from("product_edit_requests")
+            .insert({
+              product_id: targetProductId,
+              shop_id: shopContext.shopId,
+              proposed_data: proposedData,
+              status: "draft",
+            });
+          if (createEditErr) throw createEditErr;
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: "Đã lưu bản nháp yêu cầu chỉnh sửa. Sản phẩm đang xuất bản chưa bị thay đổi.",
+          product: {
+            id: targetProductId,
+            slug: productSlug,
+            status: existingProd.status,
+            editDraft: true,
+          },
+        });
+      }
 
       // Cập nhật sản phẩm
       const { error: updateErr } = await supabase

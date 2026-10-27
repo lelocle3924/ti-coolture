@@ -359,7 +359,9 @@ export default function Portal() {
   const [sandboxMode, setSandboxMode] = useState<boolean>(() => isSandboxEnabled());
   const [adminTab, setAdminTab] = useState<"requests" | "reviews" | "shops" | "staff">("requests");
   const [pendingReviews, setPendingReviews] = useState<any[]>([]);
-  const [reviewFilter, setReviewFilter] = useState<"pending_review" | "published" | "all">("pending_review");
+  const [reviewFilter, setReviewFilter] = useState<"pending_review" | "edit_requests" | "published" | "all">("pending_review");
+  const [productEditRequests, setProductEditRequests] = useState<any[]>([]);
+  const [adminPreviewProduct, setAdminPreviewProduct] = useState<any | null>(null);
   const [products, setProducts] = useState<PortalProduct[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
   const [bypassToken, setBypassToken] = useState(import.meta.env.VITE_ADMIN_TOKEN || "");
@@ -770,6 +772,7 @@ export default function Portal() {
         if (data.success) {
           if (Array.isArray(data.products)) setPendingReviews(data.products);
           if (Array.isArray(data.shops)) setAdminShops(data.shops);
+          if (Array.isArray(data.productEditRequests)) setProductEditRequests(data.productEditRequests);
           apiReviewsLoaded = true;
         }
       }
@@ -933,6 +936,58 @@ export default function Portal() {
     });
   }
 
+  async function postAdminReviewAction(payload: Record<string, unknown>) {
+    const token =
+      (await getSupabaseToken()) ||
+      (typeof localStorage !== "undefined" ? localStorage.getItem("ti_admin_bypass_token") : null) ||
+      "dev-token";
+    const response = await fetch("/api/admin/reviews", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "API quản trị không thể xử lý yêu cầu.");
+    }
+    return data;
+  }
+
+  async function handleProductEditReview(
+    request: any,
+    action: "approve_edit" | "reject_edit"
+  ) {
+    const productName = request.proposed_data?.name_vi || request.products?.name_vi || "sản phẩm";
+    if (!window.confirm(
+      action === "approve_edit"
+        ? `Bạn có chắc muốn duyệt cập nhật "${productName}" và áp dụng lên website?`
+        : `Bạn có chắc muốn từ chối yêu cầu chỉnh sửa "${productName}"?`
+    )) return;
+
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+    try {
+      await postAdminReviewAction({ action, editRequestId: request.id });
+      await loadAdminData();
+      setAdminFeedback({
+        type: "success",
+        text: action === "approve_edit"
+          ? `Đã duyệt yêu cầu chỉnh sửa "${productName}".`
+          : `Đã từ chối yêu cầu chỉnh sửa "${productName}".`,
+      });
+    } catch (err: any) {
+      setAdminFeedback({
+        type: "error",
+        text: "Không thể xử lý yêu cầu chỉnh sửa: " + err.message,
+      });
+    } finally {
+      setIsSubmittingAdmin(false);
+    }
+  }
+
   async function handleReviewAction(productId: string, action: "approve" | "reject", productName: string) {
     if (!window.confirm(action === "approve"
       ? `Bạn có chắc muốn DUYỆT và xuất bản sản phẩm "${productName}" lên website chính?`
@@ -955,6 +1010,22 @@ export default function Portal() {
       setIsSubmittingAdmin(false);
       return;
     }
+
+    try {
+      await postAdminReviewAction({ productId, action });
+      await loadAdminData();
+      setAdminFeedback({
+        type: "success",
+        text: action === "approve"
+          ? `Đã duyệt và xuất bản sản phẩm "${productName}" lên website!`
+          : `Đã từ chối xét duyệt sản phẩm "${productName}".`,
+      });
+    } catch (err: any) {
+      setAdminFeedback({ type: "error", text: "Lỗi duyệt sản phẩm: " + err.message });
+    } finally {
+      setIsSubmittingAdmin(false);
+    }
+    return;
 
     const token = (await getSupabaseToken()) || "dev-token";
 
@@ -1079,6 +1150,25 @@ export default function Portal() {
     }
 
     try {
+      await postAdminReviewAction({ action: "toggle_shop", shopId, visible: !isCurrentlyPublished });
+      await loadAdminData();
+      setAdminFeedback({
+        type: "success",
+        text: isCurrentlyPublished
+          ? `Đã ẩn shop "${shopName}" khỏi website!`
+          : `Đã mở hiển thị lại shop "${shopName}" trên website!`,
+      });
+    } catch (err: any) {
+      setAdminFeedback({
+        type: "error",
+        text: "Lỗi cập nhật trạng thái shop: " + err.message,
+      });
+    } finally {
+      setIsSubmittingAdmin(false);
+    }
+    return;
+
+    try {
       const now = new Date().toISOString();
       if (supabase) {
         // 1. Update shop status
@@ -1174,6 +1264,25 @@ export default function Portal() {
     }
 
     try {
+      await postAdminReviewAction({ action: "toggle_product", productId, visible: !isCurrentlyPublished });
+      await loadAdminData();
+      setAdminFeedback({
+        type: "success",
+        text: isCurrentlyPublished
+          ? `Đã ẩn sản phẩm "${productName}" khỏi website!`
+          : `Đã hiển thị sản phẩm "${productName}" lên website!`,
+      });
+    } catch (err: any) {
+      setAdminFeedback({
+        type: "error",
+        text: "Lỗi cập nhật trạng thái sản phẩm: " + err.message,
+      });
+    } finally {
+      setIsSubmittingAdmin(false);
+    }
+    return;
+
+    try {
       const now = new Date().toISOString();
       if (supabase) {
         const { error: pErr } = await supabase
@@ -1217,6 +1326,25 @@ export default function Portal() {
       setIsSubmittingAdmin(false);
     }
   }
+
+  const visibleReviewProducts = reviewFilter === "edit_requests"
+    ? productEditRequests.map((request) => ({
+        ...request.products,
+        ...request.proposed_data,
+        id: request.product_id,
+        status: "pending_edit",
+        review_request_id: request.id,
+        product_images: (request.proposed_data?.images || []).map((image: any, index: number) => ({
+          ...image,
+          id: `edit-${request.id}-${index}`,
+          is_cover: image.is_cover ?? index === 0,
+          url: image.url,
+        })),
+        original_product: request.products,
+      }))
+    : pendingReviews.filter((product) =>
+        reviewFilter === "all" ? true : product.status === reviewFilter
+      );
 
   // Handle Google Login
   async function handleGoogleLogin() {
@@ -1311,6 +1439,7 @@ export default function Portal() {
     const token = (await getSupabaseToken()) || "dev-token";
 
     // 1. Try Backend API
+    let adminRequestError: string | null = null;
     try {
       const res = await fetch("/api/admin/requests", {
         method: "POST",
@@ -1324,7 +1453,10 @@ export default function Portal() {
         }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "API quản trị không thể xử lý yêu cầu.");
+      }
+      if (data.success) {
         setPartnerRequests((prev) =>
           prev.map((r) => (r.id === reqItem.id ? { ...r, status: "approved" } : r))
         );
@@ -1339,13 +1471,14 @@ export default function Portal() {
         return;
       }
     } catch (e) {
+      adminRequestError = e instanceof Error ? e.message : "API quản trị không phản hồi.";
       console.warn("Backend API not reachable, falling back to direct Supabase or local state:", e);
     }
 
     if (isProfileUpdate) {
       setAdminFeedback({
         type: "error",
-        text: "Không thể duyệt cập nhật hồ sơ vì API quản trị không phản hồi. Vui lòng thử lại.",
+        text: "Không thể duyệt cập nhật hồ sơ: " + (adminRequestError || "API quản trị không phản hồi."),
       });
       setIsSubmittingAdmin(false);
       return;
@@ -2115,20 +2248,25 @@ export default function Portal() {
         body: JSON.stringify(payload),
       });
 
-      const contentType = res.headers.get("content-type");
-      if (res.ok && contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.success && data.product?.id) {
-          savedId = data.product.id;
-          setEditingProductId(savedId);
-          setFormFeedback({ type: "success", text: "Đã lưu bản nháp thành công!" });
-          if (token) await loadPortalMe(token);
-          setIsSaving(false);
-          return savedId;
-        }
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.product?.id) {
+        throw new Error(data.error || "Không thể lưu yêu cầu chỉnh sửa sản phẩm.");
       }
+      savedId = data.product.id;
+      setEditingProductId(savedId);
+      setFormFeedback({
+        type: "success",
+        text: data.product.editDraft
+          ? "Đã lưu bản nháp yêu cầu chỉnh sửa. Sản phẩm đang xuất bản vẫn được giữ nguyên."
+          : "Đã lưu bản nháp thành công!",
+      });
+      if (token) await loadPortalMe(token);
+      setIsSaving(false);
+      return savedId;
     } catch (err: any) {
-      console.warn("Backend save-draft endpoint unavailable or failed, falling back to direct Supabase:", err);
+      setFormFeedback({ type: "error", text: err.message || "Không thể lưu sản phẩm." });
+      setIsSaving(false);
+      return null;
     }
 
     // 2. Direct Supabase Fallback
@@ -2325,24 +2463,26 @@ export default function Portal() {
         body: JSON.stringify({ productId: targetId }),
       });
 
-      const contentType = res.headers.get("content-type");
-      if (res.ok && contentType && contentType.includes("application/json")) {
-        const data = await res.json();
-        if (data.success) {
-          setFormFeedback({
-            type: "success",
-            text: data.alreadySubmitted
-              ? "Sản phẩm đã được gửi duyệt trước đó và đang chờ ban quản trị xử lý."
-              : "Đã gửi duyệt thành công! Thông báo đã được gửi về ban quản trị.",
-          });
-          if (token) await loadPortalMe(token);
-          setActiveView("list");
-          setIsSubmitting(false);
-          return;
-        }
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể gửi yêu cầu duyệt.");
       }
+      setFormFeedback({
+        type: "success",
+        text: data.alreadySubmitted
+          ? "Sản phẩm đã được gửi duyệt trước đó và đang chờ ban quản trị xử lý."
+          : data.editRequest
+            ? "Đã gửi yêu cầu chỉnh sửa. Phiên bản đang xuất bản vẫn được giữ nguyên."
+            : "Đã gửi duyệt thành công! Thông báo đã được gửi về ban quản trị.",
+      });
+      if (token) await loadPortalMe(token);
+      setActiveView("list");
+      setIsSubmitting(false);
+      return;
     } catch (err: any) {
-      console.warn("Backend submit-review API unreachable, using direct Supabase:", err);
+      setFormFeedback({ type: "error", text: err.message || "Không thể gửi yêu cầu duyệt." });
+      setIsSubmitting(false);
+      return;
     }
 
     // 2. Direct Supabase
@@ -2891,10 +3031,12 @@ export default function Portal() {
                   <div>
                     <h3 className="text-base font-serif font-bold text-white flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-[#39d6cf]" />
-                      <span>Danh sách Sản phẩm gửi duyệt</span>
+                      <span>{reviewFilter === "edit_requests" ? "Yêu cầu chỉnh sửa sản phẩm" : "Danh sách Sản phẩm gửi duyệt"}</span>
                     </h3>
                     <p className="text-xs text-[#a39ab8] mt-1">
-                      Các sản phẩm do đối tác shop tải ảnh và gửi lên, chờ Admin duyệt để hiển thị ra website chính.
+                      {reviewFilter === "edit_requests"
+                        ? "Xem trước và duyệt thay đổi trước khi cập nhật lên phiên bản đang xuất bản."
+                        : "Các sản phẩm do shop đối tác gửi lên, chờ Admin duyệt để hiển thị ra website chính."}
                     </p>
                   </div>
 
@@ -2910,6 +3052,17 @@ export default function Portal() {
                       }`}
                     >
                       Chờ duyệt ({pendingReviews.filter((r) => r.status === "pending_review").length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewFilter("edit_requests")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        reviewFilter === "edit_requests"
+                          ? "bg-[#7520f7] text-white font-semibold shadow-sm"
+                          : "text-[#a39ab8] hover:text-white"
+                      }`}
+                    >
+                      Yêu cầu chỉnh sửa ({productEditRequests.length})
                     </button>
                     <button
                       type="button"
@@ -2938,20 +3091,18 @@ export default function Portal() {
 
                 {/* Review Products List */}
                 <div className="space-y-4">
-                  {pendingReviews
-                    .filter((p) => (reviewFilter === "all" ? true : p.status === reviewFilter))
-                    .length === 0 ? (
+                  {visibleReviewProducts.length === 0 ? (
                     <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center">
                       <FileImage className="w-8 h-8 text-[#a39ab8] mx-auto mb-3 opacity-40" />
                       <p className="text-sm text-white font-medium">Không có sản phẩm nào trong mục này</p>
                       <p className="text-xs text-[#a39ab8] mt-1">
-                        Khi các shop đối tác nộp bài duyệt, sản phẩm sẽ xuất hiện ở đây ngay lập tức.
+                        {reviewFilter === "edit_requests"
+                          ? "Khi shop gửi thay đổi, yêu cầu sẽ xuất hiện tại đây. Bản đang xuất bản không đổi cho tới khi duyệt."
+                          : "Khi các shop đối tác nộp sản phẩm, bài duyệt sẽ xuất hiện ở đây."}
                       </p>
                     </div>
                   ) : (
-                    pendingReviews
-                      .filter((p) => (reviewFilter === "all" ? true : p.status === reviewFilter))
-                      .map((prod) => {
+                    visibleReviewProducts.map((prod) => {
                         const coverImg = (prod.product_images || []).find((i: any) => i.is_cover) || prod.product_images?.[0];
                         return (
                           <div
@@ -3009,17 +3160,22 @@ export default function Portal() {
                                 </div>
 
                                 {/* Status badge */}
-                                {prod.status === "pending_review" && (
+                                {prod.review_request_id && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-violet-500/20 text-violet-300 border border-violet-500/40">
+                                    Yêu cầu chỉnh sửa
+                                  </span>
+                                )}
+                                {!prod.review_request_id && prod.status === "pending_review" && (
                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-amber-500/20 text-amber-300 border border-amber-500/40">
                                     Đang chờ duyệt
                                   </span>
                                 )}
-                                {prod.status === "published" && (
+                                {!prod.review_request_id && prod.status === "published" && (
                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                                     Đang hiển thị trên web
                                   </span>
                                 )}
-                                {prod.status === "rejected" && (
+                                {!prod.review_request_id && prod.status === "rejected" && (
                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-rose-500/20 text-rose-300 border border-rose-500/40">
                                     Bị từ chối
                                   </span>
@@ -3042,6 +3198,13 @@ export default function Portal() {
                                   <span className="text-xs text-[#a39ab8]">Kích thước: {prod.dimensions}</span>
                                 )}
                               </div>
+                              {prod.review_request_id && (
+                                <p className="text-xs text-[#a39ab8]">
+                                  Giá đang xuất bản: {prod.original_product?.price_vnd
+                                    ? `${prod.original_product.price_vnd.toLocaleString("vi-VN")} ₫`
+                                    : "Liên hệ shop"}
+                                </p>
+                              )}
 
                               {prod.short_desc_vi && (
                                 <p className="text-xs text-white/80 leading-relaxed bg-[#12081f]/60 p-2.5 rounded-xl border border-[#2e2344]">
@@ -3057,8 +3220,18 @@ export default function Portal() {
 
                               {/* Review Actions */}
                               <div className="pt-3 border-t border-[#2e2344] flex flex-wrap items-center justify-end gap-3">
-                                {/* Toggle Individual Product Hide/Show Button */}
                                 <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActivePreviewImg(0);
+                                    setAdminPreviewProduct(prod);
+                                  }}
+                                  className="px-3.5 py-2 text-xs font-medium rounded-xl border border-[#39d6cf]/40 text-[#39d6cf] hover:bg-[#39d6cf]/10 transition"
+                                >
+                                  Xem preview
+                                </button>
+                                {/* Toggle Individual Product Hide/Show Button */}
+                                {!prod.review_request_id && ["published", "hidden"].includes(prod.status) && <button
                                   type="button"
                                   onClick={() => handleToggleProductStatus(prod.id, prod.status, prod.name_vi)}
                                   disabled={isSubmittingAdmin}
@@ -3079,28 +3252,38 @@ export default function Portal() {
                                       <span>Ẩn sản phẩm</span>
                                     </>
                                   )}
-                                </button>
+                                </button>}
 
                                 {prod.status !== "published" && (
                                   <button
                                     type="button"
-                                    onClick={() => handleReviewAction(prod.id, "approve", prod.name_vi)}
+                                    onClick={() => prod.review_request_id
+                                      ? handleProductEditReview(
+                                          productEditRequests.find((request) => request.id === prod.review_request_id),
+                                          "approve_edit"
+                                        )
+                                      : handleReviewAction(prod.id, "approve", prod.name_vi)}
                                     disabled={isSubmittingAdmin}
                                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl uppercase tracking-wider transition shadow flex items-center gap-1.5"
                                   >
                                     <Check className="w-3.5 h-3.5" />
-                                    <span>Phê duyệt xuất bản</span>
+                                    <span>{prod.review_request_id ? "Duyệt chỉnh sửa" : "Phê duyệt xuất bản"}</span>
                                   </button>
                                 )}
 
                                 {prod.status !== "rejected" && (
                                   <button
                                     type="button"
-                                    onClick={() => handleReviewAction(prod.id, "reject", prod.name_vi)}
+                                    onClick={() => prod.review_request_id
+                                      ? handleProductEditReview(
+                                          productEditRequests.find((request) => request.id === prod.review_request_id),
+                                          "reject_edit"
+                                        )
+                                      : handleReviewAction(prod.id, "reject", prod.name_vi)}
                                     disabled={isSubmittingAdmin}
                                     className="px-4 py-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-900/60 rounded-xl transition"
                                   >
-                                    Từ chối bài duyệt
+                                    {prod.review_request_id ? "Từ chối chỉnh sửa" : "Từ chối bài duyệt"}
                                   </button>
                                 )}
                               </div>
@@ -3204,7 +3387,7 @@ export default function Portal() {
                                 <button
                                   type="button"
                                   onClick={() => handleToggleShopStatus(s.id, s.status, s.name)}
-                                  disabled={isSubmittingAdmin}
+                                  disabled={isSubmittingAdmin || !["published", "hidden"].includes(s.status)}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                                     isShopPublished
                                       ? "bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/60"
@@ -3285,7 +3468,11 @@ export default function Portal() {
 
                                           <div className="flex items-center gap-3 self-end sm:self-auto">
                                             {/* Product status badge */}
-                                            {prod.status === "published" ? (
+                                            {s.status === "hidden" ? (
+                                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                                Ẩn theo shop
+                                              </span>
+                                            ) : prod.status === "published" ? (
                                               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                                                 Hiển thị
                                               </span>
@@ -3303,7 +3490,7 @@ export default function Portal() {
                                             <button
                                               type="button"
                                               onClick={() => handleToggleProductStatus(prod.id, prod.status, prod.name_vi)}
-                                              disabled={isSubmittingAdmin}
+                                              disabled={isSubmittingAdmin || s.status !== "published" || !["published", "hidden"].includes(prod.status)}
                                               className={`px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                                                 isProdPublished
                                                   ? "bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/60"
@@ -4913,6 +5100,119 @@ export default function Portal() {
               </div>
             </div>
           )}
+        </div>
+      )}
+      {adminPreviewProduct && (
+        <div
+          className="fixed inset-0 z-[60] overflow-y-auto bg-[#0d0714]/95 p-4 text-white backdrop-blur-sm sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Xem trước sản phẩm ${adminPreviewProduct.name_vi || ""}`}
+        >
+          <div className="mx-auto max-w-5xl">
+            <div className="sticky top-0 z-10 mb-6 flex items-center justify-between border-b border-[#2e2344] bg-[#0d0714]/95 py-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#39d6cf]">Preview sản phẩm</p>
+                <p className="text-xs text-[#a39ab8]">
+                  {adminPreviewProduct.shops?.name || "Shop"} · {adminPreviewProduct.categories?.name_vi || "Chung"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdminPreviewProduct(null)}
+                className="flex items-center gap-2 rounded-lg border border-[#3b2a60] px-3 py-2 text-xs text-white hover:bg-[#23173d] focus:outline-none focus:ring-2 focus:ring-[#39d6cf]"
+              >
+                <X className="h-4 w-4" />
+                Đóng preview
+              </button>
+            </div>
+            <div className="grid gap-8 rounded-2xl border border-[#2e2344] bg-[#181224] p-5 shadow-xl md:grid-cols-2 md:p-8">
+              <section>
+                {(() => {
+                  const previewImages = adminPreviewProduct.product_images || [];
+                  const image = previewImages[activePreviewImg] || previewImages[0];
+                  return (
+                    <>
+                      <div className="aspect-square overflow-hidden rounded-xl bg-[#12081f]">
+                        {image?.url ? (
+                          <img
+                            src={resolveImageUrl(image.url)}
+                            alt={image.alt_vi || adminPreviewProduct.name_vi}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-sm text-[#a39ab8]">
+                            Chưa có ảnh sản phẩm
+                          </div>
+                        )}
+                      </div>
+                      {previewImages.length > 1 && (
+                        <div className="mt-3 flex gap-2 overflow-x-auto">
+                          {previewImages.map((previewImage: any, index: number) => (
+                            <button
+                              key={previewImage.id || index}
+                              type="button"
+                              onClick={() => setActivePreviewImg(index)}
+                              aria-label={`Xem ảnh ${index + 1}`}
+                              aria-pressed={activePreviewImg === index}
+                              className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${
+                                activePreviewImg === index ? "border-[#39d6cf]" : "border-[#2e2344]"
+                              }`}
+                            >
+                              <img src={resolveImageUrl(previewImage.url)} alt="" className="h-full w-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </section>
+              <section className="space-y-5">
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#39d6cf]">
+                    {adminPreviewProduct.categories?.name_vi || "Sản phẩm thủ công"}
+                  </p>
+                  <h2 className="text-2xl font-serif font-bold">{adminPreviewProduct.name_vi}</h2>
+                  {adminPreviewProduct.name_en && (
+                    <p className="mt-1 text-sm italic text-[#a39ab8]">{adminPreviewProduct.name_en}</p>
+                  )}
+                  <p className="mt-4 text-xl font-bold text-[#39d6cf]">
+                    {adminPreviewProduct.price_vnd
+                      ? `${adminPreviewProduct.price_vnd.toLocaleString("vi-VN")} ₫`
+                      : "Liên hệ shop"}
+                  </p>
+                </div>
+                {adminPreviewProduct.short_desc_vi && (
+                  <p className="border-t border-[#2e2344] pt-4 text-sm leading-relaxed text-white/85">
+                    {adminPreviewProduct.short_desc_vi}
+                  </p>
+                )}
+                <dl className="divide-y divide-[#2e2344] border-y border-[#2e2344] text-sm">
+                  <div className="flex justify-between gap-4 py-3">
+                    <dt className="text-[#a39ab8]">Shop</dt>
+                    <dd className="text-right">{adminPreviewProduct.shops?.name || "—"}</dd>
+                  </div>
+                  {adminPreviewProduct.dimensions && (
+                    <div className="flex justify-between gap-4 py-3">
+                      <dt className="text-[#a39ab8]">Kích thước</dt>
+                      <dd className="text-right">{adminPreviewProduct.dimensions}</dd>
+                    </div>
+                  )}
+                </dl>
+                {adminPreviewProduct.story_vi && (
+                  <div className="rounded-xl border border-[#2e2344] bg-[#12081f] p-4">
+                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#39d6cf]">
+                      Câu chuyện sản phẩm
+                    </h3>
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-white/80">
+                      {adminPreviewProduct.story_vi}
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </div>
         </div>
       )}
       {profileImageCrop && (

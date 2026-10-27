@@ -57,16 +57,177 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (shopErr) throw shopErr;
 
+      const { data: productEditRequests, error: editErr } = await supabase
+        .from("product_edit_requests")
+        .select(`
+          id,
+          product_id,
+          shop_id,
+          proposed_data,
+          status,
+          created_at,
+          products (
+            *,
+            shops(id, name, slug, contact_email),
+            product_images(*),
+            categories(name_vi)
+          )
+        `)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+
+      if (editErr) throw editErr;
+
       return res.status(200).json({
         success: true,
         products: products || [],
         shops: shops || [],
+        productEditRequests: productEditRequests || [],
       });
     }
 
     // POST: Approve or Reject a product review (gộp từ reviews/action)
     if (req.method === "POST") {
+      if (staff.role === "viewer") {
+        return res.status(403).json({
+          success: false,
+          error: "Tài khoản chỉ có quyền xem, không thể thay đổi trạng thái.",
+        });
+      }
+
       const { productId, action, rejectReason } = req.body || {};
+
+      if (action === "toggle_product" || action === "toggle_shop") {
+        const visible = req.body?.visible;
+        const recordId = action === "toggle_product" ? productId : req.body?.shopId;
+        if (typeof recordId !== "string" || typeof visible !== "boolean") {
+          return res.status(400).json({
+            success: false,
+            error: "Thiếu mã shop/sản phẩm hoặc trạng thái hiển thị không hợp lệ.",
+          });
+        }
+
+        const now = new Date().toISOString();
+        let nextStatus: string;
+
+        if (action === "toggle_product") {
+          const { data: product, error: productErr } = await supabase
+            .from("products")
+            .select("id, shop_id, status")
+            .eq("id", recordId)
+            .single();
+          if (productErr || !product) {
+            return res.status(404).json({ success: false, error: "Không tìm thấy sản phẩm." });
+          }
+          if (product.status !== "published" && product.status !== "hidden") {
+            return res.status(409).json({
+              success: false,
+              error: "Chỉ có thể ẩn hoặc hiện sản phẩm đã xuất bản.",
+            });
+          }
+          if (visible) {
+            const { data: parentShop, error: shopErr } = await supabase
+              .from("shops")
+              .select("status")
+              .eq("id", product.shop_id)
+              .single();
+            if (shopErr) throw shopErr;
+            if (parentShop.status !== "published") {
+              return res.status(409).json({
+                success: false,
+                error: "Cần hiển thị shop trước khi hiện sản phẩm.",
+              });
+            }
+          }
+
+          nextStatus = visible ? "published" : "hidden";
+          const { data: updatedProduct, error: updateErr } = await supabase
+            .from("products")
+            .update({
+              status: nextStatus,
+              updated_at: now,
+            })
+            .eq("id", recordId)
+            .eq("status", product.status)
+            .select("id")
+            .maybeSingle();
+          if (updateErr) throw updateErr;
+          if (!updatedProduct) {
+            return res.status(409).json({
+              success: false,
+              error: "Trạng thái sản phẩm vừa thay đổi. Vui lòng tải lại danh sách.",
+            });
+          }
+        } else {
+          const { data: shop, error: shopErr } = await supabase
+            .from("shops")
+            .select("id, status")
+            .eq("id", recordId)
+            .single();
+          if (shopErr || !shop) {
+            return res.status(404).json({ success: false, error: "Không tìm thấy shop." });
+          }
+          if (shop.status !== "published" && shop.status !== "hidden") {
+            return res.status(409).json({
+              success: false,
+              error: "Chỉ có thể ẩn hoặc hiện shop đã xuất bản.",
+            });
+          }
+
+          nextStatus = visible ? "published" : "hidden";
+          const { data: updatedShop, error: updateErr } = await supabase
+            .from("shops")
+            .update({ status: nextStatus, updated_at: now })
+            .eq("id", recordId)
+            .eq("status", shop.status)
+            .select("id")
+            .maybeSingle();
+          if (updateErr) throw updateErr;
+          if (!updatedShop) {
+            return res.status(409).json({
+              success: false,
+              error: "Trạng thái shop vừa thay đổi. Vui lòng tải lại danh sách.",
+            });
+          }
+        }
+
+        return res.status(200).json({
+          success: true,
+          status: nextStatus,
+          message: action === "toggle_product"
+            ? `Đã ${visible ? "hiện" : "ẩn"} sản phẩm.`
+            : `Đã ${visible ? "hiện" : "ẩn"} shop.`,
+        });
+      }
+
+      if (action === "approve_edit" || action === "reject_edit") {
+        const { editRequestId, rejectReason: editRejectReason } = req.body || {};
+        if (typeof editRequestId !== "string") {
+          return res.status(400).json({
+            success: false,
+            error: "Mã yêu cầu chỉnh sửa là bắt buộc.",
+          });
+        }
+
+        const { data: result, error: reviewErr } = await supabase.rpc(
+          "review_product_edit_request",
+          {
+            p_request_id: editRequestId,
+            p_action: action === "approve_edit" ? "approve" : "reject",
+            p_staff_user_id: staff.userId,
+            p_reject_reason: editRejectReason || null,
+          }
+        );
+        if (reviewErr) throw reviewErr;
+
+        return res.status(200).json({
+          success: true,
+          status: result?.status || (action === "approve_edit" ? "approved" : "rejected"),
+          message: action === "approve_edit"
+            ? "Đã duyệt và áp dụng yêu cầu chỉnh sửa sản phẩm."
+            : "Đã từ chối yêu cầu chỉnh sửa sản phẩm.",
+        });
+      }
 
       if (!productId || typeof productId !== "string") {
         return res.status(400).json({

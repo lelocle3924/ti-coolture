@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.status(200).json({
           success: true,
-          message: `Đã từ chối yêu cầu của xưởng "${requestItem.shop_name}".`,
+          message: `Đã từ chối yêu cầu của shop "${requestItem.shop_name}".`,
         });
       }
 
@@ -96,60 +96,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch {}
 
       if (profilePayload && profilePayload.shop_id) {
-        const { shop_id, type, socials, ...updateFields } = profilePayload;
-        const { error: updErr } = await supabase.from("shops").update(updateFields).eq("id", shop_id);
-        if (updErr) throw updErr;
-
-        if (socials && typeof socials === "object" && !Array.isArray(socials)) {
-          const platforms = new Set([
-            "facebook",
-            "instagram",
-            "tiktok",
-            "threads",
-            "website",
-            "zalo",
-            ...Object.keys(socials),
-          ]);
-          for (const platform of platforms) {
-            const url = String((socials as Record<string, unknown>)[platform] || "").trim();
-            if (url) {
-              const { error: socialErr } = await supabase.from("shop_socials").upsert(
-                {
-                  shop_id,
-                  platform,
-                  url: String(url),
-                  is_visible: true,
-                  updated_at: new Date().toISOString(),
-                },
-                { onConflict: "shop_id,platform" }
-              );
-              if (socialErr) throw socialErr;
-            } else {
-              const { error: socialDeleteErr } = await supabase
-                .from("shop_socials")
-                .delete()
-                .eq("shop_id", shop_id)
-                .eq("platform", platform);
-              if (socialDeleteErr) throw socialDeleteErr;
-            }
-          }
-        }
-
-        const { error: requestUpdateErr } = await supabase
-          .from("partner_requests")
-          .update({
-            status: "approved",
-            reviewed_by: staff.userId,
-            reviewed_at: new Date().toISOString(),
-            notes: "Đã duyệt và áp dụng thay đổi thông tin xưởng.",
-          })
-          .eq("id", requestId);
-
-        if (requestUpdateErr) throw requestUpdateErr;
+        const { error: approveProfileErr } = await supabase.rpc(
+          "approve_shop_profile_request",
+          { p_request_id: requestId, p_staff_user_id: staff.userId }
+        );
+        if (approveProfileErr) throw approveProfileErr;
 
         return res.status(200).json({
           success: true,
-          message: `Đã duyệt và áp dụng cập nhật profile cho xưởng "${requestItem.shop_name}"!`,
+          message: `Đã duyệt và áp dụng cập nhật profile cho shop "${requestItem.shop_name}"!`,
         });
       }
 
@@ -177,10 +132,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .maybeSingle();
 
       if (existingInvite) {
-        const existingShop = (existingInvite.shops as any)?.name || "một xưởng khác";
+        const existingShop = (existingInvite.shops as any)?.name || "một shop khác";
         return res.status(400).json({
           success: false,
-          error: `Email ${email} đã được cấp quyền quản lý cho xưởng "${existingShop}". Mỗi tài khoản Gmail chỉ được mở 1 xưởng duy nhất.`,
+          error: `Email ${email} đã được cấp quyền quản lý cho shop "${existingShop}". Mỗi tài khoản Gmail chỉ được mở 1 shop duy nhất.`,
         });
       }
 
@@ -202,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .single();
 
       if (createShopErr || !newShop) {
-        throw new Error("Không thể tạo xưởng mới: " + (createShopErr?.message || ""));
+        throw new Error("Không thể tạo shop mới: " + (createShopErr?.message || ""));
       }
 
       // 3. Cấp quyền shop_invitations
@@ -234,7 +189,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({
         success: true,
-        message: `Đã duyệt và cấp quyền mở xưởng "${requestItem.shop_name}" cho ${email} thành công!`,
+        message: `Đã duyệt và cấp quyền mở shop "${requestItem.shop_name}" cho ${email} thành công!`,
       });
     }
 

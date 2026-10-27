@@ -145,9 +145,9 @@ Thay vì yêu cầu shop lưu giữ những chuỗi token bí mật dài dòng d
     end
     Shop->>FE: Kéo thả đổi vị trí ảnh trên lưới UI
     FE->>FE: Cập nhật lại mảng sort_order cục bộ
-    Shop->>FE: Bấm "Gửi bài duyệt"
-    FE->>API: Gửi payload sản phẩm kèm danh sách R2 Keys và sort_order
-    API->>DB: Ghi vào products và product_images (status: pending_review)
+    Shop->>FE: Lưu sản phẩm rồi bấm "Gửi bài duyệt"
+    FE->>API: Gửi mã sản phẩm đã lưu
+    API->>DB: Đổi sản phẩm mới sang pending_review
     API->>API: Gửi Webhook thông báo Telegram cho Admin
     API-->>FE: Báo thành công, chuyển UI sang trạng thái Đang Chờ Duyệt
   ```
@@ -167,6 +167,12 @@ stateDiagram-v2
     pending_review --> draft: Admin từ chối / Yêu cầu sửa (Mở lại quyền sửa)
     published --> hidden: Admin tạm ẩn
     hidden --> published: Admin hiển thị lại
+    published --> edit_draft: Shop lưu yêu cầu chỉnh sửa riêng
+    hidden --> edit_draft: Shop lưu yêu cầu chỉnh sửa riêng
+    edit_draft --> edit_pending: Shop gửi yêu cầu chỉnh sửa
+    edit_pending --> published: Admin duyệt và áp dụng dữ liệu đề xuất
+    edit_pending --> hidden: Admin duyệt và giữ trạng thái ẩn
+    edit_pending --> published: Admin từ chối, giữ nguyên dữ liệu cũ
 ```
 
 1. **Giai đoạn `draft`:** Dữ liệu đang được shop chỉnh sửa, lưu nháp tự động (Auto-save) sau mỗi 30 giây.
@@ -181,12 +187,17 @@ stateDiagram-v2
 3. **Giai đoạn `published`:**
    * Admin bấm **"Duyệt sản phẩm"** trên trang quản trị.
    * Bản ghi chuyển sang trạng thái `published` và hiển thị ra catalogue công khai.
-4. **Nguyên tắc cô lập hiển thị công khai (Isolate Data):**
+4. **Yêu cầu chỉnh sửa sản phẩm đã xuất bản:**
+   * Shop lưu dữ liệu đề xuất và ảnh vào `product_edit_requests`; sản phẩm công khai không đổi.
+   * Khi shop gửi duyệt, yêu cầu xuất hiện ở tab riêng trong Admin. Admin có thể xem preview, duyệt hoặc từ chối.
+   * Duyệt sẽ cập nhật sản phẩm và ảnh trong cùng transaction; từ chối chỉ đổi trạng thái yêu cầu.
+5. **Nguyên tắc cô lập hiển thị công khai (Isolate Data):**
    * Mọi câu lệnh truy vấn dữ liệu phía Client trên trang chủ `ticoolture.vn` (qua Supabase RLS hoặc API route) **bắt buộc phải có điều kiện**:
      ```sql
      WHERE publish_status = 'published'
      ```
-   * Dữ liệu đang ở `draft` hoặc `pending_review` không bao giờ xuất hiện trên trang chủ, danh mục, hay kết quả tìm kiếm của khách vãng lai.
+   * Sản phẩm chỉ được công khai khi shop liên kết cũng có trạng thái `published`. Ẩn shop không đổi trạng thái riêng của sản phẩm; hiện lại shop không tự bật lại sản phẩm đã bị ẩn độc lập.
+   * Dữ liệu đang ở `draft` hoặc `pending_review` không bao giờ xuất hiện trên trang chủ, danh mục, hay kết quả tìm kiếm của khách vãng lai. Dữ liệu đề xuất trong `product_edit_requests` cũng không được truy vấn công khai.
 
 ---
 
@@ -245,8 +256,8 @@ Tất cả các API này được xây dựng dưới dạng **Vercel Serverless
 |---|---|---|---|
 | `/api/portal/me` | `GET` | Google Authenticated | Xác thực Google session, tự động liên kết lời mời theo email, trả về thông tin shop và vai trò |
 | `/api/portal/upload-ticket` | `POST` | Google Authenticated | Xác thực quyền của shop, cấp danh sách Presigned PUT URLs từ Cloudflare R2 |
-| `/api/portal/save-draft` | `POST` | Google Authenticated | Lưu nháp sản phẩm, cập nhật mô tả, giá và thứ tự kéo thả của ảnh |
-| `/api/portal/submit-review` | `POST` | Google Authenticated | Chốt gửi duyệt, đổi trạng thái sang `pending_review`, kích hoạt Telegram Bot báo Admin |
+| `/api/portal/save-draft` | `POST` | Google Authenticated | Lưu nháp sản phẩm; với sản phẩm đã xuất bản, lưu đề xuất riêng, không đổi dữ liệu công khai |
+| `/api/portal/submit-review` | `POST` | Google Authenticated | Chốt gửi duyệt sản phẩm mới hoặc yêu cầu chỉnh sửa, kích hoạt Telegram Bot báo Admin |
 | `/api/admin/portal/invite` | `POST` | Admin/Staff | Thêm lời mời quản lý xưởng gửi tới email Google của shop đối tác |
 | `/api/admin/reviews/action` | `POST` | Admin/Staff | Phê duyệt (`published`) hoặc Từ chối (`rejected` kèm lý do) |
 
@@ -278,4 +289,3 @@ Khi vận hành thực tế chỉ có 1 người giám sát cùng AI Agents, cá
   * Xây dựng giao diện đăng nhập Google, tải nhiều ảnh, lưới kéo thả sắp xếp thứ tự (Drag & Drop), đánh dấu ảnh cover.
 * **Bước 5 (Admin Review Workflow):**
   * Hoàn thiện màn hình duyệt bài trên trang quản trị, cho phép Admin xem trước (preview) giao diện sản phẩm y hệt như trên trang web thật trước khi ấn nút Xuất bản.
-
