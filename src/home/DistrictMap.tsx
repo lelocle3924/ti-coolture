@@ -278,11 +278,12 @@ export function DiscoverMarks() {
         style={{ width: "clamp(16rem, 34vw, 28rem)" }}
         fill="var(--color-wave)"
       />
-      <RibbonLoop
-        className="pointer-events-none absolute -left-28 bottom-0 z-0 opacity-[0.3] -scale-x-100"
-        style={{ width: "clamp(16rem, 30vw, 24rem)" }}
-        ribbon="var(--color-wave)"
-        dot="var(--color-paper)"
+      {/* Dynamic wave across /discover, anchored at ~1/4 to 1/3 from the bottom */}
+      <HeroWave
+        className="z-0 opacity-35"
+        stroke="var(--color-wave)"
+        boxTop="58%"
+        boxHeight="28%"
       />
     </>
   );
@@ -653,9 +654,14 @@ export function HomeDistrictMap({
     >
       {geo && (
         <ArcTopRight
-          className="pointer-events-none absolute right-0 z-[1] opacity-30"
+          className="pointer-events-none absolute left-0 z-[1] opacity-30"
           fill="var(--color-wave)"
-          style={{ width: geo.arcWidth, top: -geo.rise - geo.arcWidth * ARC_CUT }}
+          style={{
+            width: geo.arcWidth,
+            top: 0,
+            transform: "scaleY(-1)",
+            transformOrigin: "center",
+          }}
         />
       )}
 

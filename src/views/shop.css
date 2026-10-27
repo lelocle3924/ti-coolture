@@ -9,6 +9,20 @@
   background: var(--color-brand-deep);
 }
 
+.shop-hero--dark {
+  background: #000000;
+}
+
+.shop-page--dark {
+  background: #000000 !important;
+  color: var(--color-paper) !important;
+}
+
+.shop-page--obsidian {
+  background: #0c0714 !important;
+  color: var(--color-paper) !important;
+}
+
 .shop-hero__container {
   position: relative;
   width: min(100%, 1360px);

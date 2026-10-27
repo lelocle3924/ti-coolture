@@ -79,6 +79,13 @@ const STUDIES = [
     body: "Đã chốt 14/09 và đã lên site: hai dòng chạy nhanh gấp rưỡi, dòng đang rê chuột chậm về tốc độ cũ thay vì đứng yên. Trang này vẫn giữ để so với 1×, 1.25×, 2× và kiểu dừng hẳn như trước.",
     meta: "2 công tắc · PC · đã lên site",
   },
+  {
+    to: "/lab/shop-hero",
+    n: "10",
+    title: "Trang shop display — Port nền Hero & Nền đen tương phản",
+    body: "Thử nghiệm port các element thương hiệu từ Hero homepage (mảng trắng + curve đè lên bên trái, sóng động hero wave, con mắt chớp top-right) và thử nền đen (#000000) tăng tương phản.",
+    meta: "2 công tắc · motif + theme · /stores",
+  },
 ];
 
 export default function LabIndex() {

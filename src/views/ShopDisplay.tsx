@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, Heart, MapPin, ArrowUpRight, SlidersHorizontal } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
@@ -7,6 +7,8 @@ import { formatPrice, ContinuityLink } from "../lib/continuity";
 import { useSavedStores } from "../lib/useSavedStores";
 import PlatformGlyph from "../components/PlatformGlyph";
 import SaveButton from "../components/SaveButton";
+import { RibbonLoop } from "../components/BrandShapes";
+import HeroWave from "../components/HeroWave";
 import { Dropdown, PRICE_BANDS, SORTS } from "./Products";
 import "./shop.css";
 
@@ -183,16 +185,86 @@ export function ShopBio({ text }: { text: string }) {
   );
 }
 
+function WaveOnEnd({ className = "", fill = "var(--color-brand)" }: { className?: string; fill?: string }) {
+  return (
+    <svg viewBox="0 0 698 1920" preserveAspectRatio="none" aria-hidden="true" className={className}>
+      <g transform="translate(0, 1920) rotate(-90)">
+        <path
+          fill={fill}
+          d="M-1.95,318.33s476.18-70.31,773.39,147,348.35-159.13,572.06-157.87,242.89,113.12,345.16,161.06S1567.21,35,1922,.87V698.63H-1.95Z"
+        />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * Port của background Hero từ homepage sang trang shop display:
+ * - Mảng trắng bên trái cắt bằng WaveOnEnd
+ * - Con sóng HeroWave động chạy ngang mép dưới
+ * - RibbonLoop chớp mắt ở góc trên bên phải
+ */
+export function ShopHeroSurround({
+  fillGround = "var(--color-brand-deep)",
+}: {
+  fillGround?: string;
+}) {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+      {/* ── Mảng trắng bên trái + element curve đè lên ── */}
+      <div
+        className="absolute"
+        style={{
+          left: 0,
+          top: "10%",
+          width: "clamp(3.5rem, 8vw, 7rem)",
+          height: "76%",
+        }}
+      >
+        <div className="absolute inset-0 bg-paper" />
+        <WaveOnEnd
+          className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)]"
+          fill={fillGround}
+        />
+      </div>
+
+      {/* ── Con sóng chạy qua mép dưới ── */}
+      <HeroWave
+        className="z-[2] opacity-45"
+        stroke="var(--color-wave)"
+        boxTop="52%"
+        boxHeight="40%"
+      />
+
+      {/* ── Con mắt chớp (RibbonLoop) ở góc trên bên phải ── */}
+      <RibbonLoop
+        className="absolute"
+        style={{
+          right: "-5%",
+          top: "-15%",
+          width: "clamp(10rem, 24vw, 19rem)",
+          transform: "rotate(-90deg)",
+        }}
+        ribbon="var(--color-wave)"
+        dot="var(--color-paper)"
+        blink
+      />
+    </div>
+  );
+}
+
 /** Thẻ sản phẩm — v3 with reveal-ready data attributes */
 export function ShopProductCard({
   product,
   index,
   isPreview = false,
+  isDark = false,
 }: {
   key?: string;
   product: Product;
   index: number;
   isPreview?: boolean;
+  isDark?: boolean;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const primaryImg = product.images?.[0] || "";
@@ -212,11 +284,27 @@ export function ShopProductCard({
       className="shop-card-reveal group flex flex-col"
     >
       {/* Double-bezel outer shell */}
-      <div className="rounded-[22px] md:rounded-[26px] bg-[#F7F4FB]/60 p-[3px] ring-1 ring-[#ECE6F5] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:ring-[#7520F7]/30 group-hover:shadow-[0_20px_44px_-12px_rgba(60,20,120,0.12)]">
+      <div
+        className={`rounded-[22px] md:rounded-[26px] p-[3px] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          isDark
+            ? "bg-[#180c2b]/80 ring-1 ring-white/10 group-hover:ring-wave/40 group-hover:shadow-[0_20px_44px_-12px_rgba(0,0,0,0.85)]"
+            : "bg-[#F7F4FB]/60 ring-1 ring-[#ECE6F5] group-hover:ring-[#7520F7]/30 group-hover:shadow-[0_20px_44px_-12px_rgba(60,20,120,0.12)]"
+        }`}
+      >
         {/* Inner core */}
-        <div className="rounded-[20px] md:rounded-[24px] bg-white overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)] flex flex-col">
-          {/* Khung ảnh — 4:5 ratio */}
-          <div className="relative overflow-hidden bg-paper-warm" style={{ aspectRatio: "4/5" }}>
+        <div
+          className={`rounded-[20px] md:rounded-[24px] overflow-hidden flex flex-col ${
+            isDark
+              ? "bg-[#0d0718] text-paper shadow-none"
+              : "bg-white overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]"
+          }`}
+        >
+          {/* Khung ảnh — vuông 1:1 giống /products */}
+          <div
+            className={`relative overflow-hidden aspect-square ${
+              isDark ? "bg-[#160a27]" : "bg-paper-warm"
+            }`}
+          >
             <ContinuityLink
               product={product}
               to={isPreview ? "#" : `/products/${product.id}`}
@@ -241,7 +329,13 @@ export function ShopProductCard({
               )}
 
               {/* Nhãn category */}
-              <span className="hidden md:inline-flex absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-0.5 text-[11px] font-semibold text-[#17121F] shadow-[0_2px_8px_rgba(0,0,0,0.06)] backdrop-blur-xs">
+              <span
+                className={`hidden md:inline-flex absolute bottom-3 left-3 rounded-full px-3 py-0.5 text-[11px] font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.06)] backdrop-blur-xs ${
+                  isDark
+                    ? "bg-black/80 text-white/95 border border-white/15"
+                    : "bg-white/90 text-[#17121F]"
+                }`}
+              >
                 {product.category || "Thủ công"}
               </span>
             </ContinuityLink>
@@ -265,13 +359,27 @@ export function ShopProductCard({
               className="block"
               onClick={handleLinkClick}
             >
-              <h3 className="line-clamp-2 text-[14px] md:text-[15px] font-semibold leading-[1.4] text-[#17121F] group-hover:text-[#7520F7] transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+              <h3
+                className={`line-clamp-2 text-[14px] md:text-[15px] font-semibold leading-[1.4] transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+                  isDark
+                    ? "text-paper group-hover:text-wave"
+                    : "text-[#17121F] group-hover:text-[#7520F7]"
+                }`}
+              >
                 {product.name}
               </h3>
             </ContinuityLink>
 
-            <div className="flex items-center justify-between pt-1.5 border-t border-ink/5">
-              <span className="text-[15px] md:text-[17px] font-extrabold text-[#17121F]">
+            <div
+              className={`flex items-center justify-between pt-1.5 border-t ${
+                isDark ? "border-white/10" : "border-ink/5"
+              }`}
+            >
+              <span
+                className={`text-[15px] md:text-[17px] font-extrabold ${
+                  isDark ? "text-wave" : "text-[#17121F]"
+                }`}
+              >
                 {formatPrice(product.price)}
               </span>
 
@@ -279,7 +387,11 @@ export function ShopProductCard({
                 product={product}
                 to={isPreview ? "#" : `/products/${product.id}`}
                 imgRef={imageRef}
-                className="hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-[#F1E9FF] text-[#7520F7] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:bg-[#7520F7] group-hover:text-white group-hover:translate-x-[1px] group-hover:-translate-y-[1px] group-hover:scale-105"
+                className={`hidden md:flex h-8 w-8 items-center justify-center rounded-full transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+                  isDark
+                    ? "bg-[#251240] text-wave group-hover:bg-wave group-hover:text-ink"
+                    : "bg-[#F1E9FF] text-[#7520F7] group-hover:bg-[#7520F7] group-hover:text-white"
+                } group-hover:translate-x-[1px] group-hover:-translate-y-[1px] group-hover:scale-105`}
                 aria-label={`Xem chi tiết ${product.name}`}
                 onClick={handleLinkClick}
               >
@@ -297,9 +409,25 @@ export interface ShopViewProps {
   store: StoreProfile;
   products: Product[];
   isPreview?: boolean;
+  heroMotif?: boolean;
+  theme?: "default" | "dark" | "black" | "obsidian";
 }
 
-export function ShopView({ store, products, isPreview = false }: ShopViewProps) {
+export function ShopView({
+  store,
+  products,
+  isPreview = false,
+  heroMotif,
+  theme,
+}: ShopViewProps) {
+  const [searchParams] = useSearchParams();
+  const activeMotif =
+    heroMotif ?? (searchParams.get("motif") === "hero" || searchParams.get("lab") === "1");
+  const urlTheme = searchParams.get("theme") || (searchParams.get("dark") === "1" ? "black" : undefined);
+  const activeTheme = theme || urlTheme || "default";
+  const isDark = activeTheme === "dark" || activeTheme === "black" || activeTheme === "obsidian";
+  const bgGround = activeTheme === "obsidian" ? "#0c0714" : isDark ? "#000000" : undefined;
+
   const savedStores = useSavedStores();
 
   const [band, setBand] = useState("all");
@@ -339,11 +467,23 @@ export function ShopView({ store, products, isPreview = false }: ShopViewProps) 
 
   return (
     <div
-      className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] bg-white text-ink relative overflow-x-clip w-full pb-28 md:pb-36 ${
-        isPreview ? "pt-0 -mt-0" : "-mt-24 md:-mt-28"
-      }`}
+      className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] relative overflow-x-clip w-full pb-28 md:pb-36 transition-colors duration-500 ${
+        isDark
+          ? activeTheme === "obsidian"
+            ? "shop-page--obsidian"
+            : "shop-page--dark"
+          : "bg-white text-ink"
+      } ${isPreview ? "pt-0 -mt-0" : "-mt-24 md:-mt-28"}`}
+      style={bgGround ? { background: bgGround } : undefined}
     >
-      <section data-surface="dark" className={`shop-hero ${isPreview ? "pt-4 md:pt-6" : ""}`}>
+      <section
+        data-surface="dark"
+        className={`shop-hero ${isDark ? "shop-hero--dark" : ""} ${isPreview ? "pt-4 md:pt-6" : ""}`}
+        style={bgGround ? { background: bgGround } : undefined}
+      >
+        {activeMotif && (
+          <ShopHeroSurround fillGround={bgGround || "var(--color-brand-deep)"} />
+        )}
         <div className="shop-hero__container">
           <div ref={parallax.containerRef} className="shop-hero__media" aria-hidden="true">
             {store.coverUrl ? (
@@ -367,7 +507,13 @@ export function ShopView({ store, products, isPreview = false }: ShopViewProps) 
       <div className="shop-content">
         <div className="shop-content__layout">
           <aside className="shop-profile-sticky">
-            <div className="shop-profile-card">
+            <div
+              className={`shop-profile-card ${
+                isDark
+                  ? "bg-[#0e0719] text-paper border-wave/40 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.85)]"
+                  : ""
+              }`}
+            >
               <div className="shop-profile-avatar">
                 {store.logoUrl ? (
                   <img src={store.logoUrl} alt={store.name} className="h-full w-full object-cover" />
@@ -376,7 +522,11 @@ export function ShopView({ store, products, isPreview = false }: ShopViewProps) 
                 )}
               </div>
 
-              <h1 className="mt-5 font-sans uppercase text-[42px] md:text-[50px] leading-[0.95] text-brand tracking-normal">
+              <h1
+                className={`mt-5 font-sans uppercase text-[42px] md:text-[50px] leading-[0.95] tracking-normal ${
+                  isDark ? "text-wave" : "text-brand"
+                }`}
+              >
                 {store.name}
               </h1>
 
@@ -536,7 +686,13 @@ export function ShopView({ store, products, isPreview = false }: ShopViewProps) 
               ) : (
                 <div className="relative z-10 grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-7">
                   {shown.map((product, i) => (
-                    <ShopProductCard key={product.id} product={product} index={i} isPreview={isPreview} />
+                    <ShopProductCard
+                      key={product.id}
+                      product={product}
+                      index={i}
+                      isPreview={isPreview}
+                      isDark={isDark}
+                    />
                   ))}
                 </div>
               )}

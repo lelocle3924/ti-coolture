@@ -32,6 +32,7 @@ import CollectionStudies from "./lab/CollectionStudies";
 import HomeMapStudies from "./lab/HomeMapStudies";
 import TitleMotionStudies from "./lab/TitleMotionStudies";
 import StoreSpeedStudies from "./lab/StoreSpeedStudies";
+import ShopHeroStudies from "./lab/ShopHeroStudies";
 import Footer from "./components/Footer";
 import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
@@ -349,6 +350,7 @@ const router = createBrowserRouter([
         ],
       },
       { path: "lab/store-speed", element: <StoreSpeedStudies /> },
+      { path: "lab/shop-hero", element: <ShopHeroStudies /> },
 
       /* Renamed 26/08. Kept as redirects so anything already shared or
          bookmarked still lands, rather than bouncing to the homepage. */
