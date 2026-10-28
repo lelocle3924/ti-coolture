@@ -33,10 +33,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       success: true,
-      message: "Đã thu hồi quyền truy cập xưởng thành công.",
+      message: "Đã thu hồi quyền truy cập shop thành công.",
     });
   } catch (err: any) {
     console.error("[admin/portal/revoke] Error:", err.message);
-    return res.status(500).json({ success: false, error: err.message || "Lỗi thu hồi quyền xưởng." });
+    return res.status(500).json({ success: false, error: err.message || "Lỗi thu hồi quyền shop." });
   }
 }

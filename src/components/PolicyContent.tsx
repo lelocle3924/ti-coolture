@@ -126,7 +126,7 @@ export default function PolicyContent({
                     </tr>
                     <tr>
                       <td className="p-3 font-medium">Shop đăng sản phẩm</td>
-                      <td className="p-3">Ảnh, mô tả sản phẩm, thông tin xưởng</td>
+                      <td className="p-3">Ảnh, mô tả sản phẩm, thông tin shop</td>
                       <td className="p-3">Hiển thị công khai sau khi Tí duyệt</td>
                     </tr>
                   </tbody>

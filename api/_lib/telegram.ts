@@ -44,7 +44,7 @@ export async function notifyAdminProductSubmission(
   const message = [
     `🔔 *[TÍ COOLTURE] SẢN PHẨM MỚI CHỜ DUYỆT*`,
     ``,
-    `🏪 *Xưởng / Shop:* ${payload.shopName}`,
+    `🏪 *Shop:* ${payload.shopName}`,
     `📧 *Email đối tác:* \`${payload.shopEmail}\``,
     `📦 *Sản phẩm:* *${payload.productName}*`,
     `💰 *Giá niêm yết:* ${formatVND(payload.priceVnd)}`,
@@ -96,7 +96,7 @@ export async function notifyAdminShopProfileUpdate(
   const message = [
     `🔔 *[TÍ COOLTURE] SHOP CẬP NHẬT PROFILE CHỜ DUYỆT*`,
     ``,
-    `🏪 *Xưởng / Shop:* ${payload.shopName}`,
+    `🏪 *Shop:* ${payload.shopName}`,
     `📧 *Email đối tác:* \`${payload.shopEmail}\``,
     `📝 *Các mục đã chỉnh sửa:* ${payload.updatedFields.join(", ")}`,
     ``,

@@ -88,10 +88,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .maybeSingle();
 
       if (existingInvite) {
-        const existingShopName = (existingInvite.shops as any)?.name || "một xưởng khác";
+        const existingShopName = (existingInvite.shops as any)?.name || "một shop khác";
         return res.status(400).json({
           success: false,
-          error: `Email ${normalizedEmail} đã được cấp quyền quản lý cho xưởng "${existingShopName}". Mỗi tài khoản Gmail chỉ được liên kết 1 xưởng duy nhất.`,
+          error: `Email ${normalizedEmail} đã được cấp quyền quản lý cho shop "${existingShopName}". Mỗi tài khoản Gmail chỉ được liên kết 1 shop duy nhất.`,
         });
       }
 
@@ -115,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (createShopErr || !newShop) {
-          throw new Error("Không thể tạo xưởng mới: " + (createShopErr?.message || ""));
+          throw new Error("Không thể tạo shop mới: " + (createShopErr?.message || ""));
         }
         targetShopId = newShop.id;
       }
@@ -123,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!targetShopId) {
         return res.status(400).json({
           success: false,
-          error: "Vui lòng chọn xưởng có sẵn hoặc nhập tên xưởng mới.",
+          error: "Vui lòng chọn shop có sẵn hoặc nhập tên shop mới.",
         });
       }
 
@@ -160,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({
         success: true,
-        message: `Đã cấp quyền mở xưởng "${grantedShopName}" thành công cho ${normalizedEmail}.`,
+        message: `Đã cấp quyền mở shop "${grantedShopName}" thành công cho ${normalizedEmail}.`,
         invitation: invite,
       });
     }
@@ -171,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("[admin/portal/invite] Error:", err.message);
     return res.status(500).json({
       success: false,
-      error: err.message || "Không thể cấp quyền xưởng.",
+      error: err.message || "Không thể cấp quyền shop.",
     });
   }
 }

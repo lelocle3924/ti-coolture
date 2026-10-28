@@ -216,7 +216,7 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
 
   // Unauthorized
   throw new Error(
-    `Email Google "${userEmail}" chưa được cấp quyền quản lý xưởng nào trên Tí Coolture. Vui lòng liên hệ ban quản trị để được hỗ trợ.`
+    `Email Google "${userEmail}" chưa được cấp quyền quản lý shop nào trên Tí Coolture. Vui lòng liên hệ ban quản trị để được hỗ trợ.`
   );
 }
 
@@ -226,7 +226,7 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
 export async function authenticateShopMember(authHeader?: string): Promise<AuthenticatedShopContext> {
   const context = await authenticatePortalUser(authHeader);
   if (!context.shopId) {
-    throw new Error("Tài khoản chưa được liên kết với xưởng nào.");
+    throw new Error("Tài khoản chưa được liên kết với shop nào.");
   }
   return {
     userId: context.userId,

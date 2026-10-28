@@ -335,10 +335,14 @@ export default function OpenShop() {
   };
 
   return (
-    <div data-surface="light" className="min-h-[100dvh] bg-paper-warm text-ink">
-      <AreaList />
+    <div className="relative w-full -mt-24 md:-mt-28">
+      {/* Khối chữ nhật màu violet che chữ reveal footer từ mép trên màn hình đến mép nền trắng */}
+      <div data-surface="dark" className="h-24 md:h-28 bg-brand w-full" aria-hidden="true" />
 
-      <div className="mx-auto max-w-3xl px-5 py-12 md:py-20">
+      <div data-surface="light" className="min-h-[100dvh] bg-paper-warm text-ink">
+        <AreaList />
+
+        <div className="mx-auto max-w-3xl px-5 py-12 md:py-20">
         {sent ? (
           <Sent values={values} />
         ) : (
@@ -531,6 +535,7 @@ export default function OpenShop() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

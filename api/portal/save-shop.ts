@@ -188,7 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!name || typeof name !== "string" || name.trim().length < 2) {
       return res.status(400).json({
         success: false,
-        error: "Tên xưởng là bắt buộc (tối thiểu 2 ký tự).",
+        error: "Tên shop là bắt buộc (tối thiểu 2 ký tự).",
       });
     }
 
@@ -299,7 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       pendingApproval: true,
       changed: hasChanges,
       message: hasChanges
-        ? "Yêu cầu cập nhật hồ sơ xưởng đã được gửi tới Ban Quản Trị để duyệt."
+        ? "Yêu cầu cập nhật hồ sơ shop đã được gửi tới Ban Quản Trị để duyệt."
         : "Thông tin không thay đổi so với yêu cầu đang chờ duyệt.",
       request: requestId ? { id: requestId, created_at: createdAt } : null,
     });
@@ -311,7 +311,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      error: err.message || "Không thể lưu thông tin xưởng.",
+      error: err.message || "Không thể lưu thông tin shop.",
     });
   }
 }
