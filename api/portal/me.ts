@@ -23,10 +23,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let shopData = null;
     let productsData: any[] = [];
+    let editRequestsData: any[] = [];
 
-    // If user has a shop attached, fetch details & products
+    // If user has a shop attached, fetch details & products & edit requests
     if (portalUser.shopId) {
-      const [shopRes, socialsRes, productsRes] = await Promise.all([
+      const [shopRes, socialsRes, productsRes, editReqsRes] = await Promise.all([
         supabase
           .from("shops")
           .select("id, name, slug, tagline_vi, story_vi, logo_url, cover_url, status, is_online_only, address, area_tag, contact_email")
@@ -48,6 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             story_vi,
             dimensions,
             status,
+            product_hidden,
             created_at,
             updated_at,
             product_images (
@@ -60,6 +62,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `)
           .eq("shop_id", portalUser.shopId)
           .order("updated_at", { ascending: false }),
+        supabase
+          .from("product_edit_requests")
+          .select(`
+            id,
+            product_id,
+            shop_id,
+            proposed_data,
+            status,
+            reject_reason,
+            reviewed_at,
+            created_at,
+            updated_at,
+            products (
+              id,
+              name_vi,
+              price_vnd,
+              status,
+              category_id,
+              product_images (
+                id,
+                url,
+                is_cover
+              )
+            )
+          `)
+          .eq("shop_id", portalUser.shopId)
+          .order("created_at", { ascending: false }),
       ]);
 
       shopData = shopRes.data;
@@ -67,6 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         (shopData as any).socials = socialsRes.data;
       }
       productsData = productsRes.data || [];
+      editRequestsData = editReqsRes.data || [];
     }
 
     return res.status(200).json({
@@ -86,6 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } : null),
       role: portalUser.role,
       products: productsData,
+      productEditRequests: editRequestsData,
     });
   } catch (err: any) {
     console.warn("[portal/me] Auth check failed:", err.message);

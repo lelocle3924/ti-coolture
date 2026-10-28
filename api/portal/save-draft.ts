@@ -58,6 +58,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    if (nameVi.trim().length > 120) {
+      return res.status(400).json({
+        success: false,
+        error: "Tên sản phẩm tiếng Việt không được vượt quá 120 ký tự.",
+      });
+    }
+
+    if (nameEn && typeof nameEn === "string" && nameEn.trim().length > 120) {
+      return res.status(400).json({
+        success: false,
+        error: "Tên sản phẩm tiếng Anh không được vượt quá 120 ký tự.",
+      });
+    }
+
+    if (typeof priceVnd === "number") {
+      if (priceVnd < 0 || priceVnd > 500_000_000) {
+        return res.status(400).json({
+          success: false,
+          error: "Giá sản phẩm phải nằm trong khoảng từ 0 ₫ đến 500.000.000 ₫.",
+        });
+      }
+    }
+
+    if (dimensions && typeof dimensions === "string" && dimensions.trim().length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: "Thông số kích thước không được vượt quá 100 ký tự.",
+      });
+    }
+
+    if (shortDescVi && typeof shortDescVi === "string" && shortDescVi.trim().length > 300) {
+      return res.status(400).json({
+        success: false,
+        error: "Mô tả ngắn không được vượt quá 300 ký tự.",
+      });
+    }
+
+    if (storyVi && typeof storyVi === "string" && storyVi.trim().length > 2000) {
+      return res.status(400).json({
+        success: false,
+        error: "Câu chuyện sản phẩm không được vượt quá 2.000 ký tự.",
+      });
+    }
+
+    if (Array.isArray(images) && images.length > 12) {
+      return res.status(400).json({
+        success: false,
+        error: "Mỗi sản phẩm tối đa 12 hình ảnh.",
+      });
+    }
+
     if (!categoryId || typeof categoryId !== "string") {
       return res.status(400).json({
         success: false,

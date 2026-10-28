@@ -104,6 +104,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      if (typeof editRequest.proposed_data?.price_vnd === "number" && editRequest.proposed_data.price_vnd > 500_000_000) {
+        return res.status(400).json({
+          success: false,
+          error: "Giá sản phẩm không được vượt quá 500.000.000 ₫.",
+        });
+      }
+
       const { data: submittedEdit, error: submitEditErr } = await supabase
         .from("product_edit_requests")
         .update({ status: "pending", updated_at: new Date().toISOString() })
@@ -162,6 +169,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({
         success: false,
         error: "Sản phẩm phải có ít nhất 1 hình ảnh trước khi gửi duyệt.",
+      });
+    }
+
+    if (typeof product.price_vnd === "number" && product.price_vnd > 500_000_000) {
+      return res.status(400).json({
+        success: false,
+        error: "Giá sản phẩm không được vượt quá 500.000.000 ₫.",
       });
     }
 
