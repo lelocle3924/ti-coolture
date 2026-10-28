@@ -63,6 +63,9 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
+  Edit3,
+  ClipboardList,
+  Package,
 } from "lucide-react";
 import PlatformGlyph from "../components/PlatformGlyph";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
@@ -341,7 +344,8 @@ export default function Portal() {
   const [formFeedback, setFormFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Shop Partner Tabs & Profile Form State
-  const [partnerTab, setPartnerTab] = useState<"storefront" | "products">("storefront");
+  const [partnerTab, setPartnerTab] = useState<"storefront" | "products" | "reviews">("products");
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState<string | null>(null);
   const [shopName, setShopName] = useState("");
   const [shopTaglineVi, setShopTaglineVi] = useState("");
   const [shopStoryVi, setShopStoryVi] = useState("");
@@ -364,6 +368,16 @@ export default function Portal() {
 
   // Preview Modal State ("store" | "product" | null)
   const [previewModal, setPreviewModal] = useState<"store" | "product" | null>(null);
+
+  const newProductsPending = useMemo(
+    () => products.filter((p) => p.status === "pending_review"),
+    [products]
+  );
+  const editRequestsPending = useMemo(
+    () => productEditRequests.filter((r) => r.status === "pending"),
+    [productEditRequests]
+  );
+  const totalPendingReviewsCount = newProductsPending.length + editRequestsPending.length;
 
   const previewStore = useMemo<StoreProfile>(() => {
     return {
@@ -641,6 +655,7 @@ export default function Portal() {
             populateShopState(data.shop);
             setRole(data.role || "owner");
             setProducts(data.products || []);
+            setProductEditRequests(data.productEditRequests || []);
             setIsAdmin(Boolean(data.isAdmin || isSuperAdminEmail));
             if (data.isAdmin || isSuperAdminEmail) {
               await loadAdminData();
@@ -691,6 +706,13 @@ export default function Portal() {
             .eq("shop_id", shopData.id)
             .order("updated_at", { ascending: false });
           if (dbProds) setProducts(dbProds as any);
+
+          const { data: dbEditReqs } = await supabase
+            .from("product_edit_requests")
+            .select("*, products(id, name_vi, price_vnd, status, category_id, product_images(*))")
+            .eq("shop_id", shopData.id)
+            .order("created_at", { ascending: false });
+          if (dbEditReqs) setProductEditRequests(dbEditReqs as any);
 
           // Fetch socials of this shop
           const { data: dbSocs } = await supabase
@@ -1953,6 +1975,109 @@ export default function Portal() {
     setActiveView("edit");
   }
 
+  // Open Edit Form pre-filled from an Edit Request's proposed_data
+  function openEditRequestForm(reqItem: any) {
+    const proposal = reqItem.proposed_data || {};
+    setEditingProductId(reqItem.product_id);
+    setNameVi(proposal.name_vi || "");
+    setNameEn(proposal.name_en || "");
+    const matched = findCategory(proposal.category_id);
+    setCategoryId(matched ? matched.slug : "do-gom");
+    setPriceVnd(typeof proposal.price_vnd === "number" ? proposal.price_vnd : "");
+    const matVal = (Array.isArray(proposal.variants) ? proposal.variants.find((v: any) => v.type === "material")?.value : "") || "";
+    setMaterial(matVal);
+    setDimensions(proposal.dimensions || "");
+    setShortDescVi(proposal.short_desc_vi || "");
+    setStoryVi(proposal.story_vi || "");
+    setImages(
+      (proposal.images || []).map((img: any, idx: number) => ({
+        id: `prop-img-${idx}`,
+        url: img.url,
+        isCover: img.is_cover || idx === 0,
+        sortOrder: typeof img.sort_order === "number" ? img.sort_order : idx,
+        altVi: img.alt_vi || proposal.name_vi || "Sản phẩm",
+        previewUrl: resolveImageUrl(img.url),
+      }))
+    );
+    setFormFeedback(null);
+    setActiveView("edit");
+    setPartnerTab("products");
+  }
+
+  // Preview an Edit Request in Product Detail modal
+  function previewEditRequest(reqItem: any) {
+    openEditRequestForm(reqItem);
+    setPreviewModal("product");
+  }
+
+  // Shop Partner Action: Toggle Show/Hide Product
+  async function handleShopToggleProductVisibility(productId: string, currentHidden: boolean, prodName: string) {
+    const targetHidden = !currentHidden;
+    const confirmMsg = targetHidden
+      ? `Bạn có chắc muốn ẨN sản phẩm "${prodName}" khỏi website chính? Khách hàng sẽ không nhìn thấy sản phẩm này trên catalogue nữa.`
+      : `Bạn có chắc muốn HIỂN THỊ lại sản phẩm "${prodName}" trên website chính?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsTogglingVisibility(productId);
+    // Optimistic UI update
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, product_hidden: targetHidden } : p))
+    );
+
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/toggle-visibility", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productId, hidden: targetHidden }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể cập nhật trạng thái hiển thị.");
+      }
+    } catch (err: any) {
+      console.warn("API toggle failed, falling back to direct Supabase:", err);
+      if (supabase) {
+        await supabase
+          .from("products")
+          .update({ product_hidden: targetHidden, updated_at: new Date().toISOString() })
+          .eq("id", productId);
+      }
+    } finally {
+      setIsTogglingVisibility(null);
+    }
+  }
+
+  // Shop Partner Action: Cancel / Withdraw Edit Request
+  async function handleCancelEditRequest(requestId: string, prodName: string) {
+    const confirmMsg = `Bạn có chắc muốn THU HỒI yêu cầu chỉnh sửa cho sản phẩm "${prodName}"? Dữ liệu đề xuất chưa được duyệt này sẽ bị xóa.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/cancel-edit-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ requestId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể thu hồi yêu cầu.");
+      }
+      setProductEditRequests((prev) => prev.filter((r) => r.id !== requestId));
+      if (token) await loadPortalMe(token);
+    } catch (err: any) {
+      alert("Lỗi khi thu hồi yêu cầu: " + (err.message || ""));
+    }
+  }
+
   // Shop Profile Save Handler
   async function handleSaveShopProfile() {
     if (!shopName.trim()) {
@@ -2198,6 +2323,51 @@ export default function Portal() {
   async function handleSaveDraft(): Promise<string | null> {
     if (!nameVi.trim()) {
       setFormFeedback({ type: "error", text: "Vui lòng nhập tên sản phẩm tiếng Việt." });
+      return null;
+    }
+
+    if (nameVi.trim().length > 120) {
+      setFormFeedback({ type: "error", text: "Tên sản phẩm tiếng Việt không được vượt quá 120 ký tự." });
+      return null;
+    }
+
+    if (nameEn.trim().length > 120) {
+      setFormFeedback({ type: "error", text: "Tên sản phẩm tiếng Anh không được vượt quá 120 ký tự." });
+      return null;
+    }
+
+    if (typeof priceVnd === "number") {
+      if (priceVnd < 0 || priceVnd > 500_000_000) {
+        setFormFeedback({
+          type: "error",
+          text: "Giá sản phẩm phải nằm trong khoảng từ 0 ₫ đến tối đa 500.000.000 ₫ (năm trăm triệu đồng).",
+        });
+        return null;
+      }
+    }
+
+    if (dimensions.trim().length > 100) {
+      setFormFeedback({ type: "error", text: "Thông số kích thước không được vượt quá 100 ký tự." });
+      return null;
+    }
+
+    if (material.trim().length > 100) {
+      setFormFeedback({ type: "error", text: "Chất liệu không được vượt quá 100 ký tự." });
+      return null;
+    }
+
+    if (shortDescVi.trim().length > 300) {
+      setFormFeedback({ type: "error", text: "Mô tả ngắn không được vượt quá 300 ký tự." });
+      return null;
+    }
+
+    if (storyVi.trim().length > 2000) {
+      setFormFeedback({ type: "error", text: "Câu chuyện sản phẩm không được vượt quá 2.000 ký tự." });
+      return null;
+    }
+
+    if (images.length > 12) {
+      setFormFeedback({ type: "error", text: "Mỗi sản phẩm tối đa 12 hình ảnh." });
       return null;
     }
 
@@ -3769,7 +3939,10 @@ export default function Portal() {
 
                 <button
                   type="button"
-                  onClick={() => setPartnerTab("products")}
+                  onClick={() => {
+                    setPartnerTab("products");
+                    setActiveView("list");
+                  }}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition ${
                     partnerTab === "products"
                       ? "bg-[#7520f7] text-white shadow-sm"
@@ -3781,6 +3954,31 @@ export default function Portal() {
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#12081f] text-[#39d6cf] border border-[#3b2a60]">
                     {products.length}
                   </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPartnerTab("reviews");
+                    setActiveView("list");
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition ${
+                    partnerTab === "reviews"
+                      ? "bg-[#7520f7] text-white shadow-sm"
+                      : "text-[#a39ab8] hover:text-white hover:bg-[#181224] border border-[#2e2344]"
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Yêu cầu chờ duyệt</span>
+                  {totalPendingReviewsCount > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                      {totalPendingReviewsCount}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#12081f] text-[#a39ab8] border border-[#3b2a60]">
+                      {productEditRequests.length + newProductsPending.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -4248,7 +4446,8 @@ export default function Portal() {
                                 <th className="py-3 px-4">Danh mục</th>
                                 <th className="py-3 px-4">Giá niêm yết</th>
                                 <th className="py-3 px-4">Hình ảnh</th>
-                                <th className="py-3 px-4">Trạng thái</th>
+                                <th className="py-3 px-4">Trạng thái duyệt</th>
+                                <th className="py-3 px-4">Hiển thị trên web</th>
                                 <th className="py-3 px-5 text-right">Thao tác</th>
                               </tr>
                             </thead>
@@ -4258,6 +4457,12 @@ export default function Portal() {
                                   prod.product_images?.find((i) => i.is_cover) ||
                                   prod.product_images?.[0];
                                 const imgUrl = cover?.url ? resolveImageUrl(cover.url) : null;
+                                const pendingEditReq = productEditRequests.find(
+                                  (r) => r.product_id === prod.id && r.status === "pending"
+                                );
+                                const rejectedEditReq = productEditRequests.find(
+                                  (r) => r.product_id === prod.id && r.status === "rejected"
+                                );
 
                                 return (
                                   <tr
@@ -4285,6 +4490,18 @@ export default function Portal() {
                                           {prod.name_en && (
                                             <div className="text-[11px] text-[#7b7194]">
                                               {prod.name_en}
+                                            </div>
+                                          )}
+                                          {pendingEditReq && (
+                                            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-300 border border-amber-800/50 mt-1">
+                                              <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+                                              <span>Có bản sửa chờ duyệt</span>
+                                            </div>
+                                          )}
+                                          {rejectedEditReq && !pendingEditReq && (
+                                            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-red-950/60 text-red-300 border border-red-800/50 mt-1">
+                                              <AlertCircle className="w-2.5 h-2.5 flex-shrink-0" />
+                                              <span>Yêu cầu sửa bị từ chối</span>
                                             </div>
                                           )}
                                         </div>
@@ -4336,6 +4553,44 @@ export default function Portal() {
                                           Yêu cầu sửa
                                         </span>
                                       )}
+                                    </td>
+
+                                    <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        disabled={isTogglingVisibility === prod.id}
+                                        onClick={() =>
+                                          handleShopToggleProductVisibility(
+                                            prod.id,
+                                            Boolean(prod.product_hidden),
+                                            prod.name_vi
+                                          )
+                                        }
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition ${
+                                          prod.product_hidden
+                                            ? "bg-[#12081f] text-[#a39ab8] border-[#3b2a60] hover:text-white hover:border-[#7520f7]"
+                                            : "bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60"
+                                        }`}
+                                        title={
+                                          prod.product_hidden
+                                            ? "Sản phẩm đang ẩn khỏi trang shop & tìm kiếm. Bấm để hiển thị lại."
+                                            : "Sản phẩm đang hiển thị công khai trên web. Bấm để ẩn."
+                                        }
+                                      >
+                                        {isTogglingVisibility === prod.id ? (
+                                          <RefreshCw className="w-3 h-3 animate-spin text-[#39d6cf]" />
+                                        ) : prod.product_hidden ? (
+                                          <>
+                                            <EyeOff className="w-3.5 h-3.5 text-[#a39ab8]" />
+                                            <span>Đang ẩn</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                                            <span>Đang hiện</span>
+                                          </>
+                                        )}
+                                      </button>
                                     </td>
 
                                     <td className="py-3.5 px-5 text-right">
@@ -4440,30 +4695,58 @@ export default function Portal() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                                Tên sản phẩm (Tiếng Việt) *
-                              </label>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-medium text-[#a39ab8]">
+                                  Tên sản phẩm (Tiếng Việt) *
+                                </label>
+                                <span className={`text-[10px] font-mono ${nameVi.length > 120 ? "text-red-400 font-bold" : "text-[#7b7194]"}`}>
+                                  {nameVi.length}/120
+                                </span>
+                              </div>
                               <input
                                 type="text"
+                                maxLength={140}
                                 value={nameVi}
                                 onChange={(e) => setNameVi(e.target.value)}
                                 placeholder="Túi đeo vai da lộn nâu khoá cài"
-                                className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                                className={`w-full bg-[#12081f] border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition ${
+                                  nameVi.length > 120 ? "border-red-500 focus:border-red-500" : "border-[#2e2344] focus:border-[#7520f7]"
+                                }`}
                                 required
                               />
+                              {nameVi.length > 120 && (
+                                <p className="mt-1 text-[11px] text-red-400 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                  Tên sản phẩm không được vượt quá 120 ký tự.
+                                </p>
+                              )}
                             </div>
 
                             <div>
-                              <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                                Tên tiếng Anh (tuỳ chọn)
-                              </label>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-medium text-[#a39ab8]">
+                                  Tên tiếng Anh (tuỳ chọn)
+                                </label>
+                                <span className={`text-[10px] font-mono ${nameEn.length > 120 ? "text-red-400 font-bold" : "text-[#7b7194]"}`}>
+                                  {nameEn.length}/120
+                                </span>
+                              </div>
                               <input
                                 type="text"
+                                maxLength={140}
                                 value={nameEn}
                                 onChange={(e) => setNameEn(e.target.value)}
                                 placeholder="Brown Suede Buckle Shoulder Bag"
-                                className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                                className={`w-full bg-[#12081f] border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition ${
+                                  nameEn.length > 120 ? "border-red-500 focus:border-red-500" : "border-[#2e2344] focus:border-[#7520f7]"
+                                }`}
                               />
+                              {nameEn.length > 120 && (
+                                <p className="mt-1 text-[11px] text-red-400 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                  Tên tiếng Anh không được vượt quá 120 ký tự.
+                                </p>
+                              )}
                             </div>
                           </div>
 
@@ -4490,73 +4773,157 @@ export default function Portal() {
                             </div>
 
                             <div>
-                              <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                                Giá bán (VNĐ)
-                              </label>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-medium text-[#a39ab8]">
+                                  Giá bán (VNĐ)
+                                </label>
+                                <span className="text-[10px] text-[#7b7194]">
+                                  Trần tối đa 500.000.000 ₫
+                                </span>
+                              </div>
                               <input
                                 type="number"
+                                min={0}
+                                max={500000000}
                                 value={priceVnd}
-                                onChange={(e) =>
-                                  setPriceVnd(e.target.value ? Number(e.target.value) : "")
-                                }
+                                onChange={(e) => {
+                                  const val = e.target.value ? Number(e.target.value) : "";
+                                  setPriceVnd(val);
+                                }}
                                 placeholder="890000 (để trống nếu 'Giá liên hệ')"
-                                className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition font-mono"
+                                className={`w-full bg-[#12081f] border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition font-mono ${
+                                  typeof priceVnd === "number" && priceVnd > 500000000
+                                    ? "border-red-500 focus:border-red-500 bg-red-950/20"
+                                    : "border-[#2e2344] focus:border-[#7520f7]"
+                                }`}
                               />
+                              {typeof priceVnd === "number" && (
+                                <div className="mt-1 text-[11px] flex items-center justify-between">
+                                  {priceVnd > 500000000 ? (
+                                    <span className="text-red-400 font-medium flex items-center gap-1">
+                                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                      CẢNH BÁO: Giá vượt trần 500.000.000 ₫ (Hiện tại: {priceVnd.toLocaleString("vi-VN")} ₫)
+                                    </span>
+                                  ) : priceVnd > 0 ? (
+                                    <span className="text-[#39d6cf] font-mono">
+                                      = {priceVnd.toLocaleString("vi-VN")} ₫
+                                    </span>
+                                  ) : (
+                                    <span className="text-[#7b7194]">0 ₫ (Miễn phí)</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                                Chất liệu (hiển thị trên trang sản phẩm)
-                              </label>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-medium text-[#a39ab8]">
+                                  Chất liệu (hiển thị trên trang sản phẩm)
+                                </label>
+                                <span className={`text-[10px] font-mono ${material.length > 100 ? "text-red-400 font-bold" : "text-[#7b7194]"}`}>
+                                  {material.length}/100
+                                </span>
+                              </div>
                               <input
                                 type="text"
+                                maxLength={120}
                                 value={material}
                                 onChange={(e) => setMaterial(e.target.value)}
                                 placeholder="Da thật, Gốm nung củi, Vải canvas..."
-                                className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                                className={`w-full bg-[#12081f] border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition ${
+                                  material.length > 100 ? "border-red-500 focus:border-red-500" : "border-[#2e2344] focus:border-[#7520f7]"
+                                }`}
                               />
+                              {material.length > 100 && (
+                                <p className="mt-1 text-[11px] text-red-400 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                  Chất liệu không được vượt quá 100 ký tự.
+                                </p>
+                              )}
                             </div>
 
                             <div>
-                              <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                                Kích thước (hiển thị trên trang sản phẩm)
-                              </label>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-medium text-[#a39ab8]">
+                                  Kích thước (hiển thị trên trang sản phẩm)
+                                </label>
+                                <span className={`text-[10px] font-mono ${dimensions.length > 100 ? "text-red-400 font-bold" : "text-[#7b7194]"}`}>
+                                  {dimensions.length}/100
+                                </span>
+                              </div>
                               <input
                                 type="text"
+                                maxLength={120}
                                 value={dimensions}
                                 onChange={(e) => setDimensions(e.target.value)}
                                 placeholder="25 x 18 x 7 cm (hoặc — nếu không áp dụng)"
-                                className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
+                                className={`w-full bg-[#12081f] border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition ${
+                                  dimensions.length > 100 ? "border-red-500 focus:border-red-500" : "border-[#2e2344] focus:border-[#7520f7]"
+                                }`}
                               />
+                              {dimensions.length > 100 && (
+                                <p className="mt-1 text-[11px] text-red-400 flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                  Kích thước không được vượt quá 100 ký tự.
+                                </p>
+                              )}
                             </div>
                           </div>
 
                           <div>
-                            <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                              Mô tả sản phẩm (ngắn gọn)
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-xs font-medium text-[#a39ab8]">
+                                Mô tả sản phẩm (ngắn gọn)
+                              </label>
+                              <span className={`text-[10px] font-mono ${shortDescVi.length > 300 ? "text-red-400 font-bold" : "text-[#7b7194]"}`}>
+                                {shortDescVi.length}/300
+                              </span>
+                            </div>
                             <textarea
                               rows={3}
+                              maxLength={350}
                               value={shortDescVi}
                               onChange={(e) => setShortDescVi(e.target.value)}
                               placeholder="Túi đeo vai da lộn nâu khoá cài — phù hợp mang đi làm, dạo phố hàng ngày..."
-                              className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl p-3.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition leading-relaxed"
+                              className={`w-full bg-[#12081f] border rounded-xl p-3.5 text-xs text-white focus:outline-none transition leading-relaxed ${
+                                shortDescVi.length > 300 ? "border-red-500 focus:border-red-500" : "border-[#2e2344] focus:border-[#7520f7]"
+                              }`}
                             />
+                            {shortDescVi.length > 300 && (
+                              <p className="mt-1 text-[11px] text-red-400 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                Mô tả ngắn không được vượt quá 300 ký tự.
+                              </p>
+                            )}
                           </div>
 
                           <div>
-                            <label className="block text-xs font-medium text-[#a39ab8] mb-1.5">
-                              Câu chuyện sản phẩm / Ghi chú sáng tạo (Story)
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-xs font-medium text-[#a39ab8]">
+                                Câu chuyện sản phẩm / Ghi chú sáng tạo (Story)
+                              </label>
+                              <span className={`text-[10px] font-mono ${storyVi.length > 2000 ? "text-red-400 font-bold" : "text-[#7b7194]"}`}>
+                                {storyVi.length}/2000
+                              </span>
+                            </div>
                             <textarea
                               rows={4}
+                              maxLength={2100}
                               value={storyVi}
                               onChange={(e) => setStoryVi(e.target.value)}
                               placeholder="Chi tiết về quá trình làm ra sản phẩm, nguồn gốc nguyên vật liệu hoặc cảm hứng thiết kế..."
-                              className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl p-3.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition leading-relaxed"
+                              className={`w-full bg-[#12081f] border rounded-xl p-3.5 text-xs text-white focus:outline-none transition leading-relaxed ${
+                                storyVi.length > 2000 ? "border-red-500 focus:border-red-500" : "border-[#2e2344] focus:border-[#7520f7]"
+                              }`}
                             />
+                            {storyVi.length > 2000 && (
+                              <p className="mt-1 text-[11px] text-red-400 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                Câu chuyện sản phẩm không được vượt quá 2.000 ký tự.
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -4698,6 +5065,314 @@ export default function Portal() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB 3: YÊU CẦU CHỜ DUYỆT (REVIEWS) */}
+            {partnerTab === "reviews" && (
+              <div className="space-y-8">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-serif font-bold text-white flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-amber-400" />
+                      Yêu cầu chờ duyệt ({totalPendingReviewsCount})
+                    </h2>
+                    <p className="text-xs text-[#a39ab8] mt-1">
+                      Theo dõi trạng thái các yêu cầu chỉnh sửa thông tin sản phẩm và các sản phẩm mới đăng đang chờ Ban Quản Trị Tí Coolture phê duyệt.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPartnerTab("products");
+                        openCreateForm();
+                      }}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white font-medium rounded-xl text-xs uppercase tracking-wider transition shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Đăng sản phẩm mới
+                    </button>
+                  </div>
+                </div>
+
+                {/* SECTION A: YÊU CẦU CHỈNH SỬA SẢN PHẨM */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Edit3 className="w-4 h-4 text-[#39d6cf]" />
+                      Yêu cầu chỉnh sửa sản phẩm ({productEditRequests.length})
+                    </h3>
+                    <span className="text-xs text-[#7b7194]">
+                      Đề xuất cập nhật cho các sản phẩm đã có trên hệ thống
+                    </span>
+                  </div>
+
+                  {productEditRequests.length === 0 ? (
+                    <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-8 text-center">
+                      <ClipboardList className="w-10 h-10 text-[#7b7194] mx-auto mb-2 opacity-50" />
+                      <p className="text-xs text-[#a39ab8]">
+                        Hiện shop chưa có yêu cầu chỉnh sửa sản phẩm nào.
+                      </p>
+                      <p className="text-[11px] text-[#7b7194] mt-1">
+                        Khi bạn chọn "Chỉnh sửa" một sản phẩm đã xuất bản và nhấn "Gửi duyệt", yêu cầu sẽ xuất hiện tại đây.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {productEditRequests.map((reqItem) => {
+                        const proposal = reqItem.proposed_data || {};
+                        const originalProd = reqItem.products || {};
+                        const coverImg =
+                          proposal.images?.find((img: any) => img.is_cover) ||
+                          proposal.images?.[0] ||
+                          originalProd.product_images?.find((img: any) => img.is_cover) ||
+                          originalProd.product_images?.[0];
+                        const imgUrl = coverImg?.url ? resolveImageUrl(coverImg.url) : null;
+                        const isPending = reqItem.status === "pending";
+                        const isRejected = reqItem.status === "rejected";
+                        const isDraft = reqItem.status === "draft";
+                        const isApproved = reqItem.status === "approved";
+
+                        return (
+                          <div
+                            key={reqItem.id}
+                            className={`bg-[#181224] border rounded-2xl p-5 transition shadow-lg ${
+                              isPending
+                                ? "border-amber-500/40 hover:border-amber-500/70"
+                                : isRejected
+                                ? "border-red-800/60"
+                                : "border-[#2e2344]"
+                            }`}
+                          >
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                              {/* Left: Thumbnail & Info */}
+                              <div className="flex items-start gap-4 flex-1">
+                                <div className="w-16 h-16 rounded-xl bg-[#23173d] overflow-hidden flex-shrink-0 border border-[#3b2a60] flex items-center justify-center">
+                                  {imgUrl ? (
+                                    <img
+                                      src={imgUrl}
+                                      alt={proposal.name_vi || originalProd.name_vi}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <FileImage className="w-6 h-6 text-[#7b7194]" />
+                                  )}
+                                </div>
+
+                                <div className="space-y-1.5 flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="font-serif font-bold text-white text-base truncate">
+                                      {proposal.name_vi || originalProd.name_vi || "Sản phẩm không tên"}
+                                    </h4>
+
+                                    {/* Status Badge */}
+                                    {isPending && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-950/80 text-amber-300 border border-amber-800/60 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        Đang chờ duyệt
+                                      </span>
+                                    )}
+                                    {isRejected && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-red-950/80 text-red-300 border border-red-800/60 flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3" />
+                                        Bị từ chối
+                                      </span>
+                                    )}
+                                    {isDraft && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#12081f] text-[#a39ab8] border border-[#3b2a60]">
+                                        Bản nháp
+                                      </span>
+                                    )}
+                                    {isApproved && (
+                                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        Đã phê duyệt
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#a39ab8]">
+                                    <span>
+                                      Sản phẩm gốc:{" "}
+                                      <span className="text-white font-medium">
+                                        {originalProd.name_vi || "ID " + reqItem.product_id}
+                                      </span>
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      Giá đề xuất:{" "}
+                                      <span className="text-[#39d6cf] font-mono font-medium">
+                                        {typeof proposal.price_vnd === "number"
+                                          ? `${proposal.price_vnd.toLocaleString("vi-VN")} ₫`
+                                          : "Giá liên hệ"}
+                                      </span>
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      Gửi lúc:{" "}
+                                      <span className="text-[#e2dcfa]">
+                                        {new Date(reqItem.created_at).toLocaleString("vi-VN")}
+                                      </span>
+                                    </span>
+                                  </div>
+
+                                  {/* Rejection Note */}
+                                  {isRejected && reqItem.reject_reason && (
+                                    <div className="mt-2 p-3 bg-red-950/40 border border-red-900/60 rounded-xl text-xs text-red-200 space-y-1">
+                                      <span className="font-semibold text-red-300 flex items-center gap-1">
+                                        <AlertCircle className="w-3.5 h-3.5" />
+                                        Lý do từ chối từ Ban Quản Trị:
+                                      </span>
+                                      <p className="leading-relaxed">{reqItem.reject_reason}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Right: Actions */}
+                              <div className="flex items-center gap-2 flex-shrink-0 self-end md:self-center">
+                                <button
+                                  type="button"
+                                  onClick={() => previewEditRequest(reqItem)}
+                                  className="flex items-center gap-1.5 px-3 py-2 bg-[#12081f] hover:bg-[#23173d] text-[#39d6cf] border border-[#39d6cf]/30 hover:border-[#39d6cf] rounded-xl text-xs font-medium transition"
+                                  title="Xem trước giao diện sản phẩm sau khi được áp dụng bản sửa này"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Xem trước</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => openEditRequestForm(reqItem)}
+                                  className="flex items-center gap-1.5 px-3 py-2 bg-[#23173d] hover:bg-[#322056] text-white border border-[#3b2a60] rounded-xl text-xs font-medium transition"
+                                  title="Mở form và chỉnh sửa tiếp đề xuất này"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-[#39d6cf]" />
+                                  <span>Chỉnh sửa tiếp</span>
+                                </button>
+
+                                {!isApproved && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleCancelEditRequest(
+                                        reqItem.id,
+                                        proposal.name_vi || originalProd.name_vi || "Sản phẩm"
+                                      )
+                                    }
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-red-950/30 hover:bg-red-950/60 text-red-300 border border-red-800/50 hover:border-red-600 rounded-xl text-xs font-medium transition"
+                                    title="Thu hồi hoặc xóa yêu cầu chỉnh sửa này"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Thu hồi</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* SECTION B: SẢN PHẨM MỚI ĐĂNG CHỜ DUYỆT LẦN ĐẦU */}
+                <div className="space-y-4 pt-4 border-t border-[#2e2344]">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Package className="w-4 h-4 text-amber-400" />
+                      Sản phẩm mới đăng chờ duyệt ({newProductsPending.length})
+                    </h3>
+                    <span className="text-xs text-[#7b7194]">
+                      Sản phẩm được tạo mới cần kiểm duyệt nội dung trước khi xuất bản
+                    </span>
+                  </div>
+
+                  {newProductsPending.length === 0 ? (
+                    <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-8 text-center">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-500/50 mx-auto mb-2" />
+                      <p className="text-xs text-[#a39ab8]">
+                        Không có sản phẩm mới nào đang chờ duyệt.
+                      </p>
+                      <p className="text-[11px] text-[#7b7194] mt-1">
+                        Tất cả sản phẩm đã được duyệt hoặc chưa gửi duyệt.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {newProductsPending.map((prod) => {
+                        const cover =
+                          prod.product_images?.find((i: any) => i.is_cover) ||
+                          prod.product_images?.[0];
+                        const imgUrl = cover?.url ? resolveImageUrl(cover.url) : null;
+
+                        return (
+                          <div
+                            key={prod.id}
+                            className="bg-[#181224] border border-amber-500/40 rounded-2xl p-4 shadow-lg flex flex-col justify-between gap-4 hover:border-amber-400/70 transition"
+                          >
+                            <div className="flex items-start gap-3.5">
+                              <div className="w-16 h-16 rounded-xl bg-[#23173d] overflow-hidden flex-shrink-0 border border-[#3b2a60] flex items-center justify-center">
+                                {imgUrl ? (
+                                  <img
+                                    src={imgUrl}
+                                    alt={prod.name_vi}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <FileImage className="w-6 h-6 text-[#7b7194]" />
+                                )}
+                              </div>
+
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <h4 className="font-serif font-bold text-white text-sm truncate">
+                                  {prod.name_vi}
+                                </h4>
+                                <div className="text-[11px] text-[#39d6cf] font-mono font-medium">
+                                  {prod.price_vnd
+                                    ? `${prod.price_vnd.toLocaleString("vi-VN")} ₫`
+                                    : "Giá liên hệ"}
+                                </div>
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                                  <Clock className="w-3 h-3" />
+                                  Chờ BQT duyệt
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2e2344]">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  openEditForm(prod);
+                                  setPreviewModal("product");
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#12081f] hover:bg-[#23173d] text-[#39d6cf] border border-[#39d6cf]/30 rounded-xl text-xs font-medium transition"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Xem trước</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPartnerTab("products");
+                                  openEditForm(prod);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Chỉnh sửa</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
