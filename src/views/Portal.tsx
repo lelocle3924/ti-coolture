@@ -1761,13 +1761,13 @@ export default function Portal() {
 
     const token = (await getSupabaseToken()) || "dev-token";
     try {
-      await fetch("/api/admin/portal/revoke", {
+      await fetch("/api/admin/portal/invite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ inviteId, email }),
+        body: JSON.stringify({ action: "revoke", inviteId, email }),
       });
     } catch (e) {
       console.warn("Revoke API fallback:", e);
@@ -1907,13 +1907,13 @@ export default function Portal() {
 
     const token = (await getSupabaseToken()) || "dev-token";
     try {
-      await fetch("/api/admin/staff/revoke", {
+      await fetch("/api/admin/staff", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ targetEmail }),
+        body: JSON.stringify({ action: "revoke", targetEmail }),
       });
     } catch (e) {
       console.warn("Revoke staff API fallback:", e);
@@ -2027,13 +2027,13 @@ export default function Portal() {
 
     const token = (await getSupabaseToken()) || "dev-token";
     try {
-      const res = await fetch("/api/portal/toggle-visibility", {
+      const res = await fetch("/api/portal/product-actions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ productId, hidden: targetHidden }),
+        body: JSON.stringify({ action: "toggle_visibility", productId, hidden: targetHidden }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -2059,13 +2059,13 @@ export default function Portal() {
 
     const token = (await getSupabaseToken()) || "dev-token";
     try {
-      const res = await fetch("/api/portal/cancel-edit-request", {
+      const res = await fetch("/api/portal/product-actions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ requestId }),
+        body: JSON.stringify({ action: "cancel_edit_request", requestId }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {

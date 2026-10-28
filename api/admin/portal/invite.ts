@@ -50,9 +50,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, invitations: data || [] });
     }
 
-    // POST: Cấp quyền mở shop cho 1 Gmail (Ràng buộc: 1 Gmail = 1 Shop)
-    if (req.method === "POST") {
-      const { email, shopId, shopName, role } = req.body || {};
+    // POST / DELETE: Cấp quyền hoặc thu hồi quyền mở shop
+    if (req.method === "POST" || req.method === "DELETE") {
+      const { action, inviteId, email, shopId, shopName, role } = req.body || {};
+
+      // SUB-ACTION: REVOKE SHOP INVITATION
+      if (action === "revoke" || req.method === "DELETE" || inviteId) {
+        let query = supabase.from("shop_invitations").update({ status: "revoked" });
+        if (inviteId) {
+          query = query.eq("id", inviteId);
+        } else if (email) {
+          query = query.eq("invited_email", email.toLowerCase().trim());
+        } else {
+          return res.status(400).json({ success: false, error: "Thiếu mã lời mời cần thu hồi." });
+        }
+
+        const { error } = await query;
+        if (error) throw error;
+
+        return res.status(200).json({
+          success: true,
+          message: "Đã thu hồi quyền truy cập shop thành công.",
+        });
+      }
 
       if (!email || typeof email !== "string" || !email.includes("@")) {
         return res.status(400).json({

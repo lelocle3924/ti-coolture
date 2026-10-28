@@ -24,8 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, staff: data || [] });
     }
 
-    // POST: Cấp quyền Admin/Staff cho một Gmail khác
-    if (req.method === "POST") {
+    // POST: Cấp quyền hoặc tước quyền Staff/Admin
+    if (req.method === "POST" || req.method === "DELETE") {
       if (staff.role !== "admin") {
         return res.status(403).json({
           success: false,
@@ -33,19 +33,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const { email, role, fullName } = req.body || {};
+      const { action, targetUserId, targetEmail, email, role, fullName } = req.body || {};
+
+      // SUB-ACTION: REVOKE STAFF
+      if (action === "revoke" || req.method === "DELETE") {
+        if (targetUserId === staff.userId || (targetEmail && targetEmail.toLowerCase() === staff.userEmail.toLowerCase())) {
+          return res.status(400).json({
+            success: false,
+            error: "Không thể tự tước quyền quản trị của chính tài khoản đang đăng nhập.",
+          });
+        }
+
+        let query = supabase.from("staff_members").update({ is_active: false });
+        if (targetUserId) {
+          query = query.eq("user_id", targetUserId);
+        } else if (targetEmail) {
+          query = query.eq("email", targetEmail.toLowerCase().trim());
+        } else if (email) {
+          query = query.eq("email", email.toLowerCase().trim());
+        } else {
+          return res.status(400).json({ success: false, error: "Thiếu thông tin người dùng cần tước quyền." });
+        }
+
+        const { error } = await query;
+        if (error) throw error;
+
+        return res.status(200).json({
+          success: true,
+          message: "Đã thu hồi quyền quản trị thành công.",
+        });
+      }
+
+      // SUB-ACTION: GRANT / INVITE STAFF
       if (!email || typeof email !== "string" || !email.includes("@")) {
         return res.status(400).json({ success: false, error: "Email không hợp lệ." });
       }
 
-      const targetEmail = email.toLowerCase().trim();
+      const cleanEmail = email.toLowerCase().trim();
       const targetRole = ["admin", "moderator", "viewer"].includes(role) ? role : "viewer";
 
       // 0. RÀNG BUỘC 1 GMAIL = 1 ROLE DUY NHẤT: Không cấp quyền Admin cho Gmail đang giữ vai trò Shop
       const { data: existingShopInvite } = await supabase
         .from("shop_invitations")
         .select("id, shops(name)")
-        .eq("invited_email", targetEmail)
+        .eq("invited_email", cleanEmail)
         .neq("status", "revoked")
         .maybeSingle();
 
@@ -53,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const shopName = (existingShopInvite.shops as any)?.name || "một shop đối tác";
         return res.status(400).json({
           success: false,
-          error: `Email ${targetEmail} đã được đăng ký vai trò Đối tác Shop ("${shopName}"). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
+          error: `Email ${cleanEmail} đã được đăng ký vai trò Đối tác Shop ("${shopName}"). Mỗi tài khoản Gmail chỉ được đăng ký duy nhất 1 vai trò!`,
         });
       }
 
@@ -62,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const { data: userList } = await supabase.auth.admin.listUsers();
         const existingUser = userList?.users?.find(
-          (u: any) => (u.email || "").toLowerCase() === targetEmail
+          (u: any) => (u.email || "").toLowerCase() === cleanEmail
         );
         if (existingUser) existingUid = existingUser.id;
       } catch (e) {
@@ -75,8 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .upsert(
           {
             user_id: existingUid,
-            email: targetEmail,
-            full_name: fullName?.trim() || targetEmail.split("@")[0],
+            email: cleanEmail,
+            full_name: fullName?.trim() || cleanEmail.split("@")[0],
             role: targetRole,
             is_active: true,
           },
@@ -87,11 +118,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({
         success: true,
-        message: `Đã cấp quyền ${targetRole} thành công cho ${targetEmail}.`,
+        message: `Đã cấp quyền ${targetRole} thành công cho ${cleanEmail}.`,
       });
     }
 
-    res.setHeader("Allow", ["GET", "POST"]);
+    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
     return res.status(405).json({ success: false, error: "Method Not Allowed" });
   } catch (err: any) {
     console.error("[admin/staff] Error:", err.message);
