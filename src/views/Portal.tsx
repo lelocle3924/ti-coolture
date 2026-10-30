@@ -2347,15 +2347,19 @@ export default function Portal() {
         return updated;
       });
     } catch (err: any) {
-      console.warn("R2 upload fallback (offline preview):", err.message);
+      console.error("R2 upload failed:", err.message);
+      setFormFeedback({
+        type: "error",
+        text: `Tải ảnh lên hệ thống thất bại: ${err.message || "Lỗi mạng hoặc CORS"}. Vui lòng thử lại.`,
+      });
       setImages((current) =>
         current.map((item) => {
           if (item.isUploading) {
             return {
               ...item,
-              url: item.url || `shops/dev/products/${Date.now()}.webp`,
               isUploading: false,
-              progress: 100,
+              error: err.message || "Lỗi tải ảnh",
+              progress: 0,
             };
           }
           return item;
@@ -2444,6 +2448,25 @@ export default function Portal() {
       return null;
     }
 
+    if (images.some((img) => img.isUploading)) {
+      setFormFeedback({
+        type: "error",
+        text: "Hình ảnh đang được tải lên. Vui lòng đợi ảnh tải xong 100% trước khi lưu.",
+      });
+      return null;
+    }
+
+    const invalidImages = images.filter(
+      (img) => !img.url || img.url.startsWith("blob:") || img.url.includes("blob:") || img.error
+    );
+    if (invalidImages.length > 0) {
+      setFormFeedback({
+        type: "error",
+        text: "Có hình ảnh tải lên bị lỗi hoặc chưa hoàn tất (chứa link tạm). Vui lòng xóa ảnh lỗi và tải lại trước khi lưu.",
+      });
+      return null;
+    }
+
     setIsSaving(true);
     setFormFeedback(null);
 
@@ -2463,7 +2486,7 @@ export default function Portal() {
       shortDescVi: shortDescVi.trim() || undefined,
       storyVi: storyVi.trim() || undefined,
       images: images.map((img, idx) => ({
-        url: img.url || img.previewUrl || "",
+        url: img.url.trim(),
         sortOrder: idx,
         isCover: idx === 0,
         altVi: nameVi.trim(),
@@ -2567,7 +2590,7 @@ export default function Portal() {
           await supabase.from("product_images").delete().eq("product_id", savedId);
           const imgRows = images.map((img, idx) => ({
             product_id: savedId,
-            url: img.url || img.previewUrl || "",
+            url: img.url.trim(),
             is_cover: idx === 0,
             sort_order: idx,
             alt_vi: nameVi.trim(),
@@ -2608,7 +2631,7 @@ export default function Portal() {
         updated_at: new Date().toISOString(),
         product_images: images.map((img, idx) => ({
           id: img.id,
-          url: img.url || img.previewUrl || "",
+          url: img.url.trim(),
           is_cover: idx === 0,
           sort_order: idx,
           alt_vi: nameVi,
@@ -2668,6 +2691,25 @@ export default function Portal() {
       setFormFeedback({
         type: "error",
         text: "Sản phẩm phải có ít nhất 1 hình ảnh trước khi gửi duyệt.",
+      });
+      return;
+    }
+
+    if (images.some((img) => img.isUploading)) {
+      setFormFeedback({
+        type: "error",
+        text: "Hình ảnh đang được tải lên. Vui lòng đợi tải xong 100% trước khi gửi duyệt.",
+      });
+      return;
+    }
+
+    const unreadyImages = images.filter(
+      (img) => !img.url || img.url.startsWith("blob:") || img.url.includes("blob:") || img.error
+    );
+    if (unreadyImages.length > 0) {
+      setFormFeedback({
+        type: "error",
+        text: "Có hình ảnh tải lên bị lỗi hoặc chưa hoàn tất (chứa link tạm). Vui lòng xóa ảnh lỗi và tải lại trước khi gửi duyệt.",
       });
       return;
     }
@@ -4763,7 +4805,7 @@ export default function Portal() {
                         <button
                           type="button"
                           onClick={handleSaveDraft}
-                          disabled={isSaving}
+                          disabled={isSaving || isSubmitting || images.some((img) => img.isUploading)}
                           className="flex items-center gap-1.5 px-3.5 py-2 bg-[#23173d] hover:bg-[#322056] text-white rounded-xl text-xs font-medium border border-[#3b2a60] transition disabled:opacity-50"
                         >
                           {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -4773,7 +4815,7 @@ export default function Portal() {
                         <button
                           type="button"
                           onClick={handleSubmitReview}
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || isSaving || images.some((img) => img.isUploading)}
                           className="flex items-center gap-1.5 px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition shadow-sm disabled:opacity-50"
                         >
                           {isSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
@@ -5131,8 +5173,18 @@ export default function Portal() {
                                   <div className="text-[11px] text-white truncate font-medium">
                                     Ảnh {idx + 1}
                                   </div>
-                                  <div className="text-[10px] text-[#7b7194]">
-                                    {img.isUploading ? `Đang tải: ${img.progress}%` : "Sẵn sàng"}
+                                  <div className="text-[10px]">
+                                    {img.isUploading ? (
+                                      <span className="text-[#39d6cf] flex items-center gap-1 font-mono">
+                                        <RefreshCw className="w-2.5 h-2.5 animate-spin" /> Đang tải {img.progress}%
+                                      </span>
+                                    ) : img.error ? (
+                                      <span className="text-red-400 font-medium flex items-center gap-1">
+                                        <AlertCircle className="w-2.5 h-2.5" /> Lỗi tải ảnh
+                                      </span>
+                                    ) : (
+                                      <span className="text-emerald-400 font-medium">Sẵn sàng</span>
+                                    )}
                                   </div>
                                 </div>
 
@@ -5210,7 +5262,7 @@ export default function Portal() {
                       <button
                         type="button"
                         onClick={handleSaveDraft}
-                        disabled={isSaving}
+                          disabled={isSaving || isSubmitting || images.some((img) => img.isUploading)}
                         className="flex items-center gap-1.5 px-4 py-2.5 bg-[#23173d] hover:bg-[#322056] text-white rounded-xl text-xs font-medium border border-[#3b2a60] transition disabled:opacity-50"
                       >
                         {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -5220,7 +5272,7 @@ export default function Portal() {
                       <button
                         type="button"
                         onClick={handleSubmitReview}
-                        disabled={isSubmitting}
+                          disabled={isSubmitting || isSaving || images.some((img) => img.isUploading)}
                         className="flex items-center gap-1.5 px-5 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition shadow-sm disabled:opacity-50"
                       >
                         {isSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}

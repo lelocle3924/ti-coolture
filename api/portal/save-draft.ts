@@ -327,6 +327,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4. Đồng bộ danh sách hình ảnh (product_images)
     if (Array.isArray(images)) {
+      const hasBlobUrl = images.some((img: any) => {
+        const u = String(img.url || "").trim();
+        return u.startsWith("blob:") || u.includes("blob:");
+      });
+      if (hasBlobUrl) {
+        return res.status(400).json({
+          success: false,
+          error: "Có hình ảnh chưa được tải lên hệ thống lưu trữ (chứa đường dẫn tạm blob:). Vui lòng đợi ảnh tải xong 100% rồi lưu lại.",
+        });
+      }
       // Xóa ảnh cũ không còn trong danh sách
       await supabase.from("product_images").delete().eq("product_id", targetProductId);
 

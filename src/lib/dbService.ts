@@ -96,8 +96,17 @@ const R2_PUBLIC_DOMAIN =
 
 export function resolveImageUrl(url?: string | null): string {
   if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:") ||
+    url.startsWith("blob:")
+  ) {
     return url;
+  }
+  // Chặn đường dẫn rác chứa tiền tố blob:
+  if (url.includes("blob:")) {
+    return "";
   }
   return `${R2_PUBLIC_DOMAIN.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
 }
