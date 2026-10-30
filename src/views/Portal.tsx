@@ -66,6 +66,7 @@ import {
   Edit3,
   ClipboardList,
   Package,
+  RotateCcw,
 } from "lucide-react";
 import PlatformGlyph from "../components/PlatformGlyph";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
@@ -2109,6 +2110,44 @@ export default function Portal() {
       if (token) await loadPortalMe(token);
     } catch (err: any) {
       alert("Lỗi khi thu hồi yêu cầu: " + (err.message || ""));
+    }
+  }
+
+  // Shop Partner Action: Cancel / Withdraw New Product Upload Request (Thu hồi đăng sản phẩm mới chờ duyệt)
+  const [isCancellingUpload, setIsCancellingUpload] = useState<string | null>(null);
+
+  async function handleCancelUploadRequest(productId: string, prodName: string) {
+    const confirmMsg = `Bạn có chắc muốn THU HỒI yêu cầu đăng sản phẩm "${prodName}"? Sản phẩm sẽ được chuyển về trạng thái Bản nháp để bạn có thể tiếp tục chỉnh sửa.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsCancellingUpload(productId);
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/product-actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "cancel_upload_request", productId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể thu hồi yêu cầu đăng sản phẩm.");
+      }
+
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, status: "draft" } : p))
+      );
+      if (token) await loadPortalMe(token);
+      setFormFeedback({
+        type: "success",
+        text: `Đã thu hồi yêu cầu đăng sản phẩm "${prodName}". Sản phẩm hiện đã chuyển về bản nháp.`,
+      });
+    } catch (err: any) {
+      alert("Lỗi khi thu hồi yêu cầu: " + (err.message || ""));
+    } finally {
+      setIsCancellingUpload(null);
     }
   }
 
@@ -4628,16 +4667,37 @@ export default function Portal() {
                                     </td>
 
                                     <td className="py-3.5 px-5 text-right">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openEditForm(prod);
-                                        }}
-                                        className="text-xs text-[#39d6cf] group-hover:text-white font-medium transition"
-                                      >
-                                        Chỉnh sửa →
-                                      </button>
+                                      <div className="flex items-center justify-end gap-3">
+                                        {prod.status === "pending_review" && (
+                                          <button
+                                            type="button"
+                                            disabled={isCancellingUpload === prod.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCancelUploadRequest(prod.id, prod.name_vi);
+                                            }}
+                                            className="text-xs text-amber-400 hover:text-amber-300 font-medium transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                            title="Thu hồi yêu cầu đăng về bản nháp để tiếp tục chỉnh sửa"
+                                          >
+                                            {isCancellingUpload === prod.id ? (
+                                              <RefreshCw className="w-3 h-3 animate-spin" />
+                                            ) : (
+                                              <RotateCcw className="w-3 h-3" />
+                                            )}
+                                            <span>Thu hồi</span>
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openEditForm(prod);
+                                          }}
+                                          className="text-xs text-[#39d6cf] group-hover:text-white font-medium transition"
+                                        >
+                                          Chỉnh sửa →
+                                        </button>
+                                      </div>
                                     </td>
                                   </tr>
                                 );
@@ -4679,6 +4739,27 @@ export default function Portal() {
                           <span>Xem trước sản phẩm (Preview)</span>
                         </button>
 
+                        {products.find((p) => p.id === editingProductId)?.status === "pending_review" && (
+                          <button
+                            type="button"
+                            disabled={isCancellingUpload === editingProductId}
+                            onClick={() => {
+                              if (editingProductId) {
+                                handleCancelUploadRequest(editingProductId, nameVi || "Sản phẩm");
+                              }
+                            }}
+                            className="flex items-center gap-1.5 px-3.5 py-2 bg-red-950/40 hover:bg-red-950/70 text-red-300 border border-red-800/60 rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                            title="Thu hồi yêu cầu nộp duyệt để chỉnh sửa tự do dưới dạng bản nháp"
+                          >
+                            {isCancellingUpload === editingProductId ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            )}
+                            <span>Thu hồi về bản nháp</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={handleSaveDraft}
@@ -4715,6 +4796,34 @@ export default function Portal() {
                           <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                         )}
                         <span>{formFeedback.text}</span>
+                      </div>
+                    )}
+
+                    {products.find((p) => p.id === editingProductId)?.status === "pending_review" && (
+                      <div className="p-4 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-950/40 border border-amber-800/60 text-amber-200">
+                        <div className="flex items-center gap-2.5">
+                          <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>
+                            Sản phẩm này đang trong hàng chờ duyệt của Ban Quản Trị. Bạn có thể thu hồi về trạng thái <strong>Bản nháp</strong> bất cứ lúc nào để chỉnh sửa lại.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isCancellingUpload === editingProductId}
+                          onClick={() => {
+                            if (editingProductId) {
+                              handleCancelUploadRequest(editingProductId, nameVi || "Sản phẩm");
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 text-white rounded-lg text-xs font-medium transition flex-shrink-0 cursor-pointer disabled:opacity-50"
+                        >
+                          {isCancellingUpload === editingProductId ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          )}
+                          <span>Thu hồi về bản nháp</span>
+                        </button>
                       </div>
                     )}
 
@@ -5067,7 +5176,7 @@ export default function Portal() {
                     </div>
 
                     {/* Bottom Save/Submit Actions */}
-                    <div className="pt-4 border-t border-[#2e2344] flex items-center justify-end gap-3">
+                    <div className="pt-4 border-t border-[#2e2344] flex flex-wrap items-center justify-end gap-3">
                       <button
                         type="button"
                         onClick={() => setPreviewModal("product")}
@@ -5076,6 +5185,27 @@ export default function Portal() {
                         <Eye className="w-3.5 h-3.5" />
                         <span>Xem trước sản phẩm (Preview)</span>
                       </button>
+
+                      {products.find((p) => p.id === editingProductId)?.status === "pending_review" && (
+                        <button
+                          type="button"
+                          disabled={isCancellingUpload === editingProductId}
+                          onClick={() => {
+                            if (editingProductId) {
+                              handleCancelUploadRequest(editingProductId, nameVi || "Sản phẩm");
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-2.5 bg-red-950/40 hover:bg-red-950/70 text-red-300 border border-red-800/60 rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                          title="Thu hồi yêu cầu nộp duyệt để chỉnh sửa tự do dưới dạng bản nháp"
+                        >
+                          {isCancellingUpload === editingProductId ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          )}
+                          <span>Thu hồi về bản nháp</span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -5395,11 +5525,28 @@ export default function Portal() {
                                   setPartnerTab("products");
                                   openEditForm(prod);
                                 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#23173d] hover:bg-[#322056] text-white border border-[#3b2a60] rounded-xl text-xs font-medium transition"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                                 <span>Chỉnh sửa</span>
                               </button>
+
+                              {prod.status === "pending_review" && (
+                                <button
+                                  type="button"
+                                  disabled={isCancellingUpload === prod.id}
+                                  onClick={() => handleCancelUploadRequest(prod.id, prod.name_vi)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/30 hover:bg-red-950/60 text-red-300 border border-red-800/50 hover:border-red-600 rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
+                                  title="Thu hồi yêu cầu nộp duyệt và chuyển sản phẩm về bản nháp"
+                                >
+                                  {isCancellingUpload === prod.id ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>Thu hồi</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         );

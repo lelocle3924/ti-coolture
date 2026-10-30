@@ -105,6 +105,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (updateErr) throw updateErr;
 
+      // Ghi audit log
+      try {
+        await supabase.from("audit_logs").insert({
+          user_id: shopContext.userId,
+          action: "cancel_upload_request",
+          table_name: "products",
+          record_id: productId,
+          old_data: { status: "pending_review" },
+          new_data: { status: "draft" },
+        });
+      } catch (logErr) {
+        console.warn("[portal/product-actions] Audit log error:", logErr);
+      }
+
       return res.status(200).json({
         success: true,
         message: `Đã thu hồi yêu cầu đăng sản phẩm "${existingProd.name_vi}". Sản phẩm đã được chuyển về bản nháp.`,
