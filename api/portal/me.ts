@@ -95,7 +95,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (shopData && socialsRes.data) {
         (shopData as any).socials = socialsRes.data;
       }
-      productsData = productsRes.data || [];
+
+      const rawProducts = productsRes.data || [];
+      const rejectedProdIds = rawProducts
+        .filter((p: any) => p.status === "rejected")
+        .map((p: any) => p.id);
+
+      let auditReasonsMap: Record<string, string> = {};
+      if (rejectedProdIds.length > 0) {
+        try {
+          const { data: auditData } = await supabase
+            .from("audit_logs")
+            .select("record_id, new_data, created_at")
+            .eq("table_name", "products")
+            .eq("action", "reject")
+            .in("record_id", rejectedProdIds)
+            .order("created_at", { ascending: false });
+
+          if (Array.isArray(auditData)) {
+            for (const log of auditData) {
+              if (log.record_id && !auditReasonsMap[log.record_id] && log.new_data?.reject_reason) {
+                auditReasonsMap[log.record_id] = log.new_data.reject_reason;
+              }
+            }
+          }
+        } catch (auditErr) {
+          console.warn("[portal/me] Failed to query audit_logs for reject reasons:", auditErr);
+        }
+      }
+
+      productsData = rawProducts.map((p: any) => ({
+        ...p,
+        reject_reason: p.reject_reason || auditReasonsMap[p.id] || null,
+      }));
+
       editRequestsData = editReqsRes.data || [];
     }
 

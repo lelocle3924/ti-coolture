@@ -117,6 +117,9 @@ interface PortalProduct {
   story_vi?: string;
   variants?: any[];
   status: "draft" | "pending_review" | "published" | "rejected";
+  reject_reason?: string | null;
+  product_hidden?: boolean;
+  shop_hidden?: boolean;
   created_at: string;
   updated_at: string;
   product_images?: Array<{
@@ -369,15 +372,26 @@ export default function Portal() {
   // Preview Modal State ("store" | "product" | null)
   const [previewModal, setPreviewModal] = useState<"store" | "product" | null>(null);
 
+  // Admin Reject Reason Modal State
+  const [rejectModal, setRejectModal] = useState<{
+    isOpen: boolean;
+    type: "product" | "edit_request";
+    id: string;
+    name: string;
+    request?: any;
+    reason: string;
+  } | null>(null);
+
   const newProductsPending = useMemo(
-    () => products.filter((p) => p.status === "pending_review"),
+    () => products.filter((p) => p.status === "pending_review" || p.status === "rejected"),
     [products]
   );
   const editRequestsPending = useMemo(
     () => productEditRequests.filter((r) => r.status === "pending"),
     [productEditRequests]
   );
-  const totalPendingReviewsCount = newProductsPending.length + editRequestsPending.length;
+  const totalPendingReviewsCount =
+    products.filter((p) => p.status === "pending_review").length + editRequestsPending.length;
 
   const previewStore = useMemo<StoreProfile>(() => {
     return {
@@ -977,25 +991,30 @@ export default function Portal() {
 
   async function handleProductEditReview(
     request: any,
-    action: "approve_edit" | "reject_edit"
+    action: "approve_edit" | "reject_edit",
+    rejectReason?: string
   ) {
     const productName = request.proposed_data?.name_vi || request.products?.name_vi || "sản phẩm";
-    if (!window.confirm(
-      action === "approve_edit"
-        ? `Bạn có chắc muốn duyệt cập nhật "${productName}" và áp dụng lên website?`
-        : `Bạn có chắc muốn từ chối yêu cầu chỉnh sửa "${productName}"?`
-    )) return;
+    if (action === "approve_edit") {
+      if (!window.confirm(`Bạn có chắc muốn duyệt cập nhật "${productName}" và áp dụng lên website?`)) {
+        return;
+      }
+    }
 
     setIsSubmittingAdmin(true);
     setAdminFeedback(null);
     try {
-      await postAdminReviewAction({ action, editRequestId: request.id });
+      await postAdminReviewAction({
+        action,
+        editRequestId: request.id,
+        rejectReason: rejectReason?.trim() || undefined,
+      });
       await loadAdminData();
       setAdminFeedback({
         type: "success",
         text: action === "approve_edit"
           ? `Đã duyệt yêu cầu chỉnh sửa "${productName}".`
-          : `Đã từ chối yêu cầu chỉnh sửa "${productName}".`,
+          : `Đã từ chối yêu cầu chỉnh sửa "${productName}" kèm lý do cho shop.`,
       });
     } catch (err: any) {
       setAdminFeedback({
@@ -1007,10 +1026,17 @@ export default function Portal() {
     }
   }
 
-  async function handleReviewAction(productId: string, action: "approve" | "reject", productName: string) {
-    if (!window.confirm(action === "approve"
-      ? `Bạn có chắc muốn DUYỆT và xuất bản sản phẩm "${productName}" lên website chính?`
-      : `Bạn có chắc muốn TỪ CHỐI sản phẩm "${productName}"?`)) return;
+  async function handleReviewAction(
+    productId: string,
+    action: "approve" | "reject",
+    productName: string,
+    rejectReason?: string
+  ) {
+    if (action === "approve") {
+      if (!window.confirm(`Bạn có chắc muốn DUYỆT và xuất bản sản phẩm "${productName}" lên website chính?`)) {
+        return;
+      }
+    }
 
     setIsSubmittingAdmin(true);
     setAdminFeedback(null);
@@ -1020,7 +1046,11 @@ export default function Portal() {
       const newStatus = action === "approve" ? "published" : "rejected";
       setSandboxOverrides({ products: { [productId]: newStatus } });
       setPendingReviews((prev) =>
-        prev.map((p) => (p.id === productId ? { ...p, status: newStatus } : p))
+        prev.map((p) =>
+          p.id === productId
+            ? { ...p, status: newStatus, reject_reason: rejectReason || null }
+            : p
+        )
       );
       setAdminFeedback({
         type: "success",
@@ -1031,13 +1061,17 @@ export default function Portal() {
     }
 
     try {
-      await postAdminReviewAction({ productId, action });
+      await postAdminReviewAction({
+        productId,
+        action,
+        rejectReason: rejectReason?.trim() || undefined,
+      });
       await loadAdminData();
       setAdminFeedback({
         type: "success",
         text: action === "approve"
           ? `Đã duyệt và xuất bản sản phẩm "${productName}" lên website!`
-          : `Đã từ chối xét duyệt sản phẩm "${productName}".`,
+          : `Đã từ chối xét duyệt sản phẩm "${productName}" kèm lý do cho shop.`,
       });
     } catch (err: any) {
       setAdminFeedback({ type: "error", text: "Lỗi duyệt sản phẩm: " + err.message });

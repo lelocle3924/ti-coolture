@@ -120,21 +120,18 @@ export function KeLayout({
 }) {
   return (
     <div
-      className={`flex flex-col md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] ${
-        align === "start" ? "md:items-start" : "md:items-center"
-      }`}
+      className={`flex flex-col md:grid md:grid-cols-[minmax(0,35fr)_minmax(0,65fr)] ${align === "start" ? "md:items-start" : "md:items-center"
+        }`}
     >
       <div
-        className={`px-5 md:order-none md:px-10 ${
-          islandFirst ? "order-2 mt-8 md:mt-0" : "order-1"
-        }`}
+        className={`px-5 md:order-none md:px-10 ${islandFirst ? "order-2 mt-8 md:mt-0" : "order-1"
+          }`}
       >
         {index}
       </div>
       <div
-        className={`mx-auto w-[75%] md:order-none md:mx-0 md:w-full ${
-          islandFirst ? "order-1" : "order-2 mt-8 md:mt-0"
-        }`}
+        className={`mx-auto w-[75%] md:order-none md:mx-0 md:w-full ${islandFirst ? "order-1" : "order-2 mt-8 md:mt-0"
+          }`}
       >
         {island}
       </div>
@@ -245,15 +242,13 @@ export function MapArrows({ onStep }: { onStep: (delta: number) => void }) {
           type="button"
           onClick={() => onStep(delta)}
           aria-label={delta < 0 ? "Vùng trước" : "Vùng sau"}
-          className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-paper transition-colors hover:text-wave md:h-14 md:w-14 ${
-            delta < 0 ? "left-0 md:-left-3" : "right-1 md:right-4"
-          }`}
+          className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-paper transition-colors hover:text-wave md:h-14 md:w-14 ${delta < 0 ? "left-0 md:-left-3" : "right-1 md:right-4"
+            }`}
         >
           <ArrowRight
             aria-hidden="true"
-            className={`h-7 w-7 drop-shadow-[0_2px_6px_rgba(18,8,31,0.45)] md:h-9 md:w-9 ${
-              delta < 0 ? "rotate-180" : ""
-            }`}
+            className={`h-7 w-7 drop-shadow-[0_2px_6px_rgba(18,8,31,0.45)] md:h-9 md:w-9 ${delta < 0 ? "rotate-180" : ""
+              }`}
             strokeWidth={2.5}
           />
         </button>
@@ -366,18 +361,16 @@ export function RegionList({
               type="button"
               onClick={() => onPick(r.id)}
               aria-current={on}
-              className={`flex w-full items-center gap-4 py-4 text-left transition-colors md:py-5 ${
-                on ? "text-wave" : "text-white/65 hover:text-paper"
-              }`}
+              className={`flex w-full items-center gap-4 py-4 text-left transition-colors md:py-5 ${on ? "text-wave" : "text-white/65 hover:text-paper"
+                }`}
             >
               <span className="min-w-0 flex-1 truncate text-2xl font-medium leading-snug md:text-[1.6875rem]">
                 {planFor(r.id).region}
               </span>
               <span
                 aria-hidden="true"
-                className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                  on ? "w-12" : "w-0"
-                }`}
+                className={`h-px shrink-0 bg-current transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${on ? "w-12" : "w-0"
+                  }`}
               />
             </button>
           </li>
@@ -659,7 +652,7 @@ export function HomeDistrictMap({
           style={{
             width: geo.arcWidth,
             top: 0,
-            transform: "scaleY(-1)",
+            transform: "scaleY(-1) rotate(-180deg)",
             transformOrigin: "center",
           }}
         />
@@ -819,34 +812,33 @@ export function CategoryMap({
           <MapArrows onStep={onStep} />
 
           <IslandFrame route={route}>
-          {DISCOVER_CATEGORIES.map((c, i) => {
-            const at = points[i] ?? { x: 50, y: 50 };
-            const on = c.id === activeId;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onSelect(c.id)}
-                aria-label={`Xem địa điểm ${c.name}`}
-                aria-current={on}
-                style={{
-                  left: `${at.x}%`,
-                  top: `${at.y}%`,
-                  /* The scale composes with the tip offset rather than
-                     replacing it, and origin-bottom keeps the tip on its
-                     coordinate while the pin grows. */
-                  transform: `translate(-50%, -100%) scale(${on ? 1.15 : 1})`,
-                }}
-                className="absolute z-10 block origin-bottom transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              >
-                <Teardrop fill={on ? "var(--color-brand)" : "var(--color-paper)"}>
-                  <c.Icon
-                    aria-hidden="true"
-                    className={`absolute left-1/2 top-[30%] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 transition-colors duration-300 md:h-4 md:w-4 ${
-                      on ? "text-paper" : "text-ink"
-                    }`}
-                  />
-                </Teardrop>
+            {DISCOVER_CATEGORIES.map((c, i) => {
+              const at = points[i] ?? { x: 50, y: 50 };
+              const on = c.id === activeId;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onSelect(c.id)}
+                  aria-label={`Xem địa điểm ${c.name}`}
+                  aria-current={on}
+                  style={{
+                    left: `${at.x}%`,
+                    top: `${at.y}%`,
+                    /* The scale composes with the tip offset rather than
+                       replacing it, and origin-bottom keeps the tip on its
+                       coordinate while the pin grows. */
+                    transform: `translate(-50%, -100%) scale(${on ? 1.15 : 1})`,
+                  }}
+                  className="absolute z-10 block origin-bottom transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                >
+                  <Teardrop fill={on ? "var(--color-brand)" : "var(--color-paper)"}>
+                    <c.Icon
+                      aria-hidden="true"
+                      className={`absolute left-1/2 top-[30%] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 transition-colors duration-300 md:h-4 md:w-4 ${on ? "text-paper" : "text-ink"
+                        }`}
+                    />
+                  </Teardrop>
                 </button>
               );
             })}

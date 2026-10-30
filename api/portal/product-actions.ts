@@ -55,7 +55,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 2. ACTION: CANCEL / WITHDRAW EDIT REQUEST (THU HỒI YÊU CẦU CHỈNH SỬA)
+    // 2. ACTION: CANCEL UPLOAD REQUEST (THU HỒI YÊU CẦU ĐĂNG SẢN PHẨM MỚI)
+    if (action === "cancel_upload_request") {
+      if (!productId || typeof productId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "Thiếu mã sản phẩm cần thu hồi yêu cầu đăng.",
+        });
+      }
+
+      const { data: existingProd, error: fetchErr } = await supabase
+        .from("products")
+        .select("id, name_vi, shop_id, status")
+        .eq("id", productId)
+        .single();
+
+      if (fetchErr || !existingProd) {
+        return res.status(404).json({
+          success: false,
+          error: "Không tìm thấy sản phẩm cần thu hồi.",
+        });
+      }
+
+      if (existingProd.shop_id !== shopContext.shopId) {
+        return res.status(403).json({
+          success: false,
+          error: "Bạn không có quyền thu hồi sản phẩm của shop khác.",
+        });
+      }
+
+      if (existingProd.status !== "pending_review") {
+        return res.status(400).json({
+          success: false,
+          error:
+            existingProd.status === "published"
+              ? "Sản phẩm đã được duyệt và xuất bản, không thể thu hồi."
+              : "Sản phẩm không ở trạng thái chờ duyệt.",
+        });
+      }
+
+      const { error: updateErr } = await supabase
+        .from("products")
+        .update({
+          status: "draft",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", productId)
+        .eq("shop_id", shopContext.shopId);
+
+      if (updateErr) throw updateErr;
+
+      return res.status(200).json({
+        success: true,
+        message: `Đã thu hồi yêu cầu đăng sản phẩm "${existingProd.name_vi}". Sản phẩm đã được chuyển về bản nháp.`,
+      });
+    }
+
+    // 3. ACTION: CANCEL / WITHDRAW EDIT REQUEST (THU HỒI YÊU CẦU CHỈNH SỬA)
     if (action === "cancel_edit_request" || requestId) {
       if (!requestId || typeof requestId !== "string") {
         return res.status(400).json({
@@ -107,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(400).json({
       success: false,
-      error: "Hành động (action) không hợp lệ. Hỗ trợ 'toggle_visibility' hoặc 'cancel_edit_request'.",
+      error: "Hành động (action) không hợp lệ. Hỗ trợ 'toggle_visibility', 'cancel_upload_request' hoặc 'cancel_edit_request'.",
     });
   } catch (err: any) {
     console.error("[portal/product-actions] Error:", err.message);

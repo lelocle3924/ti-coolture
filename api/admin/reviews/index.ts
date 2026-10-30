@@ -283,13 +283,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           status: "published",
         });
       } else {
-        const { error: prodErr } = await supabase
+        const cleanReason = typeof rejectReason === "string" && rejectReason.trim() ? rejectReason.trim() : null;
+        const updatePayload: Record<string, any> = {
+          status: "rejected",
+          updated_at: nowIso,
+        };
+        if (cleanReason) {
+          updatePayload.reject_reason = cleanReason;
+        }
+
+        let prodErr = null;
+        const { error: updateErr } = await supabase
           .from("products")
-          .update({
-            status: "rejected",
-            updated_at: nowIso,
-          })
+          .update(updatePayload)
           .eq("id", productId);
+
+        if (updateErr) {
+          if (updateErr.message?.includes("reject_reason")) {
+            const { error: fallbackErr } = await supabase
+              .from("products")
+              .update({
+                status: "rejected",
+                updated_at: nowIso,
+              })
+              .eq("id", productId);
+            prodErr = fallbackErr;
+          } else {
+            prodErr = updateErr;
+          }
+        }
 
         if (prodErr) throw new Error("Lỗi khi từ chối sản phẩm: " + prodErr.message);
 
@@ -299,14 +321,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           action: "reject",
           table_name: "products",
           record_id: productId,
-          new_data: { status: "rejected", reject_reason: rejectReason || null },
+          new_data: { status: "rejected", reject_reason: cleanReason },
         });
 
         return res.status(200).json({
           success: true,
           message: `Đã từ chối xét duyệt sản phẩm "${product.name_vi}".`,
           status: "rejected",
-          rejectReason: rejectReason || null,
+          rejectReason: cleanReason,
         });
       }
     }

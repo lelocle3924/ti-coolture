@@ -153,6 +153,7 @@ CREATE TABLE products (
   price_updated_at date,
   dimensions     text,                  -- '20 x 30 cm'
   status         publish_status NOT NULL DEFAULT 'draft',
+  reject_reason  text,                  -- lý do từ chối / hướng dẫn sửa từ BQT
   product_hidden boolean NOT NULL DEFAULT false,
   shop_hidden    boolean NOT NULL DEFAULT false,
   is_featured    boolean NOT NULL DEFAULT false,
