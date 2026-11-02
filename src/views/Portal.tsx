@@ -67,6 +67,7 @@ import {
   ClipboardList,
   Package,
   RotateCcw,
+  Lock,
 } from "lucide-react";
 import PlatformGlyph from "../components/PlatformGlyph";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
@@ -297,6 +298,22 @@ interface StaffMember {
   is_active: boolean;
 }
 
+/**
+ * Lấy URL ảnh bìa đồng nhất cho sản phẩm ở mọi nơi:
+ * Ưu tiên ảnh có is_cover (hoặc isCover) = true, sau đó đến sort_order nhỏ nhất.
+ */
+function getProductCoverUrl(images?: any[] | null): string | null {
+  if (!images || !Array.isArray(images) || images.length === 0) return null;
+  const sorted = images.slice().sort((a: any, b: any) => {
+    const aCover = a.is_cover || a.isCover ? 1 : 0;
+    const bCover = b.is_cover || b.isCover ? 1 : 0;
+    const aOrder = typeof a.sort_order === "number" ? a.sort_order : (typeof a.sortOrder === "number" ? a.sortOrder : 0);
+    const bOrder = typeof b.sort_order === "number" ? b.sort_order : (typeof b.sortOrder === "number" ? b.sortOrder : 0);
+    return bCover - aCover || aOrder - bOrder;
+  });
+  return sorted[0]?.url ? resolveImageUrl(sorted[0].url) : null;
+}
+
 export default function Portal() {
   const [sessionLoading, setSessionLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -393,6 +410,18 @@ export default function Portal() {
   );
   const totalPendingReviewsCount =
     products.filter((p) => p.status === "pending_review").length + editRequestsPending.length;
+
+  const currentEditingProduct = useMemo(
+    () => products.find((p) => p.id === editingProductId),
+    [products, editingProductId]
+  );
+  const currentEditingPendingEditReq = useMemo(
+    () => productEditRequests.find((r) => r.product_id === editingProductId && r.status === "pending"),
+    [productEditRequests, editingProductId]
+  );
+  const isCurrentEditingLocked = Boolean(
+    currentEditingProduct?.status === "pending_review" || currentEditingPendingEditReq
+  );
 
   const previewStore = useMemo<StoreProfile>(() => {
     return {
@@ -3375,7 +3404,7 @@ export default function Portal() {
                     </div>
                   ) : (
                     visibleReviewProducts.map((prod) => {
-                        const coverImg = (prod.product_images || []).find((i: any) => i.is_cover) || prod.product_images?.[0];
+                        const coverImgUrl = getProductCoverUrl(prod.product_images);
                         return (
                           <div
                             key={prod.id}
@@ -3384,9 +3413,9 @@ export default function Portal() {
                             {/* Images Gallery */}
                             <div className="w-full md:w-56 flex-shrink-0">
                               <div className="w-full aspect-square rounded-xl bg-[#12081f] border border-[#2e2344] overflow-hidden relative">
-                                {coverImg?.url ? (
+                                {coverImgUrl ? (
                                   <img
-                                    src={resolveImageUrl(coverImg.url)}
+                                    src={coverImgUrl}
                                     alt={prod.name_vi}
                                     className="w-full h-full object-cover"
                                   />
@@ -3712,7 +3741,7 @@ export default function Portal() {
                                 ) : (
                                   <div className="divide-y divide-[#2e2344] border border-[#2e2344] rounded-xl overflow-hidden bg-[#12081f]">
                                     {shopProds.map((prod: any) => {
-                                      const pCover = (prod.product_images || []).find((i: any) => i.is_cover) || prod.product_images?.[0];
+                                      const pCoverUrl = getProductCoverUrl(prod.product_images);
                                       const isProductHidden = Boolean(prod.product_hidden) || prod.status === "hidden";
 
                                       return (
@@ -3722,9 +3751,9 @@ export default function Portal() {
                                         >
                                           <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-lg bg-[#23173d] overflow-hidden border border-[#2e2344] flex-shrink-0">
-                                              {pCover?.url ? (
+                                              {pCoverUrl ? (
                                                 <img
-                                                  src={resolveImageUrl(pCover.url)}
+                                                  src={pCoverUrl}
                                                   alt=""
                                                   className="w-full h-full object-cover"
                                                 />
@@ -4085,13 +4114,9 @@ export default function Portal() {
                 >
                   <Clock className="w-4 h-4" />
                   <span>Yêu cầu chờ duyệt</span>
-                  {totalPendingReviewsCount > 0 ? (
+                  {totalPendingReviewsCount > 0 && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
                       {totalPendingReviewsCount}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#12081f] text-[#a39ab8] border border-[#3b2a60]">
-                      {productEditRequests.length + newProductsPending.length}
                     </span>
                   )}
                 </button>
@@ -4532,6 +4557,32 @@ export default function Portal() {
                       </button>
                     </div>
 
+                    {formFeedback && (
+                      <div
+                        className={`p-4 rounded-xl text-xs flex items-center justify-between gap-2.5 leading-relaxed ${
+                          formFeedback.type === "success"
+                            ? "bg-[#23173d] border border-[#39d6cf]/50 text-[#39d6cf]"
+                            : "bg-red-950/50 border border-red-800/60 text-red-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {formFeedback.type === "success" ? (
+                            <CheckCircle2 className="w-4 h-4 text-[#39d6cf] flex-shrink-0" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                          )}
+                          <span>{formFeedback.text}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormFeedback(null)}
+                          className="p-1 hover:bg-white/10 rounded text-[#a39ab8] hover:text-white transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     {products.length === 0 ? (
                       <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center">
                         <div className="w-12 h-12 rounded-full bg-[#23173d] flex items-center justify-center mx-auto mb-4 text-[#a39ab8]">
@@ -4568,22 +4619,36 @@ export default function Portal() {
                             </thead>
                             <tbody className="divide-y divide-[#2e2344]">
                               {products.map((prod) => {
-                                const cover =
-                                  prod.product_images?.find((i) => i.is_cover) ||
-                                  prod.product_images?.[0];
-                                const imgUrl = cover?.url ? resolveImageUrl(cover.url) : null;
+                                const imgUrl = getProductCoverUrl(prod.product_images);
                                 const pendingEditReq = productEditRequests.find(
                                   (r) => r.product_id === prod.id && r.status === "pending"
                                 );
                                 const rejectedEditReq = productEditRequests.find(
                                   (r) => r.product_id === prod.id && r.status === "rejected"
                                 );
+                                const isPendingReview = prod.status === "pending_review";
+                                const isPendingEdit = Boolean(pendingEditReq);
+                                const isLocked = isPendingReview || isPendingEdit;
 
                                 return (
                                   <tr
                                     key={prod.id}
-                                    onClick={() => openEditForm(prod)}
-                                    className="hover:bg-[#23173d]/60 cursor-pointer transition group"
+                                    onClick={() => {
+                                      if (isLocked) return;
+                                      openEditForm(prod);
+                                    }}
+                                    className={`transition group ${
+                                      isLocked
+                                        ? "hover:bg-[#23173d]/20 cursor-default"
+                                        : "hover:bg-[#23173d]/60 cursor-pointer"
+                                    }`}
+                                    title={
+                                      isLocked
+                                        ? isPendingReview
+                                          ? "Sản phẩm đang chờ BQT duyệt. Vui lòng vào tab 'Yêu cầu chờ duyệt' để thu hồi nếu muốn chỉnh sửa."
+                                          : "Sản phẩm có đề xuất chỉnh sửa đang chờ BQT duyệt. Vui lòng vào tab 'Yêu cầu chờ duyệt' để thu hồi nếu muốn chỉnh sửa tiếp."
+                                        : "Bấm vào dòng để chỉnh sửa sản phẩm"
+                                    }
                                   >
                                     <td className="py-3.5 px-5">
                                       <div className="flex items-center gap-3.5">
@@ -4664,81 +4729,89 @@ export default function Portal() {
                                         </span>
                                       )}
                                       {prod.status === "rejected" && (
-                                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-red-950/80 text-red-300 border border-red-800/60 w-max">
-                                          Yêu cầu sửa
+                                        <span
+                                          className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-red-950/80 text-red-300 border border-red-800/60 flex items-center gap-1 w-max"
+                                          title={prod.reject_reason ? `Lý do: ${prod.reject_reason}` : "Bị từ chối duyệt"}
+                                        >
+                                          <AlertCircle className="w-3 h-3" />
+                                          Bị từ chối duyệt
                                         </span>
                                       )}
                                     </td>
 
                                     <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                                      <button
-                                        type="button"
-                                        disabled={isTogglingVisibility === prod.id}
-                                        onClick={() =>
-                                          handleShopToggleProductVisibility(
-                                            prod.id,
-                                            Boolean(prod.product_hidden),
-                                            prod.name_vi
-                                          )
-                                        }
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition ${
-                                          prod.product_hidden
-                                            ? "bg-[#12081f] text-[#a39ab8] border-[#3b2a60] hover:text-white hover:border-[#7520f7]"
-                                            : "bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60"
-                                        }`}
-                                        title={
-                                          prod.product_hidden
-                                            ? "Sản phẩm đang ẩn khỏi trang shop & tìm kiếm. Bấm để hiển thị lại."
-                                            : "Sản phẩm đang hiển thị công khai trên web. Bấm để ẩn."
-                                        }
-                                      >
-                                        {isTogglingVisibility === prod.id ? (
-                                          <RefreshCw className="w-3 h-3 animate-spin text-[#39d6cf]" />
-                                        ) : prod.product_hidden ? (
-                                          <>
-                                            <EyeOff className="w-3.5 h-3.5 text-[#a39ab8]" />
-                                            <span>Đang ẩn</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                                            <span>Đang hiện</span>
-                                          </>
-                                        )}
-                                      </button>
+                                      {prod.status === "published" ? (
+                                        <button
+                                          type="button"
+                                          disabled={isTogglingVisibility === prod.id}
+                                          onClick={() =>
+                                            handleShopToggleProductVisibility(
+                                              prod.id,
+                                              Boolean(prod.product_hidden),
+                                              prod.name_vi
+                                            )
+                                          }
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition ${
+                                            prod.product_hidden
+                                              ? "bg-[#12081f] text-[#a39ab8] border-[#3b2a60] hover:text-white hover:border-[#7520f7]"
+                                              : "bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60"
+                                          }`}
+                                          title={
+                                            prod.product_hidden
+                                              ? "Sản phẩm đang ẩn khỏi trang shop & tìm kiếm. Bấm để hiển thị lại."
+                                              : "Sản phẩm đang hiển thị công khai trên web. Bấm để ẩn."
+                                          }
+                                        >
+                                          {isTogglingVisibility === prod.id ? (
+                                            <RefreshCw className="w-3 h-3 animate-spin text-[#39d6cf]" />
+                                          ) : prod.product_hidden ? (
+                                            <>
+                                              <EyeOff className="w-3.5 h-3.5 text-[#a39ab8]" />
+                                              <span>Đang ẩn</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                                              <span>Đang hiện</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      ) : (
+                                        <span className="text-[11px] text-[#7b7194] italic select-none">
+                                          Chưa xuất bản
+                                        </span>
+                                      )}
                                     </td>
 
                                     <td className="py-3.5 px-5 text-right">
                                       <div className="flex items-center justify-end gap-3">
-                                        {prod.status === "pending_review" && (
+                                        {isLocked ? (
                                           <button
                                             type="button"
-                                            disabled={isCancellingUpload === prod.id}
+                                            disabled
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="text-xs text-[#7b7194] font-medium cursor-not-allowed opacity-60 flex items-center gap-1"
+                                            title={
+                                              isPendingReview
+                                                ? "Sản phẩm đang chờ BQT duyệt. Vui lòng vào tab 'Yêu cầu chờ duyệt' để thu hồi nếu muốn chỉnh sửa."
+                                                : "Có đề xuất sửa đang chờ BQT duyệt. Vui lòng vào tab 'Yêu cầu chờ duyệt' để thu hồi nếu muốn chỉnh sửa tiếp."
+                                            }
+                                          >
+                                            <Lock className="w-3 h-3" />
+                                            <span>Chỉnh sửa</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleCancelUploadRequest(prod.id, prod.name_vi);
+                                              openEditForm(prod);
                                             }}
-                                            className="text-xs text-amber-400 hover:text-amber-300 font-medium transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                            title="Thu hồi yêu cầu đăng về bản nháp để tiếp tục chỉnh sửa"
+                                            className="text-xs text-[#39d6cf] group-hover:text-white font-medium transition"
                                           >
-                                            {isCancellingUpload === prod.id ? (
-                                              <RefreshCw className="w-3 h-3 animate-spin" />
-                                            ) : (
-                                              <RotateCcw className="w-3 h-3" />
-                                            )}
-                                            <span>Thu hồi</span>
+                                            Chỉnh sửa →
                                           </button>
                                         )}
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openEditForm(prod);
-                                          }}
-                                          className="text-xs text-[#39d6cf] group-hover:text-white font-medium transition"
-                                        >
-                                          Chỉnh sửa →
-                                        </button>
                                       </div>
                                     </td>
                                   </tr>
@@ -4781,32 +4854,12 @@ export default function Portal() {
                           <span>Xem trước sản phẩm (Preview)</span>
                         </button>
 
-                        {products.find((p) => p.id === editingProductId)?.status === "pending_review" && (
-                          <button
-                            type="button"
-                            disabled={isCancellingUpload === editingProductId}
-                            onClick={() => {
-                              if (editingProductId) {
-                                handleCancelUploadRequest(editingProductId, nameVi || "Sản phẩm");
-                              }
-                            }}
-                            className="flex items-center gap-1.5 px-3.5 py-2 bg-red-950/40 hover:bg-red-950/70 text-red-300 border border-red-800/60 rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
-                            title="Thu hồi yêu cầu nộp duyệt để chỉnh sửa tự do dưới dạng bản nháp"
-                          >
-                            {isCancellingUpload === editingProductId ? (
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            )}
-                            <span>Thu hồi về bản nháp</span>
-                          </button>
-                        )}
-
                         <button
                           type="button"
                           onClick={handleSaveDraft}
-                          disabled={isSaving || isSubmitting || images.some((img) => img.isUploading)}
-                          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#23173d] hover:bg-[#322056] text-white rounded-xl text-xs font-medium border border-[#3b2a60] transition disabled:opacity-50"
+                          disabled={isCurrentEditingLocked || isSaving || isSubmitting || images.some((img) => img.isUploading)}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#23173d] hover:bg-[#322056] text-white rounded-xl text-xs font-medium border border-[#3b2a60] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={isCurrentEditingLocked ? "Sản phẩm đang chờ duyệt, vui lòng thu hồi bên tab Yêu cầu chờ duyệt để chỉnh sửa" : undefined}
                         >
                           {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                           <span>Lưu bản nháp</span>
@@ -4815,8 +4868,9 @@ export default function Portal() {
                         <button
                           type="button"
                           onClick={handleSubmitReview}
-                          disabled={isSubmitting || isSaving || images.some((img) => img.isUploading)}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition shadow-sm disabled:opacity-50"
+                          disabled={isCurrentEditingLocked || isSubmitting || isSaving || images.some((img) => img.isUploading)}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={isCurrentEditingLocked ? "Sản phẩm đang chờ duyệt, không thể gửi lại" : undefined}
                         >
                           {isSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                           <span>Gửi duyệt</span>
@@ -4826,45 +4880,70 @@ export default function Portal() {
 
                     {formFeedback && (
                       <div
-                        className={`p-4 rounded-xl text-xs flex items-center gap-2.5 leading-relaxed ${
+                        className={`p-4 rounded-xl text-xs flex items-center justify-between gap-2.5 leading-relaxed ${
                           formFeedback.type === "success"
                             ? "bg-[#23173d] border border-[#39d6cf]/50 text-[#39d6cf]"
                             : "bg-red-950/50 border border-red-800/60 text-red-200"
                         }`}
                       >
-                        {formFeedback.type === "success" ? (
-                          <CheckCircle2 className="w-4 h-4 text-[#39d6cf] flex-shrink-0" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                        )}
-                        <span>{formFeedback.text}</span>
+                        <div className="flex items-center gap-2.5">
+                          {formFeedback.type === "success" ? (
+                            <CheckCircle2 className="w-4 h-4 text-[#39d6cf] flex-shrink-0" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                          )}
+                          <span>{formFeedback.text}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormFeedback(null)}
+                          className="p-1 hover:bg-white/10 rounded text-[#a39ab8] hover:text-white transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
 
-                    {products.find((p) => p.id === editingProductId)?.status === "pending_review" && (
+                    {currentEditingProduct?.status === "pending_review" && (
                       <div className="p-4 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-950/40 border border-amber-800/60 text-amber-200">
                         <div className="flex items-center gap-2.5">
                           <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
                           <span>
-                            Sản phẩm này đang trong hàng chờ duyệt của Ban Quản Trị. Bạn có thể thu hồi về trạng thái <strong>Bản nháp</strong> bất cứ lúc nào để chỉnh sửa lại.
+                            Sản phẩm này đang trong hàng chờ duyệt của Ban Quản Trị. Bạn có thể sang tab <strong>Yêu cầu chờ duyệt</strong> để thu hồi về bản nháp nếu muốn chỉnh sửa.
                           </span>
                         </div>
                         <button
                           type="button"
-                          disabled={isCancellingUpload === editingProductId}
                           onClick={() => {
-                            if (editingProductId) {
-                              handleCancelUploadRequest(editingProductId, nameVi || "Sản phẩm");
-                            }
+                            setPartnerTab("reviews");
+                            setActiveView("list");
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 text-white rounded-lg text-xs font-medium transition flex-shrink-0 cursor-pointer disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 text-white rounded-lg text-xs font-medium transition flex-shrink-0 cursor-pointer"
                         >
-                          {isCancellingUpload === editingProductId ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          )}
-                          <span>Thu hồi về bản nháp</span>
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Mở Yêu cầu chờ duyệt →</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {currentEditingPendingEditReq && (
+                      <div className="p-4 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-950/40 border border-amber-800/60 text-amber-200">
+                        <div className="flex items-center gap-2.5">
+                          <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>
+                            Sản phẩm này đang có đề xuất chỉnh sửa chờ Ban Quản Trị phê duyệt. Bạn cần vào tab <strong>Yêu cầu chờ duyệt</strong> để thu hồi đề xuất nếu muốn thực hiện chỉnh sửa khác.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPartnerTab("reviews");
+                            setActiveView("list");
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 text-white rounded-lg text-xs font-medium transition flex-shrink-0 cursor-pointer"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Mở Yêu cầu chờ duyệt →</span>
                         </button>
                       </div>
                     )}
@@ -5238,32 +5317,12 @@ export default function Portal() {
                         <span>Xem trước sản phẩm (Preview)</span>
                       </button>
 
-                      {products.find((p) => p.id === editingProductId)?.status === "pending_review" && (
-                        <button
-                          type="button"
-                          disabled={isCancellingUpload === editingProductId}
-                          onClick={() => {
-                            if (editingProductId) {
-                              handleCancelUploadRequest(editingProductId, nameVi || "Sản phẩm");
-                            }
-                          }}
-                          className="flex items-center gap-1.5 px-4 py-2.5 bg-red-950/40 hover:bg-red-950/70 text-red-300 border border-red-800/60 rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
-                          title="Thu hồi yêu cầu nộp duyệt để chỉnh sửa tự do dưới dạng bản nháp"
-                        >
-                          {isCancellingUpload === editingProductId ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          )}
-                          <span>Thu hồi về bản nháp</span>
-                        </button>
-                      )}
-
                       <button
                         type="button"
                         onClick={handleSaveDraft}
-                          disabled={isSaving || isSubmitting || images.some((img) => img.isUploading)}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#23173d] hover:bg-[#322056] text-white rounded-xl text-xs font-medium border border-[#3b2a60] transition disabled:opacity-50"
+                        disabled={isCurrentEditingLocked || isSaving || isSubmitting || images.some((img) => img.isUploading)}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#23173d] hover:bg-[#322056] text-white rounded-xl text-xs font-medium border border-[#3b2a60] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isCurrentEditingLocked ? "Sản phẩm đang chờ duyệt, vui lòng thu hồi bên tab Yêu cầu chờ duyệt để chỉnh sửa" : undefined}
                       >
                         {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         <span>Lưu bản nháp</span>
@@ -5272,8 +5331,9 @@ export default function Portal() {
                       <button
                         type="button"
                         onClick={handleSubmitReview}
-                          disabled={isSubmitting || isSaving || images.some((img) => img.isUploading)}
-                        className="flex items-center gap-1.5 px-5 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition shadow-sm disabled:opacity-50"
+                        disabled={isCurrentEditingLocked || isSubmitting || isSaving || images.some((img) => img.isUploading)}
+                        className="flex items-center gap-1.5 px-5 py-2.5 bg-[#7520f7] hover:bg-[#5a12c6] text-white rounded-xl text-xs font-medium transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isCurrentEditingLocked ? "Sản phẩm đang chờ duyệt, không thể gửi lại" : undefined}
                       >
                         {isSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                         <span>Gửi duyệt cho Tí Coolture</span>
@@ -5340,12 +5400,7 @@ export default function Portal() {
                       {productEditRequests.map((reqItem) => {
                         const proposal = reqItem.proposed_data || {};
                         const originalProd = reqItem.products || {};
-                        const coverImg =
-                          proposal.images?.find((img: any) => img.is_cover) ||
-                          proposal.images?.[0] ||
-                          originalProd.product_images?.find((img: any) => img.is_cover) ||
-                          originalProd.product_images?.[0];
-                        const imgUrl = coverImg?.url ? resolveImageUrl(coverImg.url) : null;
+                        const imgUrl = getProductCoverUrl(proposal.images) || getProductCoverUrl(originalProd.product_images);
                         const isPending = reqItem.status === "pending";
                         const isRejected = reqItem.status === "rejected";
                         const isDraft = reqItem.status === "draft";
@@ -5459,15 +5514,17 @@ export default function Portal() {
                                   <span>Xem trước</span>
                                 </button>
 
-                                <button
-                                  type="button"
-                                  onClick={() => openEditRequestForm(reqItem)}
-                                  className="flex items-center gap-1.5 px-3 py-2 bg-[#23173d] hover:bg-[#322056] text-white border border-[#3b2a60] rounded-xl text-xs font-medium transition"
-                                  title="Mở form và chỉnh sửa tiếp đề xuất này"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-[#39d6cf]" />
-                                  <span>Chỉnh sửa tiếp</span>
-                                </button>
+                                {(isRejected || isDraft) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditRequestForm(reqItem)}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#23173d] hover:bg-[#322056] text-white border border-[#3b2a60] rounded-xl text-xs font-medium transition"
+                                    title={isRejected ? "Chỉnh sửa lại đề xuất theo lý do từ chối" : "Tiếp tục chỉnh sửa bản nháp đề xuất này"}
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-[#39d6cf]" />
+                                    <span>{isRejected ? "Chỉnh sửa lại" : "Chỉnh sửa tiếp"}</span>
+                                  </button>
+                                )}
 
                                 {!isApproved && (
                                   <button
@@ -5478,10 +5535,10 @@ export default function Portal() {
                                         proposal.name_vi || originalProd.name_vi || "Sản phẩm"
                                       )
                                     }
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-red-950/30 hover:bg-red-950/60 text-red-300 border border-red-800/50 hover:border-red-600 rounded-xl text-xs font-medium transition"
-                                    title="Thu hồi hoặc xóa yêu cầu chỉnh sửa này"
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-red-950/30 hover:bg-red-950/60 text-red-300 border border-red-800/50 hover:border-red-600 rounded-xl text-xs font-medium transition cursor-pointer"
+                                    title="Thu hồi yêu cầu chỉnh sửa này"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <RotateCcw className="w-3.5 h-3.5" />
                                     <span>Thu hồi</span>
                                   </button>
                                 )}
@@ -5519,43 +5576,62 @@ export default function Portal() {
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {newProductsPending.map((prod) => {
-                        const cover =
-                          prod.product_images?.find((i: any) => i.is_cover) ||
-                          prod.product_images?.[0];
-                        const imgUrl = cover?.url ? resolveImageUrl(cover.url) : null;
+                        const imgUrl = getProductCoverUrl(prod.product_images);
 
                         return (
                           <div
                             key={prod.id}
-                            className="bg-[#181224] border border-amber-500/40 rounded-2xl p-4 shadow-lg flex flex-col justify-between gap-4 hover:border-amber-400/70 transition"
+                            className={`bg-[#181224] border rounded-2xl p-4 shadow-lg flex flex-col justify-between gap-4 transition ${
+                              prod.status === "rejected"
+                                ? "border-red-800/60"
+                                : "border-amber-500/40 hover:border-amber-400/70"
+                            }`}
                           >
-                            <div className="flex items-start gap-3.5">
-                              <div className="w-16 h-16 rounded-xl bg-[#23173d] overflow-hidden flex-shrink-0 border border-[#3b2a60] flex items-center justify-center">
-                                {imgUrl ? (
-                                  <img
-                                    src={imgUrl}
-                                    alt={prod.name_vi}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <FileImage className="w-6 h-6 text-[#7b7194]" />
-                                )}
+                            <div>
+                              <div className="flex items-start gap-3.5">
+                                <div className="w-16 h-16 rounded-xl bg-[#23173d] overflow-hidden flex-shrink-0 border border-[#3b2a60] flex items-center justify-center">
+                                  {imgUrl ? (
+                                    <img
+                                      src={imgUrl}
+                                      alt={prod.name_vi}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <FileImage className="w-6 h-6 text-[#7b7194]" />
+                                  )}
+                                </div>
+
+                                <div className="space-y-1 flex-1 min-w-0">
+                                  <h4 className="font-serif font-bold text-white text-sm truncate">
+                                    {prod.name_vi}
+                                  </h4>
+                                  <div className="text-[11px] text-[#39d6cf] font-mono font-medium">
+                                    {prod.price_vnd
+                                      ? `${prod.price_vnd.toLocaleString("vi-VN")} ₫`
+                                      : "Giá liên hệ"}
+                                  </div>
+                                  {prod.status === "rejected" ? (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-950/80 text-red-300 border border-red-800/60">
+                                      <AlertCircle className="w-3 h-3" />
+                                      Bị từ chối duyệt
+                                    </div>
+                                  ) : (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                                      <Clock className="w-3 h-3" />
+                                      Chờ BQT duyệt
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
-                              <div className="space-y-1 flex-1 min-w-0">
-                                <h4 className="font-serif font-bold text-white text-sm truncate">
-                                  {prod.name_vi}
-                                </h4>
-                                <div className="text-[11px] text-[#39d6cf] font-mono font-medium">
-                                  {prod.price_vnd
-                                    ? `${prod.price_vnd.toLocaleString("vi-VN")} ₫`
-                                    : "Giá liên hệ"}
+                              {prod.status === "rejected" && prod.reject_reason && (
+                                <div className="mt-3 p-2.5 bg-red-950/40 border border-red-900/60 rounded-xl text-[11px] text-red-200 space-y-0.5">
+                                  <span className="font-semibold text-red-300 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" /> Lý do từ chối:
+                                  </span>
+                                  <p className="leading-relaxed">{prod.reject_reason}</p>
                                 </div>
-                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-950/80 text-amber-300 border border-amber-800/60">
-                                  <Clock className="w-3 h-3" />
-                                  Chờ BQT duyệt
-                                </div>
-                              </div>
+                              )}
                             </div>
 
                             <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2e2344]">
@@ -5566,22 +5642,26 @@ export default function Portal() {
                                   setPreviewModal("product");
                                 }}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-[#12081f] hover:bg-[#23173d] text-[#39d6cf] border border-[#39d6cf]/30 rounded-xl text-xs font-medium transition"
+                                title="Xem trước thông tin sản phẩm"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                                 <span>Xem trước</span>
                               </button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPartnerTab("products");
-                                  openEditForm(prod);
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#23173d] hover:bg-[#322056] text-white border border-[#3b2a60] rounded-xl text-xs font-medium transition"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                <span>Chỉnh sửa</span>
-                              </button>
+                              {prod.status === "rejected" && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPartnerTab("products");
+                                    openEditForm(prod);
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#23173d] hover:bg-[#322056] text-white border border-[#3b2a60] rounded-xl text-xs font-medium transition"
+                                  title="Chỉnh sửa lại sản phẩm theo góp ý từ chối"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-[#39d6cf]" />
+                                  <span>Sửa lại</span>
+                                </button>
+                              )}
 
                               {prod.status === "pending_review" && (
                                 <button
@@ -5589,14 +5669,14 @@ export default function Portal() {
                                   disabled={isCancellingUpload === prod.id}
                                   onClick={() => handleCancelUploadRequest(prod.id, prod.name_vi)}
                                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/30 hover:bg-red-950/60 text-red-300 border border-red-800/50 hover:border-red-600 rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
-                                  title="Thu hồi yêu cầu nộp duyệt và chuyển sản phẩm về bản nháp"
+                                  title="Thu hồi yêu cầu nộp duyệt và chuyển sản phẩm về bản nháp để chỉnh sửa"
                                 >
                                   {isCancellingUpload === prod.id ? (
                                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                                   ) : (
                                     <RotateCcw className="w-3.5 h-3.5" />
                                   )}
-                                  <span>Thu hồi</span>
+                                  <span>Thu hồi về bản nháp</span>
                                 </button>
                               )}
                             </div>
