@@ -176,7 +176,7 @@ export async function sendShopApprovalEmail(
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
     try {
-      const fromEmail = process.env.MAIL_FROM || "Tí Coolture <onboarding@ticoolture.vn>";
+      const fromEmail = process.env.MAIL_FROM || "Tí Coolture <onboarding@resend.dev>";
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
