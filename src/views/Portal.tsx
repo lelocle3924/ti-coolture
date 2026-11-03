@@ -1873,7 +1873,7 @@ export default function Portal() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Gửi email thất bại.");
+        throw new Error(data.error || data.message || "Gửi email thất bại.");
       }
       setAdminFeedback({
         type: "success",

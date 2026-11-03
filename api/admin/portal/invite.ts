@@ -112,6 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           message: mailResult.success
             ? `Đã gửi lại email link Portal thành công tới ${normalizedEmail}!`
             : `Gửi mail thất bại: ${mailResult.error || "Lỗi cấu hình mail."}`,
+          error: mailResult.success ? undefined : (mailResult.error || "Lỗi cấu hình mail."),
           mailStatus: mailResult,
         });
       }
