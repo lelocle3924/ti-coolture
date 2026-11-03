@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateStaffMember } from "../../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../../_lib/supabaseAdmin.js";
+import { sendShopApprovalEmail } from "../../_lib/mailer.js";
 import crypto from "crypto";
 
 function slugify(str: string): string {
@@ -50,9 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, invitations: data || [] });
     }
 
-    // POST / DELETE: Cấp quyền hoặc thu hồi quyền mở shop
+    // POST / DELETE: Cấp quyền, gửi lại mail hoặc thu hồi quyền mở shop
     if (req.method === "POST" || req.method === "DELETE") {
-      const { action, inviteId, email, shopId, shopName, role } = req.body || {};
+      const { action, inviteId, email, shopId, shopName, role, sendEmail } = req.body || {};
 
       // SUB-ACTION: REVOKE SHOP INVITATION
       if (action === "revoke" || req.method === "DELETE" || inviteId) {
@@ -83,6 +84,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const normalizedEmail = email.toLowerCase().trim();
       const assignedRole = role === "editor" ? "editor" : "owner";
+      const publicDomain = (process.env.VITE_SITE_URL || "https://ticoolture.vn").replace(/\/+$/, "");
+      const portalUrl = `${publicDomain}/portal`;
+
+      // SUB-ACTION: RESEND INVITATION EMAIL
+      if (action === "resend_email") {
+        const { data: inv } = await supabase
+          .from("shop_invitations")
+          .select("id, shop_id, invited_email, shops(name)")
+          .eq("invited_email", normalizedEmail)
+          .neq("status", "revoked")
+          .maybeSingle();
+
+        if (!inv) {
+          return res.status(404).json({ success: false, error: "Không tìm thấy lời mời đang hoạt động cho email này." });
+        }
+
+        const shopTitle = (inv.shops as any)?.name || "Đối tác";
+        const mailResult = await sendShopApprovalEmail({
+          shopName: shopTitle,
+          toEmail: normalizedEmail,
+          portalUrl,
+        });
+
+        return res.status(200).json({
+          success: mailResult.success,
+          message: mailResult.success
+            ? `Đã gửi lại email link Portal thành công tới ${normalizedEmail}!`
+            : `Gửi mail thất bại: ${mailResult.error || "Lỗi cấu hình mail."}`,
+          mailStatus: mailResult,
+        });
+      }
 
       // 1. RÀNG BUỘC: 1 GMAIL = 1 ROLE DUY NHẤT (Không được vừa là Admin vừa là Shop)
       const { data: existingStaff } = await supabase
@@ -178,10 +210,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const grantedShopName = (invite.shops as any)?.name || "";
 
+      // 4. Tự động gửi email thông báo và gửi link Portal (mặc định bật)
+      let mailStatus = null;
+      if (sendEmail !== false) {
+        mailStatus = await sendShopApprovalEmail({
+          shopName: grantedShopName || "Đối tác",
+          toEmail: normalizedEmail,
+          portalUrl,
+        });
+      }
+
+      const message = mailStatus && !mailStatus.success
+        ? `Đã cấp quyền mở shop "${grantedShopName}" cho ${normalizedEmail}. (Lưu ý: Tự động gửi email chưa hoàn tất: ${mailStatus.error || "Lỗi gửi mail"})`
+        : `Đã cấp quyền mở shop "${grantedShopName}" và gửi email link Portal thành công cho ${normalizedEmail}.`;
+
       return res.status(200).json({
         success: true,
-        message: `Đã cấp quyền mở shop "${grantedShopName}" thành công cho ${normalizedEmail}.`,
+        message,
         invitation: invite,
+        mailStatus,
       });
     }
 

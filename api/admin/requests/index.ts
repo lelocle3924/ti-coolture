@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateStaffMember } from "../../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../../_lib/supabaseAdmin.js";
+import { sendShopApprovalEmail } from "../../_lib/mailer.js";
 import crypto from "crypto";
 
 function slugify(str: string): string {
@@ -36,11 +37,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, requests: data || [] });
     }
 
-    // POST: Review request (Approve & Grant Shop or Reject)
+    // POST: Review request (Approve & Grant Shop, Reject, Resend Email, or Test Email)
     if (req.method === "POST") {
-      const { requestId, action, notes } = req.body || {};
+      const { requestId, action, notes, testEmail } = req.body || {};
 
-      if (!requestId || !["approve", "reject"].includes(action)) {
+      // SUB-ACTION: TEST EMAIL CONFIGURATION
+      if (action === "test_email") {
+        const recipient = (testEmail || staff.userEmail || "").trim();
+        if (!recipient || !recipient.includes("@")) {
+          return res.status(400).json({ success: false, error: "Email nhận thử nghiệm không hợp lệ." });
+        }
+
+        const mailResult = await sendShopApprovalEmail({
+          shopName: "Shop Demo Tí Coolture",
+          toEmail: recipient,
+        });
+
+        return res.status(200).json({
+          success: mailResult.success,
+          message: mailResult.success
+            ? `Đã gửi email thử nghiệm thành công tới ${recipient}!`
+            : `Gửi mail thất bại: ${mailResult.error || "Lỗi cấu hình mail."}`,
+          mailStatus: mailResult,
+        });
+      }
+
+      if (!requestId || !["approve", "reject", "resend_email"].includes(action)) {
         return res.status(400).json({ success: false, error: "Tham số không hợp lệ." });
       }
 
@@ -55,14 +77,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ success: false, error: "Không tìm thấy yêu cầu đối tác." });
       }
 
+      const email = requestItem.applicant_email.toLowerCase().trim();
+      const publicDomain = (process.env.VITE_SITE_URL || "https://ticoolture.vn").replace(/\/+$/, "");
+      const portalUrl = `${publicDomain}/portal`;
+
+      // SUB-ACTION: RESEND EMAIL LINK PORTAL
+      if (action === "resend_email") {
+        const mailResult = await sendShopApprovalEmail({
+          shopName: requestItem.shop_name.trim(),
+          toEmail: email,
+          portalUrl,
+        });
+
+        return res.status(200).json({
+          success: mailResult.success,
+          message: mailResult.success
+            ? `Đã gửi lại link Portal thành công tới email ${email}!`
+            : `Gửi mail thất bại: ${mailResult.error || "Lỗi cấu hình mail."}`,
+          mailStatus: mailResult,
+        });
+      }
+
       if (requestItem.status !== "pending") {
         return res.status(409).json({
           success: false,
           error: "Yêu cầu này không còn ở trạng thái chờ duyệt.",
         });
       }
-
-      const email = requestItem.applicant_email.toLowerCase().trim();
 
       if (action === "reject") {
         const { error: rejectErr } = await supabase
@@ -187,9 +228,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         .eq("id", requestId);
 
+      // 5. Gửi automail cho shop
+      const mailResult = await sendShopApprovalEmail({
+        shopName: requestItem.shop_name.trim(),
+        toEmail: email,
+        portalUrl,
+      });
+
+      const message = mailResult.success
+        ? `Đã duyệt, cấp quyền và tự động gửi email link Portal cho ${email} thành công!`
+        : `Đã duyệt và cấp quyền shop thành công. (Lưu ý: Tự động gửi email chưa hoàn tất: ${mailResult.error || "Chưa gửi được mail"})`;
+
       return res.status(200).json({
         success: true,
-        message: `Đã duyệt và cấp quyền mở shop "${requestItem.shop_name}" cho ${email} thành công!`,
+        message,
+        mailStatus: mailResult,
       });
     }
 

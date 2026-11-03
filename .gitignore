@@ -26,3 +26,4 @@ passwords.md
 # Regenerate from the raw drop with: python scripts/build-shop-photos.py
 Ảnh up shop/
 manifest.json
+.antigravity/

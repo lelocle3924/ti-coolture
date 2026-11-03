@@ -1852,6 +1852,43 @@ export default function Portal() {
     setAdminFeedback({ type: "success", text: `Đã thu hồi quyền shop của ${email}.` });
   }
 
+  // Admin Action: Resend Portal Link Email
+  async function handleResendEmail(email: string, requestId?: string) {
+    setIsSubmittingAdmin(true);
+    setAdminFeedback(null);
+    try {
+      const token = (await getSupabaseToken()) || "dev-token";
+      const url = requestId ? "/api/admin/requests" : "/api/admin/portal/invite";
+      const payload = requestId
+        ? { requestId, action: "resend_email" }
+        : { action: "resend_email", email };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gửi email thất bại.");
+      }
+      setAdminFeedback({
+        type: "success",
+        text: data.message || `Đã gửi lại link Portal tới ${email}!`,
+      });
+    } catch (e: any) {
+      setAdminFeedback({
+        type: "error",
+        text: "Lỗi gửi email: " + (e.message || "Không thể gửi email."),
+      });
+    } finally {
+      setIsSubmittingAdmin(false);
+    }
+  }
+
   // Admin Action: Add New Admin / Staff
   async function handleAddStaff(e: React.FormEvent) {
     e.preventDefault();
@@ -3318,6 +3355,21 @@ export default function Portal() {
                             </button>
                           </div>
                         )}
+
+                        {/* Thao tác gửi lại mail link portal khi đã duyệt */}
+                        {req.status === "approved" && !parseProfileUpdateRequest(req.notes) && (
+                          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2e2344]">
+                            <button
+                              type="button"
+                              onClick={() => handleResendEmail(req.applicant_email, req.id)}
+                              disabled={isSubmittingAdmin}
+                              className="px-3.5 py-1.5 bg-[#23173d] hover:bg-[#342456] text-[#39d6cf] hover:text-white text-xs font-medium rounded-xl border border-[#3b2a60] transition shadow-sm flex items-center gap-1.5"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                              <span>Gửi lại link Portal qua email</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -3927,14 +3979,25 @@ export default function Portal() {
                                 </span>
                               )}
                             </td>
-                            <td className="py-4 px-6 text-right">
+                            <td className="py-4 px-6 text-right space-x-3">
                               {inv.status !== "revoked" && (
-                                <button
-                                  onClick={() => handleRevokeShop(inv.id, inv.invited_email)}
-                                  className="text-xs text-red-400 hover:text-red-300 transition"
-                                >
-                                  Thu hồi quyền
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleResendEmail(inv.invited_email)}
+                                    disabled={isSubmittingAdmin}
+                                    className="text-xs text-[#39d6cf] hover:text-white transition inline-flex items-center gap-1"
+                                    title="Gửi lại email kèm link Portal"
+                                  >
+                                    <Mail className="w-3 h-3" />
+                                    <span>Gửi lại mail</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleRevokeShop(inv.id, inv.invited_email)}
+                                    className="text-xs text-red-400 hover:text-red-300 transition"
+                                  >
+                                    Thu hồi quyền
+                                  </button>
+                                </>
                               )}
                             </td>
                           </tr>
