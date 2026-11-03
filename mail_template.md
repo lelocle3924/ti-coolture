@@ -1,15 +1,18 @@
 # Mẫu Email Thông Báo Duyệt Đăng Ký Shop (Tí Coolture)
 
-## 1. Đánh giá Template ban đầu
-- **Ưu điểm:** Giọng văn gần gũi, xưng "Tí", tôn trọng đối tác, làm rõ chính sách đồng hành miễn phí.
-- **Điểm cần cải tiến:**
-  1. *Ngữ cảnh:* Bản cũ ghi *"email của bạn đã được xác nhận thành công"*. Cần sửa thành *"đơn đăng ký mở shop của bạn đã được duyệt thành công"* để khớp với luồng thực tế (Admin Tí duyệt hồ sơ tuyển chọn sau khi shop đăng ký ở `/open-shop`).
-  2. *Phương thức đăng nhập:* Hệ thống Tí Coolture Portal xác thực qua **Google Login**. Cần có lưu ý quan trọng: *Bắt buộc dùng đúng tài khoản Gmail đã đăng ký* để tránh trường hợp shop đăng nhập bằng Gmail khác rồi bị báo lỗi "Email chưa được cấp quyền".
-  3. *Đường link:* Điền link chuẩn của Portal: `https://ticoolture.vn/portal`.
+## 1. Chuẩn Brand Guidelines Tí Coolture
+Căn cứ theo tài liệu nhận diện `BRAND-GUIDELINES-TI-COOLTURE.pdf` & `src/index.css`:
+- **Tỷ lệ màu chuẩn:** **Violet 60%** · **White/Paper 30%** · **Teal 10%**
+- **Mã màu chính:**
+  - `Violet Brand`: `#7520f7` (Deep: `#5a12c6`) — Màu chủ đạo của nút CTA, tiêu đề, nhận diện.
+  - `Teal / Wave Accent`: `#39d6cf` (Ink: `#0b7c77`) — Màu điểm nhấn, divider và phụ đề.
+  - `Dark Ink`: `#12081f` — Nền header, màu chữ nội dung.
+  - `Paper Warm`: `#faf8ff` (White: `#ffffff`) — Nền email và nền thẻ nội dung.
+- **Phông chữ:** `Alexandria`, sans-serif.
 
 ---
 
-## 2. Bản Mẫu Nội Dung Hoàn Thiện (Markdown / Plain Text)
+## 2. Bản Mẫu Nội Dung (Markdown / Plain Text)
 
 **Tiêu đề:** `[Tí Coolture] Chúc mừng! Đơn đăng ký mở shop "{{shop_name}}" đã được duyệt thành công 🎉`
 
@@ -40,16 +43,6 @@ Website: https://ticoolture.vn
 
 ## 3. Bản Mẫu Giao Diện HTML (Automated Email)
 Hệ thống tự động sử dụng template HTML chuẩn email tại `api/_lib/mailer.ts`:
-- Tone màu: Đỏ cam đất thương hiệu Tí Coolture (`#c2410c` & `#ea580c`).
-- Nút bấm Call-To-Action (CTA): Nổi bật, dễ bấm trên điện thoại di động.
-- Khung lưu ý đăng nhập: Nổi bật màu vàng hổ phách (`amber`), chống nhầm tài khoản Google.
-
-```
-
----
-
-## 3. Bản Mẫu Giao Diện HTML (Automated Email)
-Hệ thống tự động sử dụng template HTML chuẩn email tại `api/_lib/mailer.ts`:
-- Tone màu: Đỏ cam đất thương hiệu Tí Coolture (`#c2410c` & `#ea580c`).
-- Nút bấm Call-To-Action (CTA): Nổi bật, dễ bấm trên điện thoại di động.
-- Khung lưu ý đăng nhập: Nổi bật màu vàng hổ phách (`amber`), chống nhầm tài khoản Google.
+- **Header:** Nền Dark Ink `#12081f` chuyển sắc `#291245`, đường gạch accent Teal `#39d6cf`, chữ trắng nổi bật.
+- **Nút CTA:** Violet thương hiệu `#7520f7`, bo tròn pill 9999px, đổ bóng tím thương hiệu.
+- **Khung lưu ý:** Viền tím `#7520f7`, nền `#f7f4fd` dịu mắt, làm nổi bật Gmail đăng nhập.
