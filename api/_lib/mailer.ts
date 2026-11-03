@@ -71,23 +71,10 @@ export function generateShopApprovalHtml(params: {
         <!-- Main Card -->
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; border: 1px solid #e4e0ec; overflow: hidden; box-shadow: 0 10px 30px rgba(18, 8, 31, 0.06);">
           
-          <!-- Header Banner (Dark Ink with Brand Violet & Teal accent) -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #12081f 0%, #1e0e33 60%, #291245 100%); padding: 36px 24px; text-align: center; border-bottom: 3px solid #7520f7;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">
-                TÍ COOLTURE
-              </h1>
-              <div style="width: 36px; height: 3px; background-color: #39d6cf; margin: 10px auto 8px; border-radius: 9999px;"></div>
-              <p style="margin: 0; color: #39d6cf; font-size: 13px; font-weight: 500; letter-spacing: 0.5px;">
-                Nơi tuyển chọn local brand & artist Việt
-              </p>
-            </td>
-          </tr>
-
           <!-- Body Content -->
           <tr>
-            <td style="padding: 36px 30px;">
-              <h2 style="margin: 0 0 18px; color: #7520f7; font-size: 21px; font-weight: 700; letter-spacing: -0.3px;">
+            <td style="padding: 40px 32px 32px;">
+              <h2 style="margin: 0 0 18px; color: #7520f7; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">
                 Hồ sơ mở shop đã được duyệt! 🎉
               </h2>
 

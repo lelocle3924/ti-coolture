@@ -43,6 +43,6 @@ Website: https://ticoolture.vn
 
 ## 3. Bản Mẫu Giao Diện HTML (Automated Email)
 Hệ thống tự động sử dụng template HTML chuẩn email tại `api/_lib/mailer.ts`:
-- **Header:** Nền Dark Ink `#12081f` chuyển sắc `#291245`, đường gạch accent Teal `#39d6cf`, chữ trắng nổi bật.
+- **Giao diện tinh gọn:** Bỏ header banner tối màu, bắt đầu thẳng vào nội dung thông báo trên nền trắng thanh lịch.
 - **Nút CTA:** Violet thương hiệu `#7520f7`, bo tròn pill 9999px, đổ bóng tím thương hiệu.
 - **Khung lưu ý:** Viền tím `#7520f7`, nền `#f7f4fd` dịu mắt, làm nổi bật Gmail đăng nhập.

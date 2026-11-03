@@ -43,15 +43,8 @@ function generateShopApprovalHtml(params) {
       <td align="center">
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; border: 1px solid #e4e0ec; overflow: hidden; box-shadow: 0 10px 30px rgba(18, 8, 31, 0.06);">
           <tr>
-            <td style="background: linear-gradient(135deg, #12081f 0%, #1e0e33 60%, #291245 100%); padding: 36px 24px; text-align: center; border-bottom: 3px solid #7520f7;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase;">TÍ COOLTURE</h1>
-              <div style="width: 36px; height: 3px; background-color: #39d6cf; margin: 10px auto 8px; border-radius: 9999px;"></div>
-              <p style="margin: 0; color: #39d6cf; font-size: 13px; font-weight: 500; letter-spacing: 0.5px;">Nơi tuyển chọn local brand & artist Việt</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 36px 30px;">
-              <h2 style="margin: 0 0 18px; color: #7520f7; font-size: 21px; font-weight: 700; letter-spacing: -0.3px;">Hồ sơ mở shop đã được duyệt! 🎉</h2>
+            <td style="padding: 40px 32px 32px;">
+              <h2 style="margin: 0 0 18px; color: #7520f7; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">Hồ sơ mở shop đã được duyệt! 🎉</h2>
               <p style="margin: 0 0 14px; font-size: 15px; color: #12081f;">Chào <strong>${shopName}</strong>,</p>
               <p style="margin: 0 0 14px; font-size: 15px; color: #373042; line-height: 1.65;">Tí xin chúc mừng và thông báo rằng đơn đăng ký mở shop của bạn đã được đội ngũ Tí Coolture <strong>phê duyệt chính thức</strong>.</p>
               <p style="margin: 0 0 24px; font-size: 15px; color: #373042; line-height: 1.65;">Giờ đây, bạn đã có thể truy cập hệ thống quản trị để cập nhật câu chuyện thương hiệu, tải lên và chỉnh sửa danh mục sản phẩm của mình — <strong>hoàn toàn miễn phí</strong>. Tí sẽ giúp đưa sản phẩm của shop tiếp cận cộng đồng yêu thích sáng tạo Việt Nam.</p>
