@@ -312,6 +312,146 @@ function shuffled<T>(items: T[]): T[] {
   return out;
 }
 
+/**
+ * Mulberry32 PRNG cho xoay tua ngẫu nhiên nhưng đồng nhất theo block thời gian.
+ */
+function mulberry32(seed: number) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Thuật toán phân bổ thông minh cho "What's in store":
+ * - Roster tự động xoay tua mỗi 3 tiếng dựa trên time-block seed (0h, 3h, 6h, 9h, 12h, 15h, 18h, 21h...).
+ * - Lấy sản phẩm từ nhiều shop khác nhau và xen kẽ (interleaved / round-robin).
+ * - Cấm chuỗi sản phẩm liên tiếp của cùng 1 shop.
+ */
+export function getSmartFeaturedProducts(allProducts: Product[], targetCount = 10): Product[] {
+  if (!allProducts || allProducts.length === 0) return [];
+
+  // Lọc sản phẩm đã duyệt và có ảnh hợp lệ
+  const validProducts = allProducts.filter((p) => {
+    const img = p.images?.[0];
+    return !!img && !img.startsWith("data:") && !img.includes("placeholder");
+  });
+
+  if (validProducts.length <= targetCount) {
+    return validProducts;
+  }
+
+  // Khung block thời gian 3 tiếng (tất cả người dùng truy cập trong cùng 3 tiếng sẽ có chung 1 roster nhất quán)
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+  const timeBlock = Math.floor(Date.now() / THREE_HOURS_MS);
+  const rng = mulberry32(timeBlock);
+
+  // Nhóm sản phẩm theo shop
+  const storeMap = new Map<string, Product[]>();
+  for (const p of validProducts) {
+    const sId = p.storeId || "unknown";
+    if (!storeMap.has(sId)) {
+      storeMap.set(sId, []);
+    }
+    storeMap.get(sId)!.push(p);
+  }
+
+  const storeIds = Array.from(storeMap.keys());
+  if (storeIds.length === 0) return validProducts.slice(0, targetCount);
+
+  // Xáo trộn sản phẩm trong từng shop theo seed 3 tiếng
+  for (const [id, prods] of storeMap.entries()) {
+    const list = [...prods];
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    storeMap.set(id, list);
+  }
+
+  // Xáo trộn thứ tự các shop theo seed 3 tiếng
+  for (let i = storeIds.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [storeIds[i], storeIds[j]] = [storeIds[j], storeIds[i]];
+  }
+
+  // Giới hạn quota mỗi shop để tránh 1 shop độc chiếm danh sách
+  const maxPerShop = storeIds.length > 1
+    ? Math.max(2, Math.ceil(targetCount / Math.min(storeIds.length, 4)))
+    : targetCount;
+
+  const selected: Product[] = [];
+  const storePointers = new Map<string, number>();
+  for (const id of storeIds) storePointers.set(id, 0);
+
+  let activeStores = [...storeIds];
+  let lastStoreId: string | null = null;
+
+  while (selected.length < targetCount && activeStores.length > 0) {
+    let pickIdx = -1;
+    if (activeStores.length > 1) {
+      pickIdx = activeStores.findIndex((id) => id !== lastStoreId);
+    }
+    if (pickIdx === -1) pickIdx = 0;
+
+    const currentStoreId = activeStores[pickIdx];
+    const prods = storeMap.get(currentStoreId)!;
+    const ptr = storePointers.get(currentStoreId)!;
+
+    if (ptr < prods.length && ptr < maxPerShop) {
+      selected.push(prods[ptr]);
+      storePointers.set(currentStoreId, ptr + 1);
+      lastStoreId = currentStoreId;
+    }
+
+    if (storePointers.get(currentStoreId)! >= prods.length || storePointers.get(currentStoreId)! >= maxPerShop) {
+      activeStores.splice(pickIdx, 1);
+    } else {
+      activeStores.splice(pickIdx, 1);
+      activeStores.push(currentStoreId);
+    }
+  }
+
+  // Nếu vẫn chưa đủ targetCount do giới hạn quota, bổ sung thêm nhưng vẫn chèn xen kẽ
+  if (selected.length < targetCount) {
+    for (const id of storeIds) {
+      const prods = storeMap.get(id)!;
+      let ptr = storePointers.get(id)!;
+      while (selected.length < targetCount && ptr < prods.length) {
+        if (selected.length === 0 || selected[selected.length - 1].storeId !== id) {
+          selected.push(prods[ptr]);
+        } else {
+          let inserted = false;
+          for (let k = 0; k < selected.length - 1; k++) {
+            if (selected[k].storeId !== id && selected[k + 1].storeId !== id) {
+              selected.splice(k + 1, 0, prods[ptr]);
+              inserted = true;
+              break;
+            }
+          }
+          if (!inserted) selected.push(prods[ptr]);
+        }
+        ptr++;
+      }
+      storePointers.set(id, ptr);
+    }
+  }
+
+  // Tối ưu vòng lặp marquee (nếu phần tử đầu và cuối cùng shop, đổi chỗ phần tử kế cuối để wrap-around không bị trùng)
+  if (selected.length > 2 && selected[0].storeId === selected[selected.length - 1].storeId) {
+    const secondToLast = selected[selected.length - 2];
+    if (secondToLast && secondToLast.storeId !== selected[0].storeId) {
+      const last = selected[selected.length - 1];
+      selected[selected.length - 1] = secondToLast;
+      selected[selected.length - 2] = last;
+    }
+  }
+
+  return selected;
+}
+
 export function useHomeData(): HomeData {
   const [products, setProducts] = useState<Product[]>([]);
   const [stores, setStores] = useState<StoreProfile[]>([]);
@@ -319,6 +459,21 @@ export function useHomeData(): HomeData {
   const [gems, setGems] = useState<Array<{ product: Product; note: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [rotationTick, setRotationTick] = useState(() => Math.floor(Date.now() / (3 * 60 * 60 * 1000)));
+
+  // Lắng nghe mốc xoay tua 3 tiếng tự động
+  useEffect(() => {
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+    const now = Date.now();
+    const nextBlockTime = (Math.floor(now / THREE_HOURS_MS) + 1) * THREE_HOURS_MS;
+    const msUntilNext = nextBlockTime - now + 1000;
+
+    const timer = setTimeout(() => {
+      setRotationTick(Math.floor(Date.now() / THREE_HOURS_MS));
+    }, msUntilNext);
+
+    return () => clearTimeout(timer);
+  }, [rotationTick]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -354,44 +509,59 @@ export function useHomeData(): HomeData {
       awaitingUpload: false,
     };
 
-    /* Team 16/09: "Mỗi lần vào homepage là một thứ tự shop và ảnh shop random
-       (selection of shop cũng random luôn), chỉ có ảnh Tí Coolture là xuất
-       hiện đầu tiên." So every visit deals five shops at random, in a random
-       order, and each shows one of its own photographs picked at random —
-       from the first two pictures of its products, the two that show the
-       product (the rest of a product's gallery is filler). The house frame
-       stays first.
-
-       Drawn once, when the data arrives: a re-render must not reshuffle the
-       deck under a visitor's finger.
-
-       A shop with no photograph at all still gets the plate, which asks for a
-       16:9 landscape frame (28/08). The photographs are portrait, so the deck
-       crops them — object-cover, as it would a 16:9 shot on a 4:5 phone. */
-    const partners = shuffled<StoreProfile>(stores).slice(0, 5).map<HeroFrame>((shop) => {
-      const photos = products
+    /* Lọc bỏ toàn bộ các shop không có ảnh thật.
+       Tuyệt đối không load ảnh placeholder trắng lên hero deck.
+       Randomize danh sách shop mỗi lần vào trang / refresh. */
+    const eligibleShops = stores.filter((shop) => {
+      if (shop.heroImageUrl && !shop.heroImageUrl.startsWith("data:") && !shop.heroImageUrl.includes("placeholder")) {
+        return true;
+      }
+      const validProductPhotos = products
         .filter((p) => p.storeId === shop.id)
-        .flatMap((p) => (p.images ?? []).slice(0, 2));
-      const photo = shop.heroImageUrl || (photos.length > 0 ? photos[Math.floor(Math.random() * photos.length)] : shop.coverUrl);
-      const sent = !!photo && !photo.startsWith("data:");
-      return {
-        id: `frame-${shop.id}`,
-        src: sent
-          ? photo!
-          : landscapePlate(shop.name.toUpperCase(), `ẢNH SHOP GỬI · ${LANDSCAPE_SPEC}`, "paper"),
-        shopId: shop.id,
-        shopName: shop.name,
-        caption: shop.story || shop.vibe || shop.description || "",
-        awaitingUpload: !sent,
-      };
+        .flatMap((p) => p.images ?? [])
+        .filter((img) => !!img && !img.startsWith("data:") && !img.includes("placeholder"));
+      if (validProductPhotos.length > 0) return true;
+      if (shop.coverUrl && !shop.coverUrl.startsWith("data:") && !shop.coverUrl.includes("placeholder")) {
+        return true;
+      }
+      return false;
     });
+
+    const partners = shuffled<StoreProfile>(eligibleShops)
+      .slice(0, 5)
+      .map<HeroFrame>((shop) => {
+        const productPhotos = products
+          .filter((p) => p.storeId === shop.id)
+          .flatMap((p) => (p.images ?? []).slice(0, 2))
+          .filter((img) => !!img && !img.startsWith("data:") && !img.includes("placeholder"));
+
+        // Thứ tự ưu tiên: Ảnh hero riêng -> Ảnh sản phẩm ngẫu nhiên -> Ảnh bìa shop
+        let photo = "";
+        if (shop.heroImageUrl && !shop.heroImageUrl.startsWith("data:") && !shop.heroImageUrl.includes("placeholder")) {
+          photo = shop.heroImageUrl;
+        } else if (productPhotos.length > 0) {
+          photo = productPhotos[Math.floor(Math.random() * productPhotos.length)];
+        } else if (shop.coverUrl && !shop.coverUrl.startsWith("data:") && !shop.coverUrl.includes("placeholder")) {
+          photo = shop.coverUrl;
+        }
+
+        return {
+          id: `frame-${shop.id}`,
+          src: photo,
+          shopId: shop.id,
+          shopName: shop.name,
+          caption: shop.story || shop.vibe || shop.description || "",
+          awaitingUpload: false,
+        };
+      })
+      .filter((frame) => !!frame.src);
 
     return [house, ...partners];
   }, [stores, products]);
 
   const popular = useMemo(
-    () => [...products].sort((a, b) => (b.clicks || 0) - (a.clicks || 0)).slice(0, 10),
-    [products]
+    () => getSmartFeaturedProducts(products, 10),
+    [products, rotationTick]
   );
 
   const forHim = useMemo(
