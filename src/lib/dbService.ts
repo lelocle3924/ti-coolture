@@ -189,6 +189,7 @@ function toStore(row: ShopRow): StoreProfile {
     name: row.name,
     logoUrl: row.logo_url ?? "",
     coverUrl: row.cover_url ?? "",
+    heroImageUrl: (row as any).hero_image_url ?? (row as any).story_en ?? "",
     story: row.story_vi ?? "",
     vibe: row.tagline_vi ?? "",
     description: row.tagline_vi ?? undefined,
@@ -282,10 +283,12 @@ export async function fetchStores(): Promise<StoreProfile[]> {
           const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
           return {
             id: row.id,
+            slug: row.slug || row.id,
             userId: "",
             name: row.name,
             logoUrl: resolveImageUrl(row.logo_url),
             coverUrl: resolveImageUrl(row.cover_url),
+            heroImageUrl: resolveImageUrl((row as any).hero_image_url || (row as any).story_en),
             story: row.story_vi ?? "",
             vibe: row.tagline_vi ?? "",
             description: row.tagline_vi ?? undefined,
@@ -343,10 +346,12 @@ export async function fetchStoreById(storeId: string): Promise<StoreProfile | nu
         const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
         return {
           id: data.id,
+          slug: data.slug || data.id,
           userId: "",
           name: data.name,
           logoUrl: resolveImageUrl(data.logo_url),
           coverUrl: resolveImageUrl(data.cover_url),
+          heroImageUrl: resolveImageUrl((data as any).hero_image_url || (data as any).story_en),
           story: data.story_vi ?? "",
           vibe: data.tagline_vi ?? "",
           description: data.tagline_vi ?? undefined,

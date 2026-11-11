@@ -12,6 +12,8 @@ interface ImageCropDialogProps {
   title: string;
   aspectRatio: number;
   shape: "circle" | "rectangle";
+  outputWidth?: number;
+  quality?: number;
   onCancel: () => void;
   onConfirm: (file: File) => Promise<void>;
 }
@@ -21,7 +23,7 @@ interface CropPosition {
   y: number;
 }
 
-const OUTPUT_WIDTH = 1600;
+const DEFAULT_OUTPUT_WIDTH = 1600;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -34,11 +36,13 @@ function createCroppedImage(
   zoom: number,
   position: CropPosition,
   aspectRatio: number,
-  fileName: string
+  fileName: string,
+  outputWidth: number = DEFAULT_OUTPUT_WIDTH,
+  quality: number = 0.90
 ): Promise<File> {
   const canvas = document.createElement("canvas");
-  canvas.width = OUTPUT_WIDTH;
-  canvas.height = Math.round(OUTPUT_WIDTH / aspectRatio);
+  canvas.width = outputWidth;
+  canvas.height = Math.round(outputWidth / aspectRatio);
 
   const context = canvas.getContext("2d");
   if (!context) {
@@ -78,7 +82,7 @@ function createCroppedImage(
         );
       },
       "image/webp",
-      0.92
+      quality
     );
   });
 }
@@ -88,6 +92,8 @@ export default function ImageCropDialog({
   title,
   aspectRatio,
   shape,
+  outputWidth,
+  quality,
   onCancel,
   onConfirm,
 }: ImageCropDialogProps) {
@@ -226,7 +232,9 @@ export default function ImageCropDialog({
         zoom,
         position,
         aspectRatio,
-        file.name
+        file.name,
+        outputWidth,
+        quality
       );
       await onConfirm(croppedFile);
     } catch (err) {

@@ -372,7 +372,7 @@ export function useHomeData(): HomeData {
       const photos = products
         .filter((p) => p.storeId === shop.id)
         .flatMap((p) => (p.images ?? []).slice(0, 2));
-      const photo = photos.length > 0 ? photos[Math.floor(Math.random() * photos.length)] : shop.coverUrl;
+      const photo = shop.heroImageUrl || (photos.length > 0 ? photos[Math.floor(Math.random() * photos.length)] : shop.coverUrl);
       const sent = !!photo && !photo.startsWith("data:");
       return {
         id: `frame-${shop.id}`,

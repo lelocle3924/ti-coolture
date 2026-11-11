@@ -32,10 +32,12 @@ export interface StoreSocialToggles {
 
 export interface StoreProfile {
   id: string;
+  slug?: string;
   userId: string;
   name: string;
   logoUrl: string;
   coverUrl: string;
+  heroImageUrl?: string;
   story: string;
   vibe: string;
   description?: string;

@@ -20,9 +20,10 @@
  * the page is reading versus looking.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Copy, Check, ExternalLink, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Check, ExternalLink, Maximize2, X } from "lucide-react";
 import {
   fetchProductById,
   fetchProductsStore,
@@ -87,15 +88,23 @@ function useInquiry(product: Product | null, store: StoreProfile | null) {
 
   const channels = useMemo(() => {
     const s = store?.socials ?? {};
+    const zaloUrl = s.zalo?.trim()
+      ? s.zalo.startsWith("http") || s.zalo.includes("zalo.me")
+        ? s.zalo
+        : `https://zalo.me/${s.zalo.replace(/[^0-9+]/g, "")}`
+      : undefined;
+
     return (
       [
         ["Instagram", s.instagram],
         ["TikTok", s.tiktok],
         ["Facebook", s.facebook],
         ["Threads", s.threads],
+        ["Website", s.website],
+        ["Zalo", zaloUrl],
       ] as const
     )
-      .filter(([, url]) => !!url)
+      .filter(([, url]) => !!url?.trim())
       .map(([platform, url]) => ({ platform, url: url as string }));
   }, [store]);
 
@@ -113,8 +122,13 @@ function useInquiry(product: Product | null, store: StoreProfile | null) {
       platform: channel.platform,
       timestamp: new Date().toISOString(),
     });
-    const base = channel.url.startsWith("http") ? channel.url : `https://${channel.url}`;
-    const url = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=product`;
+    let url = "";
+    if (channel.platform === "Zalo") {
+      url = channel.url;
+    } else {
+      const base = channel.url.startsWith("http") ? channel.url : `https://${channel.url}`;
+      url = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=product`;
+    }
     navigator.clipboard
       ?.writeText(message)
       .then(() => setCopied(true))
@@ -163,6 +177,179 @@ function InquiryModal({ inquiry, storeName }: { inquiry: Inquiry; storeName: str
   );
 }
 
+function ProductLightbox({
+  isOpen,
+  onClose,
+  images,
+  activeIndex,
+  onChangeIndex,
+  productName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  images: string[];
+  activeIndex: number;
+  onChangeIndex: (index: number) => void;
+  productName: string;
+}) {
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowLeft") {
+        onChangeIndex((activeIndex - 1 + images.length) % images.length);
+      } else if (e.key === "ArrowRight") {
+        onChangeIndex((activeIndex + 1) % images.length);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, activeIndex, images.length, onChangeIndex, onClose]);
+
+  if (!isOpen) return null;
+
+  const handlePrev = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    onChangeIndex((activeIndex - 1 + images.length) % images.length);
+  };
+
+  const handleNext = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    onChangeIndex((activeIndex + 1) % images.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX < 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+  };
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Xem ảnh toàn màn hình"
+      className="fixed inset-0 z-[100] flex flex-col justify-between bg-black/95 text-white backdrop-blur-md select-none transition-opacity duration-300 animate-in fade-in"
+      onClick={onClose}
+    >
+      {/* Top Header */}
+      <div
+        className="flex items-center justify-between px-4 py-3 md:px-8 md:py-4 z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider text-white/90">
+            {activeIndex + 1} / {images.length}
+          </span>
+          <span className="truncate text-xs font-medium text-white/60 hidden sm:inline-block max-w-xs md:max-w-md">
+            {productName}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng toàn màn hình"
+          className="rounded-full bg-white/10 p-2 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+        >
+          <X className="h-5 w-5 md:h-6 md:w-6" />
+        </button>
+      </div>
+
+      {/* Main image & Navigation Area */}
+      <div
+        className="relative flex-1 flex items-center justify-center px-2 md:px-12 overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {images.length > 1 && (
+          <button
+            type="button"
+            onClick={handlePrev}
+            aria-label="Ảnh trước"
+            className="absolute left-2 md:left-6 z-10 flex h-11 w-11 md:h-12 md:w-12 items-center justify-center rounded-full bg-black/50 text-white/80 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white hover:scale-105"
+          >
+            <ChevronLeft className="h-6 w-6 md:h-7 md:w-7" />
+          </button>
+        )}
+
+        <div
+          className="relative flex items-center justify-center max-h-[80vh] max-w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <img
+            key={activeIndex}
+            src={images[activeIndex]}
+            alt={`${productName} - Ảnh ${activeIndex + 1}`}
+            className="max-h-[80vh] max-w-[92vw] md:max-w-[85vw] object-contain rounded-lg shadow-2xl transition-transform duration-200"
+          />
+        </div>
+
+        {images.length > 1 && (
+          <button
+            type="button"
+            onClick={handleNext}
+            aria-label="Ảnh tiếp theo"
+            className="absolute right-2 md:right-6 z-10 flex h-11 w-11 md:h-12 md:w-12 items-center justify-center rounded-full bg-black/50 text-white/80 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white hover:scale-105"
+          >
+            <ChevronRight className="h-6 w-6 md:h-7 md:w-7" />
+          </button>
+        )}
+      </div>
+
+      {/* Bottom Thumbnail Strip / Dots */}
+      <div
+        className="px-4 py-3 md:py-4 z-10 flex justify-center items-center gap-2 overflow-x-auto max-w-full [scrollbar-width:none]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {images.map((img, idx) => (
+          <button
+            type="button"
+            key={idx}
+            onClick={() => onChangeIndex(idx)}
+            aria-label={`Chuyển tới ảnh ${idx + 1}`}
+            className={`h-12 w-12 md:h-14 md:w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+              activeIndex === idx
+                ? "border-brand scale-105 opacity-100 ring-2 ring-brand/40"
+                : "border-transparent opacity-40 hover:opacity-80"
+            }`}
+          >
+            <img src={img} alt="" className="h-full w-full object-cover" />
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* ── small shared parts ─────────────────────────────────────────────────── */
 
 function Crumbs({ product, index }: { product: Product; index: 1 | 2 | 3 }) {
@@ -202,8 +389,8 @@ function SpecTable({
     <dl className={`border-t ${line}`}>
       {rows.map(([k, v]) => (
         <div key={k} className={`flex items-baseline justify-between gap-4 border-b ${line} py-2.5`}>
-          <dt className={`label ${key}`}>{k}</dt>
-          <dd className="text-right text-xs font-medium">{v}</dd>
+          <dt className={`label shrink-0 ${key}`}>{k}</dt>
+          <dd className="min-w-0 break-words text-right text-xs font-medium">{v}</dd>
         </div>
       ))}
     </dl>
@@ -323,6 +510,7 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
   const { product, store, siblings, resolved } = useProductPage(productId);
   const inquiry = useInquiry(product, store);
   const [active, setActive] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const heroFrameRef = useRef<HTMLDivElement>(null);
   const heroImgRef = useRef<HTMLImageElement>(null);
 
@@ -340,17 +528,17 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
   const images = product.images?.length ? product.images : [""];
 
   return (
-    <div data-surface="light" className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] bg-paper text-ink ${UNDER_PILL}`}>
+    <div data-surface="light" className={`min-h-[calc(100dvh+6rem)] md:min-h-[calc(100dvh+7rem)] w-full overflow-x-hidden bg-paper text-ink ${UNDER_PILL}`}>
       <InquiryModal inquiry={inquiry} storeName={store?.name ?? product.storeName} />
 
       <div className="mx-auto max-w-6xl px-5 py-6 md:px-8">
         <Crumbs product={product} index={1} />
       </div>
 
-      <main className="mx-auto grid max-w-6xl gap-10 px-5 pb-24 md:px-8 lg:grid-cols-12 lg:gap-14">
+      <main className="mx-auto grid w-full min-w-0 max-w-6xl gap-10 px-5 pb-24 md:px-8 lg:grid-cols-12 lg:gap-14">
         {/* the plate */}
-        <section className="lg:col-span-7">
-          <div className="lg:sticky lg:top-14">
+        <section className="min-w-0 lg:col-span-7">
+          <div className="min-w-0 lg:sticky lg:top-14">
             <div className="flex gap-3">
               {images.length > 1 && (
                 <div className="hidden w-16 shrink-0 flex-col gap-2 md:flex">
@@ -379,24 +567,29 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
                 <div
                   ref={heroFrameRef}
                   data-ti-hero-frame={product.id}
-                  className="aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="group relative aspect-square overflow-hidden rounded-[1.75rem] bg-paper-warm cursor-zoom-in"
+                  title="Nhấn để phóng to toàn màn hình"
                 >
                   <img
                     ref={active === 0 ? heroImgRef : undefined}
                     key={active}
                     src={images[active]}
                     alt={product.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />
+                  <div className="absolute bottom-3 right-3 rounded-full bg-black/40 p-2 text-white/90 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                    <Maximize2 className="h-4 w-4" />
+                  </div>
                 </div>
                 <figcaption className="pt-2 text-[11px] text-ink/45">
-                  Ảnh {active + 1}/{images.length} · ảnh mẫu, chưa có ảnh thật
+                  Ảnh {active + 1}/{images.length}
                 </figcaption>
               </figure>
             </div>
 
             {images.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto md:hidden">
+              <div className="mt-3 flex w-full max-w-full min-w-0 gap-2 overflow-x-auto pb-1 overscroll-x-contain md:hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {images.map((img, i) => (
                   <button
                     key={i}
@@ -414,9 +607,9 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
         </section>
 
         {/* the reading column */}
-        <section className="space-y-8 lg:col-span-5">
+        <section className="min-w-0 space-y-8 lg:col-span-5">
           <div className="flex items-center justify-between gap-4 border-b border-ink/12 pb-4">
-            <Link to={`/stores/${product.storeId}`} viewTransition className="group flex items-center gap-3">
+            <Link to={`/stores/${store?.slug || product.storeId}`} viewTransition className="group flex items-center gap-3">
               <img
                 src={product.storeLogo}
                 alt=""
@@ -468,6 +661,15 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
       <div className="mx-auto max-w-6xl px-5 pb-24 md:px-8">
         <Siblings siblings={siblings} storeName={product.storeName} index={1} />
       </div>
+
+      <ProductLightbox
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={images}
+        activeIndex={active}
+        onChangeIndex={setActive}
+        productName={product.name}
+      />
     </div>
   );
 }

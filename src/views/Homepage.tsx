@@ -1228,15 +1228,15 @@ function HowItWorks() {
               className={`flex h-full flex-col rounded-[1.75rem] p-6 ring-4 ring-paper md:min-h-[clamp(15rem,38dvh,25rem)] md:p-[clamp(1.15rem,2.4dvh,2rem)] ${i < HOW_STEPS.length - 1 ? "md:pr-[calc(7vw+1.5rem)]" : ""
                 } ${i % 2 === 0 ? "bg-brand" : "bg-brand-deep"} text-paper`}
             >
-              <h3 className="display text-[clamp(1.25rem,min(2.3vw,3.2dvh),2rem)] normal-case leading-[1.05]">
-                {step.vi.title}
-              </h3>
               <p
-                className="display mt-[clamp(0.5rem,1.6dvh,1rem)] text-[clamp(2rem,min(4.2vw,5.5dvh),3.5rem)] normal-case leading-none text-wave"
+                className="display text-[clamp(2rem,min(4.2vw,5.5dvh),3.5rem)] normal-case leading-none text-wave"
                 aria-hidden="true"
               >
                 {step.n}.
               </p>
+              <h3 className="display mt-[clamp(0.5rem,1.6dvh,1rem)] text-lg md:text-[clamp(1.5rem,min(1.75vw,2.3dvh),1.85rem)] normal-case leading-snug text-paper">
+                {step.vi.title}
+              </h3>
               <p className="mt-[clamp(0.75rem,2.2dvh,1.5rem)] text-lg md:text-[clamp(1.5rem,min(1.75vw,2.3dvh),1.85rem)] leading-snug text-white/85">
                 {step.vi.body}
               </p>

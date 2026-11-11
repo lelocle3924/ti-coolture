@@ -10,6 +10,7 @@ import {
   uploadMultipleFilesDirectly,
   UploadedR2Image,
 } from "../lib/r2Upload";
+import { compressImageFile } from "../lib/imageCompression";
 import {
   getDataSourceMode,
   setDataSourceMode,
@@ -375,15 +376,17 @@ export default function Portal() {
   const [shopContactEmail, setShopContactEmail] = useState("");
   const [shopLogoUrl, setShopLogoUrl] = useState("");
   const [shopCoverUrl, setShopCoverUrl] = useState("");
+  const [shopHeroImageUrl, setShopHeroImageUrl] = useState("");
   const [shopSocials, setShopSocials] = useState<Record<string, string>>({});
   const [isSavingShop, setIsSavingShop] = useState(false);
   const [shopFeedback, setShopFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingHeroImage, setIsUploadingHeroImage] = useState(false);
   const [pendingProfileRequest, setPendingProfileRequest] = useState<PendingProfileRequest | null>(null);
   const [isWithdrawingProfileRequest, setIsWithdrawingProfileRequest] = useState(false);
   const [profileImageCrop, setProfileImageCrop] = useState<{
-    kind: "logo" | "cover";
+    kind: "logo" | "cover" | "hero";
     file: File;
   } | null>(null);
 
@@ -430,6 +433,7 @@ export default function Portal() {
       name: shopName || shop?.name || "Tên shop",
       logoUrl: shopLogoUrl ? resolveImageUrl(shopLogoUrl) : (shop?.logo_url ? resolveImageUrl(shop?.logo_url) : ""),
       coverUrl: shopCoverUrl ? resolveImageUrl(shopCoverUrl) : (shop?.cover_url ? resolveImageUrl(shop?.cover_url) : ""),
+      heroImageUrl: shopHeroImageUrl ? resolveImageUrl(shopHeroImageUrl) : (shop?.hero_image_url || shop?.story_en ? resolveImageUrl(shop?.hero_image_url || shop?.story_en) : undefined),
       story: shopStoryVi || shop?.story_vi || "",
       vibe: shopTaglineVi || shop?.tagline_vi || "",
       description: shopStoryVi || shop?.story_vi || "",
@@ -646,6 +650,7 @@ export default function Portal() {
     setShopContactEmail(shopData.contact_email || "");
     setShopLogoUrl(shopData.logo_url || "");
     setShopCoverUrl(shopData.cover_url || "");
+    setShopHeroImageUrl(shopData.hero_image_url || shopData.story_en || "");
     if (shopData.socials && Array.isArray(shopData.socials)) {
       const socMap: Record<string, string> = {};
       shopData.socials.forEach((s: any) => {
@@ -2237,6 +2242,7 @@ export default function Portal() {
       contactEmail: shopContactEmail.trim(),
       logoUrl: shopLogoUrl,
       coverUrl: shopCoverUrl,
+      heroImageUrl: shopHeroImageUrl,
       socials: shopSocials,
     };
 
@@ -2297,7 +2303,7 @@ export default function Portal() {
 
   function handleProfileImageSelection(
     event: React.ChangeEvent<HTMLInputElement>,
-    kind: "logo" | "cover"
+    kind: "logo" | "cover" | "hero"
   ) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -2327,6 +2333,7 @@ export default function Portal() {
     if (!kind) throw new Error("Không xác định được loại ảnh cần tải lên.");
 
     if (kind === "cover") setIsUploadingCover(true);
+    else if (kind === "hero") setIsUploadingHeroImage(true);
     else setIsUploadingLogo(true);
     setShopFeedback(null);
     try {
@@ -2335,6 +2342,7 @@ export default function Portal() {
       const r2Key = results[0]?.r2Key;
       if (!r2Key) throw new Error("Tải ảnh lên không trả về đường dẫn hợp lệ.");
       if (kind === "cover") setShopCoverUrl(r2Key);
+      else if (kind === "hero") setShopHeroImageUrl(r2Key);
       else setShopLogoUrl(r2Key);
       setProfileImageCrop(null);
     } catch (err) {
@@ -2343,6 +2351,7 @@ export default function Portal() {
       throw err;
     } finally {
       if (kind === "cover") setIsUploadingCover(false);
+      else if (kind === "hero") setIsUploadingHeroImage(false);
       else setIsUploadingLogo(false);
     }
   }
@@ -2351,14 +2360,23 @@ export default function Portal() {
     handleProfileImageSelection(event, "cover");
   }
 
+  function handleUploadHeroImage(event: React.ChangeEvent<HTMLInputElement>) {
+    handleProfileImageSelection(event, "hero");
+  }
+
   function handleUploadLogo(event: React.ChangeEvent<HTMLInputElement>) {
     handleProfileImageSelection(event, "logo");
   }
 
   // Direct Image Upload Handler
   async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const files: File[] = event.target.files ? Array.from(event.target.files) : [];
-    if (files.length === 0) return;
+    const rawFiles: File[] = event.target.files ? Array.from(event.target.files) : [];
+    if (rawFiles.length === 0) return;
+
+    // Compress product images to resolution ceiling (~1440px max dimension, quality 0.84, webp)
+    const files = await Promise.all(
+      rawFiles.map((f) => compressImageFile(f, { maxDimension: 1440, quality: 0.84 }))
+    );
 
     const token = (await getSupabaseToken()) || "dev-token";
 
@@ -4325,6 +4343,67 @@ export default function Portal() {
                       </div>
                     </div>
 
+                    {/* Dedicated Homepage Hero Image Upload Card */}
+                    <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-5 shadow-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-1.5">
+                          <ImageIcon className="w-3.5 h-3.5 text-[#39d6cf]" />
+                          Ảnh Hero trang chủ (Homepage Hero)
+                        </label>
+                        <span className="text-[10px] font-mono text-[#a39ab8]">Tỷ lệ 16 : 9</span>
+                      </div>
+
+                      <div className="aspect-[16/9] bg-[#12081f] rounded-xl overflow-hidden border border-[#2e2344] relative flex items-center justify-center group">
+                        {shopHeroImageUrl ? (
+                          <img
+                            src={resolveImageUrl(shopHeroImageUrl)}
+                            alt="Hero trang chủ shop"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center p-3 text-xs text-[#7b7194]">
+                            <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                            <span>Chưa chọn ảnh Hero riêng</span>
+                            <span className="block text-[10px] text-[#5e5473] mt-0.5">(Đang dùng ảnh sản phẩm hoặc ảnh bìa làm dự phòng)</span>
+                          </div>
+                        )}
+
+                        {isUploadingHeroImage && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <RefreshCw className="w-5 h-5 text-[#39d6cf] animate-spin" />
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-[#7b7194] leading-relaxed">
+                        Tấm ảnh đẹp nhất đại diện cho shop xuất hiện tại Hero Deck trang chủ Tí Coolture (tỉ lệ 16:9, tối đa 1920px).
+                      </p>
+
+                      <div className="flex gap-2">
+                        <label className="inline-flex items-center justify-center gap-2 flex-1 py-2.5 px-3 bg-[#23173d] hover:bg-[#322056] text-[#39d6cf] text-xs font-medium rounded-xl cursor-pointer border border-[#3b2a60] transition">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{isUploadingHeroImage ? "Đang tải ảnh..." : shopHeroImageUrl ? "Đổi ảnh Hero" : "Tải ảnh Hero mới"}</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/avif"
+                            onChange={handleUploadHeroImage}
+                            disabled={isUploadingHeroImage}
+                            className="hidden"
+                          />
+                        </label>
+                        {shopHeroImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setShopHeroImageUrl("")}
+                            className="px-3 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-xl border border-red-500/30 transition"
+                            title="Xóa ảnh Hero riêng"
+                          >
+                            Xóa
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Logo / Avatar Upload Card */}
                     <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-5 shadow-lg space-y-3">
                       <div className="flex items-center justify-between">
@@ -4391,7 +4470,7 @@ export default function Portal() {
                             type="text"
                             value={shopName}
                             onChange={(e) => setShopName(e.target.value)}
-                            placeholder="Gà Con Studios"
+                            placeholder="Tên shop của bạn"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                             required
                           />
@@ -4433,7 +4512,7 @@ export default function Portal() {
                             type="email"
                             value={shopContactEmail}
                             onChange={(e) => setShopContactEmail(e.target.value)}
-                            placeholder="contact@gaconstudios.vn"
+                            placeholder="contact@example.com"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -4447,7 +4526,7 @@ export default function Portal() {
                           rows={4}
                           value={shopStoryVi}
                           onChange={(e) => setShopStoryVi(e.target.value)}
-                          placeholder="Gà Con Studios làm túi để đeo mỗi ngày chứ không phải để cất trong tủ. Da lộn nâu, da đỏ gạch, da mận chín — chất nào cũng được chọn vì nó đẹp lên theo thời gian..."
+                          placeholder="Chia sẻ về hành trình sáng tạo, phong cách hoặc niềm cảm hứng đằng sau các sản phẩm của shop..."
                           className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl p-3.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition leading-relaxed"
                         />
                         <p className="text-[11px] text-[#7b7194] mt-1">
@@ -4479,7 +4558,7 @@ export default function Portal() {
                             onChange={(e) =>
                               setShopSocials((prev) => ({ ...prev, instagram: e.target.value }))
                             }
-                            placeholder="instagram.com/gaconstudios"
+                            placeholder="instagram.com/example"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -4495,7 +4574,7 @@ export default function Portal() {
                             onChange={(e) =>
                               setShopSocials((prev) => ({ ...prev, tiktok: e.target.value }))
                             }
-                            placeholder="tiktok.com/@gaconstudios"
+                            placeholder="tiktok.com/@example"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -4511,7 +4590,7 @@ export default function Portal() {
                             onChange={(e) =>
                               setShopSocials((prev) => ({ ...prev, facebook: e.target.value }))
                             }
-                            placeholder="facebook.com/gaconstudios"
+                            placeholder="facebook.com/example"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -4527,7 +4606,7 @@ export default function Portal() {
                             onChange={(e) =>
                               setShopSocials((prev) => ({ ...prev, threads: e.target.value }))
                             }
-                            placeholder="threads.net/@gaconstudios"
+                            placeholder="threads.net/@example"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -4543,7 +4622,7 @@ export default function Portal() {
                             onChange={(e) =>
                               setShopSocials((prev) => ({ ...prev, website: e.target.value }))
                             }
-                            placeholder="https://gaconstudios.vn"
+                            placeholder="example.com"
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -4559,7 +4638,7 @@ export default function Portal() {
                             onChange={(e) =>
                               setShopSocials((prev) => ({ ...prev, zalo: e.target.value }))
                             }
-                            placeholder="0901234567"
+                            placeholder=""
                             className="w-full bg-[#12081f] border border-[#2e2344] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#7520f7] transition"
                           />
                         </div>
@@ -6153,9 +6232,23 @@ export default function Portal() {
       {profileImageCrop && (
         <ImageCropDialog
           file={profileImageCrop.file}
-          title={profileImageCrop.kind === "cover" ? "Căn ảnh bìa shop" : "Căn ảnh đại diện shop"}
-          aspectRatio={profileImageCrop.kind === "cover" ? 2.74 : 1}
-          shape={profileImageCrop.kind === "cover" ? "rectangle" : "circle"}
+          title={
+            profileImageCrop.kind === "cover"
+              ? "Căn ảnh bìa shop"
+              : profileImageCrop.kind === "hero"
+              ? "Căn ảnh Hero trang chủ (16:9)"
+              : "Căn ảnh đại diện shop"
+          }
+          aspectRatio={
+            profileImageCrop.kind === "cover"
+              ? 2.74
+              : profileImageCrop.kind === "hero"
+              ? 16 / 9
+              : 1
+          }
+          shape={profileImageCrop.kind === "logo" ? "circle" : "rectangle"}
+          outputWidth={profileImageCrop.kind === "logo" ? 512 : 1920}
+          quality={profileImageCrop.kind === "logo" ? 0.85 : 0.88}
           onCancel={() => setProfileImageCrop(null)}
           onConfirm={handleConfirmProfileImageCrop}
         />

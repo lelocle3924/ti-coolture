@@ -14,6 +14,7 @@ interface ProfileRequestPayload {
   contact_email: string | null;
   logo_url: string | null;
   cover_url: string | null;
+  hero_image_url?: string | null;
   socials: Record<string, string>;
 }
 
@@ -72,6 +73,7 @@ function changedFields(
     ["contact_email", "Email liên hệ"],
     ["logo_url", "Ảnh đại diện (Logo)"],
     ["cover_url", "Ảnh bìa"],
+    ["hero_image_url", "Ảnh Hero trang chủ"],
     ["socials", "Mạng xã hội"],
   ];
 
@@ -182,6 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       contactEmail,
       logoUrl,
       coverUrl,
+      heroImageUrl,
       socials,
     } = req.body || {};
 
@@ -204,6 +207,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         typeof contactEmail === "string" ? contactEmail.trim() || null : null,
       logo_url: typeof logoUrl === "string" ? logoUrl || null : null,
       cover_url: typeof coverUrl === "string" ? coverUrl || null : null,
+      hero_image_url:
+        typeof heroImageUrl === "string" ? heroImageUrl || null : null,
       socials:
         socials && typeof socials === "object" && !Array.isArray(socials)
           ? Object.fromEntries(

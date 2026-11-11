@@ -1,4 +1,8 @@
-# Placeholder content is live (src/lib/mock/seed.ts): invented shops, products
-# and prices. Keep this file blocking until real data replaces the seed.
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /portal
+Disallow: /lab
+Disallow: /api/
+
+Sitemap: https://ticoolture.vn/sitemap.xml

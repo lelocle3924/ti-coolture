@@ -189,24 +189,40 @@ export default function Stores() {
                       thumbnails below the line still open their products. */}
                   <div className="relative">
                     {/* Atelier Cover Banner Viewport with Shared View Transition Name */}
-                    <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-paper-warm">
-                      <img
-                        src={store.coverUrl || store.logoUrl || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600"}
-                        alt={store.name}
-                        referrerPolicy="no-referrer"
-                        style={{ viewTransitionName: vtShopCover(store.id) }}
-                        className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
-                      />
+                    <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-white border border-ink/5">
+                      {store.coverUrl ? (
+                        <img
+                          src={store.coverUrl}
+                          alt={store.name}
+                          referrerPolicy="no-referrer"
+                          style={{ viewTransitionName: vtShopCover(store.id) }}
+                          className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110"
+                        />
+                      ) : (
+                        <div
+                          style={{ viewTransitionName: vtShopCover(store.id) }}
+                          className="w-full h-full bg-white"
+                        />
+                      )}
 
                       {/* Studio Logo Seal Overlay */}
                       <div className="absolute bottom-3 left-3 p-1 rounded-full bg-paper/95 backdrop-blur-md shadow-md">
-                        <img
-                          src={store.logoUrl || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=80"}
-                          alt={`${store.name} logo`}
-                          referrerPolicy="no-referrer"
-                          style={{ viewTransitionName: vtShopLogo(store.id) }}
-                          className="w-10 h-10 rounded-full object-cover border border-ink/10"
-                        />
+                        {store.logoUrl ? (
+                          <img
+                            src={store.logoUrl}
+                            alt={`${store.name} logo`}
+                            referrerPolicy="no-referrer"
+                            style={{ viewTransitionName: vtShopLogo(store.id) }}
+                            className="w-10 h-10 rounded-full object-cover border border-ink/10"
+                          />
+                        ) : (
+                          <div
+                            style={{ viewTransitionName: vtShopLogo(store.id) }}
+                            className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-sm border border-ink/10"
+                          >
+                            {store.name.charAt(0)}
+                          </div>
+                        )}
                       </div>
 
                       {/* "Tí Verified" badge removed 26/08 — every shop on the
@@ -218,7 +234,7 @@ export default function Stores() {
                     <div className="mt-4 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <Link
-                          to={`/stores/${store.id}`}
+                          to={`/stores/${store.slug || store.id}`}
                           viewTransition
                           className="min-w-0 font-medium text-lg text-ink group-hover:text-brand transition-colors after:absolute after:-inset-x-5 after:-top-5 after:bottom-0 after:z-[1]"
                         >
@@ -294,7 +310,7 @@ export default function Stores() {
                         row; pt-6 is the gap the old space-y-4 and pt-2 made. */}
                     <div className="mt-auto pt-6">
                       <Link
-                        to={`/stores/${store.id}`}
+                        to={`/stores/${store.slug || store.id}`}
                         viewTransition
                         className="group/btn w-full py-2.5 px-5 rounded-full bg-paper-warm hover:bg-brand text-ink hover:text-paper text-xs font-semibold transition-all duration-300 flex items-center justify-between border border-ink/10 shadow-xs"
                       >

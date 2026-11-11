@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 /**
  * A social platform's own mark, drawn in currentColor.
  *
@@ -30,6 +32,55 @@ const GLYPHS: Record<string, { d: string; scale: number }> = {
 };
 
 export default function PlatformGlyph({ platform, className }: { platform: string; className?: string }) {
+  const zaloMaskId = useId();
+
+  if (platform === "website") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+        <path d="M2 12h20" />
+      </svg>
+    );
+  }
+
+  if (platform === "zalo") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className={className}>
+        <mask id={zaloMaskId}>
+          <rect width="24" height="24" fill="white" />
+          <text
+            x="12"
+            y="13.9"
+            fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+            fontSize="7.6"
+            fontWeight="900"
+            textAnchor="middle"
+            letterSpacing="-0.3"
+            fill="black"
+          >
+            Zalo
+          </text>
+        </mask>
+        <path
+          fill="currentColor"
+          mask={`url(#${zaloMaskId})`}
+          d="M12 2C6.48 2 2 6.48 2 12c0 1.95.56 3.77 1.52 5.32L2.5 21.5l4.38-1.02A9.95 9.95 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"
+        />
+      </svg>
+    );
+  }
+
   const glyph = GLYPHS[platform];
   if (!glyph) return null;
   return (

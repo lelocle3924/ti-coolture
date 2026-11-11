@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const [shopRes, socialsRes, productsRes, editReqsRes] = await Promise.all([
         supabase
           .from("shops")
-          .select("id, name, slug, tagline_vi, story_vi, logo_url, cover_url, status, is_online_only, address, area_tag, contact_email")
+          .select("id, name, slug, tagline_vi, story_vi, logo_url, cover_url, story_en, status, is_online_only, address, area_tag, contact_email")
           .eq("id", portalUser.shopId)
           .single(),
         supabase
@@ -92,6 +92,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ]);
 
       shopData = shopRes.data;
+      if (shopData) {
+        (shopData as any).hero_image_url =
+          (shopData as any).hero_image_url || (shopData as any).story_en || null;
+      }
       if (shopData && socialsRes.data) {
         (shopData as any).socials = socialsRes.data;
       }

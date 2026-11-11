@@ -22,6 +22,8 @@ const PLATFORMS = [
   { key: "tiktok", label: "TikTok" },
   { key: "facebook", label: "Facebook" },
   { key: "threads", label: "Threads" },
+  { key: "website", label: "Website" },
+  { key: "zalo", label: "Zalo" },
 ] as const;
 
 interface Channel {
@@ -32,10 +34,39 @@ interface Channel {
 
 function channelsOf(store: StoreProfile): Channel[] {
   return PLATFORMS.flatMap((platform) => {
-    const url = store.socials?.[platform.key as keyof typeof store.socials];
-    if (!url) return [];
-    const base = url.startsWith("http") ? url : `https://${url}`;
-    const href = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=shop`;
+    const raw = store.socials?.[platform.key as keyof typeof store.socials]?.trim();
+    if (!raw) return [];
+
+    let href = "";
+    if (platform.key === "zalo") {
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        href = raw;
+      } else if (raw.includes("zalo.me/")) {
+        href = `https://${raw.replace(/^https?:\/\//, "")}`;
+      } else {
+        const cleanPhone = raw.replace(/[^0-9+]/g, "");
+        href = `https://zalo.me/${cleanPhone}`;
+      }
+    } else if (platform.key === "website") {
+      href = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+    } else {
+      let base = raw;
+      if (!base.startsWith("http://") && !base.startsWith("https://")) {
+        if (platform.key === "instagram") {
+          base = base.includes("instagram.com/") ? `https://${base}` : `https://instagram.com/${base.replace(/^@/, "")}`;
+        } else if (platform.key === "tiktok") {
+          base = base.includes("tiktok.com/") ? `https://${base}` : `https://tiktok.com/@${base.replace(/^@/, "")}`;
+        } else if (platform.key === "threads") {
+          base = base.includes("threads.net/") ? `https://${base}` : `https://threads.net/@${base.replace(/^@/, "")}`;
+        } else if (platform.key === "facebook") {
+          base = base.includes("facebook.com/") ? `https://${base}` : `https://facebook.com/${base}`;
+        } else {
+          base = `https://${base}`;
+        }
+      }
+      href = `${base}${base.includes("?") ? "&" : "?"}utm_source=ticoolture&utm_medium=shop`;
+    }
+
     return [{ key: platform.key, label: platform.label, href }];
   });
 }
@@ -541,18 +572,6 @@ export function ShopView({
                   <MapPin className="h-3.5 w-3.5 text-brand" />
                   {store.address || store.area || "Việt Nam"}
                 </span>
-                <a
-                  href={mapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 font-semibold text-brand hover:underline"
-                  onClick={(e) => {
-                    if (isPreview) e.preventDefault();
-                  }}
-                >
-                  <span>Mở bản đồ</span>
-                  <ArrowUpRight className="h-3 w-3" />
-                </a>
               </div>
 
               <div className="my-5 border-t border-[#ECE6F5]" />

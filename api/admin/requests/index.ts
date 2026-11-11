@@ -144,6 +144,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         if (approveProfileErr) throw approveProfileErr;
 
+        if (profilePayload.hero_image_url !== undefined) {
+          const { error: heroErr } = await supabase
+            .from("shops")
+            .update({ hero_image_url: profilePayload.hero_image_url || null })
+            .eq("id", profilePayload.shop_id);
+          if (heroErr) {
+            await supabase
+              .from("shops")
+              .update({ story_en: profilePayload.hero_image_url || null })
+              .eq("id", profilePayload.shop_id);
+          }
+        }
+
         return res.status(200).json({
           success: true,
           message: `Đã duyệt và áp dụng cập nhật profile cho shop "${requestItem.shop_name}"!`,
