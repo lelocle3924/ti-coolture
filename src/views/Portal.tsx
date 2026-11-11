@@ -69,7 +69,9 @@ import {
   Package,
   RotateCcw,
   Lock,
+  BarChart3,
 } from "lucide-react";
+import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import PlatformGlyph from "../components/PlatformGlyph";
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import ImageCropDialog from "../components/ImageCropDialog";
@@ -323,7 +325,7 @@ export default function Portal() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [dataMode, setDataMode] = useState<DataSourceMode>(() => getDataSourceMode());
   const [sandboxMode, setSandboxMode] = useState<boolean>(() => isSandboxEnabled());
-  const [adminTab, setAdminTab] = useState<"requests" | "reviews" | "shops" | "staff">("requests");
+  const [adminTab, setAdminTab] = useState<"analytics" | "requests" | "reviews" | "shops" | "staff">("analytics");
   const [pendingReviews, setPendingReviews] = useState<any[]>([]);
   const [reviewFilter, setReviewFilter] = useState<"pending_review" | "edit_requests" | "published" | "all">("pending_review");
   const [productEditRequests, setProductEditRequests] = useState<any[]>([]);
@@ -3154,6 +3156,18 @@ export default function Portal() {
             {/* Sub-navigation Tabs */}
             <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-[#2e2344] pb-4">
               <button
+                onClick={() => setAdminTab("analytics")}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
+                  adminTab === "analytics"
+                    ? "bg-[#7520f7] text-white"
+                    : "text-[#a39ab8] hover:text-white hover:bg-[#181224] border border-[#2e2344]"
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Tổng quan</span>
+              </button>
+
+              <button
                 onClick={() => setAdminTab("requests")}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
                   adminTab === "requests"
@@ -3226,6 +3240,13 @@ export default function Portal() {
                   <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                 )}
                 <span>{adminFeedback.text}</span>
+              </div>
+            )}
+
+            {/* TAB ANALYTICS: TỔNG QUAN HIỆU NĂNG & PHỄU CHUYỂN ĐỔI */}
+            {adminTab === "analytics" && (
+              <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xl border border-stone-200">
+                <AnalyticsDashboard token={bypassToken || null} />
               </div>
             )}
 

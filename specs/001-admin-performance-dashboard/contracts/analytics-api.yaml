@@ -1,0 +1,305 @@
+openapi: 3.0.3
+info:
+  title: Tí Coolture Analytics & Dashboard API
+  description: Single-router analytics ingestion and administrative performance reporting service.
+  version: 1.0.0
+paths:
+  /api/analytics:
+    post:
+      summary: Ingest client-side tracking events
+      description: Captures anonymous page views, discovery events, product interactions, favorites, and outbound conversion clicks.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [track, batch]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackingPayload'
+      responses:
+        '200':
+          description: Event successfully accepted and processed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '400':
+          description: Malformed tracking payload or unsupported action.
+        '429':
+          description: Rate limited due to excessive beacon volume.
+
+    get:
+      summary: Retrieve performance dashboard and funnel metrics
+      description: Returns aggregated KPIs, time-series data, top 10 leaderboards, and the 5-stage conversion funnel for the selected date window.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [overview, funnel, leaderboard]
+            default: overview
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2026-04-01"
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2026-04-30"
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [today, 7d, 30d, month, custom]
+            default: 30d
+      responses:
+        '200':
+          description: Aggregated analytics dashboard payload.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: "s-maxage=300, stale-while-revalidate=600"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardOverviewResponse'
+        '401':
+          description: Unauthorized. Missing or invalid Bearer token.
+        '403':
+          description: Forbidden. Authenticated user does not possess admin privileges.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    TrackingPayload:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - page_view
+            - product_view
+            - shop_view
+            - wishlist_toggle
+            - outbound_click
+            - search_query
+        productId:
+          type: string
+          format: uuid
+        shopId:
+          type: string
+          format: uuid
+        targetUrl:
+          type: string
+        platform:
+          type: string
+          enum: [shopee, instagram, zalo, tiktok, facebook, threads, website]
+        isNewVisitor:
+          type: boolean
+          default: false
+        deviceType:
+          type: string
+          enum: [mobile, desktop, tablet]
+          default: mobile
+        referrerSource:
+          type: string
+          enum: [organic, social, direct, referral, other]
+          default: direct
+        searchQuery:
+          type: string
+        favoriteDelta:
+          type: integer
+          enum: [1, -1]
+
+    DashboardOverviewResponse:
+      type: object
+      required:
+        - kpis
+        - visitorsOverTime
+        - newVsReturning
+        - devices
+        - trafficSources
+        - topCategories
+        - topProductsViewed
+        - topProductsFavorited
+        - topShops
+        - topSearchKeywords
+        - conversionFunnel
+      properties:
+        kpis:
+          type: object
+          properties:
+            totalVisitors:
+              type: integer
+            totalVisitorsChange:
+              type: number
+            totalPageViews:
+              type: integer
+            totalPageViewsChange:
+              type: number
+            activeShops:
+              type: integer
+            activeShopsChange:
+              type: number
+            pendingShops:
+              type: integer
+            totalListedProducts:
+              type: integer
+            totalListedProductsChange:
+              type: number
+            newProductsAdded:
+              type: integer
+        visitorsOverTime:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              newVisitors:
+                type: integer
+              returningVisitors:
+                type: integer
+        newVsReturning:
+          type: object
+          properties:
+            newCount:
+              type: integer
+            newPercent:
+              type: number
+            returningCount:
+              type: integer
+            returningPercent:
+              type: number
+        devices:
+          type: object
+          properties:
+            mobilePercent:
+              type: number
+            desktopPercent:
+              type: number
+            tabletPercent:
+              type: number
+        trafficSources:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+              sharePercent:
+                type: number
+        topCategories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              percentage:
+                type: number
+        topProductsViewed:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLeaderboardItem'
+        topProductsFavorited:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductLeaderboardItem'
+        topShops:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShopLeaderboardItem'
+        topSearchKeywords:
+          type: array
+          items:
+            type: object
+            properties:
+              keyword:
+                type: string
+              count:
+                type: integer
+        conversionFunnel:
+          type: object
+          properties:
+            stages:
+              type: array
+              items:
+                $ref: '#/components/schemas/FunnelStage'
+            overallConversionRate:
+              type: number
+            outboundByPlatform:
+              type: object
+              additionalProperties:
+                type: integer
+
+    ProductLeaderboardItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rank:
+          type: integer
+        name:
+          type: string
+        shopName:
+          type: string
+        count:
+          type: integer
+
+    ShopLeaderboardItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rank:
+          type: integer
+        name:
+          type: string
+        count:
+          type: integer
+
+    FunnelStage:
+      type: object
+      properties:
+        stageKey:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+        dropOffCount:
+          type: integer
+        dropOffRate:
+          type: number
+        conversionRateFromPrevious:
+          type: number

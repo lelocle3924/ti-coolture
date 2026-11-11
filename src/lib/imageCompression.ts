@@ -56,8 +56,8 @@ export async function compressImageFile(
           targetHeight = maxDimension;
           targetWidth = Math.round((naturalWidth * maxDimension) / naturalHeight);
         }
-      } else if (file.size < 250 * 1024 && file.type === outputMime) {
-        // Already within ceiling and small WebP
+      } else if (file.size < 250 * 1024 && file.type === "image/webp") {
+        // Already within ceiling and is already WebP
         return resolve(file);
       }
 
@@ -91,8 +91,9 @@ export async function compressImageFile(
             }
           );
 
-          // Fail-safe: if compression made file larger without downscaling, keep original
+          // If the original file was ALREADY WebP and compression made it larger, keep original
           if (
+            file.type === "image/webp" &&
             compressedFile.size > file.size &&
             naturalWidth <= maxDimension &&
             naturalHeight <= maxDimension

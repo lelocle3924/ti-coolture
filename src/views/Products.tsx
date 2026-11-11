@@ -10,6 +10,7 @@ import { ContinuityLink } from "../lib/continuity";
 import { useStaggerReveal } from "../lib/useStaggerReveal";
 import { useMediaQuery } from "../lib/useAutoHideChrome";
 import { matchesVietnameseSearch } from "../lib/vietnamese";
+import { trackSearchQuery } from "../lib/analytics";
 
 /**
  * Categories, in two tiers.
@@ -429,6 +430,12 @@ export default function Products() {
   const toastTimers = useRef<number[]>([]);
 
   useEffect(() => () => toastTimers.current.forEach(clearTimeout), []);
+
+  useEffect(() => {
+    if (searchQuery && searchQuery.trim().length >= 2) {
+      trackSearchQuery(searchQuery.trim());
+    }
+  }, [searchQuery]);
 
 
   // Flow B: zero-result demand note capture

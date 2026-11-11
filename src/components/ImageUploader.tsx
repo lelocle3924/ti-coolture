@@ -48,8 +48,8 @@ const compressImage = (file: File): Promise<string> => {
           
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Compress as JPEG at 0.7 quality to keep payload small and extremely fast to load/save
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          // Compress as WebP at 0.82 quality to keep payload small and extremely fast to load/save
+          const compressedDataUrl = canvas.toDataURL("image/webp", 0.82);
           resolve(compressedDataUrl);
         } catch (e) {
           // Fallback to original Base64 if compression fails

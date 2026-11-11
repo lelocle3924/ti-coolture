@@ -502,7 +502,7 @@ export function useHomeData(): HomeData {
   const heroFrames = useMemo<HeroFrame[]>(() => {
     const house: HeroFrame = {
       id: "frame-ti",
-      src: new URL("../assets/background-hero.png", import.meta.url).href,
+      src: new URL("../assets/background-hero.webp", import.meta.url).href,
       shopId: null,
       shopName: "Tí Coolture",
       caption: "Mỗi người một TÍ chất riêng",

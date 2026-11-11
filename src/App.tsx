@@ -38,6 +38,18 @@ import RevealFooterLayout from "./components/RevealFooter";
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { recordButtonClick } from "./lib/dbService";
 import { useTitleEntrance } from "./lib/useTitleEntrance";
+import { trackPageView } from "./lib/analytics";
+
+function AnalyticsPageTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 
 function SmartScrollRestoration() {
   const location = useLocation();
@@ -295,6 +307,7 @@ function Root() {
     <>
       <SmartScrollRestoration />
       <ButtonClickTracker />
+      <AnalyticsPageTracker />
       <SiteShell />
     </>
   );

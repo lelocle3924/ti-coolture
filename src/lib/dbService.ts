@@ -264,9 +264,234 @@ function writeUsers(users: Record<string, UserProfile>) {
 
 /* ── reads ─────────────────────────────────────────────────────────────── */
 
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const memoryCache = new Map<string, CacheEntry<any>>();
+const SWR_FRESH_MS = 2 * 60 * 1000; // 2 minutes: instant 0ms, no network call
+const SWR_STALE_MS = 15 * 60 * 1000; // 15 minutes: stale-while-revalidate (instant 0ms + bg refresh)
+
+export function getClientCache<T>(key: string): { data: T; isStale: boolean } | null {
+  const now = Date.now();
+  const mem = memoryCache.get(key);
+  if (mem) {
+    if (now - mem.timestamp < SWR_FRESH_MS) return { data: mem.data, isStale: false };
+    if (now - mem.timestamp < SWR_STALE_MS) return { data: mem.data, isStale: true };
+  }
+
+  if (typeof sessionStorage !== "undefined") {
+    try {
+      const stored = sessionStorage.getItem(`ti_cache_${key}`);
+      if (stored) {
+        const parsed: CacheEntry<T> = JSON.parse(stored);
+        if (now - parsed.timestamp < SWR_FRESH_MS) {
+          memoryCache.set(key, parsed);
+          return { data: parsed.data, isStale: false };
+        }
+        if (now - parsed.timestamp < SWR_STALE_MS) {
+          memoryCache.set(key, parsed);
+          return { data: parsed.data, isStale: true };
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+export function setClientCache<T>(key: string, data: T) {
+  const entry: CacheEntry<T> = { data, timestamp: Date.now() };
+  memoryCache.set(key, entry);
+  if (typeof sessionStorage !== "undefined") {
+    try {
+      sessionStorage.setItem(`ti_cache_${key}`, JSON.stringify(entry));
+    } catch {}
+  }
+}
+
+export function invalidateClientCache(keyPrefix?: string) {
+  if (keyPrefix) {
+    for (const k of memoryCache.keys()) {
+      if (k.startsWith(keyPrefix)) memoryCache.delete(k);
+    }
+    if (typeof sessionStorage !== "undefined") {
+      try {
+        const toDel: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith(`ti_cache_${keyPrefix}`)) toDel.push(k);
+        }
+        toDel.forEach((k) => sessionStorage.removeItem(k));
+      } catch {}
+    }
+  } else {
+    memoryCache.clear();
+    if (typeof sessionStorage !== "undefined") {
+      try {
+        const toDel: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith("ti_cache_")) toDel.push(k);
+        }
+        toDel.forEach((k) => sessionStorage.removeItem(k));
+      } catch {}
+    }
+  }
+}
+
+export function mapShopRowToStoreProfile(row: any): StoreProfile {
+  const socials = row.shop_socials || [];
+  const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
+  return {
+    id: row.id,
+    slug: row.slug || row.id,
+    userId: "",
+    name: row.name,
+    logoUrl: resolveImageUrl(row.logo_url),
+    coverUrl: resolveImageUrl(row.cover_url),
+    heroImageUrl: resolveImageUrl((row as any).hero_image_url || (row as any).story_en),
+    story: row.story_vi ?? "",
+    vibe: row.tagline_vi ?? "",
+    description: row.tagline_vi ?? undefined,
+    phone: "",
+    email: row.contact_email ?? "",
+    address: row.address ?? row.area_tag ?? "",
+    taxId: "",
+    socials: {
+      facebook: pick("facebook"),
+      instagram: pick("instagram"),
+      tiktok: pick("tiktok"),
+      threads: pick("threads"),
+      website: pick("website"),
+      zalo: pick("zalo"),
+    },
+    socialToggles: {
+      facebook: !!pick("facebook"),
+      instagram: !!pick("instagram"),
+      tiktok: !!pick("tiktok"),
+      threads: !!pick("threads"),
+      website: !!pick("website"),
+      zalo: !!pick("zalo"),
+    },
+    registered: true,
+    createdAt: row.created_at,
+    status: "Approved",
+    hidden: false,
+  };
+}
+
+export function mapProductRowToProduct(row: any, status: "Pending" | "Approved" | "Rejected" = "Approved"): Product {
+  const shop = row.shops;
+  const category = row.categories;
+  const images = (row.product_images || [])
+    .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
+    .map((img: any) => resolveImageUrl(img.url));
+
+  const resolved = resolveProductCategory(
+    category?.slug || category?.id || category?.name_vi || row.category_id
+  );
+  const matVal = Array.isArray(row.variants)
+    ? (row.variants.find((v: any) => v.type === "material")?.value || "")
+    : "";
+  const variantList = Array.isArray(row.variants)
+    ? row.variants.map((v: any) => v.value || v.name || String(v))
+    : [];
+
+  return {
+    id: row.id,
+    storeId: row.shop_id,
+    storeName: shop?.name ?? "",
+    storeLogo: shop?.logo_url ? resolveImageUrl(shop.logo_url) : undefined,
+    name: row.name_vi,
+    price: row.price_vnd ?? 0,
+    currency: "VND",
+    description: row.short_desc_vi ?? "",
+    images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
+    category: resolved.category,
+    categorySlug: resolved.categorySlug,
+    categoryGroup: resolved.categoryGroup,
+    categoryGroupSlug: resolved.categoryGroupSlug,
+    variants: variantList,
+    material: matVal,
+    size: row.dimensions ?? undefined,
+    story: row.story_vi ?? undefined,
+    clicks: 0,
+    views: 0,
+    status,
+    createdAt: row.created_at,
+    hidden: false,
+  };
+}
+
+async function refreshStoresInBackground() {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase
+      .from("shops")
+      .select("*, shop_socials(*)")
+      .eq("status", "published");
+    if (data) {
+      const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+      const filtered = data.filter((row: any) => sandbox.shops[row.id] !== "hidden");
+      setClientCache("stores", filtered.map(mapShopRowToStoreProfile));
+    }
+  } catch {}
+}
+
+async function refreshProductsInBackground(status: "Pending" | "Approved" | "Rejected") {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase
+      .from("products")
+      .select("*, shops!inner(*), categories(*), product_images(*)")
+      .eq("status", "published")
+      .eq("shops.status", "published")
+      .eq("product_hidden", false)
+      .eq("shop_hidden", false);
+    if (data) {
+      const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+      const filtered = data.filter((row: any) => {
+        if (sandbox.products[row.id] === "hidden" || sandbox.products[row.id] === "rejected") return false;
+        if (sandbox.shops[row.shop_id] === "hidden") return false;
+        return true;
+      });
+      setClientCache(`products_${status}`, filtered.map((row: any) => mapProductRowToProduct(row, status)));
+    }
+  } catch {}
+}
+
 export async function fetchStores(): Promise<StoreProfile[]> {
   if (getDataSourceMode() === "real" && supabase) {
+    // 1. Check client SWR cache first
+    const cached = getClientCache<StoreProfile[]>("stores");
+    if (cached) {
+      if (cached.isStale) {
+        refreshStoresInBackground().catch(() => {});
+      }
+      return cached.data;
+    }
+
     try {
+      // 2. Try Edge API (/api/catalog) with 2s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      try {
+        const res = await fetch("/api/catalog?type=stores", { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data?.shops)) {
+            const mapped = json.data.shops.map(mapShopRowToStoreProfile);
+            setClientCache("stores", mapped);
+            return mapped;
+          }
+        }
+      } catch {
+        clearTimeout(timeoutId);
+      }
+
+      // 3. Fallback to direct Supabase query
       const { data, error } = await supabase
         .from("shops")
         .select("*, shop_socials(*)")
@@ -274,50 +499,10 @@ export async function fetchStores(): Promise<StoreProfile[]> {
 
       if (!error && data) {
         const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
-        const filtered = data.filter((row: any) => {
-          if (sandbox.shops[row.id] === "hidden") return false;
-          return true;
-        });
-        return filtered.map((row: any) => {
-          const socials = row.shop_socials || [];
-          const pick = (p: string) => socials.find((s: any) => s.platform === p)?.url;
-          return {
-            id: row.id,
-            slug: row.slug || row.id,
-            userId: "",
-            name: row.name,
-            logoUrl: resolveImageUrl(row.logo_url),
-            coverUrl: resolveImageUrl(row.cover_url),
-            heroImageUrl: resolveImageUrl((row as any).hero_image_url || (row as any).story_en),
-            story: row.story_vi ?? "",
-            vibe: row.tagline_vi ?? "",
-            description: row.tagline_vi ?? undefined,
-            phone: "",
-            email: row.contact_email ?? "",
-            address: row.address ?? row.area_tag ?? "",
-            taxId: "",
-            socials: {
-              facebook: pick("facebook"),
-              instagram: pick("instagram"),
-              tiktok: pick("tiktok"),
-              threads: pick("threads"),
-              website: pick("website"),
-              zalo: pick("zalo"),
-            },
-            socialToggles: {
-              facebook: !!pick("facebook"),
-              instagram: !!pick("instagram"),
-              tiktok: !!pick("tiktok"),
-              threads: !!pick("threads"),
-              website: !!pick("website"),
-              zalo: !!pick("zalo"),
-            },
-            registered: true,
-            createdAt: row.created_at,
-            status: "Approved",
-            hidden: false,
-          };
-        });
+        const filtered = data.filter((row: any) => sandbox.shops[row.id] !== "hidden");
+        const mapped = filtered.map(mapShopRowToStoreProfile);
+        setClientCache("stores", mapped);
+        return mapped;
       }
     } catch (e) {
       console.warn("Error fetching real stores from Supabase:", e);
@@ -394,7 +579,46 @@ export async function fetchProducts(
   _opts?: { throwOnError?: boolean }
 ): Promise<Product[]> {
   if (getDataSourceMode() === "real" && supabase) {
+    const cacheKey = `products_${status}`;
+    // 1. Check client SWR cache first (Approved only)
+    if (status === "Approved") {
+      const cached = getClientCache<Product[]>(cacheKey);
+      if (cached) {
+        if (cached.isStale) {
+          refreshProductsInBackground(status).catch(() => {});
+        }
+        return cached.data;
+      }
+    }
+
     try {
+      // 2. For Approved products, try Edge API (/api/catalog) with 2s timeout
+      if (status === "Approved") {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        try {
+          const res = await fetch("/api/catalog?type=products", { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && Array.isArray(json.data?.products)) {
+              const sandbox = isSandboxEnabled() ? getSandboxOverrides() : { shops: {}, products: {} };
+              const filtered = json.data.products.filter((row: any) => {
+                if (sandbox.products[row.id] === "hidden" || sandbox.products[row.id] === "rejected") return false;
+                if (sandbox.shops[row.shop_id] === "hidden") return false;
+                return true;
+              });
+              const mapped = filtered.map((row: any) => mapProductRowToProduct(row, status));
+              setClientCache(cacheKey, mapped);
+              return mapped;
+            }
+          }
+        } catch {
+          clearTimeout(timeoutId);
+        }
+      }
+
+      // 3. Fallback to direct Supabase query
       const dbStatus = status === "Approved" ? "published" : status === "Pending" ? "pending_review" : "rejected";
       let productQuery = supabase
         .from("products")
@@ -415,48 +639,11 @@ export async function fetchProducts(
           if (sandbox.shops[row.shop_id] === "hidden") return false;
           return true;
         });
-        return filtered.map((row: any) => {
-          const shop = row.shops;
-          const category = row.categories;
-          const images = (row.product_images || [])
-            .sort((a: any, b: any) => Number(b.is_cover) - Number(a.is_cover) || a.sort_order - b.sort_order)
-            .map((img: any) => resolveImageUrl(img.url));
-
-          const resolved = resolveProductCategory(
-            category?.slug || category?.id || category?.name_vi || row.category_id
-          );
-          const matVal = Array.isArray(row.variants)
-            ? (row.variants.find((v: any) => v.type === "material")?.value || "")
-            : "";
-          const variantList = Array.isArray(row.variants)
-            ? row.variants.map((v: any) => v.value || v.name || String(v))
-            : [];
-
-          return {
-            id: row.id,
-            storeId: row.shop_id,
-            storeName: shop?.name ?? "",
-            storeLogo: shop?.logo_url ? resolveImageUrl(shop.logo_url) : undefined,
-            name: row.name_vi,
-            price: row.price_vnd ?? 0,
-            currency: "VND",
-            description: row.short_desc_vi ?? "",
-            images: images.length > 0 ? images : ["https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=500"],
-            category: resolved.category,
-            categorySlug: resolved.categorySlug,
-            categoryGroup: resolved.categoryGroup,
-            categoryGroupSlug: resolved.categoryGroupSlug,
-            variants: variantList,
-            material: matVal,
-            size: row.dimensions ?? undefined,
-            story: row.story_vi ?? undefined,
-            clicks: 0,
-            views: 0,
-            status,
-            createdAt: row.created_at,
-            hidden: false,
-          };
-        });
+        const mapped = filtered.map((row: any) => mapProductRowToProduct(row, status));
+        if (status === "Approved") {
+          setClientCache(cacheKey, mapped);
+        }
+        return mapped;
       }
       throw error ?? new Error("Không tải được sản phẩm từ database.");
     } catch (e) {
@@ -972,7 +1159,7 @@ export async function createProduct(
     published_at: null,
     created_at: now,
     updated_at: now,
-    variants: productData.variants?.map((v) => ({ name: { vi: v, en: v }, values: [{ vi: v, en: v }] })) ?? [],
+    variants: productData.variants?.map((v) => ({ type: "variant", name: { vi: v, en: v }, values: [{ vi: v, en: v }] })) ?? [],
   });
 
   if (productData.material) {

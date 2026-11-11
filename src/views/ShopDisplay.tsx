@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, Heart, MapPin, ArrowUpRight, SlidersHorizontal } from "lucide-react";
 import { fetchProductsStore, fetchStoreById } from "../lib/dbService";
 import type { Product, StoreProfile } from "../types";
 import { formatPrice, ContinuityLink } from "../lib/continuity";
 import { useSavedStores } from "../lib/useSavedStores";
+import { trackShopView, trackOutboundClick } from "../lib/analytics";
 import PlatformGlyph from "../components/PlatformGlyph";
 import SaveButton from "../components/SaveButton";
 import { RibbonLoop } from "../components/BrandShapes";
@@ -85,6 +86,7 @@ function useShopPage(storeId: string | undefined) {
       setStore(s);
       setResolved(true);
       if (!s) return;
+      trackShopView(s.id);
       const rows = await fetchProductsStore(s.id);
       if (alive) setProducts(rows);
     });
@@ -341,7 +343,7 @@ export function ShopProductCard({
               to={isPreview ? "#" : `/products/${product.id}`}
               imgRef={imageRef}
               className="block h-full w-full"
-              onClick={handleLinkClick}
+              onNavigate={isPreview ? () => {} : undefined}
             >
               <img
                 ref={imageRef}
@@ -388,7 +390,7 @@ export function ShopProductCard({
               to={isPreview ? "#" : `/products/${product.id}`}
               imgRef={imageRef}
               className="block"
-              onClick={handleLinkClick}
+              onNavigate={isPreview ? () => {} : undefined}
             >
               <h3
                 className={`line-clamp-2 text-[14px] md:text-[15px] font-semibold leading-[1.4] transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
@@ -424,7 +426,7 @@ export function ShopProductCard({
                     : "bg-[#F1E9FF] text-[#7520F7] group-hover:bg-[#7520F7] group-hover:text-white"
                 } group-hover:translate-x-[1px] group-hover:-translate-y-[1px] group-hover:scale-105`}
                 aria-label={`Xem chi tiết ${product.name}`}
-                onClick={handleLinkClick}
+                onNavigate={isPreview ? () => {} : undefined}
               >
                 <ArrowRight className="h-3.5 w-3.5" />
               </ContinuityLink>
@@ -493,7 +495,7 @@ export function ShopView({
   const channels = channelsOf(store);
   const storyText =
     store.story || store.vibe || store.description || "Không gian sáng tạo và chế tác thủ công độc lập.";
-  const mapQuery = store.address || store.area || `${store.name} Việt Nam`;
+  const mapQuery = store.address || (store as any).area || `${store.name} Việt Nam`;
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
   return (
@@ -570,7 +572,7 @@ export function ShopView({
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-[#5B4F6E]">
                 <span className="flex items-center gap-1.5 font-semibold text-ink">
                   <MapPin className="h-3.5 w-3.5 text-brand" />
-                  {store.address || store.area || "Việt Nam"}
+                  {store.address || (store as any).area || "Việt Nam"}
                 </span>
               </div>
 
@@ -611,6 +613,7 @@ export function ShopView({
                         aria-label={`${channel.label} của ${store.name}`}
                         className="shop-social-link"
                         onClick={(e) => {
+                          trackOutboundClick(store.id, channel.key as any, channel.href);
                           if (isPreview) e.preventDefault();
                         }}
                       >

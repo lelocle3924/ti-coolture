@@ -123,3 +123,127 @@ export interface WebhookLog {
   payload: any;
   timestamp: string;
 }
+
+// ============ ANALYTICS & DASHBOARD TYPES ============
+
+export type TrackingEventType =
+  | "page_view"
+  | "product_view"
+  | "shop_view"
+  | "wishlist_toggle"
+  | "outbound_click"
+  | "search_query";
+
+export type OutboundPlatform =
+  | "shopee"
+  | "instagram"
+  | "zalo"
+  | "tiktok"
+  | "facebook"
+  | "threads"
+  | "website";
+
+export interface TrackingPayload {
+  type: TrackingEventType;
+  productId?: string;
+  shopId?: string;
+  targetUrl?: string;
+  platform?: OutboundPlatform;
+  isNewVisitor?: boolean;
+  deviceType?: "mobile" | "desktop" | "tablet";
+  referrerSource?: "organic" | "social" | "direct" | "referral" | "other";
+  searchQuery?: string;
+  favoriteDelta?: 1 | -1;
+}
+
+export interface DashboardKpis {
+  totalVisitors: number;
+  totalVisitorsChange: number;
+  totalPageViews: number;
+  totalPageViewsChange: number;
+  activeShops: number;
+  activeShopsChange: number;
+  pendingShops: number;
+  totalListedProducts: number;
+  totalListedProductsChange: number;
+  newProductsAdded: number;
+}
+
+export interface VisitorsTimePoint {
+  date: string;
+  newVisitors: number;
+  returningVisitors: number;
+}
+
+export interface NewVsReturningMetric {
+  newCount: number;
+  newPercent: number;
+  returningCount: number;
+  returningPercent: number;
+}
+
+export interface DevicesMetric {
+  mobilePercent: number;
+  desktopPercent: number;
+  tabletPercent: number;
+}
+
+export interface TrafficSourceMetric {
+  source: string;
+  sharePercent: number;
+}
+
+export interface CategoryMetric {
+  category: string;
+  percentage: number;
+}
+
+export interface ProductLeaderboardItem {
+  id: string;
+  rank: number;
+  name: string;
+  shopName: string;
+  count: number;
+}
+
+export interface ShopLeaderboardItem {
+  id: string;
+  rank: number;
+  name: string;
+  count: number;
+}
+
+export interface SearchKeywordMetric {
+  keyword: string;
+  count: number;
+}
+
+export interface FunnelStage {
+  stageKey: string;
+  label: string;
+  count: number;
+  dropOffCount: number;
+  dropOffRate: number;
+  conversionRateFromPrevious: number;
+}
+
+export interface ConversionFunnelMetric {
+  stages: FunnelStage[];
+  overallConversionRate: number;
+  outboundByPlatform: Record<string, number>;
+}
+
+export interface DashboardOverviewResponse {
+  kpis: DashboardKpis;
+  visitorsOverTime: VisitorsTimePoint[];
+  newVsReturning: NewVsReturningMetric;
+  devices: DevicesMetric;
+  trafficSources: TrafficSourceMetric[];
+  topCategories: CategoryMetric[];
+  topProductsViewed: ProductLeaderboardItem[];
+  topProductsFavorited: ProductLeaderboardItem[];
+  topShops: ShopLeaderboardItem[];
+  topSearchKeywords: SearchKeywordMetric[];
+  conversionFunnel: ConversionFunnelMetric;
+}
+

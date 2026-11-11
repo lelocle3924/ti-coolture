@@ -76,18 +76,18 @@ export default function PolicyContent({
                   <tbody className="divide-y divide-ink/10">
                     <tr>
                       <td className="p-3 font-medium">Bạn vào web</td>
-                      <td className="p-3">Nhà cung cấp máy chủ tự ghi nhật ký kỹ thuật: địa chỉ IP, loại trình duyệt, thời điểm truy cập</td>
-                      <td className="p-3">Giữ web chạy ổn, chặn spam và tấn công</td>
+                      <td className="p-3">Nhà cung cấp máy chủ tự ghi nhật ký kỹ thuật: địa chỉ IP, loại trình duyệt, thời điểm truy cập. Trình duyệt đánh dấu cờ ẩn danh đã từng ghé để ước lượng khách mới / quay lại</td>
+                      <td className="p-3">Giữ web chạy ổn, chặn spam và đo lường lượng truy cập tổng thể</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-medium">Bạn lưu yêu thích, theo dõi shop, tìm kiếm</td>
-                      <td className="p-3">Lưu trên trình duyệt của bạn. Tí <strong>không</strong> nhận</td>
-                      <td className="p-3">Để bạn xem lại lần sau</td>
+                      <td className="p-3">Danh sách yêu thích lưu trên trình duyệt của bạn. Tí chỉ đếm tổng lượt lưu sản phẩm (+1 / -1), không biết ai lưu</td>
+                      <td className="p-3">Để bạn xem lại lần sau và giúp shop biết sản phẩm được quan tâm</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-medium">Bạn bấm vào một sản phẩm</td>
-                      <td className="p-3">Bộ đếm tổng của sản phẩm đó tăng thêm 1. Tí <strong>không</strong> ghi ai đã bấm</td>
-                      <td className="p-3">Biết sản phẩm nào được quan tâm</td>
+                      <td className="p-3 font-medium">Bạn bấm vào sản phẩm hoặc link liên hệ shop</td>
+                      <td className="p-3">Bộ đếm tổng của sản phẩm/shop đó tăng thêm 1. Tí <strong>không</strong> ghi ai đã bấm</td>
+                      <td className="p-3">Biết sản phẩm và shop nào được quan tâm</td>
                     </tr>
                     <tr>
                       <td className="p-3 font-medium">Bạn email cho Tí</td>
@@ -149,7 +149,7 @@ export default function PolicyContent({
               Tí <strong>không</strong> dùng cookie.
             </p>
             <p>
-              Tí dùng bộ nhớ trình duyệt (localStorage, sessionStorage) cho những việc cần thiết: lưu yêu thích, shop đã theo dõi, tìm kiếm gần đây, vị trí cuộn trang và giữ phiên đăng nhập của shop. Dữ liệu này nằm trên máy bạn. Bạn xóa được bất cứ lúc nào bằng cách xóa dữ liệu trang web trong cài đặt trình duyệt.
+              Tí dùng bộ nhớ trình duyệt (localStorage, sessionStorage) cho những việc cần thiết: lưu yêu thích, shop đã theo dõi, tìm kiếm gần đây, đánh dấu đã từng ghé web, vị trí cuộn trang và giữ phiên đăng nhập của shop. Dữ liệu này nằm trên máy bạn. Bạn xóa được bất cứ lúc nào bằng cách xóa dữ liệu trang web trong cài đặt trình duyệt.
             </p>
             <p>
               Nếu sau này Tí thêm công cụ thống kê hoặc quảng cáo, Tí sẽ hỏi ý bạn trước. Bạn có quyền từ chối.

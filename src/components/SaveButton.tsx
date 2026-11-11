@@ -1,6 +1,7 @@
 import { Heart } from "lucide-react";
 import { useSavedProducts } from "../lib/useSavedProducts";
 import type { Product } from "../types";
+import { trackWishlistToggle } from "../lib/analytics";
 
 /**
  * Save to the wishlist. One control, every place a product image appears.
@@ -75,6 +76,7 @@ export default function SaveButton({
            surface except the catalogue passes no callback, so every one of
            them silently did nothing. */
         const nowSaved = await saved.toggle(product.id);
+        trackWishlistToggle(product.id, nowSaved ? 1 : -1);
         onToggled?.(nowSaved);
       }}
       aria-label={isSaved ? `Bỏ lưu ${product.name}` : `Lưu ${product.name} vào danh sách`}

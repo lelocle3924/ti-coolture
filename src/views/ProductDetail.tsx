@@ -31,6 +31,7 @@ import {
   incrementProductClick,
   triggerWebhook,
 } from "../lib/dbService";
+import { trackProductView, trackOutboundClick } from "../lib/analytics";
 import type { Product, StoreProfile } from "../types";
 import SaveButton from "../components/SaveButton";
 import {
@@ -63,6 +64,7 @@ function useProductPage(productId: string | undefined) {
       setProduct(p);
       setResolved(true);
       if (!p) return;
+      trackProductView(p.id, p.storeId);
       const [s, all] = await Promise.all([
         fetchStoreById(p.storeId),
         fetchProductsStore(p.storeId),
@@ -122,6 +124,12 @@ function useInquiry(product: Product | null, store: StoreProfile | null) {
       platform: channel.platform,
       timestamp: new Date().toISOString(),
     });
+    trackOutboundClick(
+      product.storeId,
+      channel.platform.toLowerCase() as any,
+      channel.url,
+      product.id
+    );
     let url = "";
     if (channel.platform === "Zalo") {
       url = channel.url;

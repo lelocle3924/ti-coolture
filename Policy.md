@@ -12,9 +12,9 @@ Tí không bán hàng. Khi bạn bấm vào một sản phẩm, Tí dẫn bạn 
 
 | Khi nào | Chuyện gì xảy ra | Để làm gì |
 | ----- | ----- | ----- |
-| Bạn vào web | Nhà cung cấp máy chủ tự ghi nhật ký kỹ thuật: địa chỉ IP, loại trình duyệt, thời điểm truy cập | Giữ web chạy ổn, chặn spam và tấn công |
-| Bạn lưu yêu thích, theo dõi shop, tìm kiếm | Lưu trên trình duyệt của bạn. Tí **không** nhận | Để bạn xem lại lần sau |
-| Bạn bấm vào một sản phẩm | Bộ đếm tổng của sản phẩm đó tăng thêm 1\. Tí **không** ghi ai đã bấm | Biết sản phẩm nào được quan tâm |
+| Bạn vào web | Nhà cung cấp máy chủ tự ghi nhật ký kỹ thuật: địa chỉ IP, loại trình duyệt, thời điểm truy cập. Trình duyệt đánh dấu cờ ẩn danh đã từng ghé để ước lượng khách mới / quay lại | Giữ web chạy ổn, chặn spam và đo lường lượng truy cập tổng thể |
+| Bạn lưu yêu thích, theo dõi shop, tìm kiếm | Danh sách yêu thích lưu trên trình duyệt của bạn. Tí chỉ đếm tổng lượt lưu sản phẩm (+1 / -1), không biết ai lưu | Để bạn xem lại lần sau và giúp shop biết sản phẩm được quan tâm |
+| Bạn bấm vào sản phẩm hoặc link liên hệ shop | Bộ đếm tổng của sản phẩm/shop đó tăng thêm 1. Tí **không** ghi ai đã bấm | Biết sản phẩm và shop nào được quan tâm |
 | Bạn email cho Tí | Nội dung thư và địa chỉ email | Trả lời bạn |
 
 Tí không xin vị trí của bạn và không có bình luận hay nhắn tin.
@@ -25,7 +25,7 @@ Tí không xin vị trí của bạn và không có bình luận hay nhắn tin.
 | ----- | ----- | ----- |
 | Shop gửi đăng ký hợp tác | Tên shop, tên người phụ trách, email Google, số điện thoại/Zalo, khu vực, link mạng xã hội, mô tả, link ảnh | Xét duyệt và liên hệ với shop |
 | Shop đăng nhập Google | Mã tài khoản, email, tên, ảnh đại diện, thời điểm đăng nhập gần nhất | Cho shop vào trang quản lý |
-| Shop đăng sản phẩm | Ảnh, mô tả sản phẩm, thông tin xưởng | Hiển thị công khai sau khi Tí duyệt |
+| Shop đăng sản phẩm | Ảnh, mô tả sản phẩm, thông tin shop | Hiển thị công khai sau khi Tí duyệt |
 
 **Về đăng nhập Google:** Tí chỉ xin quyền cơ bản (openid, email, profile). Tí không lưu mật khẩu hay token Google và không đọc Gmail, Drive hay danh bạ. Bạn có thể ngắt kết nối tại https\://myaccount.google.com/connections. Lưu ý: ngắt kết nối chưa xóa dữ liệu ở Tí. Muốn xóa, xem mục 6\.
 
@@ -35,7 +35,7 @@ Việc Tí sử dụng thông tin nhận từ Google tuân theo [Chính sách d�
 
 Tí **không** dùng cookie.
 
-Tí dùng bộ nhớ trình duyệt (localStorage, sessionStorage) cho những việc cần thiết: lưu yêu thích, shop đã theo dõi, tìm kiếm gần đây, vị trí cuộn trang và giữ phiên đăng nhập của shop. Dữ liệu này nằm trên máy bạn. Bạn xóa được bất cứ lúc nào bằng cách xóa dữ liệu trang web trong cài đặt trình duyệt.
+Tí dùng bộ nhớ trình duyệt (localStorage, sessionStorage) cho những việc cần thiết: lưu yêu thích, shop đã theo dõi, tìm kiếm gần đây, đánh dấu đã từng ghé web, vị trí cuộn trang và giữ phiên đăng nhập của shop. Dữ liệu này nằm trên máy bạn. Bạn xóa được bất cứ lúc nào bằng cách xóa dữ liệu trang web trong cài đặt trình duyệt.
 
 Nếu sau này Tí thêm công cụ thống kê hoặc quảng cáo, Tí sẽ hỏi ý bạn trước. Bạn có quyền từ chối.
 
