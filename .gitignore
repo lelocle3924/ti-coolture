@@ -29,4 +29,6 @@ manifest.json
 .antigravity/
 image.png
 ui.md
+__pycache__/
+*.pyc
 
