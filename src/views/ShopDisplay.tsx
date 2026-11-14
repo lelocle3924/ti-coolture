@@ -645,7 +645,7 @@ export function ShopView({
 
               <div className="shop-profile-note border-t border-[#ECE6F5]">
                 <p className="text-[12px] leading-relaxed text-[#5B4F6E]">
-                  Giá tham khảo, giá cuối do shop quyết định. Tí Coolture không bán hàng và không xử lý giao dịch.
+                  Tí Coolture không bán hàng và không xử lý giao dịch.
                 </p>
               </div>
             </div>

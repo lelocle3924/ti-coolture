@@ -10,7 +10,6 @@ import { useLoopTrack, LOOP_COPIES } from "../lib/useLoopTrack";
 import { usePauseOffscreen } from "../lib/usePauseOffscreen";
 import {
   formatPrice,
-  PRICE_NOTE,
   useHomeData,
   LANDSCAPE_SPEC,
   type HomeCollection,
@@ -1084,8 +1083,6 @@ function StoreMarquee({ products, onOpen }: { products: Product[]; onOpen: (p: P
           <LoopingStoreLane products={products} onOpen={onOpen} />
         )}
       </div>
-
-      <p className="mt-8 px-5 text-center text-xs text-white/50 md:px-10">{PRICE_NOTE}</p>
     </section>
   );
 }

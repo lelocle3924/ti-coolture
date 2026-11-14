@@ -479,21 +479,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
 
       // Real Leaderboards directly from Database rows
-      const topProductsViewed = (topViewedProductsRes.data || []).map((p: any, idx: number) => ({
-        id: p.id,
-        rank: idx + 1,
-        name: p.name_vi,
-        shopName: p.shops?.name || "Shop",
-        count: p.view_count || 0,
-      }));
+      const topProductsViewed = (topViewedProductsRes.data || []).map((p: any, idx: number) => {
+        const shopName = Array.isArray(p.shops) ? p.shops[0]?.name : p.shops?.name;
+        return {
+          id: p.id,
+          rank: idx + 1,
+          name: p.name_vi,
+          shopName: shopName || "Shop",
+          count: p.view_count || 0,
+        };
+      });
 
-      const topProductsFavorited = (topFavoritedProductsRes.data || []).map((p: any, idx: number) => ({
-        id: p.id,
-        rank: idx + 1,
-        name: p.name_vi,
-        shopName: p.shops?.name || "Shop",
-        count: p.favorite_count || 0,
-      }));
+      const topProductsFavorited = (topFavoritedProductsRes.data || []).map((p: any, idx: number) => {
+        const shopName = Array.isArray(p.shops) ? p.shops[0]?.name : p.shops?.name;
+        return {
+          id: p.id,
+          rank: idx + 1,
+          name: p.name_vi,
+          shopName: shopName || "Shop",
+          count: p.favorite_count || 0,
+        };
+      });
 
       const topShops = (topShopsRes.data || []).map((s: any, idx: number) => ({
         id: s.id,

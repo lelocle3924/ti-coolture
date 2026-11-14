@@ -425,7 +425,7 @@ export default function OpenShop() {
                 rows={5}
                 value={values.makes}
                 onChange={(e) => set("makes", e.target.value)}
-                placeholder="Kể ngắn gọn về mặt hàng chủ đạo và phong cách của shop nhé: Sản phẩm chính, chất liệu, khoảng giá tham khảo..."
+                placeholder="Kể ngắn gọn về mặt hàng chủ đạo và phong cách của shop nhé: Sản phẩm chính, chất liệu, khoảng giá sản phẩm..."
                 aria-invalid={!!errors.makes}
                 className={`ti-field resize-y bg-paper text-base leading-relaxed ${
                   errors.makes ? "border-brand" : ""

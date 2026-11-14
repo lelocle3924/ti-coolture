@@ -49,9 +49,8 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
     throw new Error("Vui lòng đăng nhập với tài khoản Google để tiếp tục.");
   }
 
-  // Admin Token Bypass (chỉ cho phép trong Dev/Preview mode)
-  const isDev = process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
-  const adminBypassToken = isDev ? process.env.ADMIN_TOKEN : null;
+  // Admin Token Bypass
+  const adminBypassToken = process.env.ADMIN_TOKEN || null;
   if (adminBypassToken && token === adminBypassToken) {
     return {
       userId: "00000000-0000-0000-0000-000000000001",
@@ -116,6 +115,35 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
         .from("staff_members")
         .update({ user_id: user.id })
         .eq("id", staffByEmail.id);
+    }
+  }
+
+  // Super admin fallback if not yet in staff_members
+  const SUPER_ADMIN_EMAILS = [
+    "locle30092004@gmail.com",
+    "vinhhung3205@gmail.com",
+    (process.env.SUPER_ADMIN_EMAIL || "").toLowerCase().trim(),
+  ].filter(Boolean);
+
+  if ((!staffData || !staffData.is_active) && SUPER_ADMIN_EMAILS.includes(userEmail)) {
+    staffData = {
+      role: "admin",
+      full_name: "Super Admin",
+      is_active: true,
+    };
+    try {
+      await supabase.from("staff_members").upsert(
+        {
+          user_id: user.id,
+          email: userEmail,
+          full_name: "Super Admin",
+          role: "admin",
+          is_active: true,
+        },
+        { onConflict: "email" }
+      );
+    } catch (e) {
+      console.warn("Could not upsert super admin into staff_members:", e);
     }
   }
 
@@ -248,9 +276,8 @@ export async function authenticateStaffMember(authHeader?: string): Promise<Auth
     throw new Error("Yêu cầu quyền truy cập của quản trị viên.");
   }
 
-  // Admin Token Bypass (chỉ cho phép trong Dev/Preview mode)
-  const isDev = process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
-  const adminBypassToken = isDev ? process.env.ADMIN_TOKEN : null;
+  // Admin Token Bypass
+  const adminBypassToken = process.env.ADMIN_TOKEN || null;
   if (adminBypassToken && token === adminBypassToken) {
     return {
       userId: "00000000-0000-0000-0000-000000000001",
@@ -292,6 +319,35 @@ export async function authenticateStaffMember(authHeader?: string): Promise<Auth
         .from("staff_members")
         .update({ user_id: user.id })
         .eq("id", staffByEmail.id);
+    }
+  }
+
+  // Super admin fallback if not yet in staff_members
+  const SUPER_ADMIN_EMAILS = [
+    "locle30092004@gmail.com",
+    "vinhhung3205@gmail.com",
+    (process.env.SUPER_ADMIN_EMAIL || "").toLowerCase().trim(),
+  ].filter(Boolean);
+
+  if ((!staffData || !staffData.is_active) && SUPER_ADMIN_EMAILS.includes(userEmail)) {
+    staffData = {
+      role: "admin",
+      full_name: "Super Admin",
+      is_active: true,
+    };
+    try {
+      await supabase.from("staff_members").upsert(
+        {
+          user_id: user.id,
+          email: userEmail,
+          full_name: "Super Admin",
+          role: "admin",
+          is_active: true,
+        },
+        { onConflict: "email" }
+      );
+    } catch (e) {
+      console.warn("Could not upsert super admin into staff_members:", e);
     }
   }
 

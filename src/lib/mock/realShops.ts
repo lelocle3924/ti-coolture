@@ -43,7 +43,7 @@ import type {
 import { SHOP_STORIES } from "./shopStories";
 
 const NOW = "2026-08-28T00:00:00.000Z";
-const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
+const PRICE_NOTE = null;
 
 interface ProductSpec {
   slug: string;

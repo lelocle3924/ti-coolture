@@ -24,6 +24,7 @@ import {
   ProductLeaderboardItem,
   ShopLeaderboardItem,
 } from "../../types";
+import { getSupabaseToken } from "../../lib/supabaseClient";
 
 interface AnalyticsDashboardProps {
   token?: string | null;
@@ -47,11 +48,20 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
     setLoading(true);
     setError(null);
     try {
+      const liveSupabaseToken = await getSupabaseToken();
       const authToken =
         token ||
+        liveSupabaseToken ||
         (typeof window !== "undefined"
-          ? localStorage.getItem("ti_admin_token") || localStorage.getItem("staff_session_token")
+          ? localStorage.getItem("ti_admin_bypass_token") ||
+            localStorage.getItem("ti_admin_token") ||
+            localStorage.getItem("staff_session_token") ||
+            localStorage.getItem("ti_portal_dev_token")
           : null);
+
+      if (!authToken) {
+        throw new Error("Không tìm thấy phiên đăng nhập quản trị viên. Vui lòng đăng nhập lại.");
+      }
 
       let url = `/api/analytics?action=overview&period=${period}`;
       if (period === "custom" && customStart && customEnd) {
@@ -60,7 +70,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
 
       const res = await fetch(url, {
         headers: {
-          Authorization: authToken ? `Bearer ${authToken}` : "Bearer test_admin_token_local",
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
@@ -81,7 +91,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+  }, [period, token]);
 
   // Derived values for SVG line chart
   const timePoints = useMemo(() => {
@@ -199,7 +209,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-              {kpis?.totalVisitors.toLocaleString() ?? "0"}
+              {kpis?.totalVisitors != null ? kpis.totalVisitors.toLocaleString() : "0"}
             </span>
             <span className="text-xs font-semibold text-emerald-600 flex items-center">
               <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
@@ -217,7 +227,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-              {kpis?.totalPageViews.toLocaleString() ?? "0"}
+              {kpis?.totalPageViews != null ? kpis.totalPageViews.toLocaleString() : "0"}
             </span>
             <span className="text-xs font-semibold text-emerald-600 flex items-center">
               <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
@@ -235,7 +245,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-              {kpis?.activeShops.toLocaleString() ?? "0"}
+              {kpis?.activeShops != null ? kpis.activeShops.toLocaleString() : "0"}
             </span>
             <span className="text-xs font-semibold text-emerald-600 flex items-center">
               <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
@@ -255,7 +265,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-stone-900 tracking-tight">
-              {kpis?.totalListedProducts.toLocaleString() ?? "0"}
+              {kpis?.totalListedProducts != null ? kpis.totalListedProducts.toLocaleString() : "0"}
             </span>
             <span className="text-xs font-semibold text-emerald-600 flex items-center">
               <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
@@ -615,7 +625,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
             </div>
 
             <div className="divide-y divide-stone-100">
-              {data?.topProductsViewed.slice(0, 5).map((item) => (
+              {data?.topProductsViewed?.slice(0, 5).map((item) => (
                 <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5 truncate pr-2">
                     <span className="w-5 h-5 rounded-full bg-stone-100 font-bold text-stone-600 flex items-center justify-center text-[10px]">
@@ -654,7 +664,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
             </div>
 
             <div className="divide-y divide-stone-100">
-              {data?.topProductsFavorited.slice(0, 5).map((item) => (
+              {data?.topProductsFavorited?.slice(0, 5).map((item) => (
                 <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5 truncate pr-2">
                     <span className="w-5 h-5 rounded-full bg-stone-100 font-bold text-stone-600 flex items-center justify-center text-[10px]">
@@ -696,7 +706,7 @@ export default function AnalyticsDashboard({ token }: AnalyticsDashboardProps) {
             </div>
 
             <div className="divide-y divide-stone-100">
-              {data?.topShops.slice(0, 5).map((s) => (
+              {data?.topShops?.slice(0, 5).map((s) => (
                 <div key={s.id} className="py-2.5 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5 truncate pr-2">
                     <span className="w-5 h-5 rounded-full bg-stone-100 font-bold text-stone-600 flex items-center justify-center text-[10px]">

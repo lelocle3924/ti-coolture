@@ -79,7 +79,7 @@ import "./continuity.css";
 export const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}đ` : "Liên hệ";
 
-export const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
+export const PRICE_NOTE = "";
 export const NO_TRANSACTION =
   "Tí Coolture không bán hàng và không xử lý giao dịch.";
 

@@ -607,4 +607,4 @@ export function useHomeData(): HomeData {
 export const formatPrice = (value: number) =>
   value > 0 ? `${value.toLocaleString("vi-VN")}đ` : "Liên hệ";
 
-export const PRICE_NOTE = "Giá tham khảo · cập nhật 08/2026 · giá cuối do shop quyết định";
+export const PRICE_NOTE = "";

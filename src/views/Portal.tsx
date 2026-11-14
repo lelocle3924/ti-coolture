@@ -333,6 +333,7 @@ export default function Portal() {
   const [products, setProducts] = useState<PortalProduct[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
   const [bypassToken, setBypassToken] = useState(import.meta.env.VITE_ADMIN_TOKEN || "");
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   // Admin Management State
   const [partnerRequests, setPartnerRequests] = useState<PartnerRequest[]>([]);
@@ -611,6 +612,7 @@ export default function Portal() {
       if (supabase) {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
+          setSessionToken(data.session.access_token);
           setCurrentUser(data.session.user);
           await loadPortalMe(data.session.access_token, data.session.user);
           setSessionLoading(false);
@@ -620,9 +622,11 @@ export default function Portal() {
         const { data: authListener } = supabase.auth.onAuthStateChange(
           async (_event, session) => {
             if (session) {
+              setSessionToken(session.access_token);
               setCurrentUser(session.user);
               await loadPortalMe(session.access_token, session.user);
             } else {
+              setSessionToken(null);
               setCurrentUser(null);
               setShop(null);
               setIsAdmin(false);
@@ -686,10 +690,12 @@ export default function Portal() {
   async function loadPortalMe(token: string, userObj?: any) {
     try {
       setAuthError(null);
+      setSessionToken(token);
       const email = (userObj?.email || currentUser?.email || "").toLowerCase().trim();
 
       // Super admin email check
-      const isSuperAdminEmail = email === "locle30092004@gmail.com";
+      const isSuperAdminEmail =
+        email === "locle30092004@gmail.com" || email === "vinhhung3205@gmail.com";
 
       // 1. Try Backend API
       try {
@@ -3246,7 +3252,7 @@ export default function Portal() {
             {/* TAB ANALYTICS: TỔNG QUAN HIỆU NĂNG & PHỄU CHUYỂN ĐỔI */}
             {adminTab === "analytics" && (
               <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xl border border-stone-200">
-                <AnalyticsDashboard token={bypassToken || null} />
+                <AnalyticsDashboard token={sessionToken || bypassToken || null} />
               </div>
             )}
 
@@ -6062,9 +6068,6 @@ export default function Portal() {
                       <div className="pt-2">
                         <p className="text-2xl font-bold text-brand">
                           {typeof priceVnd === "number" && priceVnd > 0 ? `${priceVnd.toLocaleString("vi-VN")} ₫` : "Giá liên hệ"}
-                        </p>
-                        <p className="text-[11px] text-ink/50 mt-0.5">
-                          Giá tham khảo, giá cuối do shop quyết định
                         </p>
                       </div>
                     </div>

@@ -21,7 +21,7 @@ import {
   realShopSocialRows,
 } from "./realShops";
 
-const PRICE_NOTE = "Giá tham khảo, giá cuối do shop quyết định";
+const PRICE_NOTE = null;
 const NOW = "2026-08-14T00:00:00.000Z";
 
 /** One of the seven groups the tabs are built from. */
