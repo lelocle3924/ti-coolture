@@ -257,6 +257,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (createEditErr) throw createEditErr;
         }
 
+        const { data: fullEditReq } = await supabase
+          .from("product_edit_requests")
+          .select(`
+            id,
+            product_id,
+            shop_id,
+            proposed_data,
+            status,
+            reject_reason,
+            reviewed_at,
+            created_at,
+            updated_at,
+            products (
+              id,
+              name_vi,
+              price_vnd,
+              status,
+              category_id,
+              product_images (
+                id,
+                url,
+                is_cover
+              )
+            )
+          `)
+          .eq("product_id", targetProductId)
+          .eq("status", "draft")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
         return res.status(200).json({
           success: true,
           message: "Đã lưu bản nháp yêu cầu chỉnh sửa. Sản phẩm đang xuất bản chưa bị thay đổi.",
@@ -266,6 +297,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             status: existingProd.status,
             editDraft: true,
           },
+          editRequest: fullEditReq || undefined,
         });
       }
 
@@ -359,14 +391,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Query full product entity including images to return to client
+    const { data: fullProduct, error: fullProdErr } = await supabase
+      .from("products")
+      .select(`
+        id,
+        name_vi,
+        name_en,
+        price_vnd,
+        category_id,
+        short_desc_vi,
+        story_vi,
+        dimensions,
+        status,
+        product_hidden,
+        created_at,
+        updated_at,
+        product_images (
+          id,
+          url,
+          is_cover,
+          sort_order,
+          alt_vi
+        )
+      `)
+      .eq("id", targetProductId)
+      .single();
+
+    if (fullProdErr) {
+      console.error("[save-draft] Lỗi query fullProduct:", fullProdErr.message);
+    }
+
+    const sanitizedProduct = fullProduct
+      ? {
+          ...fullProduct,
+          reject_reason: (fullProduct as any).reject_reason || null,
+          is_out_of_stock: Boolean((fullProduct as any).is_out_of_stock || false),
+        }
+      : {
+          id: targetProductId,
+          slug: productSlug,
+          status: "draft",
+        };
+
     return res.status(200).json({
       success: true,
       message: "Lưu bản nháp thành công.",
-      product: {
-        id: targetProductId,
-        slug: productSlug,
-        status: "draft",
-      },
+      product: sanitizedProduct,
     });
   } catch (err: any) {
     console.error("[save-draft] Error:", err.message);

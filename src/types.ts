@@ -85,6 +85,7 @@ export interface Product {
   rejectionReason?: string;
   createdAt: string;
   hidden?: boolean;
+  isOutOfStock?: boolean;
 }
 
 export interface RouteStop {

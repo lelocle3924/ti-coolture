@@ -334,7 +334,9 @@ export function ShopProductCard({
         >
           {/* Khung ảnh — vuông 1:1 giống /products */}
           <div
-            className={`relative overflow-hidden aspect-square ${
+            className={`relative overflow-hidden aspect-square transition-opacity ${
+              product.isOutOfStock ? "opacity-80" : ""
+            } ${
               isDark ? "bg-[#160a27]" : "bg-paper-warm"
             }`}
           >
@@ -359,6 +361,12 @@ export function ShopProductCard({
                   loading="lazy"
                   className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-600 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:opacity-100"
                 />
+              )}
+
+              {product.isOutOfStock && (
+                <span className="absolute top-2.5 left-2.5 z-10 rounded-full border border-amber-600/30 bg-ink/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-sm backdrop-blur-md">
+                  Tạm hết hàng
+                </span>
               )}
 
               {/* Nhãn category */}
@@ -478,9 +486,12 @@ export function ShopView({
           !chosen ||
           (p.price >= (chosen.min ?? 0) && p.price <= (chosen.max ?? Infinity))
       )
-      .sort((a, b) =>
-        sort === "price-asc" ? a.price - b.price : sort === "price-desc" ? b.price - a.price : 0
-      );
+      .sort((a, b) => {
+        const aStock = a.isOutOfStock ? 1 : 0;
+        const bStock = b.isOutOfStock ? 1 : 0;
+        if (aStock !== bStock) return aStock - bStock;
+        return sort === "price-asc" ? a.price - b.price : sort === "price-desc" ? b.price - a.price : 0;
+      });
   }, [products, band, sort]);
 
   const productGridRef = useRevealOnScroll(shown);

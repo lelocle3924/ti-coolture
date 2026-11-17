@@ -24,10 +24,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let shopData = null;
     let productsData: any[] = [];
     let editRequestsData: any[] = [];
+    let pendingProfileRequest: any = null;
 
-    // If user has a shop attached, fetch details & products & edit requests
+    // If user has a shop attached, fetch details & products & edit requests & pending profile requests in parallel
     if (portalUser.shopId) {
-      const [shopRes, socialsRes, productsRes, editReqsRes] = await Promise.all([
+      const [shopRes, socialsRes, productsRes, editReqsRes, profileReqRes] = await Promise.all([
         supabase
           .from("shops")
           .select("id, name, slug, tagline_vi, story_vi, logo_url, cover_url, story_en, status, is_online_only, address, area_tag, contact_email")
@@ -89,6 +90,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `)
           .eq("shop_id", portalUser.shopId)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("shop_profile_requests")
+          .select("*")
+          .eq("shop_id", portalUser.shopId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       shopData = shopRes.data;
@@ -130,10 +139,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       productsData = rawProducts.map((p: any) => ({
         ...p,
-        reject_reason: p.reject_reason || auditReasonsMap[p.id] || null,
+        reject_reason: (p as any).reject_reason || auditReasonsMap[p.id] || null,
+        is_out_of_stock: Boolean((p as any).is_out_of_stock || false),
       }));
-
       editRequestsData = editReqsRes.data || [];
+      pendingProfileRequest = profileReqRes?.data || null;
     }
 
     return res.status(200).json({
@@ -154,6 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       role: portalUser.role,
       products: productsData,
       productEditRequests: editRequestsData,
+      pendingProfileRequest,
     });
   } catch (err: any) {
     console.warn("[portal/me] Auth check failed:", err.message);

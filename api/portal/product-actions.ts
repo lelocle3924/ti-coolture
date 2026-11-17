@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateShopMember } from "../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../_lib/supabaseAdmin.js";
+import { deleteCache } from "../_lib/redis.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
@@ -19,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const authHeader = req.headers.authorization;
     const shopContext = await authenticateShopMember(authHeader);
     const supabase = getSupabaseAdmin();
-    const { action, productId, hidden, requestId } = req.body || {};
+    const { action, productId, hidden, isOutOfStock, requestId } = req.body || {};
 
     // 1. ACTION: TOGGLE PRODUCT VISIBILITY (ẨN / HIỆN SẢN PHẨM)
     if (action === "toggle_visibility" || (productId && typeof hidden !== "undefined")) {
@@ -43,14 +44,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .single();
 
       if (updateErr || !updatedProd) {
+        if (updateErr?.message?.includes("is_out_of_stock")) {
+          throw new Error("Tính năng kho hàng yêu cầu chạy migration 00022_add_product_stock_status.sql trên Supabase.");
+        }
         throw new Error(updateErr?.message || "Không tìm thấy sản phẩm thuộc quyền quản lý của shop.");
       }
+
+      await deleteCache("catalog:v1").catch((err) =>
+        console.warn("[portal/product-actions] Redis cache purge warning:", err)
+      );
 
       return res.status(200).json({
         success: true,
         message: isHidden
           ? `Đã ẩn sản phẩm "${updatedProd.name_vi}" khỏi website chính.`
           : `Đã bật hiển thị cho sản phẩm "${updatedProd.name_vi}".`,
+        product: updatedProd,
+      });
+    }
+
+    // 2. ACTION: TOGGLE PRODUCT STOCK STATUS (CÒN HÀNG / TẠM HẾT HÀNG)
+    if (action === "toggle_stock" || (productId && typeof isOutOfStock !== "undefined")) {
+      if (!productId || typeof productId !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "Thiếu mã sản phẩm cần thay đổi trạng thái kho hàng.",
+        });
+      }
+
+      const outOfStock = Boolean(isOutOfStock);
+      const { data: updatedProd, error: updateErr } = await supabase
+        .from("products")
+        .update({
+          is_out_of_stock: outOfStock,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", productId)
+        .eq("shop_id", shopContext.shopId)
+        .select("id, name_vi, is_out_of_stock, status")
+        .single();
+
+      if (updateErr || !updatedProd) {
+        if (updateErr?.message?.includes("is_out_of_stock")) {
+          throw new Error("Tính năng kho hàng yêu cầu chạy migration 00022_add_product_stock_status.sql trên Supabase.");
+        }
+        throw new Error(updateErr?.message || "Không tìm thấy sản phẩm thuộc quyền quản lý của shop.");
+      }
+
+      await deleteCache("catalog:v1").catch((err) =>
+        console.warn("[portal/product-actions] Redis cache purge warning:", err)
+      );
+
+      try {
+        await supabase.from("audit_logs").insert({
+          user_id: shopContext.userId,
+          action: "toggle_product_stock",
+          table_name: "products",
+          record_id: productId,
+          old_data: { is_out_of_stock: !outOfStock },
+          new_data: { is_out_of_stock: outOfStock },
+        });
+      } catch (logErr) {
+        console.warn("[portal/product-actions] Audit log error:", logErr);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: outOfStock
+          ? `Đã chuyển sản phẩm "${updatedProd.name_vi}" sang trạng thái tạm hết hàng.`
+          : `Đã chuyển sản phẩm "${updatedProd.name_vi}" sang trạng thái còn hàng.`,
         product: updatedProd,
       });
     }
@@ -177,7 +239,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(400).json({
       success: false,
-      error: "Hành động (action) không hợp lệ. Hỗ trợ 'toggle_visibility', 'cancel_upload_request' hoặc 'cancel_edit_request'.",
+      error: "Hành động (action) không hợp lệ. Hỗ trợ 'toggle_visibility', 'toggle_stock', 'cancel_upload_request' hoặc 'cancel_edit_request'.",
     });
   } catch (err: any) {
     console.error("[portal/product-actions] Error:", err.message);

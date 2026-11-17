@@ -16,6 +16,7 @@ import {
   setDataSourceMode,
   DataSourceMode,
   resolveImageUrl,
+  invalidateClientCache,
   isSandboxEnabled,
   setSandboxEnabled,
   setSandboxOverrides,
@@ -67,6 +68,8 @@ import {
   Edit3,
   ClipboardList,
   Package,
+  PackageCheck,
+  PackageX,
   RotateCcw,
   Lock,
   BarChart3,
@@ -125,6 +128,7 @@ interface PortalProduct {
   reject_reason?: string | null;
   product_hidden?: boolean;
   shop_hidden?: boolean;
+  is_out_of_stock?: boolean;
   created_at: string;
   updated_at: string;
   product_images?: Array<{
@@ -371,6 +375,7 @@ export default function Portal() {
   // Shop Partner Tabs & Profile Form State
   const [partnerTab, setPartnerTab] = useState<"storefront" | "products" | "reviews">("products");
   const [isTogglingVisibility, setIsTogglingVisibility] = useState<string | null>(null);
+  const [isTogglingStock, setIsTogglingStock] = useState<string | null>(null);
   const [shopName, setShopName] = useState("");
   const [shopTaglineVi, setShopTaglineVi] = useState("");
   const [shopStoryVi, setShopStoryVi] = useState("");
@@ -713,11 +718,10 @@ export default function Portal() {
             setRole(data.role || "owner");
             setProducts(data.products || []);
             setProductEditRequests(data.productEditRequests || []);
+            setPendingProfileRequest(data.pendingProfileRequest || null);
             setIsAdmin(Boolean(data.isAdmin || isSuperAdminEmail));
             if (data.isAdmin || isSuperAdminEmail) {
               await loadAdminData();
-            } else if (data.shop) {
-              await loadPendingProfileRequest(token);
             }
             return;
           }
@@ -2166,6 +2170,63 @@ export default function Portal() {
     }
   }
 
+  // Shop Partner Action: Toggle Out of Stock Status (Còn hàng / Tạm hết hàng)
+  async function handleShopToggleStock(productId: string, currentOutOfStock: boolean, prodName: string) {
+    const targetOutOfStock = !currentOutOfStock;
+    const confirmMsg = targetOutOfStock
+      ? `Đánh dấu sản phẩm "${prodName}" là TẠM HẾT HÀNG?\nSản phẩm vẫn hiển thị trên catalogue nhưng sẽ gắn nhãn hết hàng và đổi nút nhắn shop để hỏi.`
+      : `Đánh dấu sản phẩm "${prodName}" là CÒN HÀNG?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsTogglingStock(productId);
+    // Optimistic UI update
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, is_out_of_stock: targetOutOfStock } : p))
+    );
+
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/product-actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "toggle_stock", productId, isOutOfStock: targetOutOfStock }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể cập nhật trạng thái kho hàng.");
+      }
+      invalidateClientCache("products");
+    } catch (err: any) {
+      console.warn("API toggle stock failed, falling back to direct Supabase:", err);
+      // Rollback optimistic update
+      setProducts((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, is_out_of_stock: currentOutOfStock } : p))
+      );
+      if (supabase) {
+        try {
+          await supabase
+            .from("products")
+            .update({ is_out_of_stock: targetOutOfStock, updated_at: new Date().toISOString() })
+            .eq("id", productId);
+          setProducts((prev) =>
+            prev.map((p) => (p.id === productId ? { ...p, is_out_of_stock: targetOutOfStock } : p))
+          );
+          invalidateClientCache("products");
+        } catch (dbErr: any) {
+          alert("Lỗi khi cập nhật trạng thái kho: " + (dbErr.message || ""));
+        }
+      } else {
+        alert("Lỗi khi cập nhật trạng thái kho: " + (err.message || ""));
+      }
+    } finally {
+      setIsTogglingStock(null);
+    }
+  }
+
   // Shop Partner Action: Cancel / Withdraw Edit Request
   async function handleCancelEditRequest(requestId: string, prodName: string) {
     const confirmMsg = `Bạn có chắc muốn THU HỒI yêu cầu chỉnh sửa cho sản phẩm "${prodName}"? Dữ liệu đề xuất chưa được duyệt này sẽ bị xóa.`;
@@ -2186,7 +2247,6 @@ export default function Portal() {
         throw new Error(data.error || "Không thể thu hồi yêu cầu.");
       }
       setProductEditRequests((prev) => prev.filter((r) => r.id !== requestId));
-      if (token) await loadPortalMe(token);
     } catch (err: any) {
       alert("Lỗi khi thu hồi yêu cầu: " + (err.message || ""));
     }
@@ -2218,7 +2278,6 @@ export default function Portal() {
       setProducts((prev) =>
         prev.map((p) => (p.id === productId ? { ...p, status: "draft" } : p))
       );
-      if (token) await loadPortalMe(token);
       setFormFeedback({
         type: "success",
         text: `Đã thu hồi yêu cầu đăng sản phẩm "${prodName}". Sản phẩm hiện đã chuyển về bản nháp.`,
@@ -2610,7 +2669,31 @@ export default function Portal() {
           ? "Đã lưu bản nháp yêu cầu chỉnh sửa. Sản phẩm đang xuất bản vẫn được giữ nguyên."
           : "Đã lưu bản nháp thành công!",
       });
-      if (token) await loadPortalMe(token);
+
+      // Update local state directly without full loadPortalMe waterfall
+      if (data.product && !data.product.editDraft) {
+        setProducts((prev) => {
+          const idx = prev.findIndex((p) => p.id === data.product.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], ...data.product };
+            return next;
+          }
+          return [data.product, ...prev];
+        });
+      }
+      if (data.editRequest) {
+        setProductEditRequests((prev) => {
+          const idx = prev.findIndex((r) => r.id === data.editRequest.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = data.editRequest;
+            return next;
+          }
+          return [data.editRequest, ...prev];
+        });
+      }
+
       setIsSaving(false);
       return savedId;
     } catch (err: any) {
@@ -2692,7 +2775,35 @@ export default function Portal() {
 
         setEditingProductId(savedId);
         setFormFeedback({ type: "success", text: "Đã lưu bản nháp thành công vào cơ sở dữ liệu!" });
-        if (token) await loadPortalMe(token);
+        const nowIso = new Date().toISOString();
+        const localProd: PortalProduct = {
+          id: savedId,
+          name_vi: nameVi.trim(),
+          price_vnd: typeof priceVnd === "number" ? priceVnd : null,
+          category_id: directCatId,
+          short_desc_vi: shortDescVi.trim() || undefined,
+          story_vi: storyVi.trim() || undefined,
+          dimensions: dimensions.trim() || undefined,
+          status: "draft",
+          created_at: nowIso,
+          updated_at: nowIso,
+          product_images: images.map((img, idx) => ({
+            id: img.id || `temp-${idx}`,
+            url: img.url.trim(),
+            is_cover: idx === 0,
+            sort_order: idx,
+            alt_vi: nameVi.trim(),
+          })),
+        };
+        setProducts((prev) => {
+          const idx = prev.findIndex((p) => p.id === savedId);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], ...localProd };
+            return next;
+          }
+          return [localProd, ...prev];
+        });
         setIsSaving(false);
         return savedId;
       } catch (err: any) {
@@ -2839,7 +2950,18 @@ export default function Portal() {
             ? "Đã gửi yêu cầu chỉnh sửa. Phiên bản đang xuất bản vẫn được giữ nguyên."
             : "Đã gửi duyệt thành công! Thông báo đã được gửi về ban quản trị.",
       });
-      if (token) await loadPortalMe(token);
+
+      // Optimistically update status to pending_review directly in local state
+      if (!data.editRequest) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === targetId ? { ...p, status: "pending_review" } : p))
+        );
+      } else {
+        setProductEditRequests((prev) =>
+          prev.map((r) => (r.product_id === targetId ? { ...r, status: "pending" } : r))
+        );
+      }
+
       setActiveView("list");
       setIsSubmitting(false);
       return;
@@ -4782,6 +4904,7 @@ export default function Portal() {
                                 <th className="py-3 px-4">Giá niêm yết</th>
                                 <th className="py-3 px-4">Hình ảnh</th>
                                 <th className="py-3 px-4">Trạng thái duyệt</th>
+                                <th className="py-3 px-4">Kho hàng</th>
                                 <th className="py-3 px-4">Hiển thị trên web</th>
                                 <th className="py-3 px-5 text-right">Thao tác</th>
                               </tr>
@@ -4904,6 +5027,50 @@ export default function Portal() {
                                         >
                                           <AlertCircle className="w-3 h-3" />
                                           Bị từ chối duyệt
+                                        </span>
+                                      )}
+                                    </td>
+
+                                    <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                                      {prod.status === "published" ? (
+                                        <button
+                                          type="button"
+                                          disabled={isTogglingStock === prod.id}
+                                          onClick={() =>
+                                            handleShopToggleStock(
+                                              prod.id,
+                                              Boolean(prod.is_out_of_stock),
+                                              prod.name_vi
+                                            )
+                                          }
+                                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition ${
+                                            prod.is_out_of_stock
+                                              ? "bg-amber-950/60 text-amber-300 border-amber-800/60 hover:bg-amber-900/60"
+                                              : "bg-emerald-950/50 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60"
+                                          }`}
+                                          title={
+                                            prod.is_out_of_stock
+                                              ? "Sản phẩm đang được đánh dấu TẠM HẾT HÀNG. Bấm để chuyển thành CÒN HÀNG."
+                                              : "Sản phẩm đang CÒN HÀNG. Bấm để chuyển thành TẠM HẾT HÀNG."
+                                          }
+                                        >
+                                          {isTogglingStock === prod.id ? (
+                                            <RefreshCw className="w-3 h-3 animate-spin text-[#39d6cf]" />
+                                          ) : prod.is_out_of_stock ? (
+                                            <>
+                                              <PackageX className="w-3.5 h-3.5 text-amber-400" />
+                                              <span>Tạm hết hàng</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <PackageCheck className="w-3.5 h-3.5 text-emerald-400" />
+                                              <span>Còn hàng</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      ) : (
+                                        <span className="text-[11px] text-[#7b7194] italic select-none">
+                                          Chưa xuất bản
                                         </span>
                                       )}
                                     </td>

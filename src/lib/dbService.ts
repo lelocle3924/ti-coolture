@@ -168,6 +168,7 @@ function toProduct(row: ProductRow): Product {
     status: statusFromPublish(row.status),
     createdAt: row.created_at,
     hidden: row.status === "archived",
+    isOutOfStock: Boolean((row as any).is_out_of_stock),
   };
 }
 
@@ -421,6 +422,7 @@ export function mapProductRowToProduct(row: any, status: "Pending" | "Approved" 
     status,
     createdAt: row.created_at,
     hidden: false,
+    isOutOfStock: Boolean(row.is_out_of_stock),
   };
 }
 
@@ -743,6 +745,7 @@ export async function fetchProductsStore(storeId: string): Promise<Product[]> {
             status: "Approved",
             createdAt: row.created_at,
             hidden: false,
+            isOutOfStock: Boolean(row.is_out_of_stock),
           };
         });
       }
@@ -823,6 +826,7 @@ export async function fetchProductById(productId: string): Promise<Product | nul
           status: "Approved",
           createdAt: data.created_at,
           hidden: false,
+          isOutOfStock: Boolean(data.is_out_of_stock),
         };
       }
     } catch (e) {
@@ -1400,6 +1404,7 @@ export async function searchProducts(
             status: "Approved",
             createdAt: row.published_at || new Date().toISOString(),
             hidden: false,
+            isOutOfStock: Boolean(row.is_out_of_stock),
           };
         });
 

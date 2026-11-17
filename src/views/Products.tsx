@@ -334,7 +334,9 @@ function ProductCard({
             product={product}
             to={`/products/${product.id}`}
             imgRef={imageRef}
-            className="relative block overflow-hidden bg-paper-warm"
+            className={`relative block overflow-hidden bg-paper-warm transition-opacity ${
+              product.isOutOfStock ? "opacity-80" : ""
+            }`}
             style={{ aspectRatio: String(ratio) }}
           >
             <img
@@ -351,6 +353,12 @@ function ProductCard({
                 referrerPolicy="no-referrer"
                 className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
               />
+            )}
+
+            {product.isOutOfStock && (
+              <span className="absolute top-2.5 left-2.5 z-10 rounded-full border border-amber-600/30 bg-ink/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-sm backdrop-blur-md">
+                Tạm hết hàng
+              </span>
             )}
 
             {/* the kind of thing it is — a span, so it stays inside the
@@ -579,6 +587,11 @@ export default function Products() {
       return true;
     })
     .sort((a, b) => {
+      // Prioritize in-stock products; push out-of-stock products to the bottom
+      const aStock = a.isOutOfStock ? 1 : 0;
+      const bStock = b.isOutOfStock ? 1 : 0;
+      if (aStock !== bStock) return aStock - bStock;
+
       if (activeSort === "price-asc") return a.price - b.price;
       if (activeSort === "price-desc") return b.price - a.price;
       return 0; // default newest

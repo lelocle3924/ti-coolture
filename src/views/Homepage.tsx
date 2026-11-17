@@ -739,7 +739,9 @@ function StoreTile({
       {/* Team direction (26/08): square and rounded. Square is also the ratio
           the product photographs are actually shot at — the landscape crop
           this used to force was cutting the top and bottom off every piece. */}
-      <div className="group/tile relative aspect-square overflow-hidden rounded-[1.25rem] bg-white/5 md:rounded-[1.75rem]">
+      <div className={`group/tile relative aspect-square overflow-hidden rounded-[1.25rem] bg-white/5 md:rounded-[1.75rem] transition-opacity ${
+        product.isOutOfStock ? "opacity-80" : ""
+      }`}>
         <img
           src={product.images[0]}
           alt={product.name}
@@ -747,6 +749,11 @@ function StoreTile({
           draggable={false}
           className="h-full w-full object-cover transition-transform duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
         />
+        {product.isOutOfStock && (
+          <span className="absolute top-2.5 left-2.5 z-10 rounded-full border border-amber-600/30 bg-ink/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-sm backdrop-blur-md">
+            Tạm hết hàng
+          </span>
+        )}
         {/* Team 07/09: "ở homepage chưa có nút tim trên ảnh sản phẩm ở
             What's in store." The same control the catalogue and the product
             page carry — wherever a product photograph is, this is on it. */}
@@ -1459,12 +1466,19 @@ function GemCardBody({
           off every gem. It went unnoticed for as long as the gems pointed at
           placeholder blocks: any crop of a flat grey block looks like any
           other. Real photographs made it visible the same day they landed. */}
-      <div className="relative aspect-square overflow-hidden bg-paper-warm">
+      <div className={`relative aspect-square overflow-hidden bg-paper-warm transition-opacity ${
+        gem.product.isOutOfStock ? "opacity-80" : ""
+      }`}>
         <img
           src={gem.product.images[0]}
           alt={gem.product.name}
           className="h-full w-full object-cover"
         />
+        {gem.product.isOutOfStock && (
+          <span className="absolute top-3 left-3 z-10 rounded-full border border-amber-600/30 bg-ink/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-sm backdrop-blur-md">
+            Tạm hết hàng
+          </span>
+        )}
         {onClose && (
           <button
             onClick={onClose}

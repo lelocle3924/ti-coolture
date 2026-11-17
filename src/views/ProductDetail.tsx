@@ -110,9 +110,12 @@ function useInquiry(product: Product | null, store: StoreProfile | null) {
   }, [store]);
 
   const message = product
-    ? `Chào ${store?.name ?? "shop"}! Mình thấy "${product.name}" trên Tí Coolture ` +
-      `(https://ticoolture.vn/products/${product.id}) và muốn hỏi thêm ạ. ` +
-      `Sản phẩm còn không, và mình đặt như thế nào ạ? Cảm ơn shop!`
+    ? product.isOutOfStock
+      ? `Chào ${store?.name ?? "shop"}! Mình thấy sản phẩm "${product.name}" trên Tí Coolture ` +
+        `(https://ticoolture.vn/products/${product.id}) đang tạm hết hàng, cho mình hỏi dự kiến khi nào shop có hàng lại ạ? Cảm ơn shop!`
+      : `Chào ${store?.name ?? "shop"}! Mình thấy "${product.name}" trên Tí Coolture ` +
+        `(https://ticoolture.vn/products/${product.id}) và muốn hỏi thêm ạ. ` +
+        `Sản phẩm còn không, và mình đặt như thế nào ạ? Cảm ơn shop!`
     : "";
 
   const launch = (channel: { platform: string; url: string }) => {
@@ -637,7 +640,15 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
 
           <div className="space-y-3">
             <h1 className="text-3xl font-bold leading-tight normal-case md:text-4xl" style={{ fontFamily: '"Alexandria", system-ui, sans-serif' }}>{product.name}</h1>
-            <p className="text-2xl font-semibold text-brand">{formatPrice(product.price)}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-2xl font-semibold text-brand">{formatPrice(product.price)}</p>
+              {product.isOutOfStock && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-600/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  Tạm hết hàng
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -654,9 +665,13 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
           <div className="space-y-3">
             <button
               onClick={() => inquiry.setOpen(true)}
-              className="flex w-full items-center justify-between border border-brand bg-brand px-5 py-3.5 text-xs font-semibold text-paper transition-colors hover:bg-brand-deep"
+              className={`flex w-full items-center justify-between border px-5 py-3.5 text-xs font-semibold transition-colors ${
+                product.isOutOfStock
+                  ? "border-amber-600/50 bg-ink text-paper hover:bg-black"
+                  : "border-brand bg-brand text-paper hover:bg-brand-deep"
+              }`}
             >
-              <span>Nhắn shop để đặt</span>
+              <span>{product.isOutOfStock ? "Nhắn shop để hỏi" : "Nhắn shop để đặt"}</span>
               <ExternalLink className="h-3.5 w-3.5" />
             </button>
             <p className="text-[11px] leading-relaxed text-ink/50">{NO_TRANSACTION}</p>

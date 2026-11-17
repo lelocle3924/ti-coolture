@@ -1,4 +1,6 @@
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
+import { getCache, setCache } from "./redis.js";
+import crypto from "crypto";
 
 export interface AuthenticatedShopContext {
   userId: string;
@@ -74,6 +76,18 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
       shopStatus: "published",
       role: "owner",
     };
+  }
+
+  // 0. Check Upstash Redis Auth Session Cache
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const cacheKey = `auth_session:${tokenHash}`;
+  try {
+    const cachedContext = await getCache<AuthenticatedPortalContext>(cacheKey);
+    if (cachedContext && cachedContext.userId) {
+      return cachedContext;
+    }
+  } catch (err) {
+    console.warn("[supabaseAuth] Redis cache read failed, falling back to direct auth:", err);
   }
 
   const supabase = getSupabaseAdmin();
@@ -214,7 +228,7 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
 
   // If user is Staff/Admin: allow entry!
   if (isStaffActive) {
-    return {
+    const adminCtx: AuthenticatedPortalContext = {
       userId: user.id,
       userEmail,
       isAdmin: true,
@@ -226,11 +240,15 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
       shopStatus: shopInfo?.status,
       role: "admin",
     };
+    setCache(cacheKey, adminCtx, 60).catch((e) =>
+      console.warn("[supabaseAuth] Failed to cache admin auth session:", e)
+    );
+    return adminCtx;
   }
 
   // If user has a shop: allow entry!
   if (shopInfo) {
-    return {
+    const shopCtx: AuthenticatedPortalContext = {
       userId: user.id,
       userEmail,
       isAdmin: false,
@@ -240,6 +258,10 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
       shopStatus: shopInfo.status,
       role: (memberData?.shop_role as "owner" | "editor") || "owner",
     };
+    setCache(cacheKey, shopCtx, 60).catch((e) =>
+      console.warn("[supabaseAuth] Failed to cache shop auth session:", e)
+    );
+    return shopCtx;
   }
 
   // Unauthorized

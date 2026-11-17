@@ -160,7 +160,9 @@ export default function Wishlist() {
                         <ContinuityLink
                           product={product}
                           to={`/products/${product.id}`}
-                          className="group block aspect-square overflow-hidden bg-paper-warm"
+                          className={`group relative block aspect-square overflow-hidden bg-paper-warm transition-opacity ${
+                            product.isOutOfStock ? "opacity-80" : ""
+                          }`}
                         >
                           <img
                             src={product.images?.[0]}
@@ -168,6 +170,11 @@ export default function Wishlist() {
                             loading="lazy"
                             className="h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
                           />
+                          {product.isOutOfStock && (
+                            <span className="absolute top-3 left-3 z-10 rounded-full border border-amber-600/30 bg-ink/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-sm backdrop-blur-md">
+                              Tạm hết hàng
+                            </span>
+                          )}
                         </ContinuityLink>
 
                         <button

@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: Portal Speedup API Extensions
+  version: 1.0.0
+  description: Performance-optimized responses for Shop Portal endpoints.
+paths:
+  /api/portal/me:
+    get:
+      summary: Get authenticated portal context and shop data
+      responses:
+        '200':
+          description: Context loaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    type: object
+                  shop:
+                    type: object
+                  products:
+                    type: array
+                    items:
+                      type: object
+                  productEditRequests:
+                    type: array
+                    items:
+                      type: object
+                  pendingProfileRequest:
+                    type: object
+                    nullable: true
+  /api/portal/save-draft:
+    post:
+      summary: Save product draft and return full updated entity
+      responses:
+        '200':
+          description: Draft saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  product:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      slug:
+                        type: string
+                      name_vi:
+                        type: string
+                      price_vnd:
+                        type: number
+                      status:
+                        type: string
+                      product_images:
+                        type: array
+                        items:
+                          type: object
