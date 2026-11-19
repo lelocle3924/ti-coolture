@@ -22,6 +22,7 @@ import About from "./views/About";
 import Discovery from "./views/Discovery";
 import OpenShop from "./views/OpenShop";
 import Terms from "./views/Terms";
+import Privacy from "./views/Privacy";
 import LabIndex from "./lab/LabIndex";
 import ShopPaletteStudies from "./lab/ShopPaletteStudies";
 import DiscoverStudies from "./lab/DiscoverStudies";
@@ -231,7 +232,7 @@ function SiteShell() {
      Decided here rather than in each page, so the four cannot drift apart and
      a fifth is one entry away. The homepage wraps itself, because its sheet is
      violet and it has chrome of its own to sit outside the sheet. */
-  const REVEAL_FOOTER = ["/products", "/stores", "/discover", "/open-shop", "/terms"];
+  const REVEAL_FOOTER = ["/products", "/stores", "/discover", "/open-shop", "/terms", "/privacy"];
   const hasRevealFooter =
     !isLab &&
     !isPortal &&
@@ -332,6 +333,7 @@ const router = createBrowserRouter([
       { path: "about", element: <About /> },
       { path: "open-shop", element: <OpenShop /> },
       { path: "terms", element: <Terms /> },
+      { path: "privacy", element: <Privacy /> },
       { path: "discover", element: <Discovery /> },
       { path: "discover/:routeId", element: <Discovery /> },
       { path: "shop-dashboard", element: <ShopDashboard /> },
@@ -371,7 +373,8 @@ const router = createBrowserRouter([
       { path: "kham-pha/:routeId", element: <RedirectRoute to="/discover" /> },
       { path: "tui-minh", element: <Navigate to="/about" replace /> },
       { path: "dieu-khoan", element: <Navigate to="/terms" replace /> },
-      { path: "privacy-policy", element: <Navigate to="/terms" replace /> },
+      { path: "privacy-policy", element: <Navigate to="/privacy" replace /> },
+      { path: "chinh-sach-bao-mat", element: <Navigate to="/privacy" replace /> },
 
       { path: "*", element: <Navigate to="/" replace /> },
     ],

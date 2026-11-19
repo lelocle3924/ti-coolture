@@ -1,6 +1,6 @@
 import { ArcTopRight, RibbonLoop } from "../components/BrandShapes";
 import Breadcrumbs from "../components/Breadcrumbs";
-import PolicyContent from "../components/PolicyContent";
+import { TermsContent } from "../components/PolicyContent";
 
 export default function Terms() {
   return (
@@ -21,10 +21,10 @@ export default function Terms() {
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 pb-10 pt-[121px] md:px-8 md:pb-14 md:pt-[149px]">
           <h1 className="display mx-auto max-w-3xl text-center text-3xl normal-case font-medium leading-[1.25] text-paper md:text-5xl">
-            Điều khoản &amp; Chính sách
+            Điều khoản sử dụng
           </h1>
           <p className="mt-3 text-center text-xs md:text-sm text-white/75 max-w-xl mx-auto">
-            Minh bạch, rõ ràng và tôn trọng sự riêng tư của người xem và các đối tác đồng hành cùng Tí.
+            Quy định, cam kết và nguyên tắc vận hành giữa người dùng, shop đối tác và Ti Coolture.
           </p>
         </div>
       </section>
@@ -32,11 +32,11 @@ export default function Terms() {
       {/* Main content body */}
       <div data-surface="light" className="max-w-4xl mx-auto px-4 md:px-8 mt-6 space-y-6 relative z-10">
         <Breadcrumbs
-          trail={[{ label: "Trang chủ", to: "/" }, { label: "Điều khoản & Chính sách" }]}
+          trail={[{ label: "Trang chủ", to: "/" }, { label: "Điều khoản sử dụng" }]}
         />
 
         <div className="rounded-[2rem] border border-ink/10 bg-paper p-6 md:p-12 shadow-sm">
-          <PolicyContent initialTab="terms" showTabs={true} />
+          <TermsContent />
         </div>
       </div>
     </div>

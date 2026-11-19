@@ -39,6 +39,7 @@ const SITEMAP = [
   { to: "/stores", label: "Shop" },
   { to: "/discover", label: "Khám phá" },
   { to: "/terms", label: "Điều khoản" },
+  { to: "/privacy", label: "Bảo mật" },
   { to: "/open-shop", label: "Hợp tác" },
 ];
 
@@ -145,7 +146,10 @@ function RevealFooter({ reveal }: { reveal: number }) {
         </p>
         <div className="flex items-center gap-4">
           <Link to="/terms" className="hover:text-wave transition-colors underline underline-offset-2">
-            Điều khoản &amp; Quyền riêng tư
+            Điều khoản
+          </Link>
+          <Link to="/privacy" className="hover:text-wave transition-colors underline underline-offset-2">
+            Quyền riêng tư
           </Link>
           <span><span className="text-paper">VI</span> / EN</span>
         </div>

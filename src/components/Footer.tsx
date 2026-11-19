@@ -62,7 +62,15 @@ export default function Footer() {
                   to="/terms"
                   className="inline-flex items-center min-h-11 text-sm text-white/86 hover:text-wave transition-colors"
                 >
-                  Điều khoản &amp; Điều kiện
+                  Điều khoản dịch vụ
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/privacy"
+                  className="inline-flex items-center min-h-11 text-sm text-white/86 hover:text-wave transition-colors"
+                >
+                  Chính sách quyền riêng tư
                 </Link>
               </li>
               <li>
