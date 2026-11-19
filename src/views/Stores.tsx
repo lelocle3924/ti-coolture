@@ -244,14 +244,11 @@ export default function Stores() {
                         </Link>
                       </div>
 
-                      <p className="text-xs text-ink/70 line-clamp-2 leading-relaxed italic">
-                        {/* `bio` is not a field on StoreProfile and never has
-                            been, so every card was printing the fallback as
-                            if it were that shop's own line. `description`
-                            carries tagline_vi, which is what each shop
-                            actually says about itself. */}
-                        "{store.description || "Không gian chế tác thủ công độc lập."}"
-                      </p>
+                      {Boolean(store.description && store.description.trim()) && (
+                        <p className="text-xs text-ink/70 line-clamp-2 leading-relaxed">
+                          {store.description.trim()}
+                        </p>
+                      )}
 
                       {store.address && (
                         <div className="flex items-center justify-between text-[11px] text-ink/60 pt-1">

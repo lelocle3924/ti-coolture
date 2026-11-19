@@ -46,6 +46,18 @@
 }
 
 /* ---------------------------------------------------------------
+   Portal Arial font synchronization (prevents Vietnamese font errors)
+   --------------------------------------------------------------- */
+.portal-root,
+.portal-root *,
+.portal-root input,
+.portal-root textarea,
+.portal-root select,
+.portal-root button {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+/* ---------------------------------------------------------------
    The save control on a product tile.
 
    Team 08/09, deciding /lab/heart: "Trên mobile thì hiện luôn. Trên PC thì

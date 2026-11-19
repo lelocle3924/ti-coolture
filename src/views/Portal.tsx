@@ -3014,7 +3014,7 @@ export default function Portal() {
   // 1. Loading View
   if (sessionLoading) {
     return (
-      <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center font-sans">
+      <div className="portal-root min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center font-sans" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="w-6 h-6 animate-spin text-[#39d6cf]" />
           <p className="text-xs uppercase tracking-widest text-[#a39ab8]">Đang tải Cổng Đối tác...</p>
@@ -3026,7 +3026,7 @@ export default function Portal() {
   // 2. Not Logged In View
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex flex-col items-center justify-center p-6 font-sans">
+      <div className="portal-root min-h-screen bg-[#12081f] text-[#faf8ff] flex flex-col items-center justify-center p-6 font-sans" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
         <div className="w-full max-w-md bg-[#181224] border border-[#2e2344] rounded-2xl p-8 shadow-2xl">
           <div className="flex items-center gap-2 mb-6">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#39d6cf]"></span>
@@ -3035,7 +3035,7 @@ export default function Portal() {
             </span>
           </div>
 
-          <h1 className="text-2xl font-serif font-bold text-white mb-2">
+          <h1 className="text-2xl font-bold text-white mb-2">
             Đăng nhập Cổng Đối tác
           </h1>
           <p className="text-sm text-[#a39ab8] mb-8 leading-relaxed">
@@ -3112,13 +3112,13 @@ export default function Portal() {
   // 3. 403 Forbidden View (Only if neither a shop partner NOR an admin)
   if (!shop && !isAdmin) {
     return (
-      <div className="min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center p-6 font-sans">
+      <div className="portal-root min-h-screen bg-[#12081f] text-[#faf8ff] flex items-center justify-center p-6 font-sans" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
         <div className="w-full max-w-md bg-[#181224] border border-red-900/40 rounded-2xl p-8 text-center shadow-2xl">
           <div className="w-12 h-12 rounded-full bg-red-950/60 border border-red-800/50 flex items-center justify-center mx-auto mb-4 text-red-400">
             <ShieldAlert className="w-6 h-6" />
           </div>
 
-          <h2 className="text-xl font-serif font-bold text-white mb-2">
+          <h2 className="text-xl font-bold text-white mb-2">
             Email chưa được cấp quyền
           </h2>
           <p className="text-sm text-[#a39ab8] mb-4 leading-relaxed">
@@ -3142,7 +3142,7 @@ export default function Portal() {
 
   // 4. Main Portal (Partner Dashboard or Admin Hub)
   return (
-    <div className="min-h-screen bg-[#12081f] text-[#faf8ff] font-sans pb-24">
+    <div className="portal-root min-h-screen bg-[#12081f] text-[#faf8ff] font-sans pb-24" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
       {/* Top Bar */}
       <header className="sticky top-0 z-40 bg-[#181224]/90 backdrop-blur-md border-b border-[#2e2344]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -3152,7 +3152,7 @@ export default function Portal() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-serif font-bold text-white">
+                <h1 className="text-sm font-bold text-white">
                   {isAdmin ? "Ban Quản Trị Tí Coolture" : shop?.name}
                 </h1>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
@@ -3184,7 +3184,7 @@ export default function Portal() {
             {/* Admin Header & Navigation Tabs */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-2xl font-serif font-bold text-white flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <span>Trung tâm Quản trị Admin</span>
                   <span className="text-xs font-mono font-normal px-2.5 py-0.5 rounded-full bg-[#7520f7]/20 text-[#39d6cf] border border-[#7520f7]/40">
                     Admin Console
@@ -3385,7 +3385,7 @@ export default function Portal() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Inbox className="w-5 h-5 text-[#39d6cf]" />
-                      <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                         Yêu cầu đối tác
                       </h3>
                     </div>
@@ -3414,7 +3414,7 @@ export default function Portal() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-[#2e2344]">
                           <div>
                             <div className="flex items-center gap-2.5">
-                              <h4 className="text-base font-serif font-bold text-white">
+                              <h4 className="text-base font-bold text-white">
                                 {req.shop_name}
                               </h4>
                               {req.category && (
@@ -3549,7 +3549,7 @@ export default function Portal() {
               <div className="space-y-6">
                 <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-serif font-bold text-white flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-[#39d6cf]" />
                       <span>{reviewFilter === "edit_requests" ? "Yêu cầu chỉnh sửa sản phẩm" : "Danh sách Sản phẩm gửi duyệt"}</span>
                     </h3>
@@ -3671,7 +3671,7 @@ export default function Portal() {
                             <div className="flex-1 space-y-2.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="text-base font-serif font-bold text-white">
+                                  <h4 className="text-base font-bold text-white">
                                     {prod.name_vi}
                                   </h4>
                                   {prod.name_en && (
@@ -3827,7 +3827,7 @@ export default function Portal() {
                     <div>
                       <div className="flex items-center gap-2">
                         <Store className="w-5 h-5 text-[#39d6cf]" />
-                        <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                           Quản lý Ẩn / Hiện Shop & Sản phẩm
                         </h3>
                       </div>
@@ -3869,7 +3869,7 @@ export default function Portal() {
                                 </div>
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <h4 className="text-sm font-serif font-bold text-white">
+                                    <h4 className="text-sm font-bold text-white">
                                       {s.name}
                                     </h4>
                                     <span className="text-[11px] font-mono text-[#a39ab8]">
@@ -4052,7 +4052,7 @@ export default function Portal() {
                 <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-7 shadow-lg">
                   <div className="flex items-center gap-2 mb-4">
                     <UserCheck className="w-4 h-4 text-[#39d6cf]" />
-                    <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                       Cấp quyền mở Shop cho Gmail mới (1 Gmail = 1 Shop)
                     </h3>
                   </div>
@@ -4102,7 +4102,7 @@ export default function Portal() {
                 {/* Danh sách shop đã cấp quyền */}
                 <div className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden shadow-lg">
                   <div className="px-6 py-4 border-b border-[#2e2344] flex items-center justify-between">
-                    <h3 className="text-xs font-serif font-bold text-white uppercase tracking-wider">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                       Danh sách đối tác shop đã cấp quyền
                     </h3>
                     <span className="text-xs font-mono text-[#39d6cf]">
@@ -4183,7 +4183,7 @@ export default function Portal() {
                 <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 sm:p-7 shadow-lg">
                   <div className="flex items-center gap-2 mb-4">
                     <ShieldCheck className="w-4 h-4 text-[#7520f7]" />
-                    <h3 className="text-sm font-serif font-bold text-white uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                       Cấp quyền Admin / Staff cho tài khoản Google khác
                     </h3>
                   </div>
@@ -4234,7 +4234,7 @@ export default function Portal() {
                 {/* Danh sách Admin / Staff */}
                 <div className="bg-[#181224] border border-[#2e2344] rounded-2xl overflow-hidden shadow-lg">
                   <div className="px-6 py-4 border-b border-[#2e2344] flex items-center justify-between">
-                    <h3 className="text-xs font-serif font-bold text-white uppercase tracking-wider">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
                       Danh sách nhân sự quản trị hệ thống
                     </h3>
                     <span className="text-xs font-mono text-[#7520f7]">
@@ -4402,7 +4402,7 @@ export default function Portal() {
             {partnerTab === "storefront" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-serif font-bold text-white">
+                  <h2 className="text-xl font-bold text-white">
                     Chỉnh sửa trang chủ shop (Storefront)
                   </h2>
                   <p className="text-xs text-[#a39ab8] mt-1">
@@ -4831,7 +4831,7 @@ export default function Portal() {
                   <div className="space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-xl font-serif font-bold text-white">
+                        <h2 className="text-xl font-bold text-white">
                           Danh mục sản phẩm ({products.length})
                         </h2>
                         <p className="text-xs text-[#a39ab8] mt-1">
@@ -4879,7 +4879,7 @@ export default function Portal() {
                         <div className="w-12 h-12 rounded-full bg-[#23173d] flex items-center justify-center mx-auto mb-4 text-[#a39ab8]">
                           <FileImage className="w-6 h-6" />
                         </div>
-                        <h3 className="text-base font-serif font-semibold text-white mb-1">
+                        <h3 className="text-base font-semibold text-white mb-1">
                           Chưa có sản phẩm nào
                         </h3>
                         <p className="text-xs text-[#7b7194] max-w-sm mx-auto mb-6">
@@ -4956,7 +4956,7 @@ export default function Portal() {
                                           )}
                                         </div>
                                         <div>
-                                          <div className="font-serif font-bold text-white text-sm group-hover:text-[#39d6cf] transition">
+                                          <div className="font-bold text-white text-sm group-hover:text-[#39d6cf] transition">
                                             {prod.name_vi}
                                           </div>
                                           {prod.name_en && (
@@ -5175,7 +5175,7 @@ export default function Portal() {
                           <ArrowLeft className="w-3.5 h-3.5" />
                           <span>Quay lại danh sách</span>
                         </button>
-                        <h2 className="text-lg font-serif font-bold text-white">
+                        <h2 className="text-lg font-bold text-white">
                           {editingProductId ? `Chỉnh sửa: ${nameVi || "Sản phẩm"}` : "Thêm sản phẩm mới"}
                         </h2>
                       </div>
@@ -5686,7 +5686,7 @@ export default function Portal() {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-serif font-bold text-white flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
                       <Clock className="w-5 h-5 text-amber-400" />
                       Yêu cầu chờ duyệt ({totalPendingReviewsCount})
                     </h2>
@@ -5770,7 +5770,7 @@ export default function Portal() {
 
                                 <div className="space-y-1.5 flex-1 min-w-0">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <h4 className="font-serif font-bold text-white text-base truncate">
+                                    <h4 className="font-bold text-white text-base truncate">
                                       {proposal.name_vi || originalProd.name_vi || "Sản phẩm không tên"}
                                     </h4>
 
@@ -5938,7 +5938,7 @@ export default function Portal() {
                                 </div>
 
                                 <div className="space-y-1 flex-1 min-w-0">
-                                  <h4 className="font-serif font-bold text-white text-sm truncate">
+                                  <h4 className="font-bold text-white text-sm truncate">
                                     {prod.name_vi}
                                   </h4>
                                   <div className="text-[11px] text-[#39d6cf] font-mono font-medium">
@@ -6098,7 +6098,7 @@ export default function Portal() {
 
           {/* PRODUCT DETAIL PREVIEW (EXACTLY REPLICATING MAIN WEBSITE ProductDetail.tsx) */}
           {previewModal === "product" && (
-            <div data-surface="light" className="min-h-screen bg-paper text-ink relative overflow-hidden py-8 font-sans">
+            <div data-surface="light" className="portal-root min-h-screen bg-paper text-ink relative overflow-hidden py-8 font-sans" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
               {/* Brand Shapes background decoration — authentic motif from web */}
               <ArcTopRight
                 className="pointer-events-none absolute -right-24 -top-24 z-0 opacity-15"
@@ -6224,7 +6224,7 @@ export default function Portal() {
                     <div className="space-y-2">
                       <h1
                         className="text-3xl md:text-4xl font-bold leading-tight normal-case text-ink"
-                        style={{ fontFamily: '"Alexandria", system-ui, sans-serif' }}
+                        style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
                       >
                         {nameVi || "Tên sản phẩm"}
                       </h1>
@@ -6290,7 +6290,7 @@ export default function Portal() {
                     </div>
 
                     {/* Story Section */}
-                    {storyVi && (
+                    {Boolean(storyVi && storyVi.trim()) && (
                       <div className="border border-ink/12 bg-paper-warm rounded-2xl p-4 sm:p-5 space-y-1.5 shadow-sm">
                         <h3 className="text-[11px] font-bold uppercase tracking-wider text-brand">
                           Câu chuyện sản phẩm
@@ -6378,7 +6378,7 @@ export default function Portal() {
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#39d6cf]">
                     {adminPreviewProduct.categories?.name_vi || "Sản phẩm thủ công"}
                   </p>
-                  <h2 className="text-2xl font-serif font-bold">{adminPreviewProduct.name_vi}</h2>
+                  <h2 className="text-2xl font-bold">{adminPreviewProduct.name_vi}</h2>
                   {adminPreviewProduct.name_en && (
                     <p className="mt-1 text-sm italic text-[#a39ab8]">{adminPreviewProduct.name_en}</p>
                   )}
@@ -6405,7 +6405,7 @@ export default function Portal() {
                     </div>
                   )}
                 </dl>
-                {adminPreviewProduct.story_vi && (
+                {Boolean(adminPreviewProduct.story_vi && adminPreviewProduct.story_vi.trim()) && (
                   <div className="rounded-xl border border-[#2e2344] bg-[#12081f] p-4">
                     <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#39d6cf]">
                       Câu chuyện sản phẩm

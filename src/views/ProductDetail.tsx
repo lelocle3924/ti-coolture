@@ -676,6 +676,17 @@ function ProductPage({ productId }: { key?: string; productId: string | undefine
             </button>
             <p className="text-[11px] leading-relaxed text-ink/50">{NO_TRANSACTION}</p>
           </div>
+          {/* Câu chuyện sản phẩm (Story) */}
+          {Boolean(product.story && product.story.trim()) && (
+            <div className="border border-ink/12 bg-paper-warm rounded-2xl p-4 sm:p-5 space-y-1.5 shadow-sm">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-brand">
+                Câu chuyện sản phẩm
+              </h3>
+              <p className="text-xs text-ink/80 leading-relaxed whitespace-pre-line">
+                {product.story.trim()}
+              </p>
+            </div>
+          )}
         </section>
       </main>
 

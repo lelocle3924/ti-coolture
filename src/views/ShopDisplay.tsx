@@ -574,9 +574,9 @@ export function ShopView({
                 {store.name}
               </h1>
 
-              {store.vibe && (
-                <p className="mt-3 font-sans text-[15px] md:text-[17px] italic leading-snug text-ink">
-                  &ldquo;{store.vibe}&rdquo;
+              {Boolean(store.vibe && store.vibe.trim()) && (
+                <p className="mt-3 font-sans text-[15px] md:text-[17px] leading-snug text-ink">
+                  {store.vibe.trim()}
                 </p>
               )}
 
