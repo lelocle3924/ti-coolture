@@ -361,9 +361,10 @@ export default function Portal() {
   const [selectedReviewEditIds, setSelectedReviewEditIds] = useState<string[]>([]);
   const [isBulkApproving, setIsBulkApproving] = useState(false);
 
-  // Bulk Drafts & Product Actions for Shop
-  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
+  // Bulk Selection & Product Actions for Shop
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Active view for products: "list" | "edit"
   const [activeView, setActiveView] = useState<"list" | "edit">("list");
@@ -2965,7 +2966,7 @@ export default function Portal() {
       }
 
       setProducts((prev) => prev.filter((p) => p.id !== productId));
-      setSelectedDraftIds((prev) => prev.filter((id) => id !== productId));
+      setSelectedProductIds((prev) => prev.filter((id) => id !== productId));
       if (editingProductId === productId) {
         setActiveView("list");
       }
@@ -2982,10 +2983,69 @@ export default function Portal() {
     }
   }
 
-  async function handleBatchSubmitDrafts() {
-    if (selectedDraftIds.length === 0) return;
+  async function handleBatchDeleteProducts() {
+    if (selectedProductIds.length === 0) return;
     const confirmed = window.confirm(
-      `Bạn có chắc chắn muốn gửi duyệt ${selectedDraftIds.length} bản nháp đã chọn?`
+      `CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN ${selectedProductIds.length} sản phẩm đã chọn?\nToàn bộ hình ảnh, dữ liệu và thông tin liên quan sẽ bị xóa sạch khỏi hệ thống, KHÔNG THỂ KHÔI PHỤC!`
+    );
+    if (!confirmed) return;
+
+    setIsBulkDeleting(true);
+    setFormFeedback(null);
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/product-actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "delete_product",
+          productIds: selectedProductIds,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể xóa các sản phẩm đã chọn.");
+      }
+
+      setProducts((prev) => prev.filter((p) => !selectedProductIds.includes(p.id)));
+      if (editingProductId && selectedProductIds.includes(editingProductId)) {
+        setActiveView("list");
+      }
+      const count = selectedProductIds.length;
+      setSelectedProductIds([]);
+      setFormFeedback({
+        type: "success",
+        text: data.message || `Đã xóa vĩnh viễn ${count} sản phẩm thành công.`,
+      });
+    } catch (err: any) {
+      setFormFeedback({
+        type: "error",
+        text: err.message || "Lỗi khi xóa hàng loạt sản phẩm.",
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }
+
+  async function handleBatchSubmitDrafts() {
+    const draftIdsToSubmit = products
+      .filter((p) => selectedProductIds.includes(p.id) && (p.status === "draft" || p.status === "rejected"))
+      .map((p) => p.id);
+
+    if (draftIdsToSubmit.length === 0) {
+      setFormFeedback({
+        type: "error",
+        text: "Không có bản nháp nào trong các sản phẩm đã chọn để gửi duyệt.",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn gửi duyệt ${draftIdsToSubmit.length} bản nháp đã chọn?`
     );
     if (!confirmed) return;
 
@@ -3000,7 +3060,7 @@ export default function Portal() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          productIds: selectedDraftIds,
+          productIds: draftIdsToSubmit,
         }),
       });
 
@@ -3012,13 +3072,13 @@ export default function Portal() {
       const nextStatus = data.autoPublished ? "published" : "pending_review";
       setProducts((prev) =>
         prev.map((p) =>
-          selectedDraftIds.includes(p.id) ? { ...p, status: nextStatus } : p
+          draftIdsToSubmit.includes(p.id) ? { ...p, status: nextStatus } : p
         )
       );
-      setSelectedDraftIds([]);
+      setSelectedProductIds([]);
       setFormFeedback({
         type: "success",
-        text: data.message || `Đã gửi duyệt thành công ${selectedDraftIds.length} sản phẩm.`,
+        text: data.message || `Đã gửi duyệt thành công ${draftIdsToSubmit.length} sản phẩm.`,
       });
     } catch (err: any) {
       setFormFeedback({
@@ -5195,36 +5255,70 @@ export default function Portal() {
                       </div>
                     )}
 
-                    {/* Bulk Action Bar for Shop Drafts */}
-                    {selectedDraftIds.length > 0 && (
+                    {/* Bulk Action Bar for Shop Products */}
+                    {selectedProductIds.length > 0 && (
                       <div className="bg-[#23173d] border border-[#7520f7]/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
                         <div className="flex items-center gap-3">
                           <CheckSquare className="w-5 h-5 text-[#39d6cf] flex-shrink-0" />
                           <span className="text-xs text-white">
-                            Đã chọn <strong className="text-[#39d6cf] text-sm">{selectedDraftIds.length}</strong> bản nháp
+                            Đã chọn <strong className="text-[#39d6cf] text-sm">{selectedProductIds.length}</strong> sản phẩm
                           </span>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setSelectedDraftIds([])}
+                            onClick={() => setSelectedProductIds([])}
                             className="px-3 py-1.5 text-xs text-[#a39ab8] hover:text-white transition"
                           >
                             Bỏ chọn
                           </button>
+
+                          {/* Nút gửi duyệt các bản nháp trong danh sách chọn */}
+                          {products.some(
+                            (p) =>
+                              selectedProductIds.includes(p.id) &&
+                              (p.status === "draft" || p.status === "rejected")
+                          ) && (
+                            <button
+                              type="button"
+                              onClick={handleBatchSubmitDrafts}
+                              disabled={isBulkSubmitting || isBulkDeleting}
+                              className="px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white text-xs font-semibold rounded-xl transition flex items-center gap-2 shadow"
+                            >
+                              {isBulkSubmitting ? (
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Send className="w-3.5 h-3.5" />
+                              )}
+                              <span>
+                                Gửi duyệt nháp (
+                                {
+                                  products.filter(
+                                    (p) =>
+                                      selectedProductIds.includes(p.id) &&
+                                      (p.status === "draft" || p.status === "rejected")
+                                  ).length
+                                }
+                                )
+                              </span>
+                            </button>
+                          )}
+
+                          {/* Nút xóa tất cả sản phẩm đã chọn */}
                           <button
                             type="button"
-                            onClick={handleBatchSubmitDrafts}
-                            disabled={isBulkSubmitting}
-                            className="px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white text-xs font-semibold rounded-xl transition flex items-center gap-2 shadow"
+                            onClick={handleBatchDeleteProducts}
+                            disabled={isBulkDeleting || isBulkSubmitting}
+                            className="px-4 py-2 bg-red-950/70 hover:bg-red-900 text-red-200 border border-red-800/80 text-xs font-semibold rounded-xl transition flex items-center gap-2 shadow"
+                            title="Xóa vĩnh viễn tất cả sản phẩm đã chọn"
                           >
-                            {isBulkSubmitting ? (
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            {isBulkDeleting ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-red-400" />
                             ) : (
-                              <Send className="w-3.5 h-3.5" />
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
                             )}
-                            <span>Gửi duyệt tất cả đã chọn ({selectedDraftIds.length})</span>
+                            <span>Xóa tất cả đã chọn ({selectedProductIds.length})</span>
                           </button>
                         </div>
                       </div>
@@ -5258,17 +5352,15 @@ export default function Portal() {
                                 <th className="py-3 px-3 w-10 text-center">
                                   <input
                                     type="checkbox"
-                                    title="Chọn tất cả bản nháp"
+                                    title="Chọn tất cả sản phẩm"
                                     checked={
-                                      products.filter((p) => p.status === "draft" || p.status === "rejected").length > 0 &&
-                                      selectedDraftIds.length ===
-                                        products.filter((p) => p.status === "draft" || p.status === "rejected").length
+                                      products.length > 0 &&
+                                      selectedProductIds.length === products.length
                                     }
                                     onChange={(e) => {
-                                      const draftIds = products
-                                        .filter((p) => p.status === "draft" || p.status === "rejected")
-                                        .map((p) => p.id);
-                                      setSelectedDraftIds(e.target.checked ? draftIds : []);
+                                      setSelectedProductIds(
+                                        e.target.checked ? products.map((p) => p.id) : []
+                                      );
                                     }}
                                     className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer"
                                   />
@@ -5295,7 +5387,6 @@ export default function Portal() {
                                 const isPendingReview = prod.status === "pending_review";
                                 const isPendingEdit = Boolean(pendingEditReq);
                                 const isLocked = isPendingReview || isPendingEdit;
-                                const isDraftOrRejected = prod.status === "draft" || prod.status === "rejected";
 
                                 return (
                                   <tr
@@ -5305,7 +5396,7 @@ export default function Portal() {
                                       openEditForm(prod);
                                     }}
                                     className={`transition group ${
-                                      selectedDraftIds.includes(prod.id)
+                                      selectedProductIds.includes(prod.id)
                                         ? "bg-[#23173d]/50 hover:bg-[#23173d]/70"
                                         : isLocked
                                           ? "hover:bg-[#23173d]/20 cursor-default"
@@ -5322,21 +5413,16 @@ export default function Portal() {
                                     <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                                       <input
                                         type="checkbox"
-                                        checked={selectedDraftIds.includes(prod.id)}
-                                        disabled={!isDraftOrRejected}
+                                        checked={selectedProductIds.includes(prod.id)}
                                         onChange={(e) => {
-                                          setSelectedDraftIds((prev) =>
+                                          setSelectedProductIds((prev) =>
                                             e.target.checked
                                               ? [...prev, prod.id]
                                               : prev.filter((id) => id !== prod.id)
                                           );
                                         }}
-                                        title={
-                                          isDraftOrRejected
-                                            ? "Chọn để gửi duyệt"
-                                            : "Chỉ chọn được bản nháp hoặc sản phẩm bị từ chối"
-                                        }
-                                        className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title="Chọn sản phẩm này"
+                                        className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer"
                                       />
                                     </td>
                                     <td className="py-3.5 px-5">

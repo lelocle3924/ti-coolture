@@ -237,45 +237,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 4. ACTION: HARD DELETE PRODUCT (XÓA VĨNH VIỄN SẢN PHẨM)
+    // 4. ACTION: HARD DELETE PRODUCT (XÓA VĨNH VIỄN SẢN PHẨM - HỖ TRỢ ĐƠN & HÀNG LOẠT)
     if (action === "delete_product") {
-      if (!productId || typeof productId !== "string") {
+      const idsToDelete: string[] = Array.isArray(productIds) && productIds.length > 0
+        ? productIds.filter((id) => typeof id === "string")
+        : productId && typeof productId === "string"
+        ? [productId]
+        : [];
+
+      if (idsToDelete.length === 0) {
         return res.status(400).json({
           success: false,
-          error: "Thiếu mã sản phẩm cần xóa (productId).",
+          error: "Thiếu mã sản phẩm cần xóa (productId hoặc productIds).",
         });
       }
 
-      const { data: existingProd, error: fetchErr } = await supabase
+      // Xác thực các sản phẩm thuộc quyền sở hữu của shop
+      const { data: prodsToDelete, error: fetchErr } = await supabase
         .from("products")
         .select("id, name_vi, shop_id, status")
-        .eq("id", productId)
-        .single();
+        .in("id", idsToDelete)
+        .eq("shop_id", shopContext.shopId);
 
-      if (fetchErr || !existingProd) {
+      if (fetchErr) throw fetchErr;
+
+      if (!prodsToDelete || prodsToDelete.length === 0) {
         return res.status(404).json({
           success: false,
-          error: "Không tìm thấy sản phẩm cần xóa.",
+          error: "Không tìm thấy sản phẩm hợp lệ thuộc quyền quản lý của shop để xóa.",
         });
       }
 
-      if (existingProd.shop_id !== shopContext.shopId) {
-        return res.status(403).json({
-          success: false,
-          error: "Bạn không có quyền xóa sản phẩm của shop khác.",
-        });
-      }
+      const validIds = prodsToDelete.map((p) => p.id);
 
       // Xóa các dữ liệu phụ thuộc
-      await supabase.from("product_images").delete().eq("product_id", productId);
-      await supabase.from("product_edit_requests").delete().eq("product_id", productId);
-      await supabase.from("featured_items").delete().eq("product_id", productId);
+      await supabase.from("product_images").delete().in("product_id", validIds);
+      await supabase.from("product_edit_requests").delete().in("product_id", validIds);
+      await supabase.from("featured_items").delete().in("product_id", validIds);
 
       // Xóa sản phẩm
       const { error: deleteErr } = await supabase
         .from("products")
         .delete()
-        .eq("id", productId)
+        .in("id", validIds)
         .eq("shop_id", shopContext.shopId);
 
       if (deleteErr) throw deleteErr;
@@ -285,21 +289,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
 
       try {
-        await supabase.from("audit_logs").insert({
-          user_id: shopContext.userId,
-          action: "delete_product",
-          table_name: "products",
-          record_id: productId,
-          old_data: existingProd,
-        });
+        await supabase.from("audit_logs").insert(
+          prodsToDelete.map((p) => ({
+            user_id: shopContext.userId,
+            action: "delete_product",
+            table_name: "products",
+            record_id: p.id,
+            old_data: p,
+          }))
+        );
       } catch (logErr) {
         console.warn("[portal/product-actions] Audit log error:", logErr);
       }
 
       return res.status(200).json({
         success: true,
-        message: `Đã xóa vĩnh viễn sản phẩm "${existingProd.name_vi}".`,
-        productId,
+        deletedCount: validIds.length,
+        deletedIds: validIds,
+        message: validIds.length === 1
+          ? `Đã xóa vĩnh viễn sản phẩm "${prodsToDelete[0].name_vi}".`
+          : `Đã xóa vĩnh viễn ${validIds.length} sản phẩm thành công.`,
       });
     }
 
