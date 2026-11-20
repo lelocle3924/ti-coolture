@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateShopMember } from "../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../_lib/supabaseAdmin.js";
 import { notifyAdminShopProfileUpdate } from "../_lib/telegram.js";
+import { deleteCache } from "../_lib/redis.js";
 
 interface ProfileRequestPayload {
   type: "profile_update";
@@ -219,6 +220,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             )
           : {},
     };
+
+    // 0. Đọc cấu hình kiểm duyệt từ site_settings
+    const { data: settingRow } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "require_approval")
+      .maybeSingle();
+
+    const requireApproval = settingRow?.value?.enabled !== false;
+
+    // NẾU TỰ ĐỘNG DUYỆT: Cập nhật trực tiếp vào bảng shops
+    if (!requireApproval) {
+      const { data: updatedShop, error: shopUpdateErr } = await supabase
+        .from("shops")
+        .update({
+          name: nextPayload.name,
+          tagline_vi: nextPayload.tagline_vi,
+          story_vi: nextPayload.story_vi,
+          address: nextPayload.address,
+          area_tag: nextPayload.area_tag,
+          contact_email: nextPayload.contact_email,
+          logo_url: nextPayload.logo_url,
+          cover_url: nextPayload.cover_url,
+          hero_image_url: nextPayload.hero_image_url,
+          socials: nextPayload.socials,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", shopContext.shopId)
+        .select()
+        .single();
+
+      if (shopUpdateErr) throw shopUpdateErr;
+
+      // Đóng các yêu cầu profile pending cũ nếu có
+      if (shopRequests.length > 0) {
+        await supabase
+          .from("partner_requests")
+          .update({ status: "superseded" })
+          .eq("status", "pending")
+          .in(
+            "id",
+            shopRequests.map((r) => r.id)
+          );
+      }
+
+      await deleteCache("catalog:v1").catch((err) =>
+        console.warn("[portal/save-shop] Redis cache purge warning:", err)
+      );
+
+      return res.status(200).json({
+        success: true,
+        autoApproved: true,
+        message: "Thông tin shop đã được cập nhật trực tiếp lên website (chế độ tự động duyệt).",
+        shop: updatedShop,
+      });
+    }
 
     const latestRequest = shopRequests[0];
     const previousPayload = latestRequest

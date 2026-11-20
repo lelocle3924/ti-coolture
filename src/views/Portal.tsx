@@ -48,6 +48,7 @@ import {
   ExternalLink,
   XCircle,
   Check,
+  CheckSquare,
   Eye,
   X,
   ArrowLeft,
@@ -352,6 +353,17 @@ export default function Portal() {
   const [adminFeedback, setAdminFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
   const [activePreviewImg, setActivePreviewImg] = useState<number>(0);
+
+  // Approval Mode & Bulk Review State for Admin
+  const [requireApproval, setRequireApproval] = useState<boolean>(true);
+  const [isUpdatingApprovalMode, setIsUpdatingApprovalMode] = useState(false);
+  const [selectedReviewProductIds, setSelectedReviewProductIds] = useState<string[]>([]);
+  const [selectedReviewEditIds, setSelectedReviewEditIds] = useState<string[]>([]);
+  const [isBulkApproving, setIsBulkApproving] = useState(false);
+
+  // Bulk Drafts & Product Actions for Shop
+  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
 
   // Active view for products: "list" | "edit"
   const [activeView, setActiveView] = useState<"list" | "edit">("list");
@@ -853,6 +865,7 @@ export default function Portal() {
           if (Array.isArray(data.products)) setPendingReviews(data.products);
           if (Array.isArray(data.shops)) setAdminShops(data.shops);
           if (Array.isArray(data.productEditRequests)) setProductEditRequests(data.productEditRequests);
+          if (typeof data.requireApproval !== "undefined") setRequireApproval(data.requireApproval);
           apiReviewsLoaded = true;
         }
       }
@@ -1034,6 +1047,76 @@ export default function Portal() {
       throw new Error(data.error || "API quản trị không thể xử lý yêu cầu.");
     }
     return data;
+  }
+
+  async function handleToggleApprovalMode(enabled: boolean) {
+    setIsUpdatingApprovalMode(true);
+    try {
+      const data = await postAdminReviewAction({
+        action: "toggle_approval_mode",
+        enabled,
+      });
+      setRequireApproval(enabled);
+      setAdminFeedback({
+        type: "success",
+        text: data.message || "Cập nhật chế độ kiểm duyệt thành công.",
+      });
+    } catch (err: any) {
+      setAdminFeedback({
+        type: "error",
+        text: err.message || "Không thể cập nhật chế độ kiểm duyệt.",
+      });
+    } finally {
+      setIsUpdatingApprovalMode(false);
+    }
+  }
+
+  async function handleAdminBulkApprove() {
+    if (selectedReviewProductIds.length === 0 && selectedReviewEditIds.length === 0) return;
+    const totalCount = selectedReviewProductIds.length + selectedReviewEditIds.length;
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn duyệt và xuất bản đồng loạt ${totalCount} sản phẩm/yêu cầu đã chọn?`
+    );
+    if (!confirmed) return;
+
+    setIsBulkApproving(true);
+    try {
+      const data = await postAdminReviewAction({
+        action: "bulk_approve",
+        productIds: selectedReviewProductIds,
+        editRequestIds: selectedReviewEditIds,
+      });
+
+      if (selectedReviewProductIds.length > 0) {
+        setPendingReviews((prev) =>
+          prev.map((p) =>
+            selectedReviewProductIds.includes(p.id)
+              ? { ...p, status: "published", product_hidden: false }
+              : p
+          )
+        );
+      }
+
+      if (selectedReviewEditIds.length > 0) {
+        setProductEditRequests((prev) =>
+          prev.filter((r) => !selectedReviewEditIds.includes(r.id))
+        );
+      }
+
+      setSelectedReviewProductIds([]);
+      setSelectedReviewEditIds([]);
+      setAdminFeedback({
+        type: "success",
+        text: data.message || `Đã duyệt thành công ${totalCount} mục.`,
+      });
+    } catch (err: any) {
+      setAdminFeedback({
+        type: "error",
+        text: err.message || "Không thể duyệt hàng loạt.",
+      });
+    } finally {
+      setIsBulkApproving(false);
+    }
   }
 
   async function handleProductEditReview(
@@ -2856,6 +2939,97 @@ export default function Portal() {
     return savedId;
   }
 
+  async function handleDeleteProduct(productId: string, productName: string) {
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm "${productName}"?\nThao tác này sẽ xóa sạch ảnh và dữ liệu liên quan, không thể khôi phục!`
+    );
+    if (!confirmed) return;
+
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/product-actions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "delete_product",
+          productId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể xóa sản phẩm.");
+      }
+
+      setProducts((prev) => prev.filter((p) => p.id !== productId));
+      setSelectedDraftIds((prev) => prev.filter((id) => id !== productId));
+      if (editingProductId === productId) {
+        setActiveView("list");
+      }
+
+      setFormFeedback({
+        type: "success",
+        text: data.message || `Đã xóa vĩnh viễn sản phẩm "${productName}".`,
+      });
+    } catch (err: any) {
+      setFormFeedback({
+        type: "error",
+        text: err.message || "Không thể xóa sản phẩm.",
+      });
+    }
+  }
+
+  async function handleBatchSubmitDrafts() {
+    if (selectedDraftIds.length === 0) return;
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn gửi duyệt ${selectedDraftIds.length} bản nháp đã chọn?`
+    );
+    if (!confirmed) return;
+
+    setIsBulkSubmitting(true);
+    setFormFeedback(null);
+    const token = (await getSupabaseToken()) || "dev-token";
+    try {
+      const res = await fetch("/api/portal/submit-review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productIds: selectedDraftIds,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Không thể gửi duyệt hàng loạt.");
+      }
+
+      const nextStatus = data.autoPublished ? "published" : "pending_review";
+      setProducts((prev) =>
+        prev.map((p) =>
+          selectedDraftIds.includes(p.id) ? { ...p, status: nextStatus } : p
+        )
+      );
+      setSelectedDraftIds([]);
+      setFormFeedback({
+        type: "success",
+        text: data.message || `Đã gửi duyệt thành công ${selectedDraftIds.length} sản phẩm.`,
+      });
+    } catch (err: any) {
+      setFormFeedback({
+        type: "error",
+        text: err.message || "Lỗi khi gửi duyệt hàng loạt.",
+      });
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  }
+
   async function handleSubmitReview() {
     if (isSubmittingReviewRef.current) return;
     isSubmittingReviewRef.current = true;
@@ -2869,25 +3043,12 @@ export default function Portal() {
   }
 
   async function submitReviewWorkflow() {
-    let targetId = editingProductId;
-
-    // If product draft is not yet saved, auto-save first so the partner is not blocked!
-    if (!targetId) {
-      if (!nameVi.trim()) {
-        setFormFeedback({
-          type: "error",
-          text: "Vui lòng nhập tên sản phẩm tiếng Việt trước khi bấm gửi duyệt.",
-        });
-        return;
-      }
-      targetId = await handleSaveDraft();
-      if (!targetId) {
-        setFormFeedback({
-          type: "error",
-          text: "Không thể lưu sản phẩm. Vui lòng kiểm tra lại thông tin.",
-        });
-        return;
-      }
+    if (!nameVi.trim()) {
+      setFormFeedback({
+        type: "error",
+        text: "Vui lòng nhập tên sản phẩm tiếng Việt trước khi bấm gửi duyệt.",
+      });
+      return;
     }
 
     if (images.length === 0) {
@@ -2918,12 +3079,23 @@ export default function Portal() {
     }
 
     const confirmed = window.confirm(
-      "Sau khi gửi duyệt, sản phẩm sẽ được khóa chỉnh sửa để ban quản trị Tí Coolture thẩm định. Bạn có chắc chắn muốn nộp?"
+      "Sau khi gửi duyệt, sản phẩm sẽ được gửi tới ban quản trị Tí Coolture. Bạn có chắc chắn muốn nộp?"
     );
     if (!confirmed) return;
 
     setIsSubmitting(true);
     setFormFeedback(null);
+
+    // Luôn luôn lưu dữ liệu và hình ảnh mới nhất lên cơ sở dữ liệu trước khi gửi duyệt
+    const targetId = await handleSaveDraft();
+    if (!targetId) {
+      setIsSubmitting(false);
+      setFormFeedback({
+        type: "error",
+        text: "Không thể lưu sản phẩm trước khi gửi duyệt. Vui lòng kiểm tra lại thông tin.",
+      });
+      return;
+    }
 
     const token = (await getSupabaseToken()) || "dev-token";
 
@@ -3547,70 +3719,181 @@ export default function Portal() {
             {/* TAB: DUYỆT SẢN PHẨM MỚI TỪ SHOP */}
             {adminTab === "reviews" && (
               <div className="space-y-6">
-                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-[#39d6cf]" />
-                      <span>{reviewFilter === "edit_requests" ? "Yêu cầu chỉnh sửa sản phẩm" : "Danh sách Sản phẩm gửi duyệt"}</span>
-                    </h3>
-                    <p className="text-xs text-[#a39ab8] mt-1">
-                      {reviewFilter === "edit_requests"
-                        ? "Xem trước và duyệt thay đổi trước khi cập nhật lên phiên bản đang xuất bản."
-                        : "Các sản phẩm do shop đối tác gửi lên, chờ Admin duyệt để hiển thị ra website chính."}
-                    </p>
+                <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-6 shadow-lg space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-[#39d6cf]" />
+                        <span>{reviewFilter === "edit_requests" ? "Yêu cầu chỉnh sửa sản phẩm" : "Danh sách Sản phẩm gửi duyệt"}</span>
+                      </h3>
+                      <p className="text-xs text-[#a39ab8] mt-1">
+                        {reviewFilter === "edit_requests"
+                          ? "Xem trước và duyệt thay đổi trước khi cập nhật lên phiên bản đang xuất bản."
+                          : "Các sản phẩm do shop đối tác gửi lên, chờ Admin duyệt để hiển thị ra website chính."}
+                      </p>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-1.5 bg-[#12081f] p-1 rounded-xl border border-[#2e2344]">
+                      <button
+                        type="button"
+                        onClick={() => setReviewFilter("pending_review")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          reviewFilter === "pending_review"
+                            ? "bg-amber-500 text-black font-semibold shadow-sm"
+                            : "text-[#a39ab8] hover:text-white"
+                        }`}
+                      >
+                        Chờ duyệt ({pendingReviews.filter((r) => r.status === "pending_review").length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewFilter("edit_requests")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          reviewFilter === "edit_requests"
+                            ? "bg-[#7520f7] text-white font-semibold shadow-sm"
+                            : "text-[#a39ab8] hover:text-white"
+                        }`}
+                      >
+                        Yêu cầu chỉnh sửa ({productEditRequests.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewFilter("published")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          reviewFilter === "published"
+                            ? "bg-emerald-500 text-black font-semibold shadow-sm"
+                            : "text-[#a39ab8] hover:text-white"
+                        }`}
+                      >
+                        Đã xuất bản ({pendingReviews.filter((r) => r.status === "published").length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewFilter("all")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                          reviewFilter === "all"
+                            ? "bg-[#7520f7] text-white font-semibold shadow-sm"
+                            : "text-[#a39ab8] hover:text-white"
+                        }`}
+                      >
+                        Tất cả ({pendingReviews.length})
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Filter Pills */}
-                  <div className="flex items-center gap-1.5 bg-[#12081f] p-1 rounded-xl border border-[#2e2344]">
-                    <button
-                      type="button"
-                      onClick={() => setReviewFilter("pending_review")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        reviewFilter === "pending_review"
-                          ? "bg-amber-500 text-black font-semibold shadow-sm"
-                          : "text-[#a39ab8] hover:text-white"
-                      }`}
-                    >
-                      Chờ duyệt ({pendingReviews.filter((r) => r.status === "pending_review").length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReviewFilter("edit_requests")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        reviewFilter === "edit_requests"
-                          ? "bg-[#7520f7] text-white font-semibold shadow-sm"
-                          : "text-[#a39ab8] hover:text-white"
-                      }`}
-                    >
-                      Yêu cầu chỉnh sửa ({productEditRequests.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReviewFilter("published")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        reviewFilter === "published"
-                          ? "bg-emerald-500 text-black font-semibold shadow-sm"
-                          : "text-[#a39ab8] hover:text-white"
-                      }`}
-                    >
-                      Đã xuất bản ({pendingReviews.filter((r) => r.status === "published").length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReviewFilter("all")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        reviewFilter === "all"
-                          ? "bg-[#7520f7] text-white font-semibold shadow-sm"
-                          : "text-[#a39ab8] hover:text-white"
-                      }`}
-                    >
-                      Tất cả ({pendingReviews.length})
-                    </button>
+                  {/* Toggle Bật/Tắt chế độ kiểm duyệt */}
+                  <div className="pt-4 border-t border-[#2e2344] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-[#a39ab8]">Chế độ kiểm duyệt (Approval Mode):</span>
+                      <button
+                        type="button"
+                        disabled={isUpdatingApprovalMode}
+                        onClick={() => handleToggleApprovalMode(!requireApproval)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          requireApproval ? "bg-[#7520f7]" : "bg-zinc-700"
+                        } ${isUpdatingApprovalMode ? "opacity-50 cursor-wait" : ""}`}
+                        title="Bật/tắt chế độ duyệt sản phẩm và thông tin shop"
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            requireApproval ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                      <span className={`text-xs font-semibold ${requireApproval ? "text-[#39d6cf]" : "text-amber-400"}`}>
+                        {requireApproval ? "Đang BẬT (Phải chờ Admin duyệt)" : "Đang TẮT (Shop gửi là đăng luôn)"}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[#7b7194]">
+                      {requireApproval
+                        ? "Mọi sản phẩm và thay đổi từ shop phải được Admin phê duyệt trước khi lên web."
+                        : "Shop gửi sản phẩm hoặc cập nhật hồ sơ sẽ được tự động xuất bản ngay lập tức."}
+                    </span>
                   </div>
                 </div>
 
+                {/* Bulk Action Bar for Admin */}
+                {(selectedReviewProductIds.length > 0 || selectedReviewEditIds.length > 0) && (
+                  <div className="bg-[#23173d] border border-[#7520f7]/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                    <div className="flex items-center gap-3">
+                      <CheckSquare className="w-5 h-5 text-[#39d6cf] flex-shrink-0" />
+                      <span className="text-xs text-white">
+                        Đã chọn{" "}
+                        <strong className="text-[#39d6cf] text-sm">
+                          {selectedReviewProductIds.length + selectedReviewEditIds.length}
+                        </strong>{" "}
+                        mục chờ duyệt
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedReviewProductIds([]);
+                          setSelectedReviewEditIds([]);
+                        }}
+                        className="px-3 py-1.5 text-xs text-[#a39ab8] hover:text-white transition"
+                      >
+                        Bỏ chọn
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAdminBulkApprove}
+                        disabled={isBulkApproving}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition flex items-center gap-2 shadow"
+                      >
+                        {isBulkApproving ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          Duyệt tất cả đã chọn (
+                          {selectedReviewProductIds.length + selectedReviewEditIds.length})
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Review Products List */}
                 <div className="space-y-4">
+                  {visibleReviewProducts.length > 0 &&
+                    (reviewFilter === "pending_review" || reviewFilter === "edit_requests") && (
+                      <div className="flex items-center justify-between px-2 text-xs text-[#a39ab8]">
+                        <label className="flex items-center gap-2 cursor-pointer hover:text-white">
+                          <input
+                            type="checkbox"
+                            checked={
+                              reviewFilter === "edit_requests"
+                                ? visibleReviewProducts.length > 0 &&
+                                  selectedReviewEditIds.length === visibleReviewProducts.length
+                                : visibleReviewProducts.filter((p) => p.status === "pending_review").length > 0 &&
+                                  selectedReviewProductIds.length ===
+                                    visibleReviewProducts.filter((p) => p.status === "pending_review").length
+                            }
+                            onChange={(e) => {
+                              if (reviewFilter === "edit_requests") {
+                                const allEditIds = visibleReviewProducts
+                                  .map((p) => p.review_request_id)
+                                  .filter(Boolean);
+                                setSelectedReviewEditIds(e.target.checked ? allEditIds : []);
+                              } else {
+                                const allPendingIds = visibleReviewProducts
+                                  .filter((p) => p.status === "pending_review")
+                                  .map((p) => p.id);
+                                setSelectedReviewProductIds(e.target.checked ? allPendingIds : []);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer"
+                          />
+                          <span>Chọn tất cả các mục chờ duyệt</span>
+                        </label>
+                      </div>
+                    )}
+
                   {visibleReviewProducts.length === 0 ? (
                     <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center">
                       <FileImage className="w-8 h-8 text-[#a39ab8] mx-auto mb-3 opacity-40" />
@@ -3624,11 +3907,49 @@ export default function Portal() {
                   ) : (
                     visibleReviewProducts.map((prod) => {
                         const coverImgUrl = getProductCoverUrl(prod.product_images);
+                        const isPending = prod.status === "pending_review" || Boolean(prod.review_request_id);
+                        const isChecked = prod.review_request_id
+                          ? selectedReviewEditIds.includes(prod.review_request_id)
+                          : selectedReviewProductIds.includes(prod.id);
                         return (
                           <div
                             key={prod.id}
-                            className="bg-[#181224] border border-[#2e2344] rounded-2xl p-5 sm:p-6 shadow-lg flex flex-col md:flex-row gap-6 items-start"
+                            className={`bg-[#181224] border rounded-2xl p-5 sm:p-6 shadow-lg flex flex-col md:flex-row gap-6 items-start relative transition ${
+                              isChecked ? "border-[#7520f7] bg-[#1a1329]" : "border-[#2e2344]"
+                            }`}
                           >
+                            {/* Checkbox for Bulk Review */}
+                            {isPending && (
+                              <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-[#12081f]/80 px-2.5 py-1 rounded-lg border border-[#2e2344]">
+                                <input
+                                  type="checkbox"
+                                  id={`select-review-${prod.review_request_id || prod.id}`}
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (prod.review_request_id) {
+                                      setSelectedReviewEditIds((prev) =>
+                                        e.target.checked
+                                          ? [...prev, prod.review_request_id]
+                                          : prev.filter((id) => id !== prod.review_request_id)
+                                      );
+                                    } else {
+                                      setSelectedReviewProductIds((prev) =>
+                                        e.target.checked
+                                          ? [...prev, prod.id]
+                                          : prev.filter((id) => id !== prod.id)
+                                      );
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer"
+                                />
+                                <label
+                                  htmlFor={`select-review-${prod.review_request_id || prod.id}`}
+                                  className="text-[11px] text-[#a39ab8] cursor-pointer select-none"
+                                >
+                                  Chọn duyệt
+                                </label>
+                              </div>
+                            )}
                             {/* Images Gallery */}
                             <div className="w-full md:w-56 flex-shrink-0">
                               <div className="w-full aspect-square rounded-xl bg-[#12081f] border border-[#2e2344] overflow-hidden relative">
@@ -4874,6 +5195,41 @@ export default function Portal() {
                       </div>
                     )}
 
+                    {/* Bulk Action Bar for Shop Drafts */}
+                    {selectedDraftIds.length > 0 && (
+                      <div className="bg-[#23173d] border border-[#7520f7]/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                        <div className="flex items-center gap-3">
+                          <CheckSquare className="w-5 h-5 text-[#39d6cf] flex-shrink-0" />
+                          <span className="text-xs text-white">
+                            Đã chọn <strong className="text-[#39d6cf] text-sm">{selectedDraftIds.length}</strong> bản nháp
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDraftIds([])}
+                            className="px-3 py-1.5 text-xs text-[#a39ab8] hover:text-white transition"
+                          >
+                            Bỏ chọn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleBatchSubmitDrafts}
+                            disabled={isBulkSubmitting}
+                            className="px-4 py-2 bg-[#7520f7] hover:bg-[#5a12c6] text-white text-xs font-semibold rounded-xl transition flex items-center gap-2 shadow"
+                          >
+                            {isBulkSubmitting ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                            <span>Gửi duyệt tất cả đã chọn ({selectedDraftIds.length})</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {products.length === 0 ? (
                       <div className="bg-[#181224] border border-[#2e2344] rounded-2xl p-12 text-center">
                         <div className="w-12 h-12 rounded-full bg-[#23173d] flex items-center justify-center mx-auto mb-4 text-[#a39ab8]">
@@ -4899,6 +5255,24 @@ export default function Portal() {
                           <table className="w-full text-left text-xs">
                             <thead className="bg-[#12081f] text-[#a39ab8] uppercase tracking-wider text-[11px] border-b border-[#2e2344]">
                               <tr>
+                                <th className="py-3 px-3 w-10 text-center">
+                                  <input
+                                    type="checkbox"
+                                    title="Chọn tất cả bản nháp"
+                                    checked={
+                                      products.filter((p) => p.status === "draft" || p.status === "rejected").length > 0 &&
+                                      selectedDraftIds.length ===
+                                        products.filter((p) => p.status === "draft" || p.status === "rejected").length
+                                    }
+                                    onChange={(e) => {
+                                      const draftIds = products
+                                        .filter((p) => p.status === "draft" || p.status === "rejected")
+                                        .map((p) => p.id);
+                                      setSelectedDraftIds(e.target.checked ? draftIds : []);
+                                    }}
+                                    className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer"
+                                  />
+                                </th>
                                 <th className="py-3 px-5">Sản phẩm</th>
                                 <th className="py-3 px-4">Danh mục</th>
                                 <th className="py-3 px-4">Giá niêm yết</th>
@@ -4921,6 +5295,7 @@ export default function Portal() {
                                 const isPendingReview = prod.status === "pending_review";
                                 const isPendingEdit = Boolean(pendingEditReq);
                                 const isLocked = isPendingReview || isPendingEdit;
+                                const isDraftOrRejected = prod.status === "draft" || prod.status === "rejected";
 
                                 return (
                                   <tr
@@ -4930,9 +5305,11 @@ export default function Portal() {
                                       openEditForm(prod);
                                     }}
                                     className={`transition group ${
-                                      isLocked
-                                        ? "hover:bg-[#23173d]/20 cursor-default"
-                                        : "hover:bg-[#23173d]/60 cursor-pointer"
+                                      selectedDraftIds.includes(prod.id)
+                                        ? "bg-[#23173d]/50 hover:bg-[#23173d]/70"
+                                        : isLocked
+                                          ? "hover:bg-[#23173d]/20 cursor-default"
+                                          : "hover:bg-[#23173d]/60 cursor-pointer"
                                     }`}
                                     title={
                                       isLocked
@@ -4942,6 +5319,26 @@ export default function Portal() {
                                         : "Bấm vào dòng để chỉnh sửa sản phẩm"
                                     }
                                   >
+                                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedDraftIds.includes(prod.id)}
+                                        disabled={!isDraftOrRejected}
+                                        onChange={(e) => {
+                                          setSelectedDraftIds((prev) =>
+                                            e.target.checked
+                                              ? [...prev, prod.id]
+                                              : prev.filter((id) => id !== prod.id)
+                                          );
+                                        }}
+                                        title={
+                                          isDraftOrRejected
+                                            ? "Chọn để gửi duyệt"
+                                            : "Chỉ chọn được bản nháp hoặc sản phẩm bị từ chối"
+                                        }
+                                        className="w-4 h-4 rounded text-[#7520f7] focus:ring-[#7520f7] bg-[#12081f] border-[#3b2a60] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                      />
+                                    </td>
                                     <td className="py-3.5 px-5">
                                       <div className="flex items-center gap-3.5">
                                         <div className="w-12 h-12 rounded-xl bg-[#23173d] overflow-hidden flex-shrink-0 border border-[#3b2a60] flex items-center justify-center">
@@ -5148,6 +5545,18 @@ export default function Portal() {
                                             Chỉnh sửa →
                                           </button>
                                         )}
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteProduct(prod.id, prod.name_vi);
+                                          }}
+                                          className="text-xs text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition"
+                                          title="Xóa vĩnh viễn sản phẩm này"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                       </div>
                                     </td>
                                   </tr>
@@ -5181,6 +5590,18 @@ export default function Portal() {
                       </div>
 
                       <div className="flex items-center gap-2.5">
+                        {editingProductId && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProduct(editingProductId, nameVi)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/50 rounded-xl text-xs font-medium transition"
+                            title="Xóa vĩnh viễn sản phẩm này"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => setPreviewModal("product")}

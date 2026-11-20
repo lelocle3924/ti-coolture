@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateStaffMember } from "../../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../../_lib/supabaseAdmin.js";
+import { deleteCache } from "../../_lib/redis.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
@@ -80,11 +81,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (editErr) throw editErr;
 
+      const { data: settingRow } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "require_approval")
+        .maybeSingle();
+
+      const requireApproval = settingRow?.value?.enabled !== false;
+
       return res.status(200).json({
         success: true,
         products: products || [],
         shops: shops || [],
         productEditRequests: productEditRequests || [],
+        requireApproval,
       });
     }
 
@@ -98,6 +108,93 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const { productId, action, rejectReason } = req.body || {};
+
+      // SUB-ACTION: TOGGLE APPROVAL MODE (BẬT / TẮT CHẾ ĐỘ KIỂM DUYỆT)
+      if (action === "toggle_approval_mode") {
+        const enabled = Boolean(req.body?.enabled);
+        const { error: setErr } = await supabase
+          .from("site_settings")
+          .upsert({
+            key: "require_approval",
+            value: { enabled },
+            updated_by: staff.userId,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (setErr) throw setErr;
+
+        return res.status(200).json({
+          success: true,
+          requireApproval: enabled,
+          message: enabled
+            ? "Đã bật chế độ chờ kiểm duyệt. Mọi sản phẩm và thay đổi từ shop phải được Admin phê duyệt."
+            : "Đã tắt chế độ kiểm duyệt. Shop đăng sản phẩm và cập nhật hồ sơ sẽ được tự động xuất bản ngay lập tức.",
+        });
+      }
+
+      // SUB-ACTION: BULK APPROVE (DUYỆT HÀNG LOẠT SẢN PHẨM & YÊU CẦU CHỈNH SỬA)
+      if (action === "bulk_approve") {
+        const { productIds, editRequestIds } = req.body || {};
+        let approvedProductsCount = 0;
+        let approvedEditsCount = 0;
+        const nowIso = new Date().toISOString();
+
+        if (Array.isArray(productIds) && productIds.length > 0) {
+          const { data: updated, error: batchErr } = await supabase
+            .from("products")
+            .update({
+              status: "published",
+              product_hidden: false,
+              published_at: nowIso,
+              updated_at: nowIso,
+            })
+            .in("id", productIds)
+            .eq("status", "pending_review")
+            .select("id, shop_id");
+
+          if (batchErr) throw batchErr;
+          approvedProductsCount = updated?.length || 0;
+
+          // Tự động kích hoạt các shop draft nếu có sản phẩm vừa được duyệt
+          if (updated && updated.length > 0) {
+            const shopIds = [...new Set(updated.map((u) => u.shop_id).filter(Boolean))];
+            if (shopIds.length > 0) {
+              await supabase
+                .from("shops")
+                .update({ status: "published", updated_at: nowIso })
+                .in("id", shopIds)
+                .eq("status", "draft");
+            }
+          }
+        }
+
+        if (Array.isArray(editRequestIds) && editRequestIds.length > 0) {
+          for (const editId of editRequestIds) {
+            try {
+              const { error: editErr } = await supabase.rpc("review_product_edit_request", {
+                p_request_id: editId,
+                p_action: "approve",
+                p_staff_user_id: staff.userId,
+                p_reject_reason: null,
+              });
+              if (!editErr) approvedEditsCount++;
+            } catch (e) {
+              console.warn("[bulk_approve] Lỗi duyệt edit request:", editId, e);
+            }
+          }
+        }
+
+        await deleteCache("catalog:v1").catch((err) =>
+          console.warn("[admin/reviews] Redis cache purge warning:", err)
+        );
+
+        return res.status(200).json({
+          success: true,
+          approvedProductsCount,
+          approvedEditsCount,
+          message: `Đã duyệt thành công ${approvedProductsCount} sản phẩm và ${approvedEditsCount} yêu cầu chỉnh sửa.`,
+        });
+      }
 
       if (action === "toggle_product" || action === "toggle_shop") {
         const visible = req.body?.visible;
