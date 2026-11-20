@@ -9,12 +9,15 @@ let redisClient: Redis | null = null;
 export function getRedis(): Redis | null {
   if (redisClient) return redisClient;
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  let url = process.env.UPSTASH_REDIS_REST_URL;
+  let token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
     return null;
   }
+
+  url = url.trim().replace(/^["']|["']$/g, "");
+  token = token.trim().replace(/^["']|["']$/g, "");
 
   redisClient = new Redis({
     url,
@@ -52,6 +55,33 @@ export async function setCache(
     await redis.set(key, value, { ex: ttlSeconds });
   } catch (err) {
     console.warn(`[Redis] Set cache error for key ${key}:`, err);
+  }
+}
+
+/**
+ * Gets a persistent setting (never expires).
+ */
+export async function getPersistentSetting<T>(key: string): Promise<T | null> {
+  try {
+    const redis = getRedis();
+    if (!redis) return null;
+    return await redis.get<T>(`setting:${key}`);
+  } catch (err) {
+    console.warn(`[Redis] getPersistentSetting error for key ${key}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Sets a persistent setting (no TTL).
+ */
+export async function setPersistentSetting(key: string, value: unknown): Promise<void> {
+  try {
+    const redis = getRedis();
+    if (!redis) return;
+    await redis.set(`setting:${key}`, value);
+  } catch (err) {
+    console.warn(`[Redis] setPersistentSetting error for key ${key}:`, err);
   }
 }
 

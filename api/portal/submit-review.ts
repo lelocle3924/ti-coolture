@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateShopMember } from "../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../_lib/supabaseAdmin.js";
 import { notifyAdminProductSubmission } from "../_lib/telegram.js";
-import { deleteCache } from "../_lib/redis.js";
+import { deleteCache, getPersistentSetting } from "../_lib/redis.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
@@ -24,14 +24,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { productId, productIds } = req.body || {};
 
-    // 0. Đọc cấu hình kiểm duyệt từ site_settings
-    const { data: settingRow } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "require_approval")
-      .maybeSingle();
+    // 0. Đọc cấu hình kiểm duyệt từ site_settings (fallback Redis)
+    let requireApproval = true;
+    try {
+      const { data: settingRow, error: setFetchErr } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "require_approval")
+        .maybeSingle();
 
-    const requireApproval = settingRow?.value?.enabled !== false;
+      if (!setFetchErr && settingRow?.value) {
+        requireApproval = settingRow.value.enabled !== false;
+      } else {
+        const redisVal = await getPersistentSetting<{ enabled: boolean }>("require_approval");
+        if (redisVal && typeof redisVal.enabled !== "undefined") {
+          requireApproval = redisVal.enabled !== false;
+        }
+      }
+    } catch {
+      const redisVal = await getPersistentSetting<{ enabled: boolean }>("require_approval");
+      if (redisVal && typeof redisVal.enabled !== "undefined") {
+        requireApproval = redisVal.enabled !== false;
+      }
+    }
+
     const nowIso = new Date().toISOString();
 
     // ==========================================

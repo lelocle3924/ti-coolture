@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { authenticateStaffMember } from "../../_lib/supabaseAuth.js";
 import { getSupabaseAdmin } from "../../_lib/supabaseAdmin.js";
-import { deleteCache } from "../../_lib/redis.js";
+import { deleteCache, getPersistentSetting, setPersistentSetting } from "../../_lib/redis.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
@@ -81,13 +81,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (editErr) throw editErr;
 
-      const { data: settingRow } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "require_approval")
-        .maybeSingle();
+      let requireApproval = true;
+      try {
+        const { data: settingRow, error: setFetchErr } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "require_approval")
+          .maybeSingle();
 
-      const requireApproval = settingRow?.value?.enabled !== false;
+        if (!setFetchErr && settingRow?.value) {
+          requireApproval = settingRow.value.enabled !== false;
+        } else {
+          const redisVal = await getPersistentSetting<{ enabled: boolean }>("require_approval");
+          if (redisVal && typeof redisVal.enabled !== "undefined") {
+            requireApproval = redisVal.enabled !== false;
+          }
+        }
+      } catch {
+        const redisVal = await getPersistentSetting<{ enabled: boolean }>("require_approval");
+        if (redisVal && typeof redisVal.enabled !== "undefined") {
+          requireApproval = redisVal.enabled !== false;
+        }
+      }
 
       return res.status(200).json({
         success: true,
@@ -112,23 +127,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // SUB-ACTION: TOGGLE APPROVAL MODE (BẬT / TẮT CHẾ ĐỘ KIỂM DUYỆT)
       if (action === "toggle_approval_mode") {
         const enabled = Boolean(req.body?.enabled);
-        const { error: setErr } = await supabase
-          .from("site_settings")
-          .upsert({
-            key: "require_approval",
-            value: { enabled },
-            updated_by: staff.userId,
-            updated_at: new Date().toISOString(),
-          });
 
-        if (setErr) throw setErr;
+        // 1. Luôn lưu vào Redis để áp dụng tức thì
+        await setPersistentSetting("require_approval", { enabled });
+
+        // 2. Thử ghi vào bảng site_settings trên Supabase nếu bảng đã tạo
+        let dbSaved = false;
+        try {
+          const { error: setErr } = await supabase
+            .from("site_settings")
+            .upsert({
+              key: "require_approval",
+              value: { enabled },
+              updated_by: staff.userId,
+              updated_at: new Date().toISOString(),
+            });
+
+          if (!setErr) {
+            dbSaved = true;
+          } else {
+            console.warn("[toggle_approval_mode] Lưu site_settings warning:", setErr.message);
+          }
+        } catch (dbErr: any) {
+          console.warn("[toggle_approval_mode] DB error:", dbErr.message);
+        }
 
         return res.status(200).json({
           success: true,
           requireApproval: enabled,
-          message: enabled
-            ? "Đã bật chế độ chờ kiểm duyệt. Mọi sản phẩm và thay đổi từ shop phải được Admin phê duyệt."
-            : "Đã tắt chế độ kiểm duyệt. Shop đăng sản phẩm và cập nhật hồ sơ sẽ được tự động xuất bản ngay lập tức.",
+          message: dbSaved
+            ? enabled
+              ? "Đã bật chế độ chờ kiểm duyệt. Mọi sản phẩm và thay đổi từ shop phải được Admin phê duyệt."
+              : "Đã tắt chế độ kiểm duyệt. Shop đăng sản phẩm và cập nhật hồ sơ sẽ được tự động xuất bản ngay lập tức."
+            : enabled
+              ? "Đã bật chế độ chờ kiểm duyệt (đã lưu cache hệ thống). Hãy chạy migration 00024 trên Supabase để lưu vĩnh viễn vào DB."
+              : "Đã tắt chế độ kiểm duyệt (đã lưu cache hệ thống). Hãy chạy migration 00024 trên Supabase để lưu vĩnh viễn vào DB.",
         });
       }
 
