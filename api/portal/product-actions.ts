@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const authHeader = req.headers.authorization;
     const shopContext = await authenticateShopMember(authHeader);
     const supabase = getSupabaseAdmin();
-    const { action, productId, hidden, isOutOfStock, requestId } = req.body || {};
+    const { action, productId, productIds, hidden, isOutOfStock, requestId } = req.body || {};
 
     // 1. ACTION: TOGGLE PRODUCT VISIBILITY (ẨN / HIỆN SẢN PHẨM)
     if (action === "toggle_visibility" || (productId && typeof hidden !== "undefined")) {
@@ -274,6 +274,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabase.from("product_images").delete().in("product_id", validIds);
       await supabase.from("product_edit_requests").delete().in("product_id", validIds);
       await supabase.from("featured_items").delete().in("product_id", validIds);
+      await supabase.from("collection_products").delete().in("product_id", validIds);
 
       // Xóa sản phẩm
       const { error: deleteErr } = await supabase
