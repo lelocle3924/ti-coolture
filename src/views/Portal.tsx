@@ -366,6 +366,10 @@ export default function Portal() {
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
+  // Meta Admin Shop Impersonation / Debug Mode State
+  const [impersonatedShop, setImpersonatedShop] = useState<any | null>(null);
+  const [isLoadingShopPortal, setIsLoadingShopPortal] = useState(false);
+
   // Active view for products: "list" | "edit"
   const [activeView, setActiveView] = useState<"list" | "edit">("list");
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -689,7 +693,10 @@ export default function Portal() {
   async function loadPendingProfileRequest(token: string) {
     try {
       const response = await fetch("/api/portal/save-shop", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
+        },
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
@@ -705,15 +712,104 @@ export default function Portal() {
     }
   }
 
+  async function handleEnterShopPortal(targetShop: any) {
+    if (!targetShop) return;
+    setIsLoadingShopPortal(true);
+    setAdminFeedback(null);
+    setShopFeedback(null);
+    try {
+      const token = (await getSupabaseToken()) || (typeof localStorage !== "undefined" ? localStorage.getItem("ti_admin_bypass_token") : null) || "dev-token";
+      const res = await fetch("/api/portal/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "x-target-shop-id": targetShop.id,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.shop) {
+          setShop(data.shop);
+          populateShopState(data.shop);
+          setRole("owner");
+          setProducts(data.products || []);
+          setProductEditRequests(data.productEditRequests || []);
+          setPendingProfileRequest(data.pendingProfileRequest || null);
+          setImpersonatedShop(data.shop);
+          setActiveView("list");
+          setPartnerTab("storefront");
+          return;
+        }
+      }
+
+      // Fallback nếu kết nối backend cục bộ thất bại
+      if (supabase) {
+        const { data: sData } = await supabase
+          .from("shops")
+          .select("*")
+          .eq("id", targetShop.id)
+          .single();
+        if (sData) {
+          setShop(sData);
+          populateShopState(sData);
+          setRole("owner");
+          const { data: dbProds } = await supabase
+            .from("products")
+            .select("*, product_images(*)")
+            .eq("shop_id", targetShop.id)
+            .order("updated_at", { ascending: false });
+          if (dbProds) setProducts(dbProds as any);
+
+          const { data: dbEditReqs } = await supabase
+            .from("product_edit_requests")
+            .select("*, products(id, name_vi, price_vnd, status, category_id, product_images(*))")
+            .eq("shop_id", targetShop.id)
+            .order("created_at", { ascending: false });
+          if (dbEditReqs) setProductEditRequests(dbEditReqs as any);
+
+          const { data: dbSocs } = await supabase
+            .from("shop_socials")
+            .select("platform, url")
+            .eq("shop_id", targetShop.id);
+          if (dbSocs) {
+            const sm: Record<string, string> = {};
+            dbSocs.forEach((s: any) => {
+              if (s.platform && s.url) sm[s.platform] = s.url;
+            });
+            setShopSocials(sm);
+          }
+          setImpersonatedShop(sData);
+          setActiveView("list");
+          setPartnerTab("storefront");
+        }
+      }
+    } catch (err: any) {
+      console.error("[portal] Failed to enter shop portal:", err);
+      setAdminFeedback({
+        type: "error",
+        text: "Không thể truy cập portal của shop: " + (err.message || "Lỗi máy chủ"),
+      });
+    } finally {
+      setIsLoadingShopPortal(false);
+    }
+  }
+
+  function handleExitShopPortal() {
+    setImpersonatedShop(null);
+    loadAdminData();
+  }
+
   async function loadPortalMe(token: string, userObj?: any) {
     try {
       setAuthError(null);
       setSessionToken(token);
       const email = (userObj?.email || currentUser?.email || "").toLowerCase().trim();
 
-      // Super admin email check
+      // Super admin / Meta Admin email check
       const isSuperAdminEmail =
-        email === "locle30092004@gmail.com" || email === "vinhhung3205@gmail.com";
+        email === "locle30092004@gmail.com" ||
+        email === "vinhhung3205@gmail.com" ||
+        email === "creativespace.ticoolture@gmail.com";
 
       // 1. Try Backend API
       try {
@@ -945,6 +1041,13 @@ export default function Portal() {
         user_id: "u-loc",
         email: "locle30092004@gmail.com",
         full_name: "Lộc Lê (Super Admin)",
+        role: "admin",
+        is_active: true,
+      },
+      {
+        user_id: "u-creative",
+        email: "creativespace.ticoolture@gmail.com",
+        full_name: "Meta Admin (Creative Space)",
         role: "admin",
         is_active: true,
       },
@@ -2234,6 +2337,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({ action: "toggle_visibility", productId, hidden: targetHidden }),
       });
@@ -2276,6 +2380,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({ action: "toggle_stock", productId, isOutOfStock: targetOutOfStock }),
       });
@@ -2323,6 +2428,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({ action: "cancel_edit_request", requestId }),
       });
@@ -2351,6 +2457,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({ action: "cancel_upload_request", productId }),
       });
@@ -2403,12 +2510,20 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          ...(impersonatedShop ? { shopId: impersonatedShop.id } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Không thể lưu thông tin shop.");
+      }
+      if (data.shop) {
+        setShop(data.shop);
+        populateShopState(data.shop);
       }
       setPendingProfileRequest(data.request || null);
       setShopFeedback({ type: "success", text: data.message });
@@ -2433,7 +2548,10 @@ export default function Portal() {
       const token = (await getSupabaseToken()) || "dev-token";
       const response = await fetch("/api/portal/save-shop", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
+        },
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
@@ -2737,6 +2855,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify(payload),
       });
@@ -2953,6 +3072,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({
           action: "delete_product",
@@ -2999,6 +3119,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({
           action: "delete_product",
@@ -3058,6 +3179,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({
           productIds: draftIdsToSubmit,
@@ -3166,6 +3288,7 @@ export default function Portal() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(impersonatedShop ? { "x-target-shop-id": impersonatedShop.id } : {}),
         },
         body: JSON.stringify({ productId: targetId }),
       });
@@ -3380,15 +3503,21 @@ export default function Portal() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#23173d] border border-[#3b2a60] flex items-center justify-center text-[#39d6cf]">
-              {isAdmin ? <ShieldCheck className="w-4 h-4 text-[#7520f7]" /> : <Store className="w-4 h-4" />}
+              {isAdmin && !impersonatedShop ? <ShieldCheck className="w-4 h-4 text-[#7520f7]" /> : <Store className="w-4 h-4" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold text-white">
-                  {isAdmin ? "Ban Quản Trị Tí Coolture" : shop?.name}
+                  {isAdmin && !impersonatedShop ? "Ban Quản Trị Tí Coolture" : shop?.name}
                 </h1>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#23173d] text-[#39d6cf] border border-[#3b2a60]">
-                  {isAdmin ? "Super Admin" : role === "owner" ? "Chủ shop" : "Biên tập"}
+                  {isAdmin && !impersonatedShop
+                    ? "Super Admin"
+                    : impersonatedShop
+                    ? "Meta Admin (Đang Debug)"
+                    : role === "owner"
+                    ? "Chủ shop"
+                    : "Biên tập"}
                 </span>
               </div>
               <p className="text-[11px] text-[#a39ab8]">{currentUser.email}</p>
@@ -3411,7 +3540,7 @@ export default function Portal() {
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
         {/* ADMIN MANAGEMENT CONSOLE */}
-        {isAdmin ? (
+        {isAdmin && !impersonatedShop ? (
           <div>
             {/* Admin Header & Navigation Tabs */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
@@ -3428,6 +3557,33 @@ export default function Portal() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {/* Quick Shop Portal Debug Selector */}
+                {adminShops.length > 0 && (
+                  <div className="flex items-center gap-1.5 p-1.5 bg-[#181224] rounded-xl border border-[#2e2344]">
+                    <div className="flex items-center gap-1.5 px-2">
+                      <Store className="w-3.5 h-3.5 text-[#39d6cf]" />
+                      <span className="text-[11px] font-medium text-[#a39ab8]">Debug Shop:</span>
+                    </div>
+                    <select
+                      aria-label="Chọn shop để debug portal"
+                      value=""
+                      onChange={(e) => {
+                        const found = adminShops.find((shop) => shop.id === e.target.value);
+                        if (found) handleEnterShopPortal(found);
+                      }}
+                      disabled={isLoadingShopPortal}
+                      className="bg-[#12081f] border border-[#3b2a60] text-xs text-[#39d6cf] rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#7520f7]"
+                    >
+                      <option value="" disabled>Chọn shop để vào Portal...</option>
+                      {adminShops.map((shop) => (
+                        <option key={shop.id} value={shop.id} className="bg-[#181224] text-white">
+                          {shop.name} ({shop.slug})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Data Mode Switcher */}
                 <div className="flex items-center gap-2 p-1.5 bg-[#181224] rounded-xl border border-[#2e2344]">
                   <div className="flex items-center gap-1.5 px-2.5">
@@ -4312,6 +4468,18 @@ export default function Portal() {
                                   )}
                                 </button>
 
+                                {/* Enter Shop Portal / Debug Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleEnterShopPortal(s)}
+                                  disabled={isLoadingShopPortal}
+                                  className="px-3 py-1.5 bg-[#7520f7] hover:bg-[#6318d9] text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
+                                  title={`Truy cập vào Portal & Dashboard của shop ${s.name}`}
+                                >
+                                  <Store className="w-3.5 h-3.5 text-[#39d6cf]" />
+                                  <span>Vào Portal Shop</span>
+                                </button>
+
                                 {/* Toggle Expand Products */}
                                 <button
                                   type="button"
@@ -4673,6 +4841,57 @@ export default function Portal() {
         ) : (
           /* REGULAR PARTNER SHOP DASHBOARD */
           <div className="space-y-6">
+            {/* META ADMIN DEBUG BANNER */}
+            {impersonatedShop && (
+              <div className="bg-gradient-to-r from-amber-950/60 via-[#23173d] to-purple-950/60 border border-amber-500/50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-amber-300" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold font-mono tracking-wider text-amber-300 uppercase">
+                        CHẾ ĐỘ META ADMIN DEBUG
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 border border-purple-500/40">
+                        Quyền Debug & Can thiệp
+                      </span>
+                    </div>
+                    <p className="text-xs text-white mt-1">
+                      Đang truy cập Dashboard & Portal của shop: <strong className="text-[#39d6cf]">{impersonatedShop.name}</strong> ({impersonatedShop.slug})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <select
+                    aria-label="Chuyển sang shop khác"
+                    value={impersonatedShop.id}
+                    onChange={(e) => {
+                      const found = adminShops.find((shop) => shop.id === e.target.value);
+                      if (found) handleEnterShopPortal(found);
+                    }}
+                    disabled={isLoadingShopPortal}
+                    className="bg-[#12081f] border border-[#3b2a60] text-xs text-[#39d6cf] rounded-xl px-2.5 py-2 focus:outline-none focus:border-[#7520f7]"
+                  >
+                    {adminShops.map((shop) => (
+                      <option key={shop.id} value={shop.id} className="bg-[#181224] text-white">
+                        Chuyển: {shop.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleExitShopPortal}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#12081f] hover:bg-[#23173d] text-white border border-[#3b2a60] flex items-center gap-1.5 transition"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Về Admin Console</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Tab Navigation for Shop Partner */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2e2344] pb-4">
               <div className="flex items-center gap-2">

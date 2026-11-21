@@ -37,6 +37,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // SUB-ACTION: REVOKE STAFF
       if (action === "revoke" || req.method === "DELETE") {
+        const PROTECTED_ADMINS = [
+          "locle30092004@gmail.com",
+          "vinhhung3205@gmail.com",
+          "creativespace.ticoolture@gmail.com",
+        ];
+        const emailToCheck = (targetEmail || email || "").toLowerCase().trim();
+        if (PROTECTED_ADMINS.includes(emailToCheck)) {
+          return res.status(400).json({
+            success: false,
+            error: `Không thể tước quyền của Quản trị viên tối cao / Meta Admin (${emailToCheck}).`,
+          });
+        }
+
         if (targetUserId === staff.userId || (targetEmail && targetEmail.toLowerCase() === staff.userEmail.toLowerCase())) {
           return res.status(400).json({
             success: false,

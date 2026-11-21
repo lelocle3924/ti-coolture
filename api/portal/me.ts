@@ -17,7 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const authHeader = req.headers.authorization;
-    const portalUser = await authenticatePortalUser(authHeader);
+    const targetShopId =
+      (req.headers["x-target-shop-id"] as string) ||
+      (req.query?.shop_id as string) ||
+      null;
+    const portalUser = await authenticatePortalUser(authHeader, targetShopId);
 
     const supabase = getSupabaseAdmin();
 

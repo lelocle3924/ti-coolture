@@ -18,7 +18,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const authHeader = req.headers.authorization;
-    const shopContext = await authenticateShopMember(authHeader);
+    const targetShopId =
+      (req.headers["x-target-shop-id"] as string) ||
+      (req.query?.shop_id as string) ||
+      (req.body?.shopId as string) ||
+      null;
+    const shopContext = await authenticateShopMember(authHeader, targetShopId);
     const supabase = getSupabaseAdmin();
     const { action, productId, productIds, hidden, isOutOfStock, requestId } = req.body || {};
 

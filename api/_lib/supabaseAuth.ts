@@ -30,6 +30,7 @@ export interface AuthenticatedPortalContext {
   shopSlug?: string;
   shopStatus?: string;
   role: "admin" | "owner" | "editor";
+  isImpersonating?: boolean;
 }
 
 /**
@@ -45,7 +46,10 @@ export function extractBearerToken(authHeader?: string): string | null {
  * Authenticates any valid portal user (Staff Admin OR Shop Partner).
  * Returns their role and contextual metadata.
  */
-export async function authenticatePortalUser(authHeader?: string): Promise<AuthenticatedPortalContext> {
+export async function authenticatePortalUser(
+  authHeader?: string,
+  targetShopId?: string | null
+): Promise<AuthenticatedPortalContext> {
   const token = extractBearerToken(authHeader);
   if (!token) {
     throw new Error("Vui lòng đăng nhập với tài khoản Google để tiếp tục.");
@@ -80,7 +84,7 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
 
   // 0. Check Upstash Redis Auth Session Cache
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  const cacheKey = `auth_session:${tokenHash}`;
+  const cacheKey = targetShopId ? `auth_session:${tokenHash}:${targetShopId}` : `auth_session:${tokenHash}`;
   try {
     const cachedContext = await getCache<AuthenticatedPortalContext>(cacheKey);
     if (cachedContext && cachedContext.userId) {
@@ -136,13 +140,15 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
   const SUPER_ADMIN_EMAILS = [
     "locle30092004@gmail.com",
     "vinhhung3205@gmail.com",
+    "creativespace.ticoolture@gmail.com",
     (process.env.SUPER_ADMIN_EMAIL || "").toLowerCase().trim(),
   ].filter(Boolean);
 
   if ((!staffData || !staffData.is_active) && SUPER_ADMIN_EMAILS.includes(userEmail)) {
+    const fullName = userEmail === "creativespace.ticoolture@gmail.com" ? "Meta Admin (Creative Space)" : "Super Admin";
     staffData = {
       role: "admin",
-      full_name: "Super Admin",
+      full_name: fullName,
       is_active: true,
     };
     try {
@@ -150,7 +156,7 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
         {
           user_id: user.id,
           email: userEmail,
-          full_name: "Super Admin",
+          full_name: fullName,
           role: "admin",
           is_active: true,
         },
@@ -162,6 +168,19 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
   }
 
   const isStaffActive = Boolean(staffData && staffData.is_active);
+
+  // Support Meta Admin / Staff targeting / impersonating a specific shop for debugging & emergency support
+  let impersonatedShop: any = null;
+  if (isStaffActive && targetShopId) {
+    const cleanTarget = String(targetShopId).trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanTarget);
+    let q = supabase.from("shops").select("id, name, slug, status");
+    q = isUuid ? q.eq("id", cleanTarget) : q.eq("slug", cleanTarget);
+    const { data: tShop } = await q.maybeSingle();
+    if (tShop) {
+      impersonatedShop = tShop;
+    }
+  }
 
   // 3. Check existing shop membership in shop_members
   const { data: memberData } = await supabase
@@ -228,17 +247,19 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
 
   // If user is Staff/Admin: allow entry!
   if (isStaffActive) {
+    const effectiveShop = impersonatedShop || shopInfo;
     const adminCtx: AuthenticatedPortalContext = {
       userId: user.id,
       userEmail,
       isAdmin: true,
       adminRole: staffData.role as "admin" | "moderator" | "viewer",
       staffName: staffData.full_name,
-      shopId: shopInfo?.id,
-      shopName: shopInfo?.name,
-      shopSlug: shopInfo?.slug,
-      shopStatus: shopInfo?.status,
-      role: "admin",
+      shopId: effectiveShop?.id,
+      shopName: effectiveShop?.name,
+      shopSlug: effectiveShop?.slug,
+      shopStatus: effectiveShop?.status,
+      role: impersonatedShop ? "owner" : "admin",
+      isImpersonating: Boolean(impersonatedShop),
     };
     setCache(cacheKey, adminCtx, 60).catch((e) =>
       console.warn("[supabaseAuth] Failed to cache admin auth session:", e)
@@ -271,10 +292,13 @@ export async function authenticatePortalUser(authHeader?: string): Promise<Authe
 }
 
 /**
- * Legacy shop member auth helper
+ * Legacy shop member auth helper, with targetShopId support for Meta Admin debug/troubleshooting
  */
-export async function authenticateShopMember(authHeader?: string): Promise<AuthenticatedShopContext> {
-  const context = await authenticatePortalUser(authHeader);
+export async function authenticateShopMember(
+  authHeader?: string,
+  targetShopId?: string | null
+): Promise<AuthenticatedShopContext> {
+  const context = await authenticatePortalUser(authHeader, targetShopId);
   if (!context.shopId) {
     throw new Error("Tài khoản chưa được liên kết với shop nào.");
   }
@@ -285,7 +309,7 @@ export async function authenticateShopMember(authHeader?: string): Promise<Authe
     shopName: context.shopName || "",
     shopSlug: context.shopSlug || "",
     shopStatus: context.shopStatus || "draft",
-    role: context.role === "editor" ? "editor" : "owner",
+    role: context.isAdmin || context.role === "owner" ? "owner" : (context.role === "editor" ? "editor" : "owner"),
   };
 }
 
@@ -348,13 +372,15 @@ export async function authenticateStaffMember(authHeader?: string): Promise<Auth
   const SUPER_ADMIN_EMAILS = [
     "locle30092004@gmail.com",
     "vinhhung3205@gmail.com",
+    "creativespace.ticoolture@gmail.com",
     (process.env.SUPER_ADMIN_EMAIL || "").toLowerCase().trim(),
   ].filter(Boolean);
 
   if ((!staffData || !staffData.is_active) && SUPER_ADMIN_EMAILS.includes(userEmail)) {
+    const fullName = userEmail === "creativespace.ticoolture@gmail.com" ? "Meta Admin (Creative Space)" : "Super Admin";
     staffData = {
       role: "admin",
-      full_name: "Super Admin",
+      full_name: fullName,
       is_active: true,
     };
     try {
@@ -362,7 +388,7 @@ export async function authenticateStaffMember(authHeader?: string): Promise<Auth
         {
           user_id: user.id,
           email: userEmail,
-          full_name: "Super Admin",
+          full_name: fullName,
           role: "admin",
           is_active: true,
         },

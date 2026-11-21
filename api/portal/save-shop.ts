@@ -123,7 +123,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const shopContext = await authenticateShopMember(req.headers.authorization);
+    const targetShopId =
+      (req.headers["x-target-shop-id"] as string) ||
+      (req.query?.shop_id as string) ||
+      (req.body?.shopId as string) ||
+      null;
+    const shopContext = await authenticateShopMember(req.headers.authorization, targetShopId);
     const supabase = getSupabaseAdmin();
     const { data: pendingRows, error: requestFetchError } = await supabase
       .from("partner_requests")
@@ -247,26 +252,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // NẾU TỰ ĐỘNG DUYỆT: Cập nhật trực tiếp vào bảng shops
     if (!requireApproval) {
-      const { data: updatedShop, error: shopUpdateErr } = await supabase
+      const baseUpdatePayload: Record<string, any> = {
+        name: nextPayload.name,
+        tagline_vi: nextPayload.tagline_vi,
+        story_vi: nextPayload.story_vi,
+        address: nextPayload.address,
+        area_tag: nextPayload.area_tag,
+        contact_email: nextPayload.contact_email,
+        logo_url: nextPayload.logo_url,
+        cover_url: nextPayload.cover_url,
+        story_en: nextPayload.hero_image_url || null, // Dual safe fallback
+        updated_at: new Date().toISOString(),
+      };
+
+      let updatedShop: any = null;
+      // Thử cập nhật kèm hero_image_url trước
+      const { data: heroData, error: heroErr } = await supabase
         .from("shops")
         .update({
-          name: nextPayload.name,
-          tagline_vi: nextPayload.tagline_vi,
-          story_vi: nextPayload.story_vi,
-          address: nextPayload.address,
-          area_tag: nextPayload.area_tag,
-          contact_email: nextPayload.contact_email,
-          logo_url: nextPayload.logo_url,
-          cover_url: nextPayload.cover_url,
-          hero_image_url: nextPayload.hero_image_url,
-          socials: nextPayload.socials,
-          updated_at: new Date().toISOString(),
+          ...baseUpdatePayload,
+          hero_image_url: nextPayload.hero_image_url || null,
         })
         .eq("id", shopContext.shopId)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (shopUpdateErr) throw shopUpdateErr;
+      if (heroErr) {
+        console.warn("[portal/save-shop] hero_image_url update failed, falling back to base columns + story_en:", heroErr.message);
+        const { data: baseData, error: baseErr } = await supabase
+          .from("shops")
+          .update(baseUpdatePayload)
+          .eq("id", shopContext.shopId)
+          .select()
+          .single();
+
+        if (baseErr) throw baseErr;
+        updatedShop = baseData;
+      } else {
+        updatedShop = heroData;
+      }
+
+      // Lưu socials vào bảng shop_socials (bảng shops không có cột socials)
+      if (nextPayload.socials && typeof nextPayload.socials === "object") {
+        const allowedPlatforms = ["facebook", "instagram", "tiktok", "threads", "website", "zalo"];
+        for (const platform of allowedPlatforms) {
+          const rawUrl = nextPayload.socials[platform];
+          const socialUrl = typeof rawUrl === "string" ? rawUrl.trim() : "";
+          if (!socialUrl) {
+            await supabase
+              .from("shop_socials")
+              .delete()
+              .eq("shop_id", shopContext.shopId)
+              .eq("platform", platform);
+          } else {
+            await supabase
+              .from("shop_socials")
+              .upsert(
+                {
+                  shop_id: shopContext.shopId,
+                  platform,
+                  url: socialUrl,
+                  is_visible: true,
+                },
+                { onConflict: "shop_id,platform" }
+              );
+          }
+        }
+      }
 
       // Đóng các yêu cầu profile pending cũ nếu có
       if (shopRequests.length > 0) {

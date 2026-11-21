@@ -26,7 +26,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let shopId: string;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      const shopContext = await authenticateShopMember(authHeader);
+      const targetShopId =
+        (req.headers["x-target-shop-id"] as string) ||
+        (req.query?.shop_id as string) ||
+        null;
+      const shopContext = await authenticateShopMember(authHeader, targetShopId);
       shopId = shopContext.shopId;
     } else if (token && typeof token === "string") {
       const invite = await verifyPortalToken(token);
