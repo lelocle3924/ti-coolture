@@ -12,6 +12,7 @@ interface ImageCropDialogProps {
   title: string;
   aspectRatio: number;
   shape: "circle" | "rectangle";
+  showSafeZone?: boolean;
   outputWidth?: number;
   quality?: number;
   onCancel: () => void;
@@ -92,11 +93,13 @@ export default function ImageCropDialog({
   title,
   aspectRatio,
   shape,
+  showSafeZone,
   outputWidth,
   quality,
   onCancel,
   onConfirm,
 }: ImageCropDialogProps) {
+  const hasSafeZone = showSafeZone ?? (aspectRatio === 2.5);
   const cropFrameRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -342,6 +345,20 @@ export default function ImageCropDialog({
                     visibility: imageSize.width ? "visible" : "hidden",
                   }}
                 />
+
+                {hasSafeZone && (
+                  <div
+                    className="pointer-events-none absolute inset-x-[10%] inset-y-[10%] z-20 flex flex-col items-center justify-between rounded border-2 border-dashed border-[#39d6cf]/90 bg-[#39d6cf]/[0.03] p-1.5 transition-opacity"
+                    aria-hidden="true"
+                  >
+                    <div className="flex items-center gap-1 rounded bg-[#12081f]/85 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#39d6cf] shadow-sm border border-[#39d6cf]/30">
+                      <span>Vùng an toàn (Safe Zone)</span>
+                    </div>
+                    <div className="text-[9px] text-[#39d6cf]/90 bg-[#12081f]/85 px-1.5 py-0.5 rounded font-medium border border-[#39d6cf]/20">
+                      Chữ & logo nên nằm trong khung nét đứt
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -368,8 +385,27 @@ export default function ImageCropDialog({
           </span>
         </div>
         <p className="mt-2 text-center text-[11px] text-[#7b7194]">
-          Tỷ lệ đầu ra {aspectRatio === 1 ? "1:1" : "2.74:1"} · Có thể căn ảnh bằng phím mũi tên
+          Tỷ lệ đầu ra{" "}
+          {aspectRatio === 1
+            ? "1:1 (Vuông)"
+            : aspectRatio === 2.5
+            ? "2.5:1 (Chuẩn cover shop)"
+            : Math.abs(aspectRatio - 16 / 9) < 0.01
+            ? "16:9 (Ngang rộng)"
+            : `${aspectRatio.toFixed(2)}:1`}{" "}
+          · Có thể căn ảnh bằng chuột hoặc phím mũi tên
         </p>
+
+        {hasSafeZone && (
+          <div className="mx-auto mt-3 max-w-lg rounded-xl border border-[#39d6cf]/30 bg-[#39d6cf]/10 p-2.5 text-center text-xs text-[#d7faf7]">
+            <p className="font-semibold text-[#39d6cf] flex items-center justify-center gap-1.5">
+              <span>💡 Vùng an toàn (Safe Zone)</span>
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[#c3b9d6]">
+              Hãy đặt tên shop, slogan và các nội dung quan trọng bên trong <strong>khung nét đứt</strong> để tránh bị che khuất hoặc cắt xén trên các thiết bị.
+            </p>
+          </div>
+        )}
 
         {error && (
           <p role="alert" className="mt-4 rounded-lg border border-red-800/60 bg-red-950/40 p-3 text-xs text-red-200">

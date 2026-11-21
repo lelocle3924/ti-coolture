@@ -189,7 +189,7 @@ export default function Stores() {
                       thumbnails below the line still open their products. */}
                   <div className="relative">
                     {/* Atelier Cover Banner Viewport with Shared View Transition Name */}
-                    <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-white border border-ink/5">
+                    <div className="relative aspect-[2.5/1] rounded-2xl overflow-hidden bg-white border border-ink/5">
                       {store.coverUrl ? (
                         <img
                           src={store.coverUrl}

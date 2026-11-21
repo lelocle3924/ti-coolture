@@ -275,7 +275,7 @@ function ProfileRequestDetails({ request }: { request: PartnerRequest }) {
               <img
                 src={resolveImageUrl(payload.cover_url)}
                 alt="Ảnh bìa đề xuất"
-                className="w-40 aspect-[2.74/1] rounded-lg object-cover border border-[#3b2a60]"
+                className="w-40 aspect-[2.5/1] rounded-lg object-cover border border-[#3b2a60]"
               />
             </div>
           )}
@@ -5049,10 +5049,10 @@ export default function Portal() {
                           <ImageIcon className="w-3.5 h-3.5 text-[#39d6cf]" />
                           Ảnh bìa shop (Cover)
                         </label>
-                        <span className="text-[10px] font-mono text-[#a39ab8]">Tỷ lệ 2.74 : 1</span>
+                        <span className="text-[10px] font-mono text-[#a39ab8]">Tỷ lệ 2.5 : 1</span>
                       </div>
 
-                      <div className="aspect-[2.74/1] bg-[#12081f] rounded-xl overflow-hidden border border-[#2e2344] relative flex items-center justify-center group">
+                      <div className="aspect-[2.5/1] bg-[#12081f] rounded-xl overflow-hidden border border-[#2e2344] relative flex items-center justify-center group">
                         {shopCoverUrl ? (
                           <img
                             src={resolveImageUrl(shopCoverUrl)}
@@ -5074,7 +5074,7 @@ export default function Portal() {
                       </div>
 
                       <p className="text-[11px] text-[#7b7194] leading-relaxed">
-                        Khuyên dùng ảnh ngang chất lượng cao, kích thước 1400×510px.
+                        Khuyên dùng ảnh ngang chất lượng cao, kích thước 1500×600px (tỷ lệ 2.5:1).
                       </p>
 
                       <div>
@@ -7158,11 +7158,12 @@ export default function Portal() {
           }
           aspectRatio={
             profileImageCrop.kind === "cover"
-              ? 2.74
+              ? 2.5
               : profileImageCrop.kind === "hero"
               ? 16 / 9
               : 1
           }
+          showSafeZone={profileImageCrop.kind === "cover"}
           shape={profileImageCrop.kind === "logo" ? "circle" : "rectangle"}
           outputWidth={profileImageCrop.kind === "logo" ? 512 : 1920}
           quality={profileImageCrop.kind === "logo" ? 0.85 : 0.88}

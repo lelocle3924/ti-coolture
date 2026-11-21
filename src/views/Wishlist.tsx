@@ -221,7 +221,7 @@ export default function Wishlist() {
                       key={shop.id}
                       className="group relative flex flex-col overflow-hidden rounded-[1.875rem] border border-ink/10 bg-paper p-5 transition-shadow hover:border-brand/40"
                     >
-                      <div className="relative aspect-[16/9] overflow-hidden rounded-2xl bg-paper-warm">
+                      <div className="relative aspect-[2.5/1] overflow-hidden rounded-2xl bg-paper-warm">
                         <img
                           src={shop.coverUrl || shop.logoUrl || "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600"}
                           alt={shop.name}

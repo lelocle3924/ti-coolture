@@ -33,7 +33,7 @@
 .shop-hero__media {
   position: relative;
   width: 100%;
-  aspect-ratio: 2.74 / 1;
+  aspect-ratio: 2.5 / 1;
   min-height: 180px;
   max-height: 520px;
   overflow: hidden;
@@ -164,8 +164,8 @@
 
   .shop-hero__media {
     border-radius: 0 0 1.25rem 1.25rem;
-    aspect-ratio: 2.2 / 1;
-    min-height: 150px;
+    aspect-ratio: 2.5 / 1;
+    min-height: 140px;
   }
 
   .shop-content__layout {
