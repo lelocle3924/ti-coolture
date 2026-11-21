@@ -50,14 +50,10 @@
 }
 
 .shop-hero__image {
-  position: absolute;
-  top: -12%;
-  left: 0;
   display: block;
   width: 100%;
-  height: 140%;
+  height: 100%;
   object-fit: cover;
-  will-change: transform;
 }
 
 .shop-hero__fallback {
@@ -197,11 +193,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shop-hero__image {
-    transform: none !important;
-    will-change: auto;
-  }
-
   .shop-social-link {
     transition: none;
   }

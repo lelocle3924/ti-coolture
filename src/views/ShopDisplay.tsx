@@ -102,42 +102,6 @@ function useShopPage(storeId: string | undefined) {
    Motion hooks — GPU-safe, transform + opacity only
    --------------------------------------------------------------------------- */
 
-/** Parallax: cover image shifts slower than scroll for depth */
-function useParallaxCover(factor = 0.22) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const ticking = useRef(false);
-
-  useEffect(() => {
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReduced) return;
-
-    const onScroll = () => {
-      if (ticking.current) return;
-      ticking.current = true;
-      requestAnimationFrame(() => {
-        ticking.current = false;
-        const el = containerRef.current;
-        const img = imgRef.current;
-        if (!el || !img) return;
-        const rect = el.getBoundingClientRect();
-        // Only apply when visible
-        if (rect.bottom < 0 || rect.top > window.innerHeight) return;
-        // Bound travel so oversized image never detaches from container edges
-        const maxTravel = el.clientHeight * 0.16;
-        const offset = Math.max(-maxTravel, Math.min(maxTravel, rect.top * factor));
-        img.style.transform = `translate3d(0, ${offset.toFixed(1)}px, 0) scale(1.04)`;
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [factor]);
-
-  return { containerRef, imgRef };
-}
-
 /** IntersectionObserver-based reveal: fade-up with stagger */
 function useRevealOnScroll(items: Product[]) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -474,9 +438,6 @@ export function ShopView({
   const [band, setBand] = useState("all");
   const [sort, setSort] = useState("newest");
 
-  // Motion hooks
-  const parallax = useParallaxCover(0.22);
-
   const shown = useMemo(() => {
     const chosen = PRICE_BANDS.find((b) => b.id === band);
     return products
@@ -529,14 +490,12 @@ export function ShopView({
           <ShopHeroSurround fillGround={bgGround || "var(--color-brand-deep)"} />
         )}
         <div className="shop-hero__container">
-          <div ref={parallax.containerRef} className="shop-hero__media" aria-hidden="true">
+          <div className="shop-hero__media" aria-hidden="true">
             {store.coverUrl ? (
               <img
-                ref={parallax.imgRef}
                 src={store.coverUrl}
                 alt=""
                 className="shop-hero__image"
-                style={{ transform: "translate3d(0, 0, 0) scale(1.04)" }}
               />
             ) : (
               <div className="shop-hero__fallback">
